@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { checkIn, checkOut } from '../controllers/attendance.controller.js';
-import { overrideAttendance } from '../controllers/attendanceOverride.controller';
+import { overrideAttendance } from '../controllers/attendanceOverride.controller.js';
 import { authenticate, authorize } from '../middlewares/auth.middleware.js';
 import { upload } from '../utils/upload.js';
 
