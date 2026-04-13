@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
 import prisma from '../utils/prisma.js';
 import crypto from 'crypto';
-import { io } from '../server.js'; // Ensure we can emit socket events
 
 // Helper for distance calculation (Haversine formula)
 function getDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -150,17 +149,6 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
         user: { select: { name: true, nim_nip: true } }
       }
     });
-
-    // 3. Emit real-time socket event to the session room
-    if (io) {
-      io.to(`session_${session_id}`).emit('new_attendance', {
-        id: attendance.id,
-        user_name: attendance.user.name,
-        nim_nip: attendance.user.nim_nip,
-        status: attendance.status,
-        check_in_time: attendance.check_in_time
-      });
-    }
 
     res.status(201).json({ success: true, data: attendance, message: 'Check-in berhasil' });
   } catch (error: any) {
