@@ -64,9 +64,6 @@ export default function Settings() {
             <Button variant="ghost" className="w-full justify-start text-indigo-700 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50">
               <User className="w-5 h-5 mr-3" /> Profil & Keamanan
             </Button>
-            <Button variant="ghost" className="w-full justify-start text-slate-600 dark:text-zinc-400" onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })}>
-              <Monitor className="w-5 h-5 mr-3" /> Tampilan & Tema
-            </Button>
             {user?.role === 'SUPER_ADMIN' && (
               <Button variant="ghost" className="w-full justify-start text-slate-600 dark:text-zinc-400 cursor-not-allowed opacity-50">
                 <Lock className="w-5 h-5 mr-3" /> Konfigurasi Sistem
@@ -137,25 +134,8 @@ export default function Settings() {
             </form>
           </div>
 
-          {/* Preferences */}
-          <div className="bg-white dark:bg-zinc-800 rounded-xl border border-slate-200 dark:border-zinc-700 shadow-sm p-6">
-            <h2 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Tampilan & Preferensi</h2>
-            <div className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-zinc-700/50">
-              <div>
-                <p className="font-medium text-slate-800 dark:text-white">Tema Gelap (Dark Mode)</p>
-                <p className="text-sm text-slate-500 dark:text-zinc-400">Gunakan tema gelap yang lebih nyaman untuk mata.</p>
-              </div>
-              <button 
-                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${theme === 'dark' ? 'bg-indigo-600' : 'bg-slate-200 dark:bg-zinc-700'}`}
-              >
-                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${theme === 'dark' ? 'translate-x-6' : 'translate-x-1'}`} />
-              </button>
-            </div>
-          </div>
-          
           {/* Danger Zone */}
-          <div className="bg-white dark:bg-zinc-800 rounded-xl border border-red-200 dark:border-red-900/50 shadow-sm p-6">
+          <div className="bg-white dark:bg-zinc-800 rounded-xl border border-red-200 dark:border-red-900/50 shadow-sm p-6 mt-6">
             <h2 className="text-lg font-bold text-red-600 dark:text-red-500 mb-2">Manajemen Perangkat</h2>
             <p className="text-sm text-slate-500 dark:text-zinc-400 mb-4">Logout paksa dari perangkat ini (akan menghapus sesi token).</p>
             <button 

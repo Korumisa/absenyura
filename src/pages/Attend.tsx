@@ -142,13 +142,19 @@ export default function Attend() {
 
   const startCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+      } catch (e) {
+        // Fallback if front camera is not explicitly available
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      }
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         setIsCameraActive(true);
       }
     } catch (err) {
-      toast.error('Gagal mengakses kamera. Pastikan izin kamera diaktifkan.');
+      toast.error('Gagal mengakses kamera. Pastikan izin kamera diaktifkan dan perangkat mendukungnya.');
     }
   };
 
@@ -297,8 +303,42 @@ export default function Attend() {
                 <div className="absolute inset-0 z-10 border-[3px] border-dashed border-indigo-500/50 m-8 rounded-xl pointer-events-none"></div>
                 <div className="absolute top-0 left-0 w-full h-1 bg-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.8)] animate-[scan_2s_ease-in-out_infinite] z-20 pointer-events-none"></div>
                 
-                <div id="qr-reader" className="w-full bg-black [&>div]:border-none [&>div]:shadow-none [&_video]:object-cover [&_video]:w-full [&_video]:h-full min-h-[300px] flex flex-col justify-center"></div>
+                <div id="qr-reader" className="w-full bg-black [&>div]:border-none [&>div]:shadow-none [&_video]:object-cover [&_video]:w-full [&_video]:h-full min-h-[300px] flex flex-col-reverse justify-end"></div>
               </div>
+              <style dangerouslySetInnerHTML={{__html: `
+                #qr-reader__dashboard_section_csr span button {
+                  background-color: #4f46e5 !important;
+                  color: white !important;
+                  border: none !important;
+                  padding: 10px 20px !important;
+                  border-radius: 8px !important;
+                  margin: 10px 0 !important;
+                  cursor: pointer !important;
+                  font-weight: 600 !important;
+                  width: 100% !important;
+                }
+                #qr-reader__dashboard_section_csr span button:hover {
+                  background-color: #4338ca !important;
+                }
+                #qr-reader__dashboard_section_swaplink {
+                  color: #818cf8 !important;
+                  text-decoration: none !important;
+                  margin-bottom: 10px !important;
+                  display: block !important;
+                }
+                #qr-reader__dashboard_section_csr {
+                  padding: 15px !important;
+                  background-color: #1e293b !important;
+                  border-top: 1px solid #334155 !important;
+                  color: white !important;
+                  position: relative;
+                  z-index: 30;
+                }
+                #qr-reader__scan_region {
+                  position: relative;
+                  z-index: 1;
+                }
+              `}} />
               <div className="text-center mt-6 mb-6">
                 <p className="text-sm font-medium text-slate-600 dark:text-zinc-400">
                   Arahkan kamera ke QR Code yang ditampilkan oleh Dosen.
