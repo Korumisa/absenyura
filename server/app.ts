@@ -1,7 +1,7 @@
 /**
  * This is a API server
  */
-
+ 
 import express, {
   type Request,
   type Response,
@@ -14,7 +14,7 @@ import { fileURLToPath } from 'url'
 import cookieParser from 'cookie-parser'
 import helmet from 'helmet'
 import rateLimit from 'express-rate-limit'
-
+ 
 import authRoutes from './routes/auth.js'
 import userRoutes from './routes/users.js'
 import locationRoutes from './routes/locations.js'
@@ -27,16 +27,20 @@ import notificationRoutes from './routes/notifications.js'
 import auditRoutes from './routes/audit.js'
 import classRoutes from './routes/classes.js'
 import excuseRoutes from './routes/excuses.js'
-
+ 
 dotenv.config()// for esm mode
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
-
+ 
 // load env
 dotenv.config()
-
+ 
 const app: express.Application = express()
-
+ 
+if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1)
+}
+ 
 app.use(helmet())
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' ? process.env.FRONTEND_URL : 'http://localhost:5173',
@@ -45,7 +49,7 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 app.use(cookieParser())
-
+ 
 // Rate limiting
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -53,7 +57,7 @@ const apiLimiter = rateLimit({
   message: 'Too many requests from this IP, please try again after 15 minutes',
 });
 app.use('/api/', apiLimiter);
-
+ 
 /**
  * API Routes
  */
@@ -70,7 +74,7 @@ app.use('/api/audit-logs', auditRoutes)
 app.use('/api/classes', classRoutes)
 app.use('/api/excuses', excuseRoutes)
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
-
+ 
 /**
  * health
  */
@@ -83,7 +87,7 @@ app.use(
     })
   },
 )
-
+ 
 /**
  * error handler middleware
  */
@@ -94,7 +98,7 @@ app.use((error: Error, req: Request, res: Response, next: NextFunction) => {
     error: 'Server internal error',
   })
 })
-
+ 
 /**
  * 404 handler
  */
@@ -104,5 +108,5 @@ app.use((req: Request, res: Response) => {
     error: 'API not found',
   })
 })
-
+ 
 export default app
