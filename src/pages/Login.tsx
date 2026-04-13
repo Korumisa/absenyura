@@ -43,7 +43,17 @@ export default function Login() {
 
       navigate(target, { replace: true });
     } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Gagal masuk. Periksa email dan kata sandi Anda.');
+      let errorMsg = 'Gagal masuk. Periksa email dan kata sandi Anda.';
+      if (err.response?.data?.error) {
+        if (typeof err.response.data.error === 'string') {
+          errorMsg = err.response.data.error;
+        } else if (typeof err.response.data.error === 'object' && err.response.data.error.message) {
+          errorMsg = err.response.data.error.message;
+        }
+      } else if (err.message) {
+        errorMsg = err.message;
+      }
+      toast.error(errorMsg);
     } finally {
       setLoading(false);
     }
