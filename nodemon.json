@@ -1,0 +1,6 @@
+{
+  "watch": ["server"],
+  "ext": "ts,js",
+  "ignore": ["node_modules", ".pnpm-store"],
+  "exec": "tsx server/server.ts"
+}
