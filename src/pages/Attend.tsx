@@ -4,8 +4,19 @@ import { Html5QrcodeScanner, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import api from '@/services/api';
 import { toast } from 'sonner';
 import { MapPin, QrCode, ShieldAlert, CheckCircle, Smartphone, Camera } from 'lucide-react';
+import { MapContainer, TileLayer, Marker, Popup, Circle } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 
 import { Button } from '@/components/ui/button';
+
+// Fix leaflet default icon issue
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
 
 export default function Attend() {
   const [searchParams] = useSearchParams();
@@ -266,7 +277,7 @@ export default function Attend() {
             <ShieldAlert className={ipAddress ? 'text-green-500' : 'text-slate-400'} size={24} />
             <span className="text-xs font-medium text-slate-600 dark:text-zinc-400">IP Validasi</span>
             <span className="text-xs font-bold text-slate-900 dark:text-white">
-              {ipAddress ? 'Tersambung' : 'Menunggu'}
+              {ipAddress ? ipAddress : 'Menunggu'}
             </span>
           </div>
           <div className="p-4 flex flex-col items-center text-center gap-2">
@@ -288,11 +299,39 @@ export default function Attend() {
                 
                 <div id="qr-reader" className="w-full bg-black [&>div]:border-none [&>div]:shadow-none [&_video]:object-cover [&_video]:w-full [&_video]:h-full min-h-[300px] flex flex-col justify-center"></div>
               </div>
-              <div className="text-center mt-6">
+              <div className="text-center mt-6 mb-6">
                 <p className="text-sm font-medium text-slate-600 dark:text-zinc-400">
                   Arahkan kamera ke QR Code yang ditampilkan oleh Dosen.
                 </p>
               </div>
+
+              {location && sessionDetails?.location && (
+                <div className="mt-4 bg-white dark:bg-zinc-800 rounded-2xl p-4 shadow-md border border-slate-200 dark:border-zinc-700">
+                  <h3 className="text-sm font-bold text-slate-800 dark:text-white mb-2 flex items-center gap-2">
+                    <MapPin size={16} className="text-indigo-500" />
+                    Peta Lokasi Anda
+                  </h3>
+                  <div className="h-[200px] rounded-xl overflow-hidden relative z-0">
+                    <MapContainer 
+                      center={[location.lat, location.lng]} 
+                      zoom={16} 
+                      style={{ height: '100%', width: '100%' }}
+                      zoomControl={false}
+                      dragging={false}
+                    >
+                      <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                      <Marker position={[location.lat, location.lng]}>
+                        <Popup>Lokasi Anda Saat Ini</Popup>
+                      </Marker>
+                      <Circle 
+                        center={[sessionDetails.location.latitude, sessionDetails.location.longitude]}
+                        radius={sessionDetails.location.radius}
+                        pathOptions={{ color: 'indigo', fillColor: 'indigo', fillOpacity: 0.2 }}
+                      />
+                    </MapContainer>
+                  </div>
+                </div>
+              )}
             </div>
           ) : !photoBlob ? (
             <div className="w-full max-w-md flex flex-col items-center animate-in zoom-in duration-300">
@@ -300,29 +339,43 @@ export default function Attend() {
               
               <div className="w-full relative rounded-2xl overflow-hidden shadow-inner border border-slate-200 dark:border-zinc-700 bg-black aspect-video flex items-center justify-center">
                 {!isCameraActive ? (
-                  <Button 
-                    size="lg"
-                    onClick={startCamera}
-                    className="flex flex-col h-auto items-center gap-2 py-4"
-                  >
-                    <Camera size={24} />
-                    Buka Kamera
-                  </Button>
+                  <div className="flex flex-col items-center justify-center text-slate-500">
+                    <Camera size={48} className="mb-2 opacity-50" />
+                    <p>Kamera belum aktif</p>
+                  </div>
                 ) : (
-                  <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover"></video>
+                  <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover absolute inset-0 z-10"></video>
                 )}
                 <canvas ref={canvasRef} className="hidden"></canvas>
               </div>
               
-              {isCameraActive && (
-                <Button
-                  size="icon"
-                  onClick={takePhoto}
-                  className="mt-6 w-16 h-16 rounded-full border-4 border-indigo-200 flex items-center justify-center hover:scale-105 transition-transform"
-                >
-                  <Camera size={24} className="text-white" />
-                </Button>
-              )}
+              <div className="mt-6 flex gap-4 w-full justify-center relative z-50">
+                {!isCameraActive ? (
+                  <button 
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      startCamera();
+                    }}
+                    className="flex items-center justify-center gap-2 py-3 px-6 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium shadow-lg transition-colors cursor-pointer w-full max-w-[200px]"
+                  >
+                    <Camera size={20} />
+                    <span>Buka Kamera</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      takePhoto();
+                    }}
+                    className="flex items-center justify-center gap-2 py-3 px-6 bg-green-600 hover:bg-green-700 text-white rounded-xl font-medium shadow-lg transition-colors cursor-pointer w-full max-w-[200px]"
+                  >
+                    <Camera size={20} />
+                    <span>Ambil Foto</span>
+                  </button>
+                )}
+              </div>
             </div>
           ) : (
             <div className="w-full max-w-md flex flex-col items-center animate-in zoom-in duration-300">
