@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface Report {
   id: string;
@@ -266,9 +267,30 @@ export default function Reports() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center text-slate-500">Memuat data...</TableCell>
-                </TableRow>
+                Array.from({ length: 10 }).map((_, idx) => (
+                  <TableRow key={idx}>
+                    <TableCell>
+                      <Skeleton className="h-5 w-32 mb-2" />
+                      <Skeleton className="h-4 w-24" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-5 w-40 mb-1" />
+                      <Skeleton className="h-3 w-20 mb-2" />
+                      <Skeleton className="h-4 w-32" />
+                    </TableCell>
+                    <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-6 w-24 rounded-full" /></TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-32 mb-1" />
+                      <Skeleton className="h-4 w-24" />
+                    </TableCell>
+                    {user?.role !== 'USER' && (
+                      <TableCell className="text-right">
+                        <Skeleton className="h-8 w-20 ml-auto rounded-md" />
+                      </TableCell>
+                    )}
+                  </TableRow>
+                ))
               ) : filteredReports.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="h-24 text-center text-slate-500">Tidak ada data ditemukan.</TableCell>

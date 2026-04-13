@@ -121,7 +121,8 @@ export default function QRDisplay() {
         check_in_time: att.check_in_time
       })));
     } catch (error) {
-      console.error(error);
+      console.error('Failed to fetch attendees:', error);
+      toast.error('Gagal memuat data kehadiran langsung');
     }
   };
 

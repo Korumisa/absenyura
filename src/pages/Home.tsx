@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { MapPin, QrCode, ShieldCheck, Clock, ArrowRight, BarChart3, Fingerprint, Database, CheckCircle2, ChevronRight } from 'lucide-react';
+import { MapPin, QrCode, ShieldCheck, Clock, ArrowRight, BarChart3, Fingerprint, Database, CheckCircle2, ChevronRight, Menu, X } from 'lucide-react';
 
 export default function Home() {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const features = [
     {
       title: 'Pemindaian QR Dinamis',
@@ -87,10 +88,26 @@ export default function Home() {
               to="/login"
               className="text-sm font-bold bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-6 py-2.5 rounded-full hover:bg-slate-800 dark:hover:bg-slate-100 transition-all hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
             >
-              Mulai Sistem
+              Mulai Sekarang
             </Link>
+            <button 
+              className="md:hidden p-2 text-slate-700 dark:text-zinc-300"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            >
+              {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
           </div>
         </div>
+
+        {/* Mobile Menu */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden border-t border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-6 py-4 flex flex-col gap-4">
+            <a href="#fitur" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-semibold text-slate-600 dark:text-zinc-300">Fitur Unggulan</a>
+            <a href="#cara-kerja" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-semibold text-slate-600 dark:text-zinc-300">Cara Kerja</a>
+            <a href="#keamanan" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-semibold text-slate-600 dark:text-zinc-300">Keamanan</a>
+            <Link to="/login" className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">Log in</Link>
+          </div>
+        )}
       </nav>
 
       {/* Hero Section Enterprise */}

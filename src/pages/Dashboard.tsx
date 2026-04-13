@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import api from '@/services/api';
-import { Users, Calendar, CheckCircle2, Clock, MapPin, QrCode, LayoutDashboard, XCircle, FileText, BarChart3 } from 'lucide-react';
+import { Users, Calendar, CheckCircle2, Clock, MapPin, FileText, BarChart3 } from 'lucide-react';
 import {
   LineChart,
   Line,
@@ -9,14 +9,12 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell
+  ResponsiveContainer
 } from 'recharts';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -60,7 +58,30 @@ export default function Dashboard() {
   }, [user?.id, chartFilter]);
 
   if (loading || !data) {
-    return <div className="p-8 text-slate-500 dark:text-zinc-400 flex justify-center items-center h-full">Memuat dashboard...</div>;
+    return (
+      <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-8">
+        <div className="mb-8">
+          <Skeleton className="h-10 w-48 mb-2" />
+          <Skeleton className="h-5 w-64" />
+        </div>
+        
+        {/* Banner Skeleton */}
+        <Skeleton className="h-48 w-full rounded-3xl" />
+        
+        {/* Stats Grid Skeleton */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[...Array(4)].map((_, i) => (
+            <Skeleton key={i} className="h-32 w-full rounded-2xl" />
+          ))}
+        </div>
+
+        {/* Charts & Lists Skeleton */}
+        <div className="grid lg:grid-cols-3 gap-6">
+          <Skeleton className="lg:col-span-2 h-96 w-full rounded-2xl" />
+          <Skeleton className="h-96 w-full rounded-2xl" />
+        </div>
+      </div>
+    );
   }
 
   const isUser = user?.role === 'USER';

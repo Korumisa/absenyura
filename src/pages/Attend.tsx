@@ -198,25 +198,45 @@ export default function Attend() {
     setIsCameraActive(false);
   };
 
+  // Add cleanup effect for camera to prevent memory/hardware leak when unmounting
+  useEffect(() => {
+    return () => {
+      stopCamera();
+    };
+  }, []);
+
   const startCamera = async () => {
     try {
       setCameraPermissionError(null);
       if (!navigator.mediaDevices?.getUserMedia) {
-        setCameraPermissionError('Browser Anda tidak mendukung akses kamera.');
-        toast.error('Browser Anda tidak mendukung akses kamera.');
+        setCameraPermissionError('Browser Anda tidak mendukung akses kamera (HTTPS diperlukan).');
+        toast.error('Browser Anda tidak mendukung akses kamera (HTTPS diperlukan).');
         return;
       }
+      
+      // Stop existing streams
       stopCamera();
+      
       let stream;
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode } });
+        // Try exact facing mode first
+        stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: { ideal: facingMode } } 
+        });
       } catch (e: any) {
-        // Fallback or explicit error
+        // Fallback to any available video camera
         try {
            stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        } catch(fallbackErr) {
-           setCameraPermissionError('Izin ditolak atau kamera tidak ditemukan.');
-           toast.error('Gagal mengakses kamera. Pastikan izin kamera diaktifkan.');
+        } catch(fallbackErr: any) {
+           console.error('Camera fallback error:', fallbackErr);
+           // Handle specific NotAllowedError vs NotFoundError
+           if (fallbackErr.name === 'NotAllowedError' || fallbackErr.name === 'SecurityError') {
+             setCameraPermissionError('Izin ditolak. Izinkan akses kamera di pengaturan browser.');
+           } else if (fallbackErr.name === 'NotFoundError' || fallbackErr.name === 'DevicesNotFoundError') {
+             setCameraPermissionError('Tidak ada kamera yang terdeteksi di perangkat ini.');
+           } else {
+             setCameraPermissionError(`Error Kamera: ${fallbackErr.message || fallbackErr.name}`);
+           }
            return;
         }
       }
@@ -226,12 +246,16 @@ export default function Attend() {
       setTimeout(async () => {
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
-          await videoRef.current.play().catch(() => {});
+          try {
+            await videoRef.current.play();
+          } catch (playErr) {
+            console.error('Video play error:', playErr);
+          }
         }
       }, 100);
-    } catch (err) {
-      setCameraPermissionError('Gagal mengakses kamera.');
-      toast.error('Gagal mengakses kamera. Pastikan izin kamera diaktifkan dan perangkat mendukungnya.');
+    } catch (err: any) {
+      console.error('Start camera error:', err);
+      setCameraPermissionError(`Gagal mengakses kamera: ${err.message || 'Unknown Error'}`);
     }
   };
 
@@ -248,8 +272,19 @@ export default function Attend() {
     if (videoRef.current && canvasRef.current) {
       const video = videoRef.current;
       const canvas = canvasRef.current;
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
+      
+      // Calculate scaled dimensions to prevent massive payloads
+      const MAX_WIDTH = 800;
+      let width = video.videoWidth;
+      let height = video.videoHeight;
+      
+      if (width > MAX_WIDTH) {
+        height = Math.round((height * MAX_WIDTH) / width);
+        width = MAX_WIDTH;
+      }
+      
+      canvas.width = width;
+      canvas.height = height;
       const ctx = canvas.getContext('2d');
       if (ctx) {
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -257,10 +292,13 @@ export default function Attend() {
         // Add watermark
         ctx.font = '14px Arial';
         ctx.fillStyle = 'yellow';
+        ctx.shadowColor = 'black';
+        ctx.shadowBlur = 4;
         ctx.fillText(`${new Date().toLocaleString()}`, 10, canvas.height - 30);
         if (location) {
           ctx.fillText(`Lat: ${location.lat.toFixed(5)}, Lng: ${location.lng.toFixed(5)}`, 10, canvas.height - 10);
         }
+        ctx.shadowBlur = 0; // reset
 
         canvas.toBlob((blob) => {
           if (blob) {
@@ -268,7 +306,7 @@ export default function Attend() {
             setPhotoPreview(URL.createObjectURL(blob));
             stopCamera();
           }
-        }, 'image/jpeg', 0.8);
+        }, 'image/jpeg', 0.7); // Compress to 70% quality
       }
     }
   };
@@ -353,6 +391,15 @@ export default function Attend() {
     return 2 * R * Math.asin(Math.sqrt(h));
   };
 
+  const isLocationValid = () => {
+    if (!location || !sessionDetails?.location) return false;
+    const dist = getDistanceMeters(location, { 
+      lat: sessionDetails.location.latitude, 
+      lng: sessionDetails.location.longitude 
+    });
+    return dist <= sessionDetails.location.radius;
+  };
+
   const MapUpdater = ({ center }: { center: [number, number] }) => {
     const map = useMap();
     useEffect(() => {
@@ -380,10 +427,10 @@ export default function Attend() {
             </span>
           </div>
           <div className="p-4 flex flex-col items-center text-center gap-2">
-            <MapPin className={location ? 'text-green-500' : 'text-amber-500 animate-pulse'} size={24} />
+            <MapPin className={!location ? 'text-amber-500 animate-pulse' : isLocationValid() ? 'text-green-500' : 'text-red-500'} size={24} />
             <span className="text-xs font-medium text-slate-600 dark:text-zinc-400">GPS Lokasi</span>
             <span className="text-xs font-bold text-slate-900 dark:text-white">
-              {location ? 'Akurat' : gpsError ? 'Error' : 'Mencari...'}
+              {!location ? (gpsError ? 'Error' : 'Mencari...') : isLocationValid() ? 'Akurat' : 'Di Luar Radius'}
             </span>
           </div>
           <div className="p-4 flex flex-col items-center text-center gap-2">
@@ -538,7 +585,7 @@ export default function Attend() {
                   <canvas ref={canvasRef} className="hidden"></canvas>
                 </div>
                 
-                <div className="mt-6 flex flex-wrap gap-4 w-full justify-center relative z-50">
+                <div className="mt-6 flex flex-col sm:flex-row gap-3 w-full justify-center relative z-50">
                   {!isCameraActive ? (
                     <button 
                       type="button"
@@ -546,7 +593,7 @@ export default function Attend() {
                         e.preventDefault();
                         startCamera();
                       }}
-                      className="flex items-center justify-center gap-2 py-3 px-6 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium shadow-lg transition-colors cursor-pointer w-full max-w-[200px]"
+                      className="flex items-center justify-center gap-2 py-3 px-6 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium shadow-lg transition-colors cursor-pointer w-full sm:w-auto"
                     >
                       <Camera size={20} />
                       <span>Buka Kamera</span>
@@ -559,7 +606,7 @@ export default function Attend() {
                           e.preventDefault();
                           switchCamera();
                         }}
-                        className="flex items-center justify-center gap-2 py-3 px-4 bg-slate-700 hover:bg-slate-800 text-white rounded-xl font-medium shadow-lg transition-colors cursor-pointer"
+                        className="flex items-center justify-center gap-2 py-3 px-4 bg-slate-700 hover:bg-slate-800 text-white rounded-xl font-medium shadow-lg transition-colors cursor-pointer w-full sm:w-auto"
                       >
                         <RefreshCw size={20} />
                         <span>Kamera {facingMode === 'user' ? 'Depan' : 'Belakang'}</span>
@@ -570,7 +617,7 @@ export default function Attend() {
                           e.preventDefault();
                           takePhoto();
                         }}
-                        className="flex items-center justify-center gap-2 py-3 px-6 bg-green-600 hover:bg-green-700 text-white rounded-xl font-medium shadow-lg transition-colors cursor-pointer flex-1 max-w-[200px]"
+                        className="flex items-center justify-center gap-2 py-3 px-6 bg-green-600 hover:bg-green-700 text-white rounded-xl font-medium shadow-lg transition-colors cursor-pointer w-full sm:w-auto"
                       >
                         <Camera size={20} />
                         <span>Ambil Foto</span>

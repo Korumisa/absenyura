@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface ClassItem {
   id: string;
@@ -211,11 +212,22 @@ export default function Classes() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center text-slate-500">
-                    Memuat data kelas...
-                  </TableCell>
-                </TableRow>
+                Array.from({ length: 5 }).map((_, idx) => (
+                  <TableRow key={idx}>
+                    <TableCell><Skeleton className="h-6 w-32 mb-2" /><Skeleton className="h-4 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-40" /></TableCell>
+                    <TableCell><Skeleton className="h-6 w-24 rounded-full" /></TableCell>
+                    <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
+                    {currentUser?.role !== 'USER' && (
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Skeleton className="h-8 w-8 rounded-md" />
+                          <Skeleton className="h-8 w-8 rounded-md" />
+                        </div>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                ))
               ) : filteredClasses.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="h-24 text-center text-slate-500">
@@ -306,17 +318,17 @@ export default function Classes() {
       {/* Modal Form */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm px-4">
-          <div className="bg-white dark:bg-zinc-950 rounded-xl shadow-xl w-full max-w-lg flex flex-col border border-slate-200 dark:border-zinc-800">
+          <div className="bg-white dark:bg-zinc-950 rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col border border-slate-200 dark:border-zinc-800">
             <div className="px-6 py-4 border-b border-slate-200 dark:border-zinc-800 flex justify-between items-center">
               <h2 className="text-xl font-bold text-slate-800 dark:text-white">
                 {editingClass ? 'Edit Kelas' : 'Tambah Kelas Baru'}
               </h2>
-              <Button variant="ghost" size="icon" onClick={() => setIsModalOpen(false)}>
+              <Button type="button" variant="ghost" size="icon" onClick={() => setIsModalOpen(false)}>
                 <X className="w-4 h-4" />
               </Button>
             </div>
             
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
               <div className="space-y-2">
                 <Label>Nama Kelas / Mata Kuliah</Label>
                 <Input 
@@ -368,17 +380,17 @@ export default function Classes() {
       )}
 
       {/* Enroll Modal */}
-      {isEnrollModalOpen && (
+      {isEnrollModalOpen && selectedClassId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm px-4">
-          <div className="bg-white dark:bg-zinc-950 rounded-xl shadow-xl w-full max-w-2xl flex flex-col border border-slate-200 dark:border-zinc-800 max-h-[90vh]">
-            <div className="px-6 py-4 border-b border-slate-200 dark:border-zinc-800 flex justify-between items-center">
-              <h2 className="text-xl font-bold text-slate-800 dark:text-white">Kelola Mahasiswa Kelas</h2>
-              <Button variant="ghost" size="icon" onClick={() => setIsEnrollModalOpen(false)}>
+          <div className="bg-white dark:bg-zinc-950 rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col border border-slate-200 dark:border-zinc-800">
+            <div className="px-6 py-4 border-b border-slate-200 dark:border-zinc-800 flex justify-between items-center shrink-0">
+              <h2 className="text-xl font-bold text-slate-800 dark:text-white">Daftar Mahasiswa</h2>
+              <Button type="button" variant="ghost" size="icon" onClick={() => setIsEnrollModalOpen(false)}>
                 <X className="w-4 h-4" />
               </Button>
             </div>
             
-            <div className="p-6 flex flex-col gap-4 overflow-hidden">
+            <div className="p-6 flex flex-col gap-4 overflow-y-auto">
               {currentUser?.role !== 'USER' && (
                 <div className="flex items-end gap-3">
                   <div className="space-y-2 flex-1">
