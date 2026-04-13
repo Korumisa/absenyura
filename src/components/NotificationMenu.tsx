@@ -3,6 +3,7 @@ import api from '@/services/api';
 import { Bell, Check, Trash2, X } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { id } from 'date-fns/locale';
+import { useAuthStore } from '@/stores/authStore';
 
 interface Notification {
   id: string;
@@ -14,14 +15,19 @@ interface Notification {
 }
 
 export function NotificationMenu() {
+  const { isAuthenticated, accessToken } = useAuthStore();
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
+    if (!isAuthenticated || !accessToken) {
+      setNotifications([]);
+      setUnreadCount(0);
+      return;
+    }
     fetchNotifications();
-    // In a real app, you would listen to socket events here to update unreadCount live
-  }, []);
+  }, [isAuthenticated, accessToken]);
 
   const fetchNotifications = async () => {
     try {

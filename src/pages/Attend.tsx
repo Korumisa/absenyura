@@ -3,8 +3,8 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Html5QrcodeScanner, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import api from '@/services/api';
 import { toast } from 'sonner';
-import { MapPin, QrCode, ShieldAlert, CheckCircle, Smartphone, Camera } from 'lucide-react';
-import { MapContainer, TileLayer, Marker, Popup, Circle } from 'react-leaflet';
+import { MapPin, QrCode, ShieldAlert, Camera, RefreshCw } from 'lucide-react';
+import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -23,82 +23,90 @@ export default function Attend() {
   const navigate = useNavigate();
   const sessionParam = searchParams.get('session');
   const tokenParam = searchParams.get('token');
+  const NO_QR_TOKEN = 'NO_QR_REQUIRED';
 
   const [scanResult, setScanResult] = useState<string | null>(tokenParam);
   const [scanning, setScanning] = useState(!tokenParam);
   const [loading, setLoading] = useState(false);
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
+  const [gpsError, setGpsError] = useState<string | null>(null);
   const [ipAddress, setIpAddress] = useState<string>('');
-  const [sessionData, setSessionData] = useState<any>(null);
   const [sessionDetails, setSessionDetails] = useState<any>(null);
 
-  // Fetch session details if session ID is provided in URL
-  useEffect(() => {
-    const fetchSession = async () => {
-      if (sessionParam) {
-        try {
-          const res = await api.get('/sessions');
-          const currentSession = res.data.data.find((s: any) => s.id === sessionParam);
-          if (currentSession) {
-            setSessionDetails(currentSession);
-            // If QR mode is NONE, skip scanning
-            if (currentSession.qr_mode === 'NONE') {
-              setScanning(false);
-              setScanResult('NO_QR_REQUIRED');
-            }
-          }
-        } catch (error) {
-          console.error('Failed to fetch session details');
-        }
-      }
-    };
-    fetchSession();
-  }, [sessionParam]);
-  
   // Camera state for photo evidence
   const [photoBlob, setPhotoBlob] = useState<Blob | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
   const [isCameraActive, setIsCameraActive] = useState(false);
+  const scannerRef = React.useRef<Html5QrcodeScanner | null>(null);
 
   useEffect(() => {
-    // Fetch session details to check QR Mode
-    if (sessionParam) {
-      api.get(`/sessions/${sessionParam}`)
-        .then(res => {
-          const s = res.data.data;
-          setSessionDetails(s);
-          if (s.qr_mode === 'NONE') {
-            setScanning(false);
-            setScanResult('NONE_MODE'); // dummy token
-          }
-        })
-        .catch(err => console.error('Gagal mengambil data sesi', err));
-    }
+    if (!sessionParam) return;
+    api.get(`/sessions/${sessionParam}`)
+      .then(res => {
+        const s = res.data.data;
+        setSessionDetails(s);
+        if (s.qr_mode === 'NONE') {
+          setScanning(false);
+          setScanResult(NO_QR_TOKEN);
+        }
+      })
+      .catch(err => console.error('Gagal mengambil data sesi', err));
+  }, [sessionParam]);
 
-    // Get IP address (Public) for Layer 3 validation
+  useEffect(() => {
     fetch('https://api.ipify.org?format=json')
       .then(res => res.json())
       .then(data => setIpAddress(data.ip))
       .catch(err => console.error('Gagal mengambil IP', err));
+  }, []);
 
-    // Get Geolocation for Layer 2 validation
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-        (err) => toast.error('Gagal mendapatkan lokasi GPS. Pastikan izin lokasi aktif.')
-      );
-    } else {
+  const requestLocationOnce = () => {
+    if (!navigator.geolocation) {
+      setGpsError('Browser tidak mendukung Geolocation');
       toast.error('Browser Anda tidak mendukung Geolocation.');
+      return;
     }
+    setGpsError(null);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setGpsAccuracy(pos.coords.accuracy ?? null);
+      },
+      (err) => {
+        setGpsError(err.message || 'Gagal mendapatkan lokasi GPS');
+        toast.error('Gagal mendapatkan lokasi GPS. Pastikan izin lokasi aktif.');
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    );
+  };
+
+  useEffect(() => {
+    requestLocationOnce();
+    if (!navigator.geolocation) return;
+
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setGpsAccuracy(pos.coords.accuracy ?? null);
+        setGpsError(null);
+      },
+      (err) => {
+        setGpsError(err.message || 'Gagal mendapatkan lokasi GPS');
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    );
+
+    return () => {
+      navigator.geolocation.clearWatch(watchId);
+    };
   }, []);
 
   useEffect(() => {
-    let scanner: Html5QrcodeScanner | null = null;
-    
-    if (scanning && !scanResult) {
-      scanner = new Html5QrcodeScanner(
+    if (scanning && !scanResult && !scannerRef.current) {
+      const scanner = new Html5QrcodeScanner(
         'qr-reader',
         { 
           fps: 10, 
@@ -108,13 +116,16 @@ export default function Attend() {
         },
         false
       );
+      scannerRef.current = scanner;
 
       scanner.render(
-        (decodedText) => {
-          // Pause scanner to prevent multiple rapid scans
-          if (scanner) {
-            scanner.pause();
+        async (decodedText) => {
+          try {
+            await scanner.clear();
+          } catch (e) {
+            void e;
           }
+          scannerRef.current = null;
           setScanResult(decodedText);
           setScanning(false);
         },
@@ -125,8 +136,9 @@ export default function Attend() {
     }
 
     return () => {
-      if (scanner) {
-        scanner.clear().catch(e => console.error('Gagal membersihkan scanner', e));
+      if (scannerRef.current) {
+        scannerRef.current.clear().catch(e => console.error('Gagal membersihkan scanner', e));
+        scannerRef.current = null;
       }
     };
   }, [scanning, scanResult]);
@@ -142,6 +154,11 @@ export default function Attend() {
 
   const startCamera = async () => {
     try {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        toast.error('Browser Anda tidak mendukung akses kamera.');
+        return;
+      }
+      stopCamera();
       let stream;
       try {
         stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
@@ -151,6 +168,7 @@ export default function Attend() {
       }
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        await videoRef.current.play().catch(() => {});
         setIsCameraActive(true);
       }
     } catch (err) {
@@ -225,7 +243,7 @@ export default function Attend() {
 
       const formData = new FormData();
       formData.append('session_id', sessionId);
-      if (qrToken !== 'NO_QR_REQUIRED') {
+      if (qrToken !== NO_QR_TOKEN) {
         formData.append('qr_token', qrToken);
       }
       formData.append('latitude', location.lat.toString());
@@ -254,6 +272,27 @@ export default function Attend() {
     }
   };
 
+  const getDistanceMeters = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) => {
+    const R = 6371000;
+    const toRad = (v: number) => (v * Math.PI) / 180;
+    const dLat = toRad(b.lat - a.lat);
+    const dLng = toRad(b.lng - a.lng);
+    const lat1 = toRad(a.lat);
+    const lat2 = toRad(b.lat);
+    const h =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    return 2 * R * Math.asin(Math.sqrt(h));
+  };
+
+  const MapUpdater = ({ center }: { center: [number, number] }) => {
+    const map = useMap();
+    useEffect(() => {
+      map.setView(center);
+    }, [center, map]);
+    return null;
+  };
+
   return (
     <div className="p-6 max-w-3xl mx-auto min-h-[calc(100vh-4rem)] flex flex-col">
       <div className="mb-6">
@@ -276,7 +315,7 @@ export default function Attend() {
             <MapPin className={location ? 'text-green-500' : 'text-amber-500 animate-pulse'} size={24} />
             <span className="text-xs font-medium text-slate-600 dark:text-zinc-400">GPS Lokasi</span>
             <span className="text-xs font-bold text-slate-900 dark:text-white">
-              {location ? 'Akurat' : 'Mencari...'}
+              {location ? 'Akurat' : gpsError ? 'Error' : 'Mencari...'}
             </span>
           </div>
           <div className="p-4 flex flex-col items-center text-center gap-2">
@@ -295,176 +334,224 @@ export default function Attend() {
           </div>
         </div>
 
-        <div className="flex-1 flex flex-col items-center justify-center p-6">
-          {scanning ? (
-            <div className="w-full max-w-md animate-in fade-in duration-500">
-              <div className="bg-slate-900 rounded-2xl overflow-hidden shadow-2xl border-4 border-slate-100 dark:border-zinc-800 relative">
-                {/* Decorative scanning overlay */}
-                <div className="absolute inset-0 z-10 border-[3px] border-dashed border-indigo-500/50 m-8 rounded-xl pointer-events-none"></div>
-                <div className="absolute top-0 left-0 w-full h-1 bg-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.8)] animate-[scan_2s_ease-in-out_infinite] z-20 pointer-events-none"></div>
-                
-                <div id="qr-reader" className="w-full bg-black [&>div]:border-none [&>div]:shadow-none [&_video]:object-cover [&_video]:w-full [&_video]:h-full min-h-[300px] flex flex-col-reverse justify-end"></div>
+        <div className="flex-1 flex flex-col p-6 gap-6">
+          <div className="grid gap-6 md:grid-cols-2">
+            <div className="bg-white dark:bg-zinc-800 rounded-2xl p-4 shadow-md border border-slate-200 dark:border-zinc-700">
+              <h3 className="text-sm font-bold text-slate-800 dark:text-white mb-2 flex items-center gap-2">
+                <MapPin size={16} className="text-indigo-500" />
+                Lokasi Anda
+              </h3>
+              <div className="text-sm text-slate-600 dark:text-zinc-400 space-y-1">
+                <div>
+                  {location ? (
+                    <>
+                      {location.lat.toFixed(5)}, {location.lng.toFixed(5)}
+                    </>
+                  ) : gpsError ? (
+                    <span className="text-red-600 dark:text-red-400">GPS error</span>
+                  ) : (
+                    'Mencari lokasi...'
+                  )}
+                </div>
+                {gpsAccuracy != null && (
+                  <div>Akurasi ±{Math.round(gpsAccuracy)}m</div>
+                )}
+                {location && sessionDetails?.location && (
+                  <div>
+                    Jarak ke titik sesi: {Math.round(getDistanceMeters(location, { lat: sessionDetails.location.latitude, lng: sessionDetails.location.longitude }))}m
+                  </div>
+                )}
               </div>
-              <style dangerouslySetInnerHTML={{__html: `
-                #qr-reader__dashboard_section_csr span button {
-                  background-color: #4f46e5 !important;
-                  color: white !important;
-                  border: none !important;
-                  padding: 10px 20px !important;
-                  border-radius: 8px !important;
-                  margin: 10px 0 !important;
-                  cursor: pointer !important;
-                  font-weight: 600 !important;
-                  width: 100% !important;
-                }
-                #qr-reader__dashboard_section_csr span button:hover {
-                  background-color: #4338ca !important;
-                }
-                #qr-reader__dashboard_section_swaplink {
-                  color: #818cf8 !important;
-                  text-decoration: none !important;
-                  margin-bottom: 10px !important;
-                  display: block !important;
-                }
-                #qr-reader__dashboard_section_csr {
-                  padding: 15px !important;
-                  background-color: #1e293b !important;
-                  border-top: 1px solid #334155 !important;
-                  color: white !important;
-                  position: relative;
-                  z-index: 30;
-                }
-                #qr-reader__scan_region {
-                  position: relative;
-                  z-index: 1;
-                }
-              `}} />
-              <div className="text-center mt-6 mb-6">
-                <p className="text-sm font-medium text-slate-600 dark:text-zinc-400">
-                  Arahkan kamera ke QR Code yang ditampilkan oleh Dosen.
-                </p>
+              <div className="mt-4">
+                <Button type="button" variant="outline" onClick={requestLocationOnce} className="w-full">
+                  <RefreshCw size={16} className="mr-2" />
+                  Perbarui Lokasi
+                </Button>
               </div>
+            </div>
 
-              {location && sessionDetails?.location && (
-                <div className="mt-4 bg-white dark:bg-zinc-800 rounded-2xl p-4 shadow-md border border-slate-200 dark:border-zinc-700">
-                  <h3 className="text-sm font-bold text-slate-800 dark:text-white mb-2 flex items-center gap-2">
-                    <MapPin size={16} className="text-indigo-500" />
-                    Peta Lokasi Anda
-                  </h3>
-                  <div className="h-[200px] rounded-xl overflow-hidden relative z-0">
-                    <MapContainer 
-                      center={[location.lat, location.lng]} 
-                      zoom={16} 
-                      style={{ height: '100%', width: '100%' }}
-                      zoomControl={false}
-                      dragging={false}
-                    >
-                      <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                      <Marker position={[location.lat, location.lng]}>
-                        <Popup>Lokasi Anda Saat Ini</Popup>
-                      </Marker>
+            <div className="bg-white dark:bg-zinc-800 rounded-2xl p-4 shadow-md border border-slate-200 dark:border-zinc-700">
+              <h3 className="text-sm font-bold text-slate-800 dark:text-white mb-2 flex items-center gap-2">
+                <MapPin size={16} className="text-indigo-500" />
+                Peta Lokasi
+              </h3>
+              <div className="h-[220px] rounded-xl overflow-hidden relative z-0 bg-slate-100 dark:bg-zinc-900">
+                {location ? (
+                  <MapContainer 
+                    center={[location.lat, location.lng]} 
+                    zoom={16} 
+                    style={{ height: '100%', width: '100%' }}
+                    zoomControl={false}
+                  >
+                    <MapUpdater center={[location.lat, location.lng]} />
+                    <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                    <Marker position={[location.lat, location.lng]}>
+                      <Popup>Lokasi Anda Saat Ini</Popup>
+                    </Marker>
+                    {sessionDetails?.location && (
                       <Circle 
                         center={[sessionDetails.location.latitude, sessionDetails.location.longitude]}
                         radius={sessionDetails.location.radius}
                         pathOptions={{ color: 'indigo', fillColor: 'indigo', fillOpacity: 0.2 }}
                       />
-                    </MapContainer>
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : !photoBlob ? (
-            <div className="w-full max-w-md flex flex-col items-center animate-in zoom-in duration-300">
-              <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4 text-center">Ambil Foto Bukti Kehadiran</h2>
-              
-              <div className="w-full relative rounded-2xl overflow-hidden shadow-inner border border-slate-200 dark:border-zinc-700 bg-black aspect-video flex items-center justify-center">
-                {!isCameraActive ? (
-                  <div className="flex flex-col items-center justify-center text-slate-500">
-                    <Camera size={48} className="mb-2 opacity-50" />
-                    <p>Kamera belum aktif</p>
-                  </div>
+                    )}
+                  </MapContainer>
                 ) : (
-                  <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover absolute inset-0 z-10"></video>
-                )}
-                <canvas ref={canvasRef} className="hidden"></canvas>
-              </div>
-              
-              <div className="mt-6 flex gap-4 w-full justify-center relative z-50">
-                {!isCameraActive ? (
-                  <button 
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      startCamera();
-                    }}
-                    className="flex items-center justify-center gap-2 py-3 px-6 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium shadow-lg transition-colors cursor-pointer w-full max-w-[200px]"
-                  >
-                    <Camera size={20} />
-                    <span>Buka Kamera</span>
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      takePhoto();
-                    }}
-                    className="flex items-center justify-center gap-2 py-3 px-6 bg-green-600 hover:bg-green-700 text-white rounded-xl font-medium shadow-lg transition-colors cursor-pointer w-full max-w-[200px]"
-                  >
-                    <Camera size={20} />
-                    <span>Ambil Foto</span>
-                  </button>
+                  <div className="h-full w-full flex items-center justify-center text-sm text-slate-500 dark:text-zinc-500">
+                    {gpsError ? 'Izin lokasi belum aktif' : 'Menunggu GPS...'}
+                  </div>
                 )}
               </div>
             </div>
-          ) : (
-            <div className="w-full max-w-md flex flex-col items-center animate-in zoom-in duration-300">
-              <div className="w-full aspect-video rounded-2xl overflow-hidden shadow-md border border-slate-200 dark:border-zinc-700 mb-6">
-                <img src={photoPreview!} alt="Bukti Kehadiran" className="w-full h-full object-cover" />
-              </div>
-              
-              <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-2 text-center">Data Siap Dikirim</h2>
-              <p className="text-slate-600 dark:text-zinc-400 mb-8 text-center px-4">
-                Sistem telah mendapatkan token QR, lokasi GPS, foto bukti, dan informasi perangkat Anda.
-              </p>
-              
-              <div className="w-full space-y-3">
-                <Button
-                  size="lg"
-                  onClick={handleCheckIn}
-                  disabled={loading || !location}
-                  className="w-full py-6 font-bold text-lg shadow-lg shadow-indigo-200 dark:shadow-indigo-900/20"
-                >
-                  {loading ? 'Memproses...' : 'Kirim Data Absensi'}
-                </Button>
-                <div className="grid grid-cols-2 gap-3">
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    onClick={retakePhoto}
-                    disabled={loading}
-                    className="w-full font-bold"
-                  >
-                    <Camera size={18} className="mr-2" /> Ulang Foto
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    onClick={() => {
-                      setScanResult(null);
-                      setScanning(true);
-                      setPhotoBlob(null);
-                      setPhotoPreview(null);
-                    }}
-                    disabled={loading}
-                    className="w-full font-bold"
-                  >
-                    <QrCode size={18} className="mr-2" /> Ulang QR
-                  </Button>
+          </div>
+
+          <div className="flex-1 flex flex-col items-center justify-center">
+            {scanning ? (
+              <div className="w-full max-w-md animate-in fade-in duration-500">
+                <div className="bg-slate-900 rounded-2xl overflow-hidden shadow-2xl border-4 border-slate-100 dark:border-zinc-800 relative">
+                  <div className="absolute inset-0 z-10 border-[3px] border-dashed border-indigo-500/50 m-8 rounded-xl pointer-events-none"></div>
+                  <div className="absolute top-0 left-0 w-full h-1 bg-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.8)] animate-[scan_2s_ease-in-out_infinite] z-20 pointer-events-none"></div>
+                  
+                  <div id="qr-reader" className="w-full bg-black [&>div]:border-none [&>div]:shadow-none [&_video]:object-cover [&_video]:w-full [&_video]:h-full min-h-[300px] flex flex-col-reverse justify-end"></div>
+                </div>
+                <style dangerouslySetInnerHTML={{__html: `
+                  #qr-reader__dashboard_section_csr span button {
+                    background-color: #4f46e5 !important;
+                    color: white !important;
+                    border: none !important;
+                    padding: 10px 20px !important;
+                    border-radius: 8px !important;
+                    margin: 10px 0 !important;
+                    cursor: pointer !important;
+                    font-weight: 600 !important;
+                    width: 100% !important;
+                  }
+                  #qr-reader__dashboard_section_csr span button:hover {
+                    background-color: #4338ca !important;
+                  }
+                  #qr-reader__dashboard_section_swaplink {
+                    color: #818cf8 !important;
+                    text-decoration: none !important;
+                    margin-bottom: 10px !important;
+                    display: block !important;
+                  }
+                  #qr-reader__dashboard_section_csr {
+                    padding: 15px !important;
+                    background-color: #1e293b !important;
+                    border-top: 1px solid #334155 !important;
+                    color: white !important;
+                    position: relative;
+                    z-index: 30;
+                  }
+                  #qr-reader__scan_region {
+                    position: relative;
+                    z-index: 1;
+                  }
+                `}} />
+                <div className="text-center mt-6 mb-6">
+                  <p className="text-sm font-medium text-slate-600 dark:text-zinc-400">
+                    Arahkan kamera ke QR Code yang ditampilkan oleh Dosen.
+                  </p>
                 </div>
               </div>
-            </div>
-          )}
+            ) : !photoBlob ? (
+              <div className="w-full max-w-md flex flex-col items-center animate-in zoom-in duration-300">
+                <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4 text-center">Ambil Foto Bukti Kehadiran</h2>
+                
+                <div className="w-full relative rounded-2xl overflow-hidden shadow-inner border border-slate-200 dark:border-zinc-700 bg-black aspect-video flex items-center justify-center">
+                  {!isCameraActive ? (
+                    <div className="flex flex-col items-center justify-center text-slate-500">
+                      <Camera size={48} className="mb-2 opacity-50" />
+                      <p>Kamera belum aktif</p>
+                    </div>
+                  ) : (
+                    <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover absolute inset-0 z-10"></video>
+                  )}
+                  <canvas ref={canvasRef} className="hidden"></canvas>
+                </div>
+                
+                <div className="mt-6 flex gap-4 w-full justify-center relative z-50">
+                  {!isCameraActive ? (
+                    <button 
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        startCamera();
+                      }}
+                      className="flex items-center justify-center gap-2 py-3 px-6 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium shadow-lg transition-colors cursor-pointer w-full max-w-[200px]"
+                    >
+                      <Camera size={20} />
+                      <span>Buka Kamera</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        takePhoto();
+                      }}
+                      className="flex items-center justify-center gap-2 py-3 px-6 bg-green-600 hover:bg-green-700 text-white rounded-xl font-medium shadow-lg transition-colors cursor-pointer w-full max-w-[200px]"
+                    >
+                      <Camera size={20} />
+                      <span>Ambil Foto</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="w-full max-w-md flex flex-col items-center animate-in zoom-in duration-300">
+                <div className="w-full aspect-video rounded-2xl overflow-hidden shadow-md border border-slate-200 dark:border-zinc-700 mb-6">
+                  <img src={photoPreview!} alt="Bukti Kehadiran" className="w-full h-full object-cover" />
+                </div>
+                
+                <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-2 text-center">Data Siap Dikirim</h2>
+                <p className="text-slate-600 dark:text-zinc-400 mb-8 text-center px-4">
+                  Sistem telah mendapatkan token QR, lokasi GPS, foto bukti, dan informasi perangkat Anda.
+                </p>
+                
+                <div className="w-full space-y-3">
+                  <Button
+                    size="lg"
+                    onClick={handleCheckIn}
+                    disabled={loading || !location}
+                    className="w-full py-6 font-bold text-lg shadow-lg shadow-indigo-200 dark:shadow-indigo-900/20"
+                  >
+                    {loading ? 'Memproses...' : 'Kirim Data Absensi'}
+                  </Button>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      onClick={retakePhoto}
+                      disabled={loading}
+                      className="w-full font-bold"
+                    >
+                      <Camera size={18} className="mr-2" /> Ulang Foto
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      onClick={() => {
+                        if (sessionDetails?.qr_mode === 'NONE') {
+                          setScanResult(NO_QR_TOKEN);
+                          setScanning(false);
+                        } else {
+                          setScanResult(null);
+                          setScanning(true);
+                        }
+                        setPhotoBlob(null);
+                        setPhotoPreview(null);
+                      }}
+                      disabled={loading}
+                      className="w-full font-bold"
+                    >
+                      <QrCode size={18} className="mr-2" /> Ulang QR
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
       </div>

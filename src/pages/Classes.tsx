@@ -224,7 +224,11 @@ export default function Classes() {
                 </TableRow>
               ) : (
                 filteredClasses.map((c) => (
-                  <TableRow key={c.id}>
+                  <TableRow
+                    key={c.id}
+                    onClick={() => handleOpenEnrollModal(c.id)}
+                    className="cursor-pointer hover:bg-slate-50 dark:hover:bg-zinc-900/60"
+                  >
                     <TableCell>
                       <div className="flex items-center gap-2 font-medium text-slate-900 dark:text-white">
                         <BookOpen size={16} className="text-indigo-500" />
@@ -253,7 +257,10 @@ export default function Classes() {
                           <Button 
                             variant="ghost" 
                             size="icon"
-                            onClick={() => handleOpenEnrollModal(c.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenEnrollModal(c.id);
+                            }}
                             className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/30"
                             title="Kelola Mahasiswa"
                           >
@@ -262,7 +269,10 @@ export default function Classes() {
                           <Button 
                             variant="ghost" 
                             size="icon"
-                            onClick={() => handleOpenModal(c)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenModal(c);
+                            }}
                             className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/30"
                             title="Edit"
                           >
@@ -272,7 +282,10 @@ export default function Classes() {
                             <Button 
                               variant="ghost" 
                               size="icon"
-                              onClick={() => handleDelete(c.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDelete(c.id);
+                              }}
                               className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/30"
                               title="Hapus"
                             >
@@ -366,26 +379,28 @@ export default function Classes() {
             </div>
             
             <div className="p-6 flex flex-col gap-4 overflow-hidden">
-              <div className="flex items-end gap-3">
-                <div className="space-y-2 flex-1">
-                  <Label>Tambahkan Mahasiswa Baru</Label>
-                  <Select value={selectedStudentId} onValueChange={setSelectedStudentId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih Mahasiswa" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {allStudents
-                        .filter(s => !enrolledStudents.some(es => es.id === s.id))
-                        .map(s => (
-                          <SelectItem key={s.id} value={s.id}>{s.name} ({s.nim_nip || '-'})</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+              {currentUser?.role !== 'USER' && (
+                <div className="flex items-end gap-3">
+                  <div className="space-y-2 flex-1">
+                    <Label>Tambahkan Mahasiswa Baru</Label>
+                    <Select value={selectedStudentId} onValueChange={setSelectedStudentId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Pilih Mahasiswa" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {allStudents
+                          .filter(s => !enrolledStudents.some(es => es.id === s.id))
+                          .map(s => (
+                            <SelectItem key={s.id} value={s.id}>{s.name} ({s.nim_nip || '-'})</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button onClick={handleEnrollStudent} disabled={!selectedStudentId}>
+                    Tambahkan
+                  </Button>
                 </div>
-                <Button onClick={handleEnrollStudent} disabled={!selectedStudentId}>
-                  Tambahkan
-                </Button>
-              </div>
+              )}
 
               <div className="border border-slate-200 dark:border-zinc-800 rounded-lg overflow-y-auto flex-1 mt-4">
                 <Table>
@@ -407,14 +422,16 @@ export default function Classes() {
                           <TableCell className="font-medium text-slate-800 dark:text-zinc-200">{student.name}</TableCell>
                           <TableCell className="text-slate-500 dark:text-zinc-400">{student.nim_nip || '-'}</TableCell>
                           <TableCell className="text-right">
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => handleRemoveStudent(student.id)}
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/30 h-8 px-2"
-                            >
-                              Keluarkan
-                            </Button>
+                            {currentUser?.role !== 'USER' && (
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => handleRemoveStudent(student.id)}
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/30 h-8 px-2"
+                              >
+                                Keluarkan
+                              </Button>
+                            )}
                           </TableCell>
                         </TableRow>
                       ))
