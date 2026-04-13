@@ -19,7 +19,8 @@
     "@radix-ui/react-slot": "^1.2.4",
     "@react-leaflet/core": "2.1.0",
     "axios": "^1.15.0",
-    "bcrypt": "^6.0.0",
+    "bcryptjs": "^3.0.3",
+    "@types/bcryptjs": "^2.4.6",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cookie-parser": "^1.4.7",
@@ -56,7 +57,6 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.25.0",
-    "@types/bcrypt": "^6.0.0",
     "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
     "@types/express": "^4.17.21",
