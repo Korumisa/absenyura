@@ -29,15 +29,24 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // One-device policy logic (optional check or update)
-    if (device_fingerprint) {
+    // One-device policy logic (enforce block on mismatch for non-admins)
+    if (device_fingerprint && device_fingerprint !== 'unknown-device') {
       if (user.device_fingerprint && user.device_fingerprint !== device_fingerprint) {
-        // Optionally reject login or just update it (here we update for demo)
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { device_fingerprint },
-        });
+        if (user.role === 'USER') {
+          res.status(403).json({ 
+            success: false, 
+            error: 'Login ditolak: Akun ini sudah terikat dengan perangkat lain. Hubungi Admin jika Anda mengganti perangkat.' 
+          });
+          return;
+        } else {
+          // Admins can log in from multiple devices, just update the latest
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { device_fingerprint },
+          });
+        }
       } else if (!user.device_fingerprint) {
+        // Bind device on first login
         await prisma.user.update({
           where: { id: user.id },
           data: { device_fingerprint },
@@ -121,6 +130,12 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
 // Seed endpoint for initial SUPER_ADMIN
 export const seedAdmin = async (req: Request, res: Response): Promise<void> => {
   try {
+    const seedSecret = req.headers['x-seed-secret'];
+    if (!seedSecret || seedSecret !== process.env.SEED_SECRET) {
+      res.status(403).json({ success: false, error: 'Unauthorized to seed database' });
+      return;
+    }
+
     const count = await prisma.user.count();
     if (count > 0) {
       res.status(400).json({ success: false, error: 'Database already seeded' });

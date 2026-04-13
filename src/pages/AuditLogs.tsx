@@ -6,6 +6,7 @@ import { id } from 'date-fns/locale';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
 
 interface AuditLog {
   id: string;
@@ -19,16 +20,28 @@ interface AuditLog {
   created_at: string;
 }
 
+interface PaginationMeta {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 export default function AuditLogs() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState<PaginationMeta | null>(null);
 
   useEffect(() => {
     const fetchLogs = async () => {
+      setLoading(true);
       try {
-        const res = await api.get('/audit-logs');
+        const res = await api.get(`/audit-logs?page=${page}&limit=20`);
         setLogs(res.data.data);
+        setMeta(res.data.meta);
       } catch (error) {
         console.error('Failed to fetch logs');
       } finally {
@@ -36,7 +49,7 @@ export default function AuditLogs() {
       }
     };
     fetchLogs();
-  }, []);
+  }, [page]);
 
   const getActionColor = (action: string) => {
     if (action.includes('CREATE')) return 'success';
@@ -124,6 +137,32 @@ export default function AuditLogs() {
             </TableBody>
           </Table>
         </div>
+        
+        {meta && meta.totalPages > 1 && (
+          <div className="flex items-center justify-between p-4 border-t border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800/50">
+            <span className="text-sm text-slate-500 dark:text-zinc-400">
+              Menampilkan {((meta.page - 1) * meta.limit) + 1} - {Math.min(meta.page * meta.limit, meta.total)} dari {meta.total} log
+            </span>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+              >
+                Sebelumnya
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage(p => Math.min(meta.totalPages, p + 1))}
+                disabled={page === meta.totalPages}
+              >
+                Selanjutnya
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

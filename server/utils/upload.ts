@@ -1,26 +1,14 @@
 import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
 
-const storage = process.env.VERCEL ? multer.memoryStorage() : multer.diskStorage({
-  destination: function (req, file, cb) {
-    const uploadDir = path.join(process.cwd(), 'uploads', 'attendance');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
-  }
-});
+// Always use memory storage. We will process it in the controller.
+// If Cloudinary is available, we upload there. Else we write to local disk.
+const storage = multer.memoryStorage();
 
 const fileFilter = (req: any, file: any, cb: any) => {
-  if (file.mimetype.startsWith('image/')) {
+  if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('application/pdf')) {
     cb(null, true);
   } else {
-    cb(new Error('Hanya file gambar yang diizinkan!'), false);
+    cb(new Error('Hanya file gambar atau PDF yang diizinkan!'), false);
   }
 };
 

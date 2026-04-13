@@ -1,6 +1,14 @@
 import { Request, Response } from 'express';
 import prisma from '../utils/prisma.js';
 import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
+import { v2 as cloudinary } from 'cloudinary';
+
+// Configure Cloudinary if ENV vars exist
+if (process.env.CLOUDINARY_URL) {
+  // It will automatically use the CLOUDINARY_URL
+}
 
 // Helper for distance calculation (Haversine formula)
 function getDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -24,11 +32,30 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
     const { session_id, qr_token, latitude, longitude, ip_address, device_fingerprint } = req.body;
 
     let photoUrl = null;
-    if (req.file) {
-      if (process.env.VERCEL && (req.file as any).buffer) {
-        photoUrl = `data:${req.file.mimetype};base64,${(req.file as any).buffer.toString('base64')}`;
+    if (req.file && (req.file as any).buffer) {
+      if (process.env.CLOUDINARY_URL) {
+        // Upload to Cloudinary using a stream
+        const b64 = Buffer.from((req.file as any).buffer).toString('base64');
+        const dataURI = `data:${req.file.mimetype};base64,${b64}`;
+        try {
+          const result = await cloudinary.uploader.upload(dataURI, { folder: 'attendance' });
+          photoUrl = result.secure_url;
+        } catch (err) {
+          console.error('Cloudinary Upload Error:', err);
+          res.status(500).json({ success: false, error: 'Gagal mengunggah foto ke cloud' });
+          return;
+        }
       } else {
-        photoUrl = `/uploads/attendance/${(req.file as any).filename}`;
+        // Save to local disk
+        const uploadDir = path.join(process.cwd(), 'uploads', 'attendance');
+        if (!fs.existsSync(uploadDir)) {
+          fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+        const filename = req.file.fieldname + '-' + uniqueSuffix + '-' + req.file.originalname;
+        const filePath = path.join(uploadDir, filename);
+        fs.writeFileSync(filePath, (req.file as any).buffer);
+        photoUrl = `/uploads/attendance/${filename}`;
       }
     }
 
@@ -79,7 +106,11 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
           return;
         }
 
-        const hmac = crypto.createHmac('sha256', session.qr_secret || 'defaultsecret');
+        if (!session.qr_secret) {
+          res.status(500).json({ success: false, error: 'QR Secret is not configured for this session' });
+          return;
+        }
+        const hmac = crypto.createHmac('sha256', session.qr_secret);
         hmac.update(payload);
         const expectedSignature = hmac.digest('hex');
 
@@ -115,10 +146,48 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
 
     // Layer 3: IP/WiFi Validation (this project stores allowed IPs in wifi_bssid)
     if (session.location.wifi_bssid) {
-      const allowedIPs: string[] = JSON.parse(session.location.wifi_bssid as string);
-      if (allowedIPs.length > 0 && ip_address) {
-        if (!allowedIPs.includes(ip_address)) {
-          res.status(400).json({ success: false, error: 'Jaringan IP/WiFi Anda tidak diizinkan untuk absensi ini' });
+      try {
+        const allowedIPs: string[] = JSON.parse(session.location.wifi_bssid as string);
+        if (allowedIPs.length > 0) {
+          if (!ip_address || !allowedIPs.includes(ip_address)) {
+            res.status(400).json({ success: false, error: 'Jaringan IP/WiFi Anda tidak diizinkan untuk absensi ini' });
+            return;
+          }
+        }
+      } catch (e) {
+        // ignore parse error
+      }
+    }
+
+    // Layer 4: Anti-Spoofing (Teleportation Check)
+    const lastAttendance = await prisma.attendance.findFirst({
+      where: {
+        user_id,
+        check_in_lat: { not: null },
+        check_in_lng: { not: null }
+      },
+      orderBy: { check_in_time: 'desc' }
+    });
+
+    if (lastAttendance && lastAttendance.check_in_lat && lastAttendance.check_in_lng) {
+      const distanceLastCheckin = getDistance(
+        parseFloat(latitude),
+        parseFloat(longitude),
+        lastAttendance.check_in_lat,
+        lastAttendance.check_in_lng
+      );
+      
+      const timeDiffHours = (Date.now() - lastAttendance.check_in_time.getTime()) / (1000 * 60 * 60);
+      
+      // If time difference is valid and within last 24 hours
+      if (timeDiffHours > 0.01 && timeDiffHours < 24) { 
+        const speedKmH = (distanceLastCheckin / 1000) / timeDiffHours;
+        // Speeds > 250 km/h over short distances in a city context strongly implies GPS spoofing
+        if (speedKmH > 250) {
+          res.status(400).json({ 
+            success: false, 
+            error: 'Aktivitas mencurigakan: Perpindahan lokasi terlalu cepat (Terdeteksi Fake GPS)' 
+          });
           return;
         }
       }

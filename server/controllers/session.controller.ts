@@ -164,7 +164,11 @@ export const getSessionQR = async (req: Request, res: Response): Promise<void> =
     const payload = `${session.id}:${timestamp}`;
     
     // Create HMAC using the session's qr_secret
-    const hmac = crypto.createHmac('sha256', session.qr_secret || 'defaultsecret');
+    if (!session.qr_secret) {
+      res.status(500).json({ success: false, error: 'QR Secret is not configured for this session' });
+      return;
+    }
+    const hmac = crypto.createHmac('sha256', session.qr_secret);
     hmac.update(payload);
     const signature = hmac.digest('hex');
 

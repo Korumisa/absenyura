@@ -31,12 +31,22 @@ interface Report {
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
+interface PaginationMeta {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 export default function Reports() {
   const { user } = useAuthStore();
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState<PaginationMeta | null>(null);
 
   // Override Modal State
   const [isOverrideModalOpen, setIsOverrideModalOpen] = useState(false);
@@ -46,17 +56,19 @@ export default function Reports() {
 
   useEffect(() => {
     const fetchReports = async () => {
+      setLoading(true);
       try {
-        const res = await api.get('/reports');
+        const res = await api.get(`/reports?page=${page}&limit=50`);
         setReports(res.data.data);
+        setMeta(res.data.meta);
       } catch (error) {
-        toast.error('Gagal mengambil data laporan');
+        toast.error('Gagal mengambil laporan');
       } finally {
         setLoading(false);
       }
     };
     fetchReports();
-  }, []);
+  }, [page]);
 
   const filteredReports = reports.filter(r => {
     const matchStatus = statusFilter === 'ALL' || r.status === statusFilter;
@@ -311,6 +323,32 @@ export default function Reports() {
             </TableBody>
           </Table>
         </div>
+        
+        {meta && meta.totalPages > 1 && (
+          <div className="flex items-center justify-between p-4 border-t border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800/50">
+            <span className="text-sm text-slate-500 dark:text-zinc-400">
+              Menampilkan {((meta.page - 1) * meta.limit) + 1} - {Math.min(meta.page * meta.limit, meta.total)} dari {meta.total} laporan
+            </span>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+              >
+                Sebelumnya
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage(p => Math.min(meta.totalPages, p + 1))}
+                disabled={page === meta.totalPages}
+              >
+                Selanjutnya
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Override Modal */}

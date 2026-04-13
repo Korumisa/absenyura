@@ -1,5 +1,13 @@
 import { Request, Response } from 'express';
 import prisma from '../utils/prisma.js';
+import fs from 'fs';
+import path from 'path';
+import { v2 as cloudinary } from 'cloudinary';
+
+// Configure Cloudinary if ENV vars exist
+if (process.env.CLOUDINARY_URL) {
+  // Automatically uses CLOUDINARY_URL
+}
 
 export const getExcuses = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -68,11 +76,28 @@ export const createExcuse = async (req: Request, res: Response): Promise<void> =
     }
 
     let proof_url = null;
-    if (file) {
-      if (process.env.VERCEL && file.buffer) {
-        proof_url = `data:${file.mimetype};base64,${file.buffer.toString('base64')}`;
+    if (file && file.buffer) {
+      if (process.env.CLOUDINARY_URL) {
+        const b64 = Buffer.from(file.buffer).toString('base64');
+        const dataURI = `data:${file.mimetype};base64,${b64}`;
+        try {
+          const result = await cloudinary.uploader.upload(dataURI, { folder: 'excuses' });
+          proof_url = result.secure_url;
+        } catch (err) {
+          console.error('Cloudinary Upload Error:', err);
+          res.status(500).json({ success: false, error: 'Gagal mengunggah dokumen bukti' });
+          return;
+        }
       } else {
-        proof_url = `/uploads/${file.filename}`;
+        const uploadDir = path.join(process.cwd(), 'uploads', 'excuses');
+        if (!fs.existsSync(uploadDir)) {
+          fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+        const filename = file.fieldname + '-' + uniqueSuffix + '-' + file.originalname;
+        const filePath = path.join(uploadDir, filename);
+        fs.writeFileSync(filePath, file.buffer);
+        proof_url = `/uploads/excuses/${filename}`;
       }
     }
 

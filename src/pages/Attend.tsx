@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Html5QrcodeScanner, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import api from '@/services/api';
 import { toast } from 'sonner';
-import { MapPin, QrCode, ShieldAlert, Camera, RefreshCw } from 'lucide-react';
+import { MapPin, QrCode, ShieldAlert, Camera, RefreshCw, CheckCircle2, XCircle } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -56,12 +56,51 @@ export default function Attend() {
       .catch(err => console.error('Gagal mengambil data sesi', err));
   }, [sessionParam]);
 
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
+  const [cameraPermissionError, setCameraPermissionError] = useState<string | null>(null);
+
   useEffect(() => {
     fetch('https://api.ipify.org?format=json')
       .then(res => res.json())
       .then(data => setIpAddress(data.ip))
       .catch(err => console.error('Gagal mengambil IP', err));
   }, []);
+
+  const isSpoofedLocation = (pos: GeolocationPosition) => {
+    // Basic heuristics for web-based fake GPS
+    // 1. Extremely low accuracy that is highly unusual for real devices
+    if (pos.coords.accuracy !== null && pos.coords.accuracy < 2) {
+      return true;
+    }
+    // 2. Suspiciously round coordinates often seen in emulators
+    if (
+      pos.coords.latitude % 1 === 0 &&
+      pos.coords.longitude % 1 === 0
+    ) {
+      return true;
+    }
+    return false;
+  };
+
+  const handlePosition = (pos: GeolocationPosition) => {
+    if (isSpoofedLocation(pos)) {
+      setGpsError('Terdeteksi aplikasi Fake GPS atau anomali lokasi.');
+      toast.error('Lokasi ditolak: Terdeteksi aplikasi Fake GPS.');
+      setLocation(null);
+      return;
+    }
+    if (pos.coords.accuracy > 150) {
+      setGpsError(`Akurasi lokasi terlalu rendah (${Math.round(pos.coords.accuracy)}m). Silakan ke area terbuka.`);
+      toast.warning('Akurasi lokasi rendah. Cari tempat terbuka.');
+      setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+      setGpsAccuracy(pos.coords.accuracy);
+      return;
+    }
+    
+    setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+    setGpsAccuracy(pos.coords.accuracy ?? null);
+    setGpsError(null);
+  };
 
   const requestLocationOnce = () => {
     if (!navigator.geolocation) {
@@ -71,10 +110,7 @@ export default function Attend() {
     }
     setGpsError(null);
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-        setGpsAccuracy(pos.coords.accuracy ?? null);
-      },
+      handlePosition,
       (err) => {
         setGpsError(err.message || 'Gagal mendapatkan lokasi GPS');
         toast.error('Gagal mendapatkan lokasi GPS. Pastikan izin lokasi aktif.');
@@ -83,16 +119,26 @@ export default function Attend() {
     );
   };
 
+  const isIpValid = () => {
+    if (!ipAddress) return false;
+    if (!sessionDetails?.location?.wifi_bssid) return true; // No restriction
+    try {
+      const allowedIPs = JSON.parse(sessionDetails.location.wifi_bssid);
+      if (Array.isArray(allowedIPs) && allowedIPs.length > 0) {
+        return allowedIPs.includes(ipAddress);
+      }
+    } catch (e) {
+      // Ignore
+    }
+    return true; // If parsing fails or empty, default to true
+  };
+
   useEffect(() => {
     requestLocationOnce();
     if (!navigator.geolocation) return;
 
     const watchId = navigator.geolocation.watchPosition(
-      (pos) => {
-        setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-        setGpsAccuracy(pos.coords.accuracy ?? null);
-        setGpsError(null);
-      },
+      handlePosition,
       (err) => {
         setGpsError(err.message || 'Gagal mendapatkan lokasi GPS');
       },
@@ -154,26 +200,48 @@ export default function Attend() {
 
   const startCamera = async () => {
     try {
+      setCameraPermissionError(null);
       if (!navigator.mediaDevices?.getUserMedia) {
+        setCameraPermissionError('Browser Anda tidak mendukung akses kamera.');
         toast.error('Browser Anda tidak mendukung akses kamera.');
         return;
       }
       stopCamera();
       let stream;
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
-      } catch (e) {
-        // Fallback if front camera is not explicitly available
-        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode } });
+      } catch (e: any) {
+        // Fallback or explicit error
+        try {
+           stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        } catch(fallbackErr) {
+           setCameraPermissionError('Izin ditolak atau kamera tidak ditemukan.');
+           toast.error('Gagal mengakses kamera. Pastikan izin kamera diaktifkan.');
+           return;
+        }
       }
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play().catch(() => {});
-        setIsCameraActive(true);
-      }
+      
+      setIsCameraActive(true);
+      
+      setTimeout(async () => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play().catch(() => {});
+        }
+      }, 100);
     } catch (err) {
+      setCameraPermissionError('Gagal mengakses kamera.');
       toast.error('Gagal mengakses kamera. Pastikan izin kamera diaktifkan dan perangkat mendukungnya.');
     }
+  };
+
+  const switchCamera = () => {
+    setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
+    setTimeout(() => {
+      if (isCameraActive) {
+        startCamera();
+      }
+    }, 0);
   };
 
   const takePhoto = () => {
@@ -319,10 +387,10 @@ export default function Attend() {
             </span>
           </div>
           <div className="p-4 flex flex-col items-center text-center gap-2">
-            <ShieldAlert className={ipAddress ? 'text-green-500' : 'text-slate-400'} size={24} />
+            <ShieldAlert className={!ipAddress ? 'text-slate-400' : isIpValid() ? 'text-green-500' : 'text-red-500'} size={24} />
             <span className="text-xs font-medium text-slate-600 dark:text-zinc-400">IP Validasi</span>
             <span className="text-xs font-bold text-slate-900 dark:text-white">
-              {ipAddress ? ipAddress : 'Menunggu'}
+              {!ipAddress ? 'Menunggu' : isIpValid() ? ipAddress : `${ipAddress} (Tidak Valid)`}
             </span>
           </div>
           <div className="p-4 flex flex-col items-center text-center gap-2">
@@ -460,9 +528,9 @@ export default function Attend() {
                 
                 <div className="w-full relative rounded-2xl overflow-hidden shadow-inner border border-slate-200 dark:border-zinc-700 bg-black aspect-video flex items-center justify-center">
                   {!isCameraActive ? (
-                    <div className="flex flex-col items-center justify-center text-slate-500">
+                    <div className="flex flex-col items-center justify-center text-slate-500 p-4 text-center">
                       <Camera size={48} className="mb-2 opacity-50" />
-                      <p>Kamera belum aktif</p>
+                      <p>{cameraPermissionError ? cameraPermissionError : 'Kamera belum aktif'}</p>
                     </div>
                   ) : (
                     <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover absolute inset-0 z-10"></video>
@@ -470,7 +538,7 @@ export default function Attend() {
                   <canvas ref={canvasRef} className="hidden"></canvas>
                 </div>
                 
-                <div className="mt-6 flex gap-4 w-full justify-center relative z-50">
+                <div className="mt-6 flex flex-wrap gap-4 w-full justify-center relative z-50">
                   {!isCameraActive ? (
                     <button 
                       type="button"
@@ -484,17 +552,30 @@ export default function Attend() {
                       <span>Buka Kamera</span>
                     </button>
                   ) : (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        takePhoto();
-                      }}
-                      className="flex items-center justify-center gap-2 py-3 px-6 bg-green-600 hover:bg-green-700 text-white rounded-xl font-medium shadow-lg transition-colors cursor-pointer w-full max-w-[200px]"
-                    >
-                      <Camera size={20} />
-                      <span>Ambil Foto</span>
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          switchCamera();
+                        }}
+                        className="flex items-center justify-center gap-2 py-3 px-4 bg-slate-700 hover:bg-slate-800 text-white rounded-xl font-medium shadow-lg transition-colors cursor-pointer"
+                      >
+                        <RefreshCw size={20} />
+                        <span>Kamera {facingMode === 'user' ? 'Depan' : 'Belakang'}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          takePhoto();
+                        }}
+                        className="flex items-center justify-center gap-2 py-3 px-6 bg-green-600 hover:bg-green-700 text-white rounded-xl font-medium shadow-lg transition-colors cursor-pointer flex-1 max-w-[200px]"
+                      >
+                        <Camera size={20} />
+                        <span>Ambil Foto</span>
+                      </button>
+                    </>
                   )}
                 </div>
               </div>

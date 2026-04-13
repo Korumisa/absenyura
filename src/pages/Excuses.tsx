@@ -189,7 +189,7 @@ export default function Excuses() {
                     </TableCell>
                     <TableCell>
                       {excuse.proof_url ? (
-                        <a href={`${import.meta.env.VITE_API_URL?.replace('/api', '')}${excuse.proof_url}`} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline flex items-center gap-1 text-sm">
+                        <a href={excuse.proof_url?.startsWith('http') || excuse.proof_url?.startsWith('data:') ? excuse.proof_url : `${import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, '')}${excuse.proof_url}`} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline flex items-center gap-1 text-sm">
                           <FileText size={14} /> Lihat Bukti
                         </a>
                       ) : '-'}

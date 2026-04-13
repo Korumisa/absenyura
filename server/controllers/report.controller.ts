@@ -5,27 +5,30 @@ export const getReports = async (req: Request, res: Response): Promise<void> => 
   try {
     const user = (req as any).user;
     
-    let attendances;
-    
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 50;
+    const skip = (page - 1) * limit;
+
+    let whereClause: any = {};
     if (user.role === 'USER') {
-      attendances = await prisma.attendance.findMany({
-        where: { user_id: user.id },
-        include: {
-          session: { select: { title: true, session_start: true, class: { select: { name: true } } } },
-          user: { select: { name: true, nim_nip: true } }
-        },
-        orderBy: { check_in_time: 'desc' }
-      });
-    } else {
-      attendances = await prisma.attendance.findMany({
-        where: user.role === 'ADMIN' ? { session: { created_by_id: user.id } } : {},
-        include: {
-          session: { select: { title: true, session_start: true, class: { select: { name: true } } } },
-          user: { select: { name: true, nim_nip: true } }
-        },
-        orderBy: { check_in_time: 'desc' }
-      });
+      whereClause = { user_id: user.id };
+    } else if (user.role === 'ADMIN') {
+      whereClause = { session: { created_by_id: user.id } };
     }
+
+    const [attendances, total] = await Promise.all([
+      prisma.attendance.findMany({
+        where: whereClause,
+        include: {
+          session: { select: { title: true, session_start: true, class: { select: { name: true } } } },
+          user: { select: { name: true, nim_nip: true } }
+        },
+        orderBy: { check_in_time: 'desc' },
+        skip,
+        take: limit
+      }),
+      prisma.attendance.count({ where: whereClause })
+    ]);
 
     const formattedData = attendances.map(a => ({
       id: a.id,
@@ -43,7 +46,16 @@ export const getReports = async (req: Request, res: Response): Promise<void> => 
       photo_url: a.photo_url
     }));
 
-    res.status(200).json({ success: true, data: formattedData });
+    res.status(200).json({ 
+      success: true, 
+      data: formattedData,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit)
+      }
+    });
   } catch (error) {
     console.error('Error fetching reports:', error);
     res.status(500).json({ success: false, error: 'Internal server error' });

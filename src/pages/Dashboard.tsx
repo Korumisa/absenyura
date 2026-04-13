@@ -26,14 +26,16 @@ export default function Dashboard() {
   const user = useAuthStore((state) => state.user);
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [chartFilter, setChartFilter] = useState('ALL'); // Default 7 hari
+  const [chartFilter, setChartFilter] = useState('30'); // Default 30 days
 
   useEffect(() => {
     let isMounted = true;
     
     const fetchStats = async () => {
+      setLoading(true);
       try {
-        const res = await api.get(`/dashboard?range=30`);
+        const rangeParam = chartFilter === 'ALL' ? '30' : chartFilter; // Default fallback or use actual number
+        const res = await api.get(`/dashboard?range=${rangeParam}`);
         if (isMounted) {
           setData(res.data.data);
         }
@@ -55,7 +57,7 @@ export default function Dashboard() {
     return () => {
       isMounted = false;
     };
-  }, [user?.id]);
+  }, [user?.id, chartFilter]);
 
   if (loading || !data) {
     return <div className="p-8 text-slate-500 dark:text-zinc-400 flex justify-center items-center h-full">Memuat dashboard...</div>;
