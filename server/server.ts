@@ -1,42 +1,51 @@
 /**
  * local server entry file, for local development
  */
-import app from './app.js';
 import { createServer } from 'http';
-import { initSocket } from './socket/index.js';
-import { startCronJobs } from './jobs/cron.js';
 
 const PORT = process.env.PORT || 3001;
 
-const server = createServer(app);
+export let io: any;
 
-// Initialize Socket.io
-export const io = initSocket(server);
+async function startLocalServer() {
+  const [{ default: app }, { initSocket }, { startCronJobs }] = await Promise.all([
+    import('./app.js'),
+    import('./socket/index.js'),
+    import('./jobs/cron.js'),
+  ]);
 
-// Start background cron jobs
-startCronJobs();
+  const server = createServer(app);
 
-server.listen(PORT, () => {
-  console.log(`Server ready on port ${PORT}`);
-});
+  io = initSocket(server);
+  startCronJobs();
+
+  server.listen(PORT, () => {
+    console.log(`Server ready on port ${PORT}`);
+  });
+
+  /**
+   * close server
+   */
+  process.on('SIGTERM', () => {
+    console.log('SIGTERM signal received');
+    server.close(() => {
+      console.log('Server closed');
+      process.exit(0);
+    });
+  });
+
+  process.on('SIGINT', () => {
+    console.log('SIGINT signal received');
+    server.close(() => {
+      console.log('Server closed');
+      process.exit(0);
+    });
+  });
+}
 
 /**
  * close server
  */
-process.on('SIGTERM', () => {
-  console.log('SIGTERM signal received');
-  server.close(() => {
-    console.log('Server closed');
-    process.exit(0);
-  });
-});
-
-process.on('SIGINT', () => {
-  console.log('SIGINT signal received');
-  server.close(() => {
-    console.log('Server closed');
-    process.exit(0);
-  });
-});
-
-export default app;
+if (!process.env.VERCEL) {
+  startLocalServer();
+}
