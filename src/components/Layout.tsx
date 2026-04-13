@@ -93,11 +93,11 @@ export default function Layout() {
           <div className="p-4 border-t border-slate-200 dark:border-zinc-800">
             <div className="flex items-center px-4 mb-4">
               <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-700 dark:text-indigo-400 font-bold mr-3">
-                {user?.name?.charAt(0).toUpperCase()}
+                {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{user?.name}</p>
-                <p className="text-xs text-slate-500 dark:text-zinc-400 truncate">{user?.email}</p>
+                <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{user?.name || 'User'}</p>
+                <p className="text-xs text-slate-500 dark:text-zinc-400 truncate">{user?.email || ''}</p>
               </div>
             </div>
             <Button
@@ -132,9 +132,9 @@ export default function Layout() {
             <NotificationMenu />
             <div className="hidden sm:flex items-center gap-3 pl-4 border-l border-slate-200 dark:border-zinc-800">
               <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-700 dark:text-indigo-400 font-bold">
-                {user?.name?.charAt(0).toUpperCase()}
+                {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
               </div>
-              <span className="text-sm font-medium text-slate-700 dark:text-zinc-300">{user?.name}</span>
+              <span className="text-sm font-medium text-slate-700 dark:text-zinc-300">{user?.name || 'User'}</span>
             </div>
           </div>
         </header>
