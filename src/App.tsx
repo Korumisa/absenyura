@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Home from "@/pages/Home";
 import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
@@ -31,7 +32,7 @@ export default function App() {
   };
 
   return (
-    <>
+    <ErrorBoundary>
       <Toaster position="top-right" richColors />
       <Router>
         <Routes>
@@ -58,6 +59,6 @@ export default function App() {
           </Route>
         </Routes>
       </Router>
-    </>
+    </ErrorBoundary>
   );
 }

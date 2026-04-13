@@ -107,38 +107,35 @@ export const enrollStudents = async (req: Request, res: Response): Promise<void>
       return;
     }
 
-    // Insert only if not already enrolled
-    const data = student_ids.map(sid => ({
+    // Fetch existing enrollments to filter duplicates
+    const existingEnrollments = await prisma.classEnrollment.findMany({
+      where: {
+        class_id: id,
+        student_id: { in: student_ids }
+      }
+    });
+
+    const existingStudentIds = new Set(existingEnrollments.map(e => e.student_id));
+    const newStudentIds = student_ids.filter(sid => !existingStudentIds.has(sid));
+
+    if (newStudentIds.length === 0) {
+      res.status(200).json({ success: true, message: 'All selected students are already enrolled.' });
+      return;
+    }
+
+    const data = newStudentIds.map(sid => ({
       class_id: id,
       student_id: sid
     }));
 
     await prisma.classEnrollment.createMany({
       data,
-      // SQLite doesn't support skipDuplicates directly without some caveats, wait, Prisma might emulate it
     });
 
-    res.status(200).json({ success: true, message: 'Students enrolled' });
+    res.status(200).json({ success: true, message: `${newStudentIds.length} Students enrolled successfully` });
   } catch (error) {
-    // If skipDuplicates fails, we can loop and try-catch
-    try {
-      const { id } = req.params;
-      const { student_ids } = req.body;
-      for (const sid of student_ids) {
-        const exists = await prisma.classEnrollment.findUnique({
-          where: { class_id_student_id: { class_id: id, student_id: sid } }
-        });
-        if (!exists) {
-          await prisma.classEnrollment.create({
-            data: { class_id: id, student_id: sid }
-          });
-        }
-      }
-      res.status(200).json({ success: true, message: 'Students enrolled' });
-    } catch (innerError) {
-      console.error('Error enrolling students:', innerError);
-      res.status(500).json({ success: false, error: 'Internal server error' });
-    }
+    console.error('Error enrolling students:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 };
 

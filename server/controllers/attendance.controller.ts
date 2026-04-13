@@ -79,6 +79,16 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    const now = new Date();
+    if (now < session.check_in_open_at) {
+      res.status(400).json({ success: false, error: 'Waktu absensi belum dimulai.' });
+      return;
+    }
+    if (now > session.check_in_close_at) {
+      res.status(400).json({ success: false, error: 'Waktu absensi sudah ditutup.' });
+      return;
+    }
+
     // Layer 1: QR Validation (if not NONE)
     if (session.qr_mode !== 'NONE') {
       if (!qr_token) {
@@ -145,17 +155,20 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
     }
 
     // Layer 3: IP/WiFi Validation (this project stores allowed IPs in wifi_bssid)
-    if (session.location.wifi_bssid) {
+    if (session.location.wifi_bssid && session.location.wifi_bssid.trim() !== '') {
       try {
         const allowedIPs: string[] = JSON.parse(session.location.wifi_bssid as string);
-        if (allowedIPs.length > 0) {
+        if (Array.isArray(allowedIPs) && allowedIPs.length > 0) {
           if (!ip_address || !allowedIPs.includes(ip_address)) {
             res.status(400).json({ success: false, error: 'Jaringan IP/WiFi Anda tidak diizinkan untuk absensi ini' });
             return;
           }
         }
       } catch (e) {
-        // ignore parse error
+        console.error(`Invalid JSON in wifi_bssid for location ${session.location.id}:`, e);
+        // Fail securely - if admins set a rule but format it wrong, block access rather than bypassing security
+        res.status(500).json({ success: false, error: 'Kesalahan konfigurasi jaringan pada kelas ini. Hubungi Admin.' });
+        return;
       }
     }
 

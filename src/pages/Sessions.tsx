@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface Location {
   id: string;
@@ -202,11 +203,30 @@ export default function Sessions() {
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center text-slate-500 dark:text-zinc-400">
-                  Memuat data...
-                </TableCell>
-              </TableRow>
+              Array.from({ length: 5 }).map((_, idx) => (
+                <TableRow key={idx}>
+                  <TableCell>
+                    <Skeleton className="h-5 w-40 mb-2" />
+                    <Skeleton className="h-4 w-32" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-48 mb-2" />
+                    <Skeleton className="h-4 w-32" />
+                  </TableCell>
+                  <TableCell><Skeleton className="h-6 w-24 rounded-full" /></TableCell>
+                  <TableCell>
+                    <Skeleton className="h-5 w-32 mb-2" />
+                    <Skeleton className="h-4 w-40" />
+                  </TableCell>
+                  <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <Skeleton className="h-8 w-8 rounded-md" />
+                      <Skeleton className="h-8 w-8 rounded-md" />
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
             ) : filteredSessions.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} className="h-24 text-center text-slate-500 dark:text-zinc-400">
