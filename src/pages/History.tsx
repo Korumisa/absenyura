@@ -6,6 +6,7 @@ import { id } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface AttendanceHistory {
   id: string;
@@ -76,8 +77,40 @@ export default function AttendanceHistory() {
       </div>
 
       {loading ? (
-        <div className="text-center py-12 text-slate-500 dark:text-zinc-400">
-          Memuat riwayat kehadiran...
+        <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-800 overflow-hidden">
+          <div className="overflow-auto">
+            <Table className="min-w-[800px]">
+              <TableHeader className="bg-slate-50 dark:bg-zinc-950/50">
+                <TableRow>
+                  <TableHead>Kelas / Sesi</TableHead>
+                  <TableHead>Jadwal (Waktu Check-in)</TableHead>
+                  <TableHead>Perangkat & IP</TableHead>
+                  <TableHead>Bukti</TableHead>
+                  <TableHead className="text-right">Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {Array.from({ length: 5 }).map((_, idx) => (
+                  <TableRow key={idx}>
+                    <TableCell>
+                      <Skeleton className="h-5 w-40 mb-2" />
+                      <Skeleton className="h-4 w-24" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-32 mb-2" />
+                      <Skeleton className="h-4 w-24" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-24 mb-2" />
+                      <Skeleton className="h-4 w-20" />
+                    </TableCell>
+                    <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                    <TableCell className="text-right"><Skeleton className="h-6 w-24 ml-auto rounded-full" /></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       ) : filteredHistory.length === 0 ? (
         <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-zinc-800 p-12 text-center flex flex-col items-center">
@@ -89,9 +122,9 @@ export default function AttendanceHistory() {
         </div>
       ) : (
         <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-800 overflow-hidden">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader className="bg-slate-50 dark:bg-zinc-950/50">
+          <div className="overflow-auto">
+            <Table className="min-w-[800px]">
+              <TableHeader className="sticky top-0 z-10 bg-slate-50 dark:bg-zinc-950/50">
                 <TableRow>
                   <TableHead>Kelas / Sesi</TableHead>
                   <TableHead>Jadwal (Waktu Check-in)</TableHead>

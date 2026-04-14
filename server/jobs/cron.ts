@@ -229,13 +229,16 @@ export const startCronJobs = () => {
       const now = new Date();
 
       for (const user of users) {
-        if (!user.enrollment_date) continue;
+        // Use type assertion since TS doesn't know about enrollment_date on User type yet in this environment
+        const userData = user as any;
+        if (!userData.enrollment_date) continue;
         
         // Calculate months difference
-        const monthsDiff = (now.getFullYear() - user.enrollment_date.getFullYear()) * 12 + (now.getMonth() - user.enrollment_date.getMonth());
+        const enrollmentDate = new Date(userData.enrollment_date);
+        const monthsDiff = (now.getFullYear() - enrollmentDate.getFullYear()) * 12 + (now.getMonth() - enrollmentDate.getMonth());
         const newSemester = Math.floor(monthsDiff / 6) + 1;
 
-        if (newSemester !== user.semester) {
+        if (newSemester !== userData.semester) {
           if (newSemester > 8) {
             await prisma.user.update({
               where: { id: user.id },

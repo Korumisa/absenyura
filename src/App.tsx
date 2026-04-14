@@ -36,6 +36,8 @@ import AboutUs from "@/pages/public/AboutUs";
 import Careers from "@/pages/public/Careers";
 import CampusPartners from "@/pages/public/CampusPartners";
 
+import { ThemeProvider } from "@/providers/theme-provider";
+
 export default function App() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const user = useAuthStore((state) => state.user);
@@ -50,9 +52,10 @@ export default function App() {
   };
 
   return (
-    <ErrorBoundary>
-      <Toaster position="top-right" richColors />
-      <Router>
+    <ThemeProvider defaultTheme="system" storageKey="absensyura-theme">
+      <ErrorBoundary>
+        <Toaster position="top-right" richColors />
+        <Router>
         <ScrollToTop />
         <Routes>
           <Route path="/" element={isAuthenticated ? <Navigate to={getDefaultRoute()} replace /> : <Home />} />
@@ -95,6 +98,7 @@ export default function App() {
           </Route>
         </Routes>
       </Router>
-    </ErrorBoundary>
+      </ErrorBoundary>
+    </ThemeProvider>
   );
 }
