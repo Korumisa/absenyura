@@ -54,7 +54,13 @@ export default function QRDisplay() {
       toast.success(`${data.user_name} berhasil absen!`);
     });
 
+    // Auto-refresh attendees every 15 seconds
+    const intervalId = setInterval(() => {
+      fetchAttendees();
+    }, 15000);
+
     return () => {
+      clearInterval(intervalId);
       if (socketRef.current) {
         socketRef.current.emit('leave_session', id);
         socketRef.current.disconnect();
@@ -110,7 +116,7 @@ export default function QRDisplay() {
 
   const fetchAttendees = async () => {
     try {
-      const res = await api.get(`/sessions/${id}/attendances`);
+      const res = await api.get(`/sessions/${id}/attendances?_t=${Date.now()}`);
       setAttendees(res.data.data.map((att: any) => ({
         id: att.id,
         user_name: att.user.name,
@@ -120,7 +126,6 @@ export default function QRDisplay() {
       })));
     } catch (error) {
       console.error('Failed to fetch attendees:', error);
-      // Menghilangkan toast error di sini agar tidak mengganggu jika sesi belum dimulai
     }
   };
 

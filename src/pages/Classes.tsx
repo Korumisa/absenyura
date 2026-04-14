@@ -357,33 +357,46 @@ export default function Classes() {
             
             <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
               <div className="space-y-2">
-                <Label>Nama Kelas <span className="text-red-500">*</span></Label>
+                <Label>Pilih Mata Kuliah <span className="text-red-500">*</span></Label>
                 {subjectsData.length > 0 ? (
-                  <Select required value={formData.name} onValueChange={val => setFormData({...formData, name: val})}>
+                  <Select 
+                    required 
+                    value={formData.course_code} 
+                    onValueChange={val => {
+                      const selectedSubject = subjectsData.find(s => s.code === val);
+                      if (selectedSubject) {
+                        setFormData({
+                          ...formData, 
+                          course_code: selectedSubject.code,
+                          name: selectedSubject.name // Auto-fill class name with subject name
+                        });
+                      }
+                    }}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Pilih Mata Kuliah" />
                     </SelectTrigger>
                     <SelectContent>
                       {subjectsData.map(s => (
-                        <SelectItem key={s.code} value={s.name}>
+                        <SelectItem key={s.code} value={s.code}>
                           {s.code} - {s.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 ) : (
-                  <Input 
-                    type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})}
-                    placeholder="Contoh: Pemrograman Web (A)"
-                  />
+                  <div className="text-sm text-amber-600 bg-amber-50 p-2 rounded border border-amber-200">
+                    Anda belum menambahkan Mata Kuliah di menu Fakultas & Prodi. Silakan tambahkan terlebih dahulu.
+                  </div>
                 )}
               </div>
               <div className="space-y-2">
-                <Label>Kode MK (Opsional)</Label>
+                <Label>Nama Kelas Spesifik <span className="text-red-500">*</span></Label>
                 <Input 
-                  type="text" value={formData.course_code} onChange={e => setFormData({...formData, course_code: e.target.value})}
-                  placeholder="PTI123"
+                  type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})}
+                  placeholder="Contoh: Pemrograman Web (A)"
                 />
+                <p className="text-xs text-slate-500">Bisa diisi nama mata kuliah beserta grup/kelasnya (misal: Algoritma Kelas B).</p>
               </div>
               <div className="space-y-2">
                 <Label>Deskripsi (Opsional)</Label>

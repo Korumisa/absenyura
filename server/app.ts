@@ -27,6 +27,7 @@ import notificationRoutes from './routes/notifications.js'
 import auditRoutes from './routes/audit.js'
 import classRoutes from './routes/classes.js'
 import excuseRoutes from './routes/excuses.js'
+import { runCronJob } from './jobs/cron.js'
 
 dotenv.config()// for esm mode
 const __filename = fileURLToPath(import.meta.url)
@@ -49,6 +50,12 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 app.use(cookieParser())
+
+// Fallback Cron execution on every request (max once per minute)
+app.use((req, res, next) => {
+  runCronJob().catch(err => console.error('Cron fallback error:', err));
+  next();
+});
 
 // Rate limiting
 const apiLimiter = rateLimit({

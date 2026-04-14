@@ -34,7 +34,7 @@ export default function Layout() {
     { name: 'Manajemen Lokasi', path: '/locations', icon: MapPin, roles: ['SUPER_ADMIN', 'ADMIN'] },
     { name: 'Rekap Kehadiran', path: '/reports', icon: BarChart3, roles: ['SUPER_ADMIN', 'ADMIN'] },
     { name: 'Pengguna', path: '/users', icon: Users, roles: ['SUPER_ADMIN'] },
-    { name: 'Fakultas & Prodi', path: '/settings', icon: Building2, roles: ['SUPER_ADMIN'] },
+    { name: 'Fakultas & Prodi', path: '/master-data', icon: Building2, roles: ['SUPER_ADMIN'] },
     { name: 'Audit Log', path: '/audit', icon: ShieldAlert, roles: ['SUPER_ADMIN'] },
   ];
 
