@@ -28,6 +28,8 @@ export default function Users() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [roleFilter, setRoleFilter] = useState('ALL');
+  const [statusFilter, setStatusFilter] = useState('ALL');
   
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -121,11 +123,18 @@ export default function Users() {
     }
   };
 
-  const filteredUsers = users.filter(u => 
-    u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (u.nim_nip && u.nim_nip.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  const filteredUsers = users.filter(u => {
+    const matchesSearch = u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          (u.nim_nip && u.nim_nip.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    const matchesRole = roleFilter === 'ALL' || u.role === roleFilter;
+    const matchesStatus = statusFilter === 'ALL' || 
+                          (statusFilter === 'ACTIVE' && u.is_active) || 
+                          (statusFilter === 'INACTIVE' && !u.is_active);
+                          
+    return matchesSearch && matchesRole && matchesStatus;
+  });
 
   const handleDownloadTemplate = async () => {
     const workbook = new ExcelJS.Workbook();
@@ -223,8 +232,8 @@ export default function Users() {
         </div>
 
       <div className="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-700 overflow-hidden">
-        <div className="p-4 border-b border-slate-200 dark:border-zinc-700">
-          <div className="relative max-w-md">
+        <div className="p-4 border-b border-slate-200 dark:border-zinc-700 flex flex-col md:flex-row gap-3 items-center justify-between">
+          <div className="relative w-full md:max-w-md flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
             <input 
               type="text" 
@@ -233,6 +242,31 @@ export default function Users() {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-300 dark:border-zinc-600 bg-slate-50 dark:bg-zinc-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
             />
+          </div>
+          
+          <div className="flex gap-3 w-full md:w-auto">
+            <Select value={roleFilter} onValueChange={setRoleFilter}>
+              <SelectTrigger className="w-full md:w-[160px]">
+                <SelectValue placeholder="Filter Peran" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">Semua Peran</SelectItem>
+                <SelectItem value="USER">User / Mahasiswa</SelectItem>
+                <SelectItem value="ADMIN">Admin / Dosen</SelectItem>
+                <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full md:w-[150px]">
+                <SelectValue placeholder="Filter Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">Semua Status</SelectItem>
+                <SelectItem value="ACTIVE">Aktif</SelectItem>
+                <SelectItem value="INACTIVE">Nonaktif</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -359,27 +393,27 @@ export default function Users() {
             <form onSubmit={handleSubmit} className="p-6 overflow-y-auto flex-1">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label>Nama Lengkap</Label>
+                  <Label>Nama Lengkap <span className="text-red-500">*</span></Label>
                   <Input 
                     type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Email</Label>
+                  <Label>Email <span className="text-red-500">*</span></Label>
                   <Input 
                     type="email" required value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>
-                    Kata Sandi {editingUser && <span className="text-xs text-slate-400 font-normal">(Kosongkan jika tidak diubah)</span>}
+                    Kata Sandi {editingUser ? <span className="text-xs text-slate-400 font-normal">(Kosongkan jika tidak diubah)</span> : <span className="text-red-500">*</span>}
                   </Label>
                   <Input 
                     type="password" required={!editingUser} value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Peran (Role)</Label>
+                  <Label>Peran (Role) <span className="text-red-500">*</span></Label>
                   <Select 
                     value={formData.role} onValueChange={val => setFormData({...formData, role: val})}
                     disabled={currentUser?.role !== 'SUPER_ADMIN'}
