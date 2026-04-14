@@ -224,3 +224,20 @@ export const importUsers = async (req: Request, res: Response): Promise<void> =>
     res.status(500).json({ success: false, error: 'Gagal mengimpor file Excel. Pastikan format benar.' });
   }
 };
+
+// Reset Device Fingerprint
+export const resetDeviceFingerprint = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    await prisma.user.update({
+      where: { id },
+      data: { device_fingerprint: null },
+    });
+
+    res.json({ success: true, message: 'Perangkat mahasiswa berhasil di-reset' });
+  } catch (error) {
+    console.error('Error resetting device:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+};

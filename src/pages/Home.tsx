@@ -1,344 +1,193 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { ArrowRight, Fingerprint, MapPin, ShieldCheck, ChevronRight, Globe, Lock, Cpu, Server } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { MapPin, QrCode, ShieldCheck, Clock, ArrowRight, BarChart3, Fingerprint, Database, CheckCircle2, ChevronRight, Menu, X } from 'lucide-react';
+import PublicLayout from '@/components/PublicLayout';
 
 export default function Home() {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const features = [
-    {
-      title: 'Pemindaian QR Dinamis',
-      description: 'Sistem absensi menggunakan QR Code yang diperbarui setiap 15 detik. Terenkripsi dengan HMAC-SHA256 untuk mencegah pencurian token dan penitipan absen.',
-      icon: QrCode,
-      color: 'text-blue-600 dark:text-blue-400',
-      bg: 'bg-blue-100 dark:bg-blue-900/30',
-    },
-    {
-      title: 'Validasi Geofencing (GPS)',
-      description: 'Pastikan kehadiran hanya dapat dilakukan di dalam radius area kelas yang telah ditentukan dengan akurasi pemetaan tinggi menggunakan Leaflet Maps.',
-      icon: MapPin,
-      color: 'text-emerald-600 dark:text-emerald-400',
-      bg: 'bg-emerald-100 dark:bg-emerald-900/30',
-    },
-    {
-      title: 'Device & IP Fingerprinting',
-      description: 'Mencegah login ganda dan memastikan absensi hanya dari jaringan kampus (Whitelist IP) serta perangkat yang sah milik mahasiswa tersebut.',
-      icon: Fingerprint,
-      color: 'text-indigo-600 dark:text-indigo-400',
-      bg: 'bg-indigo-100 dark:bg-indigo-900/30',
-    },
-    {
-      title: 'Foto Bukti Kamera (Selfie)',
-      description: 'Terintegrasi dengan kamera browser untuk mengambil foto saat absen, lengkap dengan watermark waktu & koordinat untuk validasi tambahan.',
-      icon: ShieldCheck,
-      color: 'text-rose-600 dark:text-rose-400',
-      bg: 'bg-rose-100 dark:bg-rose-900/30',
-    },
-    {
-      title: 'Manajemen Jadwal Pintar',
-      description: 'Dosen dapat mengatur jadwal sesi kelas, batas waktu absen (check-in/out), dan toleransi keterlambatan (LATE) dengan mudah via kalender interaktif.',
-      icon: Clock,
-      color: 'text-amber-600 dark:text-amber-400',
-      bg: 'bg-amber-100 dark:bg-amber-900/30',
-    },
-    {
-      title: 'Pelaporan & Ekspor Data',
-      description: 'Dashboard rekapitulasi lengkap untuk admin dan dosen. Mendukung ekspor data laporan kehadiran dalam format Excel (.xlsx) dan PDF dalam satu klik.',
-      icon: Database,
-      color: 'text-purple-600 dark:text-purple-400',
-      bg: 'bg-purple-100 dark:bg-purple-900/30',
-    },
-  ];
+  const [scrollY, setScrollY] = useState(0);
 
-  const steps = [
-    { step: '01', title: 'Dosen Membuka Sesi', desc: 'Dosen membuat sesi kelas dan menampilkan QR Code di layar proyektor.' },
-    { step: '02', title: 'Mahasiswa Scan QR', desc: 'Mahasiswa memindai QR menggunakan perangkat mereka di dalam kelas.' },
-    { step: '03', title: 'Validasi Lapis 4', desc: 'Sistem memverifikasi QR, Lokasi (GPS), Jaringan (IP), dan Foto (Kamera).' },
-    { step: '04', title: 'Kehadiran Tercatat', desc: 'Data kehadiran langsung masuk ke dashboard dosen secara real-time.' },
-  ];
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrollY(window.scrollY);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-zinc-950 font-sans selection:bg-indigo-500 selection:text-white">
-      {/* Navbar Enterprise */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-lg border-b border-slate-200 dark:border-zinc-800 transition-all duration-300">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-              <ShieldCheck className="text-white w-6 h-6" />
-            </div>
-            <span className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-              Absensi<span className="text-indigo-600 dark:text-indigo-400">Web</span>
-            </span>
-          </div>
+    <PublicLayout>
+      <div className="bg-[#0a0a0a] text-white min-h-screen font-sans selection:bg-white selection:text-black">
+        
+        {/* HERO SECTION */}
+        <section className="relative min-h-[90vh] flex flex-col justify-center items-center overflow-hidden pt-20">
+          <div 
+            className="absolute inset-0 bg-gradient-to-b from-[#111] to-[#0a0a0a] -z-10"
+            style={{ transform: `translateY(${scrollY * 0.4}px)` }}
+          />
           
-          <div className="hidden md:flex items-center gap-8">
-            <a href="#fitur" className="text-sm font-semibold text-slate-600 hover:text-indigo-600 dark:text-zinc-300 dark:hover:text-white transition-colors">Fitur Unggulan</a>
-            <a href="#cara-kerja" className="text-sm font-semibold text-slate-600 hover:text-indigo-600 dark:text-zinc-300 dark:hover:text-white transition-colors">Cara Kerja</a>
-            <a href="#keamanan" className="text-sm font-semibold text-slate-600 hover:text-indigo-600 dark:text-zinc-300 dark:hover:text-white transition-colors">Keamanan</a>
-          </div>
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-indigo-500/10 rounded-full blur-[120px] -z-10 pointer-events-none" />
 
-          <div className="flex items-center gap-4">
-            <Link
-              to="/login"
-              className="hidden sm:block text-sm font-bold text-slate-700 dark:text-zinc-200 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
-            >
-              Log in
-            </Link>
-            <Link
-              to="/login"
-              className="text-sm font-bold bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-6 py-2.5 rounded-full hover:bg-slate-800 dark:hover:bg-slate-100 transition-all hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
-            >
-              Mulai Sekarang
-            </Link>
-            <button 
-              className="md:hidden p-2 text-slate-700 dark:text-zinc-300"
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            >
-              {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-            </button>
-          </div>
-        </div>
+          <div className="text-center z-10 px-6 max-w-5xl mx-auto">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 mb-8 backdrop-blur-md">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-xs font-medium tracking-widest uppercase text-white/70">Sistem Operasional V2.0</span>
+            </div>
 
-        {/* Mobile Menu */}
-        {isMobileMenuOpen && (
-          <div className="md:hidden border-t border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-6 py-4 flex flex-col gap-4">
-            <a href="#fitur" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-semibold text-slate-600 dark:text-zinc-300">Fitur Unggulan</a>
-            <a href="#cara-kerja" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-semibold text-slate-600 dark:text-zinc-300">Cara Kerja</a>
-            <a href="#keamanan" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-semibold text-slate-600 dark:text-zinc-300">Keamanan</a>
-            <Link to="/login" className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">Log in</Link>
-          </div>
-        )}
-      </nav>
-
-      {/* Hero Section Enterprise */}
-      <main className="pt-32 lg:pt-48 pb-20 px-6 overflow-hidden relative">
-        {/* Background Gradients */}
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-indigo-500/20 dark:bg-indigo-500/10 blur-[120px] rounded-full pointer-events-none -z-10"></div>
-        <div className="absolute top-1/2 left-1/4 w-[500px] h-[300px] bg-violet-500/20 dark:bg-violet-500/10 blur-[100px] rounded-full pointer-events-none -z-10"></div>
-
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center max-w-4xl mx-auto">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white dark:bg-zinc-900 text-slate-800 dark:text-zinc-200 text-sm font-semibold mb-8 border border-slate-200 dark:border-zinc-800 shadow-sm"
-            >
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-              </span>
-              V2.0 Hadir dengan Validasi Wajah & IP
-            </motion.div>
+            <h1 className="text-5xl sm:text-6xl md:text-8xl lg:text-[110px] font-extrabold tracking-tighter leading-[0.9] mb-8 text-transparent bg-clip-text bg-gradient-to-b from-white to-white/60">
+              Absolut.<br />Presisi.
+            </h1>
             
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-              className="text-5xl sm:text-6xl lg:text-7xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-8 leading-[1.1]"
-            >
-              Sistem Kehadiran Akademik{' '}
-              <span className="relative whitespace-nowrap">
-                <span className="relative z-10 text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-violet-500">
-                  Anti-Kecurangan
-                </span>
-              </span>
-            </motion.h1>
-            
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-              className="text-lg sm:text-xl text-slate-600 dark:text-zinc-400 mb-10 max-w-3xl mx-auto leading-relaxed"
-            >
-              Ucapkan selamat tinggal pada "Titip Absen". Platform absensi modern yang menggabungkan 
-              QR Dinamis, Geofencing presisi tinggi, Fingerprinting Perangkat, dan Bukti Foto dalam satu sistem terpadu.
-            </motion.p>
-            
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.3 }}
-              className="flex flex-col sm:flex-row items-center justify-center gap-4"
-            >
-              <Link
-                to="/login"
-                className="w-full sm:w-auto flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-4 rounded-full font-bold text-lg transition-all shadow-xl shadow-indigo-600/20 hover:shadow-indigo-600/40 hover:-translate-y-1"
-              >
-                Masuk sebagai Admin
-                <ArrowRight className="w-5 h-5" />
-              </Link>
-              <Link
-                to="/login"
-                className="w-full sm:w-auto flex items-center justify-center gap-2 bg-white dark:bg-zinc-900 hover:bg-slate-50 dark:hover:bg-zinc-800 text-slate-800 dark:text-white border border-slate-200 dark:border-zinc-700 px-8 py-4 rounded-full font-bold text-lg transition-all shadow-sm hover:shadow-md"
-              >
-                Portal Mahasiswa
-              </Link>
-            </motion.div>
-
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 1, delay: 0.6 }}
-              className="mt-16 flex flex-wrap justify-center gap-x-8 gap-y-4 text-sm font-medium text-slate-500 dark:text-zinc-500"
-            >
-              <div className="flex items-center gap-2"><CheckCircle2 className="text-indigo-500 w-5 h-5"/> Keamanan Lapis 4</div>
-              <div className="flex items-center gap-2"><CheckCircle2 className="text-indigo-500 w-5 h-5"/> Real-time Dashboard</div>
-              <div className="flex items-center gap-2"><CheckCircle2 className="text-indigo-500 w-5 h-5"/> Standar Universitas</div>
-            </motion.div>
-          </div>
-        </div>
-      </main>
-
-      {/* Features Grid */}
-      <section id="fitur" className="py-24 bg-white dark:bg-zinc-900 border-t border-slate-200 dark:border-zinc-800">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center mb-16 max-w-3xl mx-auto">
-            <h2 className="text-3xl lg:text-4xl font-bold text-slate-900 dark:text-white mb-4">Fitur Standar Enterprise</h2>
-            <p className="text-lg text-slate-600 dark:text-zinc-400">Dirancang untuk skalabilitas kampus besar dengan fokus pada integritas data kehadiran.</p>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {features.map((feature, idx) => {
-              const Icon = feature.icon;
-              return (
-                <div
-                  key={idx}
-                  className="bg-slate-50 dark:bg-zinc-950/50 border border-slate-200 dark:border-zinc-800 rounded-3xl p-8 hover:shadow-xl hover:border-indigo-200 dark:hover:border-indigo-900/50 transition-all duration-300 group"
-                >
-                  <div className={`w-14 h-14 rounded-2xl ${feature.bg} flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300`}>
-                    <Icon className={`w-7 h-7 ${feature.color}`} />
-                  </div>
-                  <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-3">
-                    {feature.title}
-                  </h3>
-                  <p className="text-slate-600 dark:text-zinc-400 leading-relaxed">
-                    {feature.description}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* How it Works */}
-      <section id="cara-kerja" className="py-24 bg-slate-50 dark:bg-zinc-950">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl lg:text-4xl font-bold text-slate-900 dark:text-white mb-4">Alur Presensi Terpadu</h2>
-            <p className="text-lg text-slate-600 dark:text-zinc-400">Proses check-in kurang dari 10 detik dengan keamanan maksimal.</p>
-          </div>
-
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 relative">
-            {/* Connecting lines for desktop */}
-            <div className="hidden lg:block absolute top-1/2 left-0 right-0 h-0.5 bg-gradient-to-r from-slate-200 via-indigo-200 to-slate-200 dark:from-zinc-800 dark:via-indigo-900/50 dark:to-zinc-800 -translate-y-1/2 z-0"></div>
-
-            {steps.map((item, idx) => (
-              <div key={idx} className="relative z-10 bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm text-center group hover:-translate-y-2 transition-transform duration-300">
-                <div className="w-12 h-12 bg-indigo-600 text-white rounded-full flex items-center justify-center text-xl font-bold mx-auto mb-6 shadow-lg shadow-indigo-600/30 group-hover:scale-110 transition-transform">
-                  {item.step}
-                </div>
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">{item.title}</h3>
-                <p className="text-slate-600 dark:text-zinc-400 text-sm">{item.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-24 bg-white dark:bg-zinc-900 border-t border-slate-200 dark:border-zinc-800">
-        <div className="max-w-5xl mx-auto px-6 text-center">
-          <div className="bg-gradient-to-br from-slate-900 to-indigo-950 dark:from-indigo-950 dark:to-zinc-950 rounded-[3rem] p-12 lg:p-20 shadow-2xl relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/20 blur-[100px] rounded-full pointer-events-none"></div>
-            <div className="absolute bottom-0 left-0 w-96 h-96 bg-violet-500/20 blur-[100px] rounded-full pointer-events-none"></div>
-            
-            <h2 className="text-4xl lg:text-5xl font-extrabold text-white mb-6 relative z-10">Siap Mengubah Sistem Akademik Anda?</h2>
-            <p className="text-lg text-indigo-200 mb-10 max-w-2xl mx-auto relative z-10">
-              Bergabunglah dengan standar baru sistem presensi digital. Keamanan, efisiensi, dan transparansi dalam satu aplikasi.
+            <p className="text-xl md:text-2xl text-white/50 max-w-3xl mx-auto font-light tracking-tight mb-12">
+              Infrastruktur kehadiran digital tingkat enterprise. Mengeliminasi celah manipulasi dengan memadukan validasi biometrik, pengikatan perangkat keras, dan geolokasi satelit.
             </p>
-            <div className="flex flex-col sm:flex-row justify-center gap-4 relative z-10">
-              <Link
-                to="/login"
-                className="bg-white text-slate-900 hover:bg-indigo-50 px-8 py-4 rounded-full font-bold text-lg transition-all hover:scale-105 shadow-xl"
+
+            <div className="flex flex-col sm:flex-row justify-center items-center gap-6">
+              <Link 
+                to="/login" 
+                className="group flex items-center justify-center gap-3 bg-white text-black px-8 py-4 rounded-full font-semibold tracking-wide hover:scale-105 transition-all duration-300 w-full sm:w-auto"
               >
-                Mulai Uji Coba Sekarang
+                Mulai Operasional <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+              </Link>
+              <Link 
+                to="/hubungi-kami" 
+                className="flex items-center justify-center gap-2 text-white/70 hover:text-white px-8 py-4 font-medium transition-colors w-full sm:w-auto"
+              >
+                Jadwalkan Demo
               </Link>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Footer Enterprise */}
-      <footer className="bg-white dark:bg-zinc-950 border-t border-slate-200 dark:border-zinc-800">
-        <div className="max-w-7xl mx-auto px-6 py-16">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-12 lg:gap-8 mb-12">
-            <div className="md:col-span-1">
-              <div className="flex items-center gap-2 mb-6">
-                <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white">
-                  <ShieldCheck className="w-6 h-6" />
-                </div>
-                <span className="text-2xl font-black bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-violet-600 dark:from-indigo-400 dark:to-violet-400">
-                  GeoPresensi
-                </span>
-              </div>
-              <p className="text-slate-500 dark:text-zinc-400 text-sm leading-relaxed mb-6 font-medium">
-                Sistem informasi kehadiran mahasiswa generasi baru dengan validasi Geofencing, pemindai QR dinamis, dan perlindungan Anti-Fake GPS terintegrasi.
+        {/* COMPANY VISION / ABOUT */}
+        <section className="py-32 px-6 max-w-5xl mx-auto text-center border-t border-white/5">
+          <Globe size={48} strokeWidth={1} className="mx-auto text-white/30 mb-8" />
+          <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-8">
+            Mendefinisikan Ulang Kepercayaan Digital.
+          </h2>
+          <p className="text-xl text-white/50 font-light leading-relaxed max-w-4xl mx-auto">
+            Absensyura didirikan pada satu prinsip fundamental: kehadiran digital harus tidak dapat disangkal. Kami tidak membangun sekadar aplikasi absensi; kami merekayasa infrastruktur <span className="text-white font-medium">zero-trust</span> yang memungkinkan institusi berskala besar—dari perbankan hingga universitas negeri—beroperasi dengan kepastian data 100%. Tidak ada toleransi untuk manipulasi lokasi, dan tidak ada kompromi pada privasi data.
+          </p>
+        </section>
+
+        {/* CORE ARCHITECTURE (THE 3 PILLARS) */}
+        <section className="py-32 px-6 max-w-7xl mx-auto border-t border-white/5">
+          <div className="grid md:grid-cols-12 gap-12 md:gap-8 items-start">
+            <div className="md:col-span-5 md:sticky top-32">
+              <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-6">
+                Arsitektur<br/>Zero-Trust.
+              </h2>
+              <p className="text-lg text-white/50 leading-relaxed font-light mb-8">
+                Setiap pemindaian kehadiran diverifikasi melalui tiga lapisan keamanan sebelum data diizinkan masuk ke dalam buku besar server kami. Jika satu lapisan gagal, akses ditolak secara absolut.
               </p>
-              <div className="flex gap-4">
-                <a href="#" className="w-10 h-10 rounded-full bg-slate-100 dark:bg-zinc-900 flex items-center justify-center text-slate-500 dark:text-zinc-400 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-900/30 dark:hover:text-indigo-400 transition-colors">
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.29 20.251c7.547 0 11.675-6.253 11.675-11.675 0-.178 0-.355-.012-.53A8.348 8.348 0 0022 5.92a8.19 8.19 0 01-2.357.646 4.118 4.118 0 001.804-2.27 8.224 8.224 0 01-2.605.996 4.107 4.107 0 00-6.993 3.743 11.65 11.65 0 01-8.457-4.287 4.106 4.106 0 001.27 5.477A4.072 4.072 0 012.8 9.713v.052a4.105 4.105 0 003.292 4.022 4.095 4.095 0 01-1.853.07 4.108 4.108 0 003.834 2.85A8.233 8.233 0 012 18.407a11.616 11.616 0 006.29 1.84"></path></svg>
-                </a>
-                <a href="#" className="w-10 h-10 rounded-full bg-slate-100 dark:bg-zinc-900 flex items-center justify-center text-slate-500 dark:text-zinc-400 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-900/30 dark:hover:text-indigo-400 transition-colors">
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path fillRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clipRule="evenodd"></path></svg>
-                </a>
+              <Link to="/fitur-utama" className="inline-flex items-center gap-2 text-indigo-400 font-medium hover:text-indigo-300 transition-colors">
+                Jelajahi Platform Kami <ChevronRight size={16} />
+              </Link>
+            </div>
+
+            <div className="md:col-span-6 md:col-start-7 space-y-16 md:space-y-24">
+              <div className="group">
+                <MapPin size={40} strokeWidth={1} className="text-white/40 mb-6 group-hover:text-white transition-colors" />
+                <h3 className="text-2xl font-bold mb-4 tracking-tight">Geofencing Satelit Presisi Tinggi</h3>
+                <p className="text-white/50 leading-relaxed font-light">
+                  Membatasi area absensi dengan akurasi tingkat sentimeter. Mesin heuristik kami secara aktif menganalisis anomali pada altimeter, akselerometer, dan BSSID jaringan untuk mendeteksi dan memblokir penggunaan VPN maupun aplikasi Fake GPS secara instan.
+                </p>
+              </div>
+
+              <div className="group">
+                <Fingerprint size={40} strokeWidth={1} className="text-white/40 mb-6 group-hover:text-white transition-colors" />
+                <h3 className="text-2xl font-bold mb-4 tracking-tight">Device Fingerprinting Kriptografis</h3>
+                <p className="text-white/50 leading-relaxed font-light">
+                  Setiap akun pengguna diikat secara kriptografis ke satu perangkat keras fisik spesifik. Upaya untuk memindahkan sesi ke perangkat tak dikenal atau emulator akan memicu pemblokiran sistem secara real-time.
+                </p>
+              </div>
+
+              <div className="group">
+                <ShieldCheck size={40} strokeWidth={1} className="text-white/40 mb-6 group-hover:text-white transition-colors" />
+                <h3 className="text-2xl font-bold mb-4 tracking-tight">QR Code Dinamis (OTP-Based)</h3>
+                <p className="text-white/50 leading-relaxed font-light">
+                  Token kehadiran fisik yang berotasi setiap 15 detik menggunakan algoritma HMAC-SHA256 tersinkronisasi waktu. Menjadikan tangkapan layar (screenshot) atau rekaman video layar tidak berguna bagi pelaku kecurangan.
+                </p>
               </div>
             </div>
-            
-            <div>
-              <h3 className="font-bold text-slate-900 dark:text-white mb-6 text-lg">Produk</h3>
-              <ul className="space-y-4 text-sm font-medium text-slate-500 dark:text-zinc-400">
-                <li><a href="#" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Fitur Utama</a></li>
-                <li><a href="#" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Keamanan GPS</a></li>
-                <li><a href="#" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Integrasi API</a></li>
-                <li><a href="#" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Harga & Paket</a></li>
-              </ul>
-            </div>
+          </div>
+        </section>
 
-            <div>
-              <h3 className="font-bold text-slate-900 dark:text-white mb-6 text-lg">Sumber Daya</h3>
-              <ul className="space-y-4 text-sm font-medium text-slate-500 dark:text-zinc-400">
-                <li><a href="#" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Pusat Bantuan</a></li>
-                <li><a href="#" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Dokumentasi API</a></li>
-                <li><a href="#" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Blog & Artikel</a></li>
-                <li><a href="#" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Status Sistem</a></li>
-              </ul>
+        {/* SCALE & COMPLIANCE (METRICS) */}
+        <section className="relative py-40 overflow-hidden bg-[#111] border-y border-white/10">
+          <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-4 gap-12 text-center divide-y md:divide-y-0 md:divide-x divide-white/10">
+            <div className="py-6 md:py-0">
+              <div className="text-5xl sm:text-6xl md:text-7xl font-bold tracking-tighter mb-2 md:mb-4">99.9<span className="text-indigo-500">%</span></div>
+              <div className="text-sm uppercase tracking-widest text-white/50 font-medium">SLA Uptime Sistem</div>
             </div>
-
-            <div>
-              <h3 className="font-bold text-slate-900 dark:text-white mb-6 text-lg">Perusahaan</h3>
-              <ul className="space-y-4 text-sm font-medium text-slate-500 dark:text-zinc-400">
-                <li><a href="#" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Tentang Kami</a></li>
-                <li><a href="#" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Karir</a></li>
-                <li><a href="#" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Hubungi Kami</a></li>
-                <li><a href="#" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Mitra Kampus</a></li>
-              </ul>
+            <div className="py-6 md:py-0">
+              <div className="text-5xl sm:text-6xl md:text-7xl font-bold tracking-tighter mb-2 md:mb-4">&lt;50<span className="text-indigo-500">ms</span></div>
+              <div className="text-sm uppercase tracking-widest text-white/50 font-medium">Latensi Pemrosesan</div>
+            </div>
+            <div className="py-6 md:py-0">
+              <div className="text-5xl sm:text-6xl md:text-7xl font-bold tracking-tighter mb-2 md:mb-4">AES<span className="text-indigo-500">256</span></div>
+              <div className="text-sm uppercase tracking-widest text-white/50 font-medium">Standar Enkripsi</div>
+            </div>
+            <div className="py-6 md:py-0">
+              <div className="text-5xl sm:text-6xl md:text-7xl font-bold tracking-tighter mb-2 md:mb-4">2M<span className="text-indigo-500">+</span></div>
+              <div className="text-sm uppercase tracking-widest text-white/50 font-medium">Validasi Harian</div>
             </div>
           </div>
-          
-          <div className="pt-8 border-t border-slate-200 dark:border-zinc-800 flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="text-slate-500 dark:text-zinc-500 text-sm font-medium">
-              &copy; {new Date().getFullYear()} GeoPresensi Inc. Dibuat dengan cinta untuk Pendidikan Indonesia.
+        </section>
+
+        {/* ENTERPRISE INTEGRATION */}
+        <section className="py-32 px-6 max-w-7xl mx-auto">
+          <div className="grid md:grid-cols-2 gap-12 md:gap-20 items-center">
+            <div>
+              <Cpu size={48} strokeWidth={1} className="text-white/40 mb-8" />
+              <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-6">
+                Terintegrasi secara Mulus.
+              </h2>
+              <p className="text-lg text-white/50 font-light leading-relaxed mb-8">
+                Kami memahami bahwa institusi Anda telah memiliki ekosistem digital yang kompleks. Oleh karena itu, Absensyura dirancang dengan pendekatan API-first. Sinkronisasi data kehadiran, pengelolaan pengguna, dan penarikan laporan analitik dapat dilakukan secara terprogram ke dalam sistem HRIS, ERP, atau SIAKAD Anda melalui webhook latensi rendah kami.
+              </p>
+              <Link to="/integrasi-api" className="inline-flex items-center gap-2 text-white border-b border-white/30 pb-1 hover:border-white transition-colors">
+                Baca Dokumentasi API <ArrowRight size={16} />
+              </Link>
             </div>
-            <div className="flex gap-6 text-sm font-medium text-slate-500 dark:text-zinc-400">
-              <a href="#" className="hover:text-indigo-600 transition-colors">Kebijakan Privasi</a>
-              <a href="#" className="hover:text-indigo-600 transition-colors">Syarat Layanan</a>
-              <a href="#" className="hover:text-indigo-600 transition-colors">Pengaturan Cookie</a>
+            <div className="bg-[#111] border border-white/10 rounded-3xl p-10 relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-500"></div>
+              <Server size={32} strokeWidth={1} className="text-indigo-400 mb-6" />
+              <h3 className="text-xl font-bold mb-4">Infrastruktur Dedicated</h3>
+              <p className="text-white/60 font-light mb-8 text-sm leading-relaxed">
+                Untuk klien tingkat Enterprise, kami menyediakan instance server terisolasi (Single-Tenant) dengan kontrol penuh atas lokasi residensi data (Data Residency) untuk memastikan kepatuhan penuh terhadap regulasi privasi nasional dan internasional.
+              </p>
+              <div className="flex items-center gap-3 text-xs font-medium text-emerald-400 bg-emerald-400/10 w-fit px-3 py-1.5 rounded-full">
+                <Lock size={14} /> Tersertifikasi Keamanan Kelembagaan
+              </div>
             </div>
           </div>
-        </div>
-      </footer>
-    </div>
+        </section>
+
+        {/* FINAL CTA */}
+        <section className="py-40 bg-white text-black text-center px-6 mt-20">
+          <h2 className="text-5xl md:text-7xl font-bold tracking-tighter mb-8">
+            Siap untuk masa depan?
+          </h2>
+          <p className="text-xl text-black/60 font-light mb-12 max-w-2xl mx-auto">
+            Bergabunglah dengan ratusan institusi terkemuka yang telah beralih ke standar keamanan absensi tertinggi di kelasnya.
+          </p>
+          <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
+            <Link 
+              to="/login" 
+              className="inline-flex items-center justify-center gap-2 bg-black text-white px-10 py-5 rounded-full font-bold tracking-wide hover:bg-black/80 transition-colors w-full sm:w-auto"
+            >
+              Masuk ke Dasbor <ArrowRight size={18} />
+            </Link>
+            <Link 
+              to="/hubungi-kami" 
+              className="inline-flex items-center justify-center gap-2 bg-transparent text-black border border-black/20 px-10 py-5 rounded-full font-bold tracking-wide hover:bg-black/5 transition-colors w-full sm:w-auto"
+            >
+              Hubungi Tim Penjualan
+            </Link>
+          </div>
+        </section>
+
+      </div>
+    </PublicLayout>
   );
 }

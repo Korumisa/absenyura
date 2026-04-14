@@ -35,7 +35,6 @@ export default function Layout() {
     { name: 'Rekap Kehadiran', path: '/reports', icon: BarChart3, roles: ['SUPER_ADMIN', 'ADMIN'] },
     { name: 'Pengguna', path: '/users', icon: Users, roles: ['SUPER_ADMIN'] },
     { name: 'Audit Log', path: '/audit', icon: ShieldAlert, roles: ['SUPER_ADMIN'] },
-    { name: 'Pengaturan', path: '/settings', icon: Settings, roles: ['SUPER_ADMIN', 'ADMIN', 'USER'] },
   ];
 
   const allowedNavItems = navItems.filter((item) => user && item.roles.includes(user.role));
@@ -57,7 +56,7 @@ export default function Layout() {
         }`}
       >
         <div className="flex items-center justify-between h-16 px-6 bg-white dark:bg-zinc-950 border-b border-slate-200 dark:border-zinc-800">
-          <span className="text-xl font-bold text-indigo-600 dark:text-indigo-400">AbsensiWeb</span>
+          <span className="text-xl font-bold text-indigo-600 dark:text-indigo-400">Absensyura</span>
           <Button 
             variant="ghost" 
             size="icon" 
@@ -68,7 +67,7 @@ export default function Layout() {
           </Button>
         </div>
 
-        <div className="flex flex-col h-[calc(100vh-4rem)] justify-between">
+        <div className="flex flex-col h-[calc(100vh-4rem)] justify-between pb-6">
           <nav className="p-4 space-y-1 overflow-y-auto">
             {allowedNavItems.map((item) => {
               const Icon = item.icon;
@@ -90,18 +89,6 @@ export default function Layout() {
               );
             })}
           </nav>
-
-          <div className="p-4 border-t border-slate-200 dark:border-zinc-800">
-            {/* Account details removed from sidebar, now located in top navbar dropdown */}
-            <Button
-              variant="ghost"
-              onClick={handleLogout}
-              className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20"
-            >
-              <LogOut size={18} className="mr-3" />
-              Keluar
-            </Button>
-          </div>
         </div>
       </div>
 
@@ -118,7 +105,7 @@ export default function Layout() {
             >
               <Menu size={24} />
             </Button>
-            <span className="lg:hidden text-lg font-bold text-indigo-600 dark:text-indigo-400">AbsensiWeb</span>
+            <span className="lg:hidden text-lg font-bold text-indigo-600 dark:text-indigo-400">Absensyura</span>
           </div>
           
           <div className="flex items-center gap-4 ml-auto">
