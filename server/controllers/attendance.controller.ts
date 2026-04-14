@@ -101,7 +101,7 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
 
     // Layer 1: QR Validation (if not NONE)
     if (session.qr_mode !== 'NONE') {
-      if (!qr_token) {
+      if (!qr_token || qr_token === 'NO_QR_REQUIRED') {
         res.status(400).json({ success: false, error: 'Token QR Code diperlukan untuk sesi ini' });
         return;
       }
@@ -112,9 +112,12 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
           return;
         }
       } else if (session.qr_mode === 'DYNAMIC') {
+        // dynamic QR format: sessionId:timestamp:signature
         const parts = qr_token.trim().split(':');
+        
+        // Cek jika user secara tidak sengaja men-scan QR Static di kelas Dinamis
         if (parts.length !== 3) {
-          res.status(400).json({ success: false, error: 'Token QR dinamis tidak valid' });
+          res.status(400).json({ success: false, error: 'Format QR tidak valid. Pastikan Anda men-scan QR Dinamis yang benar.' });
           return;
         }
 
@@ -241,6 +244,20 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
     const nowTime = new Date();
     const lateThresholdTime = new Date(session.session_start.getTime() + session.late_threshold_minutes * 60000);
     const status = nowTime > lateThresholdTime ? 'LATE' : 'PRESENT';
+
+    // Device Fingerprint Binding Logic
+    const user = await prisma.user.findUnique({ where: { id: user_id } });
+    if (user && !user.device_fingerprint && device_fingerprint && device_fingerprint !== 'unknown-device') {
+      // First time check-in: Bind device
+      await prisma.user.update({
+        where: { id: user_id },
+        data: { device_fingerprint }
+      });
+    } else if (user && user.device_fingerprint && user.device_fingerprint !== device_fingerprint) {
+      // Device mismatch
+      res.status(403).json({ success: false, error: 'Perangkat tidak dikenali. Akun Anda telah terikat pada perangkat lain. Silakan hubungi Admin.' });
+      return;
+    }
 
     const attendance = await prisma.attendance.create({
       data: {

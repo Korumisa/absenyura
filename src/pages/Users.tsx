@@ -38,8 +38,9 @@ export default function Users() {
   
   // Form state
   const [formData, setFormData] = useState({
-    name: '', email: '', password: '', role: 'USER', nim_nip: '', department: '', phone: '', is_active: true
+    name: '', email: '', password: '', role: 'USER', is_active: true, department: '', nim_nip: '', phone: ''
   });
+  const [facultiesData, setFacultiesData] = useState<{name: string, departments: string[]}[]>([]);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -53,8 +54,20 @@ export default function Users() {
     }
   };
 
+  const fetchFaculties = async () => {
+    try {
+      const res = await api.get('/settings/departments');
+      if (res.data.data) {
+        setFacultiesData(res.data.data);
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
   useEffect(() => {
     fetchUsers();
+    fetchFaculties();
   }, []);
 
   const handleOpenModal = (user: User | null = null) => {
@@ -382,21 +395,39 @@ export default function Users() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>NIM / NIP</Label>
+                  <Label>NIM / NIP <span className="text-red-500">*</span></Label>
                   <Input 
-                    type="text" value={formData.nim_nip} onChange={e => setFormData({...formData, nim_nip: e.target.value})}
+                    type="text" required value={formData.nim_nip} onChange={e => setFormData({...formData, nim_nip: e.target.value})}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Departemen / Prodi</Label>
-                  <Input 
-                    type="text" value={formData.department} onChange={e => setFormData({...formData, department: e.target.value})}
-                  />
+                  <Label>Departemen / Prodi <span className="text-red-500">*</span></Label>
+                  {facultiesData.length > 0 ? (
+                    <Select required value={formData.department} onValueChange={val => setFormData({...formData, department: val})}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Pilih Prodi" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {facultiesData.map(f => (
+                          <optgroup key={f.name} label={f.name} className="p-2 font-semibold text-slate-500">
+                            {f.departments.map(d => (
+                              <SelectItem key={d} value={d}>{d}</SelectItem>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input 
+                      type="text" required value={formData.department} onChange={e => setFormData({...formData, department: e.target.value})}
+                      placeholder="Masukkan Prodi"
+                    />
+                  )}
                 </div>
                 <div className="space-y-2">
-                  <Label>No. HP</Label>
+                  <Label>No. HP <span className="text-red-500">*</span></Label>
                   <Input 
-                    type="text" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})}
+                    type="text" required value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})}
                   />
                 </div>
                 {editingUser && (
