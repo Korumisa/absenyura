@@ -64,7 +64,31 @@ export default function Attend() {
   const scannerRef = React.useRef<Html5QrcodeScanner | null>(null);
 
   // Derived session ID from parameter or scan result
-  const derivedSessionId = sessionParam || (scanResult?.includes(':') ? scanResult.split(':')[0].trim() : scanResult?.trim());
+  const extractSessionIdAndToken = (rawResult: string | null) => {
+    if (!rawResult) return { sid: sessionParam, tkn: tokenParam };
+    
+    try {
+      // 1. Check if it's a URL
+      if (rawResult.includes('http') || rawResult.includes('?session=')) {
+        const urlObj = new URL(rawResult.startsWith('http') ? rawResult : `http://localhost${rawResult}`);
+        const sid = urlObj.searchParams.get('session');
+        const tkn = urlObj.searchParams.get('token');
+        return { sid: sid || sessionParam, tkn: tkn || rawResult };
+      }
+    } catch (e) {
+      // Not a valid URL, fallback
+    }
+
+    // 2. Check if it's a dynamic token string (sessionId:timestamp:signature)
+    if (rawResult.includes(':') && rawResult.split(':').length === 3) {
+      return { sid: rawResult.split(':')[0].trim(), tkn: rawResult.trim() };
+    }
+
+    // 3. Fallback: Assume it's a raw static token
+    return { sid: sessionParam, tkn: rawResult.trim() };
+  };
+
+  const { sid: derivedSessionId, tkn: parsedToken } = extractSessionIdAndToken(scanResult);
 
   useEffect(() => {
     if (!derivedSessionId || derivedSessionId === NO_QR_TOKEN) return;
@@ -374,12 +398,8 @@ export default function Attend() {
 
     setLoading(true);
     try {
-      let sessionId = sessionParam;
-      const qrToken = scanResult;
-
-      if (!sessionId && scanResult.includes(':')) {
-        sessionId = scanResult.split(':')[0];
-      }
+      let sessionId = derivedSessionId;
+      const qrToken = parsedToken;
 
       if (!sessionId) {
         throw new Error('Sesi tidak ditemukan dalam QR Code atau URL.');

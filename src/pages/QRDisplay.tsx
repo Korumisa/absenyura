@@ -86,9 +86,7 @@ export default function QRDisplay() {
 
   useEffect(() => {
     if (qrData && canvasRef.current) {
-      // Create a URL for attendance scanning
-      const attendUrl = `${window.location.origin}/attend?session=${id}&token=${qrData}`;
-      QRCode.toCanvas(canvasRef.current, attendUrl, {
+      QRCode.toCanvas(canvasRef.current, qrData, {
         width: 400,
         margin: 2,
         color: {
@@ -99,7 +97,7 @@ export default function QRDisplay() {
         if (error) console.error(error);
       });
     }
-  }, [qrData, id]);
+  }, [qrData]);
 
   const fetchSession = async () => {
     try {
@@ -129,8 +127,14 @@ export default function QRDisplay() {
   const fetchQR = async () => {
     try {
       const res = await api.get(`/sessions/${id}/qr`);
-      setQrData(res.data.data.token);
+      const token = res.data.data.token;
+      
+      // ALWAYS embed the session ID into the QR URL to ensure the scanner app knows which session this is.
+      // If it's a dynamic QR, it already has the session ID in the token string, but we pass it anyway for consistency.
+      const url = `${window.location.origin}/attend?session=${id}&token=${encodeURIComponent(token)}`;
+      setQrData(url);
     } catch (error: any) {
+      console.error('Failed to fetch QR:', error);
       toast.error(error.response?.data?.error || 'Gagal menghasilkan QR');
     }
   };

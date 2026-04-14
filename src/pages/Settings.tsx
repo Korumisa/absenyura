@@ -3,7 +3,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { useTheme } from '@/hooks/useTheme';
 import api from '@/services/api';
 import { toast } from 'sonner';
-import { User, LogOut, Building2, Plus, Trash2, X } from 'lucide-react';
+import { User, LogOut, Building2, Plus, Trash2, X, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,7 +13,7 @@ export default function Settings() {
   const { theme, setTheme } = useTheme();
   
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'profile' | 'departments'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'departments' | 'subjects'>('profile');
   
   const [formData, setFormData] = useState({
     name: user?.name || '',
@@ -28,11 +28,20 @@ export default function Settings() {
   const [newFaculty, setNewFaculty] = useState('');
   const [newDepartments, setNewDepartments] = useState<Record<number, string>>({});
 
+  // Subject Settings
+  const [subjects, setSubjects] = useState<{code: string, name: string}[]>([]);
+  const [newSubjectCode, setNewSubjectCode] = useState('');
+  const [newSubjectName, setNewSubjectName] = useState('');
+
   useEffect(() => {
     if (user?.role === 'SUPER_ADMIN') {
       api.get('/settings/departments').then(res => {
         if (res.data.data) setFaculties(res.data.data);
       }).catch(err => console.error('Failed to load departments', err));
+
+      api.get('/settings/subjects').then(res => {
+        if (res.data.data) setSubjects(res.data.data);
+      }).catch(err => console.error('Failed to load subjects', err));
     }
   }, [user]);
 
@@ -42,6 +51,15 @@ export default function Settings() {
       toast.success('Data Fakultas & Prodi berhasil disimpan');
     } catch (error) {
       toast.error('Gagal menyimpan Fakultas & Prodi');
+    }
+  };
+
+  const handleSaveSubjects = async () => {
+    try {
+      await api.post('/settings/subjects', { data: subjects });
+      toast.success('Data Mata Kuliah berhasil disimpan');
+    } catch (error) {
+      toast.error('Gagal menyimpan Mata Kuliah');
     }
   };
 
@@ -93,13 +111,22 @@ export default function Settings() {
               <User className="w-5 h-5 mr-3" /> Profil & Keamanan
             </Button>
             {user?.role === 'SUPER_ADMIN' && (
-              <Button 
-                variant="ghost" 
-                onClick={() => setActiveTab('departments')}
-                className={`w-full justify-start ${activeTab === 'departments' ? 'text-indigo-700 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-800'}`}
-              >
-                <Building2 className="w-5 h-5 mr-3" /> Fakultas & Prodi
-              </Button>
+              <>
+                <Button 
+                  variant="ghost" 
+                  onClick={() => setActiveTab('departments')}
+                  className={`w-full justify-start ${activeTab === 'departments' ? 'text-indigo-700 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-800'}`}
+                >
+                  <Building2 className="w-5 h-5 mr-3" /> Fakultas & Prodi
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  onClick={() => setActiveTab('subjects')}
+                  className={`w-full justify-start ${activeTab === 'subjects' ? 'text-indigo-700 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-800'}`}
+                >
+                  <BookOpen className="w-5 h-5 mr-3" /> Mata Kuliah
+                </Button>
+              </>
             )}
           </div>
 
@@ -261,6 +288,55 @@ export default function Settings() {
                     setNewFaculty('');
                   }
                 }}>Tambah Fakultas</Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'subjects' && user?.role === 'SUPER_ADMIN' && (
+          <div className="bg-white dark:bg-zinc-800 rounded-xl border border-slate-200 dark:border-zinc-700 shadow-sm p-6">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h2 className="text-lg font-bold text-slate-800 dark:text-white">Manajemen Mata Kuliah</h2>
+                <p className="text-sm text-slate-500">Daftar ini akan muncul sebagai pilihan saat Admin menambahkan kelas baru.</p>
+              </div>
+              <Button onClick={handleSaveSubjects}>Simpan Data</Button>
+            </div>
+
+            <div className="space-y-4">
+              {subjects.map((subject, index) => (
+                <div key={index} className="flex justify-between items-center p-3 border border-slate-200 dark:border-zinc-700 rounded-lg">
+                  <div>
+                    <span className="font-semibold font-mono text-sm text-indigo-600 dark:text-indigo-400 mr-2">{subject.code}</span>
+                    <span className="text-slate-800 dark:text-white">{subject.name}</span>
+                  </div>
+                  <Button variant="ghost" size="sm" className="text-red-500" onClick={() => setSubjects(subjects.filter((_, i) => i !== index))}>
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              ))}
+
+              <div className="flex gap-2 pt-4 border-t border-slate-200 dark:border-zinc-700">
+                <Input 
+                  placeholder="Kode MK (Maks 10 char)" 
+                  className="w-1/3"
+                  maxLength={10}
+                  value={newSubjectCode}
+                  onChange={e => setNewSubjectCode(e.target.value.toUpperCase())}
+                />
+                <Input 
+                  placeholder="Nama Mata Kuliah Baru..." 
+                  className="w-2/3"
+                  value={newSubjectName}
+                  onChange={e => setNewSubjectName(e.target.value)}
+                />
+                <Button variant="outline" onClick={() => {
+                  if (newSubjectName && newSubjectCode && !subjects.some(s => s.code === newSubjectCode)) {
+                    setSubjects([...subjects, { code: newSubjectCode, name: newSubjectName }]);
+                    setNewSubjectCode('');
+                    setNewSubjectName('');
+                  }
+                }}>Tambah</Button>
               </div>
             </div>
           </div>

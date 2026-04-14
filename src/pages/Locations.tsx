@@ -345,7 +345,7 @@ export default function Locations() {
             <form onSubmit={handleSubmit} className="flex flex-col md:flex-row overflow-hidden">
               <div className="p-6 md:w-1/2 overflow-y-auto space-y-4 border-r border-slate-200 dark:border-zinc-800">
                 <div className="space-y-2">
-                  <Label>Nama Lokasi</Label>
+                  <Label>Nama Lokasi <span className="text-red-500">*</span></Label>
                   <Input 
                     type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})}
                     placeholder="Gedung A Ruang 201"
@@ -353,31 +353,31 @@ export default function Locations() {
                 </div>
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2">
-                    Alamat (Opsional) 
+                    Alamat <span className="text-red-500">*</span>
                     {isGeocoding && <span className="text-xs text-indigo-500 animate-pulse">(Mencari koordinat...)</span>}
                   </Label>
                   <textarea 
-                    rows={2} value={formData.address} onChange={handleAddressChange}
+                    rows={2} required value={formData.address} onChange={handleAddressChange}
                     placeholder="Ketik alamat (misal: Undiksha Singaraja)..."
                     className="flex w-full rounded-md border border-slate-300 bg-transparent px-3 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-50 dark:focus:ring-indigo-600 dark:focus:ring-offset-zinc-900 transition-all"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Latitude</Label>
+                    <Label>Latitude <span className="text-red-500">*</span></Label>
                     <Input 
                       type="number" step="any" required value={formData.latitude} onChange={e => setFormData({...formData, latitude: parseFloat(e.target.value)})}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Longitude</Label>
+                    <Label>Longitude <span className="text-red-500">*</span></Label>
                     <Input 
                       type="number" step="any" required value={formData.longitude} onChange={e => setFormData({...formData, longitude: parseFloat(e.target.value)})}
                     />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label>Radius (Meter)</Label>
+                  <Label>Radius (Meter) <span className="text-red-500">*</span></Label>
                   <div className="flex items-center gap-4">
                     <input 
                       type="range" min="10" max="1000" step="10" value={formData.radius} onChange={e => setFormData({...formData, radius: parseInt(e.target.value)})}

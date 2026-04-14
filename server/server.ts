@@ -2,6 +2,8 @@
  * local server entry file, for local development
  */
 import { createServer } from 'http';
+import * as dotenv from 'dotenv';
+dotenv.config();
 
 const PORT = process.env.PORT || 3001;
 
@@ -18,6 +20,7 @@ async function startLocalServer() {
 
   io = initSocket(server);
   startCronJobs();
+  console.log('[Server] Cron jobs started');
 
   server.listen(PORT, () => {
     console.log(`Server ready on port ${PORT}`);
