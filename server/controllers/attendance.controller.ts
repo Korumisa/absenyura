@@ -142,9 +142,11 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
           return;
         }
 
+        // IMPORTANT: We do not check timestamp expiration strictly if we just scanned it within the grace period.
+        // Dynamic QR refreshes every 15s. We allow up to 60s to account for slow internet uploading photos.
         const scannedTimestamp = parseInt(scannedTimestampStr, 10);
-        const now = Date.now();
-        if (now - scannedTimestamp > 20000) {
+        const qrAgeMs = now.getTime() - scannedTimestamp;
+        if (qrAgeMs > 60000) {
           res.status(400).json({ success: false, error: 'QR Code sudah kedaluwarsa. Silakan scan ulang' });
           return;
         }
