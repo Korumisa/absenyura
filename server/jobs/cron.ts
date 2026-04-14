@@ -10,12 +10,17 @@ export const startCronJobs = () => {
     try {
       const now = new Date();
 
-      // UPCOMING -> ACTIVE (when check_in_open_at is reached and before check_in_close_at)
+      // UPCOMING -> ACTIVE (when check_in_open_at is reached and before check_in_close_at + 2 min grace period)
+      const twoMinutesAgo = new Date(now.getTime() - 2 * 60000);
+      const twoMinutesFuture = new Date(now.getTime() + 2 * 60000);
+
       const sessionsToActivate = await prisma.session.findMany({
         where: {
           status: 'UPCOMING',
-          check_in_open_at: { lte: now },
-          check_in_close_at: { gt: now }
+          // Active when now >= check_in_open_at - 2 min
+          check_in_open_at: { lte: twoMinutesFuture },
+          // Must not have reached check_in_close_at + 2 min yet
+          check_in_close_at: { gt: twoMinutesAgo }
         }
       });
 
@@ -38,11 +43,12 @@ export const startCronJobs = () => {
         }
       }
 
-      // ACTIVE/UPCOMING -> CLOSED (when check_in_close_at or session_end is reached)
+      // ACTIVE/UPCOMING -> CLOSED (when check_in_close_at + 2 min grace period is reached)
       const sessionsToClose = await prisma.session.findMany({
         where: {
           status: { in: ['ACTIVE', 'UPCOMING'] },
-          check_in_close_at: { lte: now }
+          // Close only when now > check_in_close_at + 2 min (i.e. check_in_close_at <= now - 2 min)
+          check_in_close_at: { lte: twoMinutesAgo }
         }
       });
 

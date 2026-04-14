@@ -25,7 +25,7 @@ export default function PublicNavbar() {
             <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center">
               <div className="w-2 h-2 bg-black rounded-full" />
             </div>
-            Absensyura
+            Absenyura
           </Link>
         </div>
         

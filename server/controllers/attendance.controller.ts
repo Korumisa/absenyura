@@ -70,7 +70,7 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
     });
 
     if (!session) {
-      res.status(404).json({ success: false, error: 'Session not found' });
+      res.status(404).json({ success: false, error: 'Sesi absensi tidak ditemukan atau sudah dihapus.' });
       return;
     }
 
@@ -80,12 +80,22 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
     }
 
     const now = new Date();
-    if (now < session.check_in_open_at) {
+    // Add 2-minute grace period to prevent strict edge cases
+    const openTime = new Date(session.check_in_open_at.getTime() - 2 * 60000);
+    const closeTime = new Date(session.check_in_close_at.getTime() + 2 * 60000);
+
+    if (now < openTime) {
       res.status(400).json({ success: false, error: 'Waktu absensi belum dimulai.' });
       return;
     }
-    if (now > session.check_in_close_at) {
-      res.status(400).json({ success: false, error: 'Waktu absensi sudah ditutup.' });
+    if (now > closeTime) {
+      // Differentiate message if the class is still running
+      if (now < session.session_end) {
+        const timeStr = session.check_in_close_at.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' });
+        res.status(400).json({ success: false, error: `Batas waktu absensi telah habis pada ${timeStr} WIB, meskipun kelas masih berjalan.` });
+      } else {
+        res.status(400).json({ success: false, error: 'Waktu absensi sudah ditutup.' });
+      }
       return;
     }
 
