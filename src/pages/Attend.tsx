@@ -80,9 +80,12 @@ export default function Attend() {
       })
       .catch(err => {
         console.error('Gagal mengambil data sesi', err);
-        toast.error('Gagal mengambil detail sesi absensi.');
+        // Only show error if we came from a URL parameter, not when just scanning randomly
+        if (sessionParam) {
+          toast.error('Gagal mengambil detail sesi absensi.');
+        }
       });
-  }, [derivedSessionId]);
+  }, [derivedSessionId, sessionParam]);
 
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
   const [cameraPermissionError, setCameraPermissionError] = useState<string | null>(null);
@@ -546,9 +549,28 @@ export default function Attend() {
                   <div className="absolute inset-0 z-10 border-[3px] border-dashed border-indigo-500/50 m-8 rounded-xl pointer-events-none"></div>
                   <div className="absolute top-0 left-0 w-full h-1 bg-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.8)] animate-[scan_2s_ease-in-out_infinite] z-20 pointer-events-none"></div>
                   
-                  <div id="qr-reader" className="w-full bg-black [&>div]:border-none [&>div]:shadow-none [&_video]:object-cover [&_video]:w-full [&_video]:h-full min-h-[300px] flex flex-col-reverse justify-end"></div>
+                  <div id="qr-reader" className="w-full bg-black [&>div]:border-none [&>div]:shadow-none [&_video]:object-cover [&_video]:w-full [&_video]:h-full min-h-[300px] flex flex-col"></div>
                 </div>
                 <style dangerouslySetInnerHTML={{__html: `
+                  #qr-reader {
+                    display: flex !important;
+                    flex-direction: column !important;
+                  }
+                  #qr-reader__scan_region {
+                    order: 1 !important;
+                    position: relative;
+                    z-index: 1;
+                    height: 100% !important;
+                  }
+                  #qr-reader__dashboard_section_csr {
+                    order: 2 !important;
+                    padding: 15px !important;
+                    background-color: #1e293b !important;
+                    border-top: 1px solid #334155 !important;
+                    color: white !important;
+                    position: relative;
+                    z-index: 10;
+                  }
                   #qr-reader__dashboard_section_csr span button {
                     background-color: #4f46e5 !important;
                     color: white !important;
@@ -576,18 +598,6 @@ export default function Attend() {
                   }
                   #qr-reader__dashboard_section_swaplink:hover {
                     background-color: #475569 !important;
-                  }
-                  #qr-reader__dashboard_section_csr {
-                    padding: 15px !important;
-                    background-color: #1e293b !important;
-                    border-top: 1px solid #334155 !important;
-                    color: white !important;
-                    position: relative;
-                    z-index: 10;
-                  }
-                  #qr-reader__scan_region {
-                    position: relative;
-                    z-index: 1;
                   }
                 `}} />
                 <div className="text-center mt-6 mb-6">

@@ -180,3 +180,21 @@ export const getSessionQR = async (req: Request, res: Response): Promise<void> =
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 };
+
+export const getSessionAttendances = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const attendances = await prisma.attendance.findMany({
+      where: { session_id: id },
+      include: {
+        user: { select: { name: true, nim_nip: true } }
+      },
+      orderBy: { check_in_time: 'desc' }
+    });
+
+    res.status(200).json({ success: true, data: attendances });
+  } catch (error) {
+    console.error('Error fetching session attendances:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+};

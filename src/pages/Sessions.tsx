@@ -365,22 +365,22 @@ export default function Sessions() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label>Judul / Mata Kuliah</Label>
+                    <Label>Judul / Mata Kuliah <span className="text-red-500">*</span></Label>
                     <Input 
                       type="text" required value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})}
                       placeholder="Pemrograman Web Lanjut (A)"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Deskripsi (Opsional)</Label>
+                    <Label>Deskripsi</Label>
                     <textarea 
                       rows={2} value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})}
                       className="flex w-full rounded-md border border-slate-300 bg-transparent px-3 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-50 dark:focus:ring-indigo-600 dark:focus:ring-offset-zinc-900"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Pilih Kelas (Opsional)</Label>
-                    <Select value={formData.class_id} onValueChange={val => setFormData({...formData, class_id: val})}>
+                    <Label>Pilih Kelas <span className="text-red-500">*</span></Label>
+                    <Select required value={formData.class_id} onValueChange={val => setFormData({...formData, class_id: val})}>
                       <SelectTrigger>
                         <SelectValue placeholder="Semua Mahasiswa" />
                       </SelectTrigger>
@@ -393,8 +393,8 @@ export default function Sessions() {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>Lokasi Ruangan</Label>
-                    <Select value={formData.location_id} onValueChange={(value) => setFormData({...formData, location_id: value})}>
+                    <Label>Lokasi Ruangan <span className="text-red-500">*</span></Label>
+                    <Select required value={formData.location_id} onValueChange={(value) => setFormData({...formData, location_id: value})}>
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Pilih Lokasi Geofencing..." />
                       </SelectTrigger>
@@ -406,8 +406,8 @@ export default function Sessions() {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>Metode Validasi QR</Label>
-                    <Select value={formData.qr_mode} onValueChange={(value: any) => setFormData({...formData, qr_mode: value})}>
+                    <Label>Metode Validasi QR <span className="text-red-500">*</span></Label>
+                    <Select required value={formData.qr_mode} onValueChange={(value: any) => setFormData({...formData, qr_mode: value})}>
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Pilih Metode Validasi QR" />
                       </SelectTrigger>
@@ -423,13 +423,13 @@ export default function Sessions() {
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Waktu Mulai Sesi</Label>
+                      <Label>Waktu Mulai Sesi <span className="text-red-500">*</span></Label>
                       <Input 
                         type="datetime-local" required value={formData.session_start} onChange={e => setFormData({...formData, session_start: e.target.value})}
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>Waktu Selesai Sesi</Label>
+                      <Label>Waktu Selesai Sesi <span className="text-red-500">*</span></Label>
                       <Input 
                         type="datetime-local" required value={formData.session_end} onChange={e => setFormData({...formData, session_end: e.target.value})}
                       />
@@ -438,13 +438,13 @@ export default function Sessions() {
                   
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Buka Check-in</Label>
+                      <Label>Buka Check-in <span className="text-red-500">*</span></Label>
                       <Input 
                         type="datetime-local" required value={formData.check_in_open_at} onChange={e => setFormData({...formData, check_in_open_at: e.target.value})}
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>Tutup Check-in</Label>
+                      <Label>Tutup Check-in <span className="text-red-500">*</span></Label>
                       <Input 
                         type="datetime-local" required value={formData.check_in_close_at} onChange={e => setFormData({...formData, check_in_close_at: e.target.value})}
                       />
@@ -453,7 +453,7 @@ export default function Sessions() {
 
                   <div className="grid grid-cols-2 gap-4 items-end">
                     <div className="space-y-2">
-                      <Label>Toleransi Terlambat (Menit)</Label>
+                      <Label>Toleransi Terlambat (Menit) <span className="text-red-500">*</span></Label>
                       <Input 
                         type="number" min="0" required value={formData.late_threshold_minutes} onChange={e => setFormData({...formData, late_threshold_minutes: parseInt(e.target.value)})}
                       />

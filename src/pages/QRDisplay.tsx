@@ -122,7 +122,7 @@ export default function QRDisplay() {
       })));
     } catch (error) {
       console.error('Failed to fetch attendees:', error);
-      toast.error('Gagal memuat data kehadiran langsung');
+      // Menghilangkan toast error di sini agar tidak mengganggu jika sesi belum dimulai
     }
   };
 
