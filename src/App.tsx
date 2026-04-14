@@ -19,6 +19,22 @@ import AuditLogs from "@/pages/AuditLogs";
 import History from "@/pages/History";
 import QRDisplay from "@/pages/QRDisplay";
 import Attend from "@/pages/Attend";
+import ScrollToTop from "@/components/ScrollToTop";
+
+// Halaman Publik Baru
+import Features from "@/pages/public/Features";
+import HowItWorks from "@/pages/public/HowItWorks";
+import Pricing from "@/pages/public/Pricing";
+import AboutUs from "@/pages/public/AboutUs";
+
+// Komponen Placeholder untuk tautan yang belum dibuat filenya agar tidak Error/Blank
+const ComingSoon = () => (
+  <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col items-center justify-center font-sans">
+    <h1 className="text-4xl font-bold mb-4">Segera Hadir</h1>
+    <p className="text-white/50">Halaman ini sedang dalam tahap pengembangan.</p>
+    <a href="/" className="mt-8 px-6 py-3 bg-white text-black rounded-full font-medium">Kembali ke Beranda</a>
+  </div>
+);
 
 export default function App() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -35,9 +51,26 @@ export default function App() {
     <ErrorBoundary>
       <Toaster position="top-right" richColors />
       <Router>
+        <ScrollToTop />
         <Routes>
           <Route path="/" element={isAuthenticated ? <Navigate to={getDefaultRoute()} replace /> : <Home />} />
           <Route path="/login" element={isAuthenticated ? <Navigate to={getDefaultRoute()} replace /> : <Login />} />
+          
+          {/* Public Static Pages */}
+          <Route path="/fitur-utama" element={<Features />} />
+          <Route path="/cara-kerja" element={<HowItWorks />} />
+          <Route path="/harga-paket" element={<Pricing />} />
+          <Route path="/tentang-kami" element={<AboutUs />} />
+          
+          {/* Fallback Pages (Agar tidak Blank) */}
+          <Route path="/hubungi-kami" element={<ComingSoon />} />
+          <Route path="/keamanan-gps" element={<ComingSoon />} />
+          <Route path="/integrasi-api" element={<ComingSoon />} />
+          <Route path="/pusat-bantuan" element={<ComingSoon />} />
+          <Route path="/dokumentasi-api" element={<ComingSoon />} />
+          <Route path="/status-sistem" element={<ComingSoon />} />
+          <Route path="/karir" element={<ComingSoon />} />
+          <Route path="/mitra-kampus" element={<ComingSoon />} />
           
           <Route element={<ProtectedRoute />}>
             <Route element={<Layout />}>
@@ -53,8 +86,6 @@ export default function App() {
               <Route path="/reports" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}><Reports /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'USER']}><Settings /></ProtectedRoute>} />
               <Route path="/audit" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><AuditLogs /></ProtectedRoute>} />
-              {/* Other protected routes go here */}
-              <Route path="/other" element={<div className="p-8 text-xl font-medium text-slate-700 dark:text-zinc-300">Other Page - Coming Soon</div>} />
             </Route>
           </Route>
         </Routes>
