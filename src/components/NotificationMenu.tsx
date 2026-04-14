@@ -76,7 +76,7 @@ export function NotificationMenu() {
       {isOpen && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)}></div>
-          <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 shadow-xl rounded-xl z-50 overflow-hidden animate-in slide-in-from-top-2 duration-200">
+          <div className="absolute -right-12 sm:right-0 mt-2 w-[320px] max-w-[calc(100vw-2rem)] bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 shadow-xl rounded-xl z-50 overflow-hidden animate-in slide-in-from-top-2 duration-200">
             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-zinc-700/50 bg-slate-50 dark:bg-zinc-900/50">
               <h3 className="font-bold text-slate-800 dark:text-white">Notifikasi</h3>
               {unreadCount > 0 && (

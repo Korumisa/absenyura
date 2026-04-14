@@ -212,38 +212,8 @@ export default function Dashboard() {
                                     onClick={() => window.location.href = `/attend?session=${session.id}`}
                                     className="shadow-lg shadow-indigo-600/20 bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3 py-1.5 h-auto"
                                   >
-                                    Hadir
+                                    Scan QR Absen
                                   </Button>
-                                  {session.require_checkout && (
-                                    <Button 
-                                      variant="outline"
-                                      onClick={async () => {
-                                        try {
-                                          // Need to get attendance ID first.
-                                          // If user clicks checkout but hasn't checked in, it will fail.
-                                          // Ideally, the backend should support checkout by session_id, 
-                                          // but for now we try to get it from the user's history
-                                          const historyRes = await api.get('/reports');
-                                          const userAttendances = historyRes.data.data;
-                                          const currentAttendance = userAttendances.find((a: any) => a.session_id === session.id);
-                                          
-                                          if (!currentAttendance) {
-                                            alert('Anda belum melakukan Check-in pada sesi ini.');
-                                            return;
-                                          }
-                                          
-                                          await api.put(`/attendance/${currentAttendance.id}/check-out`);
-                                          alert('Check-out berhasil!');
-                                          window.location.reload();
-                                        } catch (error: any) {
-                                          alert(error?.response?.data?.error || 'Check-out gagal');
-                                        }
-                                      }}
-                                      className="text-xs px-3 py-1.5 h-auto border-indigo-200 text-indigo-700 hover:bg-indigo-50 dark:border-indigo-800 dark:text-indigo-400 dark:hover:bg-indigo-900/30"
-                                    >
-                                      Check-out
-                                    </Button>
-                                  )}
                                 </div>
                               ) : (
                                 <Badge variant="secondary" className="px-3 py-1">Belum Mulai</Badge>

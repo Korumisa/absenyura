@@ -22,6 +22,7 @@ interface Attendee {
   nim_nip: string;
   status: string;
   check_in_time: string;
+  check_out_time?: string | null;
 }
 
 export default function QRDisplay() {
@@ -277,12 +278,19 @@ export default function QRDisplay() {
             ) : (
               attendees.map((att) => (
                 <div key={att.id} className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-zinc-800/50 border border-slate-100 dark:border-zinc-800 rounded-xl animate-in slide-in-from-left-2 duration-300">
-                  <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
-                    <CheckCircle2 size={20} />
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${att.check_out_time ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' : 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'}`}>
+                    {att.check_out_time ? <CheckCircle2 size={20} /> : <Clock size={20} />}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-slate-900 dark:text-white truncate">{att.user_name}</p>
-                    <p className="text-xs text-slate-500 dark:text-zinc-400">{att.nim_nip || '-'}</p>
+                    <p className="text-xs text-slate-500 dark:text-zinc-400">
+                      {att.nim_nip || '-'}
+                      {att.check_out_time && (
+                        <span className="ml-2 text-emerald-600 dark:text-emerald-400 font-medium text-[10px] bg-emerald-50 dark:bg-emerald-900/20 px-1.5 py-0.5 rounded">
+                          Sudah Check-out
+                        </span>
+                      )}
+                    </p>
                   </div>
                   <div className="text-right shrink-0">
                     <span className={`text-xs font-bold px-2 py-1 rounded-full ${att.status === 'PRESENT' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'}`}>

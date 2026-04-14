@@ -80,6 +80,15 @@
   display: flex !important;
   flex-direction: column !important;
 }
+/* Memaksa wrapper dashboard pertama untuk pindah ke bawah */
+#qr-reader > div:first-child {
+  order: 2 !important;
+}
+/* Memaksa wrapper video (scan region) untuk pindah ke atas */
+#qr-reader > div:nth-child(2) {
+  order: 1 !important;
+}
+
 #qr-reader__scan_region {
   order: 1 !important;
   position: relative;
