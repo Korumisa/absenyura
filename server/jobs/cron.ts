@@ -6,7 +6,6 @@ import path from 'path';
 export const startCronJobs = () => {
   // Check and update session statuses every minute
   cron.schedule('* * * * *', async () => {
-    console.log('Running cron job: Update Session Statuses');
     try {
       const now = new Date();
 
@@ -43,7 +42,7 @@ export const startCronJobs = () => {
         }
       }
 
-      // ACTIVE/UPCOMING -> CLOSED (when check_in_close_at + 2 min grace period is reached)
+        // ACTIVE/UPCOMING -> CLOSED (when check_in_close_at + 2 min grace period is reached)
       const sessionsToClose = await prisma.session.findMany({
         where: {
           status: { in: ['ACTIVE', 'UPCOMING'] },
@@ -51,6 +50,8 @@ export const startCronJobs = () => {
           check_in_close_at: { lte: twoMinutesAgo }
         }
       });
+
+      console.log(`[Cron] Found ${sessionsToActivate.length} sessions to activate and ${sessionsToClose.length} sessions to close.`);
 
       if (sessionsToClose.length > 0) {
         await prisma.session.updateMany({

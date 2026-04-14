@@ -276,37 +276,49 @@ export default function Users() {
                     </td>
                     <td className="px-6 py-4">
                       {user.device_fingerprint ? (
-                        <span className="inline-flex px-2 py-1 text-xs rounded-full font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">Terikat</span>
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-full font-medium bg-emerald-100 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800">
+                          <Smartphone size={12} />
+                          Terikat
+                        </span>
                       ) : (
-                        <span className="inline-flex px-2 py-1 text-xs rounded-full font-medium bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">Bebas</span>
+                        <span className="inline-flex px-2.5 py-1 text-xs rounded-full font-medium bg-slate-100 text-slate-600 border border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700">
+                          Bebas
+                        </span>
                       )}
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex justify-end gap-2">
                         {user.device_fingerprint && (
-                          <button
+                          <Button
+                            variant="outline"
+                            size="sm"
                             onClick={() => handleResetDevice(user.id)}
-                            className="p-2 text-slate-400 hover:text-orange-600 hover:bg-orange-50 dark:hover:text-orange-500 dark:hover:bg-orange-900/30 rounded-lg transition-colors"
-                            title="Reset Perangkat"
+                            className="text-orange-600 hover:text-orange-700 hover:bg-orange-50 border-orange-200 dark:text-orange-500 dark:hover:bg-orange-900/30 dark:border-orange-900"
+                            title="Reset Perangkat (Mahasiswa akan diminta login ulang di perangkat baru)"
                           >
-                            <Smartphone size={18} />
-                          </button>
+                            <Smartphone size={14} className="mr-1.5" />
+                            Reset Device
+                          </Button>
                         )}
-                        <button 
+                        <Button 
+                          variant="ghost"
+                          size="icon"
                           onClick={() => handleOpenModal(user)}
-                          className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors"
+                          className="text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30"
                           title="Edit"
                         >
-                          <Edit2 size={18} />
-                        </button>
+                          <Edit2 size={16} />
+                        </Button>
                         {currentUser?.role === 'SUPER_ADMIN' && currentUser?.id !== user.id && (
-                          <button 
+                          <Button 
+                            variant="ghost"
+                            size="icon"
                             onClick={() => handleDelete(user.id)}
-                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
+                            className="text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
                             title="Hapus"
                           >
-                            <Trash2 size={18} />
-                          </button>
+                            <Trash2 size={16} />
+                          </Button>
                         )}
                       </div>
                     </td>

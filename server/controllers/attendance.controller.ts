@@ -107,12 +107,12 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
       }
 
       if (session.qr_mode === 'STATIC') {
-        if (qr_token !== session.qr_token) {
+        if (qr_token.trim() !== session.qr_token) {
           res.status(400).json({ success: false, error: 'Token QR statis tidak valid' });
           return;
         }
       } else if (session.qr_mode === 'DYNAMIC') {
-        const parts = qr_token.split(':');
+        const parts = qr_token.trim().split(':');
         if (parts.length !== 3) {
           res.status(400).json({ success: false, error: 'Token QR dinamis tidak valid' });
           return;

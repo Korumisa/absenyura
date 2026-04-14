@@ -46,7 +46,7 @@ export default function Home() {
                 to="/login" 
                 className="group flex items-center justify-center gap-3 bg-white text-black px-8 py-4 rounded-full font-semibold tracking-wide hover:scale-105 transition-all duration-300 w-full sm:w-auto"
               >
-                Mulai Operasional <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                Masuk Sistem <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
               </Link>
               <Link 
                 to="/hubungi-kami" 

@@ -28,6 +28,7 @@ interface Report {
   status: 'PRESENT' | 'LATE' | 'ABSENT' | 'SICK' | 'EXCUSED';
   ip: string;
   device: string;
+  photo_url: string | null;
 }
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -263,6 +264,7 @@ export default function Reports() {
                 <TableHead>Sesi / Kelas</TableHead>
                 <TableHead>Waktu Check-in</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Foto Bukti</TableHead>
                 <TableHead>Info Device/IP</TableHead>
                 {user?.role !== 'USER' && <TableHead className="text-right">Aksi</TableHead>}
               </TableRow>
@@ -295,7 +297,7 @@ export default function Reports() {
                 ))
               ) : filteredReports.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center text-slate-500">Tidak ada data ditemukan.</TableCell>
+                  <TableCell colSpan={7} className="h-24 text-center text-slate-500">Tidak ada data ditemukan.</TableCell>
                 </TableRow>
               ) : (
                 filteredReports.map((report) => (
@@ -320,12 +322,26 @@ export default function Reports() {
                         {report.status === 'LATE' && <Clock className="w-3 h-3 mr-1" />}
                         {(report.status === 'SICK' || report.status === 'EXCUSED') && <FileText className="w-3 h-3 mr-1" />}
                         {report.status === 'ABSENT' && <XCircle className="w-3 h-3 mr-1" />}
-                        {report.status === 'SICK' ? 'Sakit' : report.status === 'EXCUSED' ? 'Izin' : report.status}
+                        {report.status === 'PRESENT' ? 'Hadir' : report.status === 'LATE' ? 'Terlambat' : report.status === 'SICK' ? 'Sakit' : report.status === 'EXCUSED' ? 'Izin' : report.status === 'ABSENT' ? 'Tidak Hadir' : report.status}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <div className="text-xs text-slate-500 dark:text-zinc-400 font-mono">
+                      {report.photo_url ? (
+                        <a href={report.photo_url} target="_blank" rel="noreferrer" className="inline-block hover:opacity-80 transition-opacity">
+                          <img src={report.photo_url} alt="Bukti Hadir" className="w-10 h-10 object-cover rounded-md shadow-sm border border-slate-200 dark:border-zinc-700" />
+                        </a>
+                      ) : (
+                        <div className="w-10 h-10 bg-slate-100 dark:bg-zinc-800 rounded-md flex items-center justify-center text-xs text-slate-400 dark:text-zinc-500">
+                          -
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-xs text-slate-500 dark:text-zinc-400 font-mono mb-1">
                         IP: {report.ip || '-'}
+                      </div>
+                      <div className="text-xs text-slate-400 dark:text-zinc-500 max-w-[150px] truncate" title={report.device || '-'}>
+                        {report.device || '-'}
                       </div>
                     </TableCell>
                     {user?.role !== 'USER' && (
