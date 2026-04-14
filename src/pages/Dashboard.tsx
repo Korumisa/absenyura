@@ -20,6 +20,8 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
+const COLORS = ['#4f46e5', '#f59e0b', '#ef4444'];
+
 export default function Dashboard() {
   const user = useAuthStore((state) => state.user);
   const [data, setData] = useState<any>(null);
@@ -85,9 +87,6 @@ export default function Dashboard() {
   }
 
   const isUser = user?.role === 'USER';
-
-  // Chart Colors
-  const COLORS = ['#4f46e5', '#f59e0b', '#ef4444'];
 
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto">

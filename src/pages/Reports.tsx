@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import api from '@/services/api';
 import { Download, FileText, Search, CheckCircle2, Clock, XCircle, Edit3, X } from 'lucide-react';
@@ -71,15 +71,17 @@ export default function Reports() {
     fetchReports();
   }, [page]);
 
-  const filteredReports = reports.filter(r => {
-    const matchStatus = statusFilter === 'ALL' || r.status === statusFilter;
-    const matchSearch = r.user_name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                        r.session_title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                        (r.nim_nip && r.nim_nip.toLowerCase().includes(searchTerm.toLowerCase()));
-    return matchStatus && matchSearch;
-  });
+  const filteredReports = useMemo(() => {
+    return reports.filter(r => {
+      const matchStatus = statusFilter === 'ALL' || r.status === statusFilter;
+      const matchSearch = r.user_name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          r.session_title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          (r.nim_nip && r.nim_nip.toLowerCase().includes(searchTerm.toLowerCase()));
+      return matchStatus && matchSearch;
+    });
+  }, [reports, statusFilter, searchTerm]);
 
-  const handleExportExcel = async () => {
+  const handleExportExcel = useCallback(async () => {
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Rekap Matriks Kehadiran');
 
@@ -144,9 +146,9 @@ export default function Reports() {
     link.click();
     URL.revokeObjectURL(url);
     toast.success('Matriks Laporan Excel berhasil diunduh');
-  };
+  }, [filteredReports]);
 
-  const handleExportPDF = () => {
+  const handleExportPDF = useCallback(() => {
     const doc = new jsPDF();
     
     doc.setFontSize(16);
@@ -174,7 +176,7 @@ export default function Reports() {
 
     doc.save(`Rekap_Kehadiran_${format(new Date(), 'yyyyMMdd_HHmm')}.pdf`);
     toast.success('Laporan PDF berhasil diunduh');
-  };
+  }, [filteredReports]);
 
   const handleOpenOverride = (report: Report) => {
     setSelectedReport(report);
