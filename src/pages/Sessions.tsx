@@ -23,6 +23,8 @@ interface Session {
   title: string;
   location: Location;
   creator: { name: string };
+  class_id?: string | null;
+  class?: { id: string; name: string } | null;
   qr_mode: 'DYNAMIC' | 'STATIC' | 'NONE';
   session_start: string;
   session_end: string;
@@ -38,6 +40,9 @@ export default function Sessions() {
   const [classes, setClasses] = useState<{ id: string, name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterDate, setFilterDate] = useState('');
+  const [filterLocation, setFilterLocation] = useState('ALL');
+  const [filterClass, setFilterClass] = useState('ALL');
   
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -166,10 +171,20 @@ export default function Sessions() {
     }
   };
 
-  const filteredSessions = sessions.filter(s => 
-    s.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    s.location?.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredSessions = sessions.filter(s => {
+    const matchSearch = s.title.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchLocation = filterLocation === 'ALL' || s.location?.id === filterLocation;
+    const classId = s.class_id ?? null;
+    const matchClass = filterClass === 'ALL' || classId === filterClass || (!classId && filterClass === 'ALL_STUDENTS');
+    
+    let matchDate = true;
+    if (filterDate) {
+      const sDate = new Date(s.session_start).toISOString().split('T')[0];
+      matchDate = sDate === filterDate;
+    }
+
+    return matchSearch && matchLocation && matchClass && matchDate;
+  });
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -183,17 +198,52 @@ export default function Sessions() {
         )}
       </div>
 
-      <div className="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-700 overflow-hidden">
-        <div className="p-4 border-b border-slate-200 dark:border-zinc-700">
-          <div className="relative max-w-md">
+      <div className="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-700 overflow-hidden mb-6">
+        <div className="p-4 grid grid-cols-1 sm:grid-cols-4 gap-4 border-b border-slate-200 dark:border-zinc-700">
+          <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
             <Input 
               type="text" 
-              placeholder="Cari nama kelas atau lokasi..." 
+              placeholder="Cari kegiatan/mata kuliah..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9"
+              className="pl-9 w-full"
             />
+          </div>
+          <div>
+            <Input 
+              type="date" 
+              value={filterDate}
+              onChange={(e) => setFilterDate(e.target.value)}
+              className="w-full"
+            />
+          </div>
+          <div>
+            <Select value={filterLocation} onValueChange={setFilterLocation}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Semua Lokasi" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">Semua Lokasi</SelectItem>
+                {locations.map(loc => (
+                  <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Select value={filterClass} onValueChange={setFilterClass}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Semua Kelas" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">Semua Kelas</SelectItem>
+                <SelectItem value="ALL_STUDENTS">Semua Mahasiswa (Umum)</SelectItem>
+                {classes.map(c => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
