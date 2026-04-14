@@ -203,9 +203,7 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
         }
       } catch (e) {
         console.error(`Invalid JSON in wifi_bssid for location ${session.location.id}:`, e);
-        // Fail securely - if admins set a rule but format it wrong, block access rather than bypassing security
-        res.status(500).json({ success: false, error: 'Kesalahan konfigurasi jaringan pada kelas ini. Hubungi Admin.' });
-        return;
+        // Continue instead of blocking completely if JSON is just invalid, to prevent locking out legitimate users
       }
     }
 
@@ -258,6 +256,31 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
     } else if (user && user.device_fingerprint && user.device_fingerprint !== device_fingerprint) {
       // Device mismatch
       res.status(403).json({ success: false, error: 'Perangkat tidak dikenali. Akun Anda telah terikat pada perangkat lain. Silakan hubungi Admin.' });
+      return;
+    }
+
+    // Check if already checked in
+    const existingAttendance = await prisma.attendance.findFirst({
+      where: { session_id, user_id }
+    });
+
+    if (existingAttendance) {
+      if (existingAttendance.check_out_time) {
+         res.status(400).json({ success: false, error: 'Anda sudah menyelesaikan absensi (Check-in & Check-out) pada sesi ini' });
+         return;
+      }
+      
+      if (!session.require_checkout) {
+         res.status(400).json({ success: false, error: 'Anda sudah melakukan check-in pada sesi ini (Sesi ini tidak mewajibkan check-out)' });
+         return;
+      }
+      
+      // Valid Check-out scenario
+      const updated = await prisma.attendance.update({
+        where: { id: existingAttendance.id },
+        data: { check_out_time: new Date() }
+      });
+      res.status(200).json({ success: true, data: updated, message: 'Check-out berhasil dicatat!' });
       return;
     }
 

@@ -571,55 +571,6 @@ export default function Attend() {
                   
                   <div id="qr-reader" className="w-full bg-black [&>div]:border-none [&>div]:shadow-none [&_video]:object-cover [&_video]:w-full [&_video]:h-full min-h-[300px] flex flex-col"></div>
                 </div>
-                <style dangerouslySetInnerHTML={{__html: `
-                  #qr-reader {
-                    display: flex !important;
-                    flex-direction: column !important;
-                  }
-                  #qr-reader__scan_region {
-                    order: 1 !important;
-                    position: relative;
-                    z-index: 1;
-                    height: 100% !important;
-                  }
-                  #qr-reader__dashboard_section_csr {
-                    order: 2 !important;
-                    padding: 15px !important;
-                    background-color: #1e293b !important;
-                    border-top: 1px solid #334155 !important;
-                    color: white !important;
-                    position: relative;
-                    z-index: 10;
-                  }
-                  #qr-reader__dashboard_section_csr span button {
-                    background-color: #4f46e5 !important;
-                    color: white !important;
-                    border: none !important;
-                    padding: 10px 20px !important;
-                    border-radius: 8px !important;
-                    margin: 10px 0 !important;
-                    cursor: pointer !important;
-                    font-weight: 600 !important;
-                    width: 100% !important;
-                  }
-                  #qr-reader__dashboard_section_csr span button:hover {
-                    background-color: #4338ca !important;
-                  }
-                  #qr-reader__dashboard_section_swaplink {
-                    color: #ffffff !important;
-                    background-color: #334155 !important;
-                    text-decoration: none !important;
-                    margin-top: 10px !important;
-                    margin-bottom: 10px !important;
-                    display: block !important;
-                    padding: 10px !important;
-                    border-radius: 8px !important;
-                    font-weight: 600 !important;
-                  }
-                  #qr-reader__dashboard_section_swaplink:hover {
-                    background-color: #475569 !important;
-                  }
-                `}} />
                 <div className="text-center mt-6 mb-6">
                   <p className="text-sm font-medium text-slate-600 dark:text-zinc-400">
                     Arahkan kamera ke QR Code yang ditampilkan oleh Dosen.
@@ -747,8 +698,77 @@ export default function Attend() {
               </div>
             )}
           </div>
-        </div>
 
+          <div className="grid gap-6 md:grid-cols-2">
+            <div className="bg-white dark:bg-zinc-800 rounded-2xl p-4 shadow-md border border-slate-200 dark:border-zinc-700">
+              <h3 className="text-sm font-bold text-slate-800 dark:text-white mb-2 flex items-center gap-2">
+                <MapPin size={16} className="text-indigo-500" />
+                Lokasi Anda
+              </h3>
+              <div className="text-sm text-slate-600 dark:text-zinc-400 space-y-1">
+                <div>
+                  {location ? (
+                    <>
+                      {location.lat.toFixed(5)}, {location.lng.toFixed(5)}
+                    </>
+                  ) : gpsError ? (
+                    <span className="text-red-600 dark:text-red-400">GPS error</span>
+                  ) : (
+                    'Mencari lokasi...'
+                  )}
+                </div>
+                {gpsAccuracy != null && (
+                  <div>Akurasi ±{Math.round(gpsAccuracy)}m</div>
+                )}
+                {location && sessionDetails?.location && (
+                  <div>
+                    Jarak ke titik sesi: {Math.round(getDistanceMeters(location, { lat: sessionDetails.location.latitude, lng: sessionDetails.location.longitude }))}m
+                  </div>
+                )}
+              </div>
+              <div className="mt-4">
+                <Button type="button" variant="outline" onClick={requestLocationOnce} className="w-full">
+                  <RefreshCw size={16} className="mr-2" />
+                  Perbarui Lokasi
+                </Button>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-zinc-800 rounded-2xl p-4 shadow-md border border-slate-200 dark:border-zinc-700">
+              <h3 className="text-sm font-bold text-slate-800 dark:text-white mb-2 flex items-center gap-2">
+                <MapPin size={16} className="text-indigo-500" />
+                Peta Lokasi
+              </h3>
+              <div className="h-[220px] rounded-xl overflow-hidden relative z-0 bg-slate-100 dark:bg-zinc-900">
+                {location ? (
+                  <MapContainer 
+                    center={[location.lat, location.lng]} 
+                    zoom={16} 
+                    style={{ height: '100%', width: '100%' }}
+                    zoomControl={false}
+                  >
+                    <MapUpdater center={[location.lat, location.lng]} />
+                    <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                    <Marker position={[location.lat, location.lng]}>
+                      <Popup>Lokasi Anda Saat Ini</Popup>
+                    </Marker>
+                    {sessionDetails?.location && (
+                      <Circle 
+                        center={[sessionDetails.location.latitude, sessionDetails.location.longitude]}
+                        radius={sessionDetails.location.radius}
+                        pathOptions={{ color: 'indigo', fillColor: 'indigo', fillOpacity: 0.2 }}
+                      />
+                    )}
+                  </MapContainer>
+                ) : (
+                  <div className="h-full w-full flex items-center justify-center text-sm text-slate-500 dark:text-zinc-500">
+                    {gpsError ? 'Izin lokasi belum aktif' : 'Menunggu GPS...'}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

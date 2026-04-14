@@ -106,10 +106,13 @@ export const updateSubjects = async (req: Request, res: Response): Promise<void>
 
     const { data } = req.body;
     
+    // Pastikan data tidak kosong atau undefined agar tidak merusak DB
+    const validData = Array.isArray(data) ? data : [];
+
     await prisma.setting.upsert({
       where: { key: 'SUBJECTS' },
-      update: { value: JSON.stringify(data), updated_by: user.id },
-      create: { key: 'SUBJECTS', value: JSON.stringify(data), updated_by: user.id }
+      update: { value: JSON.stringify(validData), updated_by: user.id },
+      create: { key: 'SUBJECTS', value: JSON.stringify(validData), updated_by: user.id }
     });
 
     res.status(200).json({ success: true, message: 'Mata Kuliah berhasil diperbarui' });

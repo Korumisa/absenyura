@@ -109,7 +109,15 @@ export const updateSession = async (req: Request, res: Response): Promise<void> 
 export const deleteSession = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
+
+    // Hapus data terkait terlebih dahulu untuk menghindari error Foreign Key Constraint
+    // (Karena pada schema.prisma tidak menggunakan onDelete: Cascade pada tabel terkait)
+    await prisma.attendance.deleteMany({ where: { session_id: id } });
+    await prisma.excuseRequest.deleteMany({ where: { session_id: id } });
+
+    // Setelah tabel anak dihapus, barulah hapus sesi utamanya
     await prisma.session.delete({ where: { id } });
+
     res.status(200).json({ success: true, message: 'Session deleted successfully' });
   } catch (error) {
     console.error('Error deleting session:', error);
