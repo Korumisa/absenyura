@@ -56,7 +56,7 @@ export default function Layout() {
         }`}
       >
         <div className="flex items-center justify-between h-16 px-6 bg-white dark:bg-zinc-950 border-b border-slate-200 dark:border-zinc-800">
-          <span className="text-xl font-bold text-indigo-600 dark:text-indigo-400">Absensyura</span>
+          <span className="text-xl font-bold text-indigo-600 dark:text-indigo-400">Absenyura</span>
           <Button 
             variant="ghost" 
             size="icon" 

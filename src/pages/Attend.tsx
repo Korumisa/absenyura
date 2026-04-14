@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Html5QrcodeScanner, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import api from '@/services/api';
@@ -17,6 +17,27 @@ L.Icon.Default.mergeOptions({
   iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
+
+const getDistanceMeters = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) => {
+    const R = 6371000;
+    const toRad = (v: number) => (v * Math.PI) / 180;
+    const dLat = toRad(b.lat - a.lat);
+    const dLng = toRad(b.lng - a.lng);
+    const lat1 = toRad(a.lat);
+    const lat2 = toRad(b.lat);
+    const h =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    return 2 * R * Math.asin(Math.sqrt(h));
+  };
+
+const MapUpdater = ({ center }: { center: [number, number] }) => {
+    const map = useMap();
+    useEffect(() => {
+      map.setView(center);
+    }, [center, map]);
+    return null;
+  };
 
 export default function Attend() {
   const [searchParams] = useSearchParams();
@@ -205,7 +226,7 @@ export default function Attend() {
     };
   }, []);
 
-  const startCamera = async () => {
+  const startCamera = async (mode = facingMode) => {
     try {
       setCameraPermissionError(null);
       if (!navigator.mediaDevices?.getUserMedia) {
@@ -221,7 +242,7 @@ export default function Attend() {
       try {
         // Try exact facing mode first
         stream = await navigator.mediaDevices.getUserMedia({ 
-          video: { facingMode: { ideal: facingMode } } 
+          video: { facingMode: { ideal: mode } } 
         });
       } catch (e: any) {
         // Fallback to any available video camera
@@ -243,16 +264,14 @@ export default function Attend() {
       
       setIsCameraActive(true);
       
-      setTimeout(async () => {
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          try {
-            await videoRef.current.play();
-          } catch (playErr) {
-            console.error('Video play error:', playErr);
-          }
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        try {
+          await videoRef.current.play();
+        } catch (playErr) {
+          console.error('Video play error:', playErr);
         }
-      }, 100);
+      }
     } catch (err: any) {
       console.error('Start camera error:', err);
       setCameraPermissionError(`Gagal mengakses kamera: ${err.message || 'Unknown Error'}`);
@@ -260,12 +279,11 @@ export default function Attend() {
   };
 
   const switchCamera = () => {
-    setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
-    setTimeout(() => {
-      if (isCameraActive) {
-        startCamera();
-      }
-    }, 0);
+    const newMode = facingMode === 'user' ? 'environment' : 'user';
+    setFacingMode(newMode);
+    if (isCameraActive) {
+      startCamera(newMode);
+    }
   };
 
   const takePhoto = () => {
@@ -287,7 +305,19 @@ export default function Attend() {
       canvas.height = height;
       const ctx = canvas.getContext('2d');
       if (ctx) {
+        // Balik canvas secara horizontal jika menggunakan kamera depan agar hasil foto tidak mirror (sama dengan yang dilihat user)
+        if (facingMode === 'user') {
+          ctx.translate(canvas.width, 0);
+          ctx.scale(-1, 1);
+        }
+        
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        // Kembalikan transformasi sebelum menulis teks agar teks tidak terbalik
+        if (facingMode === 'user') {
+          ctx.translate(canvas.width, 0);
+          ctx.scale(-1, 1);
+        }
         
         // Add watermark
         ctx.font = '14px Arial';
@@ -335,7 +365,7 @@ export default function Attend() {
     setLoading(true);
     try {
       let sessionId = sessionParam;
-      let qrToken = scanResult;
+      const qrToken = scanResult;
 
       if (!sessionId && scanResult.includes(':')) {
         sessionId = scanResult.split(':')[0];
@@ -344,6 +374,9 @@ export default function Attend() {
       if (!sessionId) {
         throw new Error('Sesi tidak ditemukan dalam QR Code atau URL.');
       }
+      
+      // Bersihkan whitespace jika ada (misal dari hasil scan)
+      sessionId = sessionId.trim();
 
       const deviceFingerprint = localStorage.getItem('device_fingerprint') || 'unknown-device';
 
@@ -378,19 +411,6 @@ export default function Attend() {
     }
   };
 
-  const getDistanceMeters = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) => {
-    const R = 6371000;
-    const toRad = (v: number) => (v * Math.PI) / 180;
-    const dLat = toRad(b.lat - a.lat);
-    const dLng = toRad(b.lng - a.lng);
-    const lat1 = toRad(a.lat);
-    const lat2 = toRad(b.lat);
-    const h =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
-    return 2 * R * Math.asin(Math.sqrt(h));
-  };
-
   const isLocationValid = () => {
     if (!location || !sessionDetails?.location) return false;
     const dist = getDistanceMeters(location, { 
@@ -400,14 +420,6 @@ export default function Attend() {
     return dist <= sessionDetails.location.radius;
   };
 
-  const MapUpdater = ({ center }: { center: [number, number] }) => {
-    const map = useMap();
-    useEffect(() => {
-      map.setView(center);
-    }, [center, map]);
-    return null;
-  };
-
   return (
     <div className="p-6 max-w-3xl mx-auto min-h-[calc(100vh-4rem)] flex flex-col">
       <div className="mb-6">
@@ -415,7 +427,7 @@ export default function Attend() {
         <p className="text-slate-600 dark:text-zinc-400">Scan QR Code kelas dan pastikan Anda berada di lokasi.</p>
       </div>
 
-      <div className="bg-white dark:bg-zinc-800 rounded-2xl shadow-sm border border-slate-200 dark:border-zinc-700 overflow-hidden flex-1 flex flex-col">
+      <div className="bg-white dark:bg-zinc-800 rounded-2xl shadow-sm border border-slate-200 dark:border-zinc-700 overflow-hidden flex-1 flex flex-col mb-8">
         
         {/* Status Indicators */}
         <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-slate-200 dark:divide-zinc-700 border-b border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-900">
@@ -574,13 +586,19 @@ export default function Attend() {
                 <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4 text-center">Ambil Foto Bukti Kehadiran</h2>
                 
                 <div className="w-full relative rounded-2xl overflow-hidden shadow-inner border border-slate-200 dark:border-zinc-700 bg-black aspect-video flex items-center justify-center">
-                  {!isCameraActive ? (
-                    <div className="flex flex-col items-center justify-center text-slate-500 p-4 text-center">
+                  <video 
+                    ref={videoRef} 
+                    autoPlay 
+                    playsInline 
+                    muted 
+                    className={`w-full h-full object-cover absolute inset-0 z-10 ${isCameraActive ? 'block' : 'hidden'} ${facingMode === 'user' ? 'scale-x-[-1]' : ''}`}
+                  ></video>
+                  
+                  {!isCameraActive && (
+                    <div className="flex flex-col items-center justify-center text-slate-500 p-4 text-center relative z-20">
                       <Camera size={48} className="mb-2 opacity-50" />
                       <p>{cameraPermissionError ? cameraPermissionError : 'Kamera belum aktif'}</p>
                     </div>
-                  ) : (
-                    <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover absolute inset-0 z-10"></video>
                   )}
                   <canvas ref={canvasRef} className="hidden"></canvas>
                 </div>
@@ -629,7 +647,11 @@ export default function Attend() {
             ) : (
               <div className="w-full max-w-md flex flex-col items-center animate-in zoom-in duration-300">
                 <div className="w-full aspect-video rounded-2xl overflow-hidden shadow-md border border-slate-200 dark:border-zinc-700 mb-6">
-                  <img src={photoPreview!} alt="Bukti Kehadiran" className="w-full h-full object-cover" />
+                  <img 
+                    src={photoPreview!} 
+                    alt="Bukti Kehadiran" 
+                    className="w-full h-full object-cover" 
+                  />
                 </div>
                 
                 <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-2 text-center">Data Siap Dikirim</h2>

@@ -83,6 +83,13 @@ export default function Sessions() {
     }
   }, [currentUser]);
 
+  // Format UTC date string to local datetime-local string
+  const formatForDateTimeLocal = (dateString: string) => {
+    const d = new Date(dateString);
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().slice(0, 16);
+  };
+
   const handleOpenModal = (session: any = null) => {
     if (session) {
       setEditingSession(session);
@@ -92,10 +99,10 @@ export default function Sessions() {
         class_id: session.class_id || 'ALL_STUDENTS',
         location_id: session.location_id,
         qr_mode: session.qr_mode,
-        session_start: session.session_start.slice(0, 16),
-        session_end: session.session_end.slice(0, 16),
-        check_in_open_at: session.check_in_open_at.slice(0, 16),
-        check_in_close_at: session.check_in_close_at.slice(0, 16),
+        session_start: formatForDateTimeLocal(session.session_start),
+        session_end: formatForDateTimeLocal(session.session_end),
+        check_in_open_at: formatForDateTimeLocal(session.check_in_open_at),
+        check_in_close_at: formatForDateTimeLocal(session.check_in_close_at),
         late_threshold_minutes: session.late_threshold_minutes,
         require_checkout: session.require_checkout,
         status: session.status
