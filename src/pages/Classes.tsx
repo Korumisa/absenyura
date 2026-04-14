@@ -207,7 +207,7 @@ export default function Classes() {
                 <TableHead>Dosen Pengampu</TableHead>
                 <TableHead>Jumlah Mahasiswa</TableHead>
                 <TableHead>Jumlah Sesi</TableHead>
-                {currentUser?.role !== 'USER' && <TableHead className="text-right">Aksi</TableHead>}
+                <TableHead className="text-right">Aksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -218,14 +218,12 @@ export default function Classes() {
                     <TableCell><Skeleton className="h-5 w-40" /></TableCell>
                     <TableCell><Skeleton className="h-6 w-24 rounded-full" /></TableCell>
                     <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
-                    {currentUser?.role !== 'USER' && (
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Skeleton className="h-8 w-8 rounded-md" />
-                          <Skeleton className="h-8 w-8 rounded-md" />
-                        </div>
-                      </TableCell>
-                    )}
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Skeleton className="h-8 w-8 rounded-md" />
+                        <Skeleton className="h-8 w-8 rounded-md" />
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))
               ) : filteredClasses.length === 0 ? (
@@ -263,7 +261,7 @@ export default function Classes() {
                         {c._count.sessions} Sesi
                       </Badge>
                     </TableCell>
-                    {currentUser?.role !== 'USER' && (
+                    {currentUser?.role !== 'USER' ? (
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           <Button 
@@ -305,6 +303,22 @@ export default function Classes() {
                             </Button>
                           )}
                         </div>
+                      </TableCell>
+                    ) : (
+                      <TableCell className="text-right">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenEnrollModal(c.id);
+                          }}
+                          className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/30"
+                          title="Lihat Teman Sekelas"
+                        >
+                          <Users className="w-4 h-4 mr-2" />
+                          Lihat Teman
+                        </Button>
                       </TableCell>
                     )}
                   </TableRow>

@@ -63,9 +63,13 @@ export default function Attend() {
   const [isCameraActive, setIsCameraActive] = useState(false);
   const scannerRef = React.useRef<Html5QrcodeScanner | null>(null);
 
+  // Derived session ID from parameter or scan result
+  const derivedSessionId = sessionParam || (scanResult?.includes(':') ? scanResult.split(':')[0].trim() : scanResult?.trim());
+
   useEffect(() => {
-    if (!sessionParam) return;
-    api.get(`/sessions/${sessionParam}`)
+    if (!derivedSessionId || derivedSessionId === NO_QR_TOKEN) return;
+    
+    api.get(`/sessions/${derivedSessionId}`)
       .then(res => {
         const s = res.data.data;
         setSessionDetails(s);
@@ -74,8 +78,11 @@ export default function Attend() {
           setScanResult(NO_QR_TOKEN);
         }
       })
-      .catch(err => console.error('Gagal mengambil data sesi', err));
-  }, [sessionParam]);
+      .catch(err => {
+        console.error('Gagal mengambil data sesi', err);
+        toast.error('Gagal mengambil detail sesi absensi.');
+      });
+  }, [derivedSessionId]);
 
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
   const [cameraPermissionError, setCameraPermissionError] = useState<string | null>(null);
@@ -557,10 +564,18 @@ export default function Attend() {
                     background-color: #4338ca !important;
                   }
                   #qr-reader__dashboard_section_swaplink {
-                    color: #818cf8 !important;
+                    color: #ffffff !important;
+                    background-color: #334155 !important;
                     text-decoration: none !important;
+                    margin-top: 10px !important;
                     margin-bottom: 10px !important;
                     display: block !important;
+                    padding: 10px !important;
+                    border-radius: 8px !important;
+                    font-weight: 600 !important;
+                  }
+                  #qr-reader__dashboard_section_swaplink:hover {
+                    background-color: #475569 !important;
                   }
                   #qr-reader__dashboard_section_csr {
                     padding: 15px !important;
@@ -568,7 +583,7 @@ export default function Attend() {
                     border-top: 1px solid #334155 !important;
                     color: white !important;
                     position: relative;
-                    z-index: 30;
+                    z-index: 10;
                   }
                   #qr-reader__scan_region {
                     position: relative;

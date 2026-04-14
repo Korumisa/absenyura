@@ -42,3 +42,41 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 };
+
+// Manajemen Fakultas dan Prodi
+export const getDepartments = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const facultySetting = await prisma.setting.findUnique({ where: { key: 'FACULTIES_AND_DEPARTMENTS' } });
+    let data = [];
+    if (facultySetting) {
+      data = JSON.parse(facultySetting.value);
+    }
+    res.status(200).json({ success: true, data });
+  } catch (error) {
+    console.error('Error fetching departments:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+};
+
+export const updateDepartments = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const user = (req as any).user;
+    if (user.role !== 'SUPER_ADMIN') {
+      res.status(403).json({ success: false, error: 'Forbidden' });
+      return;
+    }
+
+    const { data } = req.body;
+    
+    await prisma.setting.upsert({
+      where: { key: 'FACULTIES_AND_DEPARTMENTS' },
+      update: { value: JSON.stringify(data), updated_by: user.id },
+      create: { key: 'FACULTIES_AND_DEPARTMENTS', value: JSON.stringify(data), updated_by: user.id }
+    });
+
+    res.status(200).json({ success: true, message: 'Fakultas dan Program Studi berhasil diperbarui' });
+  } catch (error) {
+    console.error('Error updating departments:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+};

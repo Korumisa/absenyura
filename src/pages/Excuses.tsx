@@ -240,8 +240,8 @@ export default function Excuses() {
             
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <div className="space-y-2">
-                <Label>Pilih Sesi / Kelas</Label>
-                <Select value={formData.session_id} onValueChange={val => setFormData({...formData, session_id: val})}>
+                <Label>Pilih Sesi / Kelas <span className="text-red-500">*</span></Label>
+                <Select required value={formData.session_id} onValueChange={val => setFormData({...formData, session_id: val})}>
                   <SelectTrigger>
                     <SelectValue placeholder="Pilih Sesi yang akan diizinkan" />
                   </SelectTrigger>
@@ -256,8 +256,8 @@ export default function Excuses() {
               </div>
               
               <div className="space-y-2">
-                <Label>Jenis Izin</Label>
-                <Select value={formData.reason} onValueChange={val => setFormData({...formData, reason: val})}>
+                <Label>Jenis Izin <span className="text-red-500">*</span></Label>
+                <Select required value={formData.reason} onValueChange={val => setFormData({...formData, reason: val})}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -269,17 +269,17 @@ export default function Excuses() {
               </div>
 
               <div className="space-y-2">
-                <Label>Keterangan (Opsional)</Label>
+                <Label>Keterangan <span className="text-red-500">*</span></Label>
                 <Input 
-                  type="text" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})}
-                  placeholder="Sakit demam berdarah..."
+                  type="text" required value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})}
+                  placeholder="Mohon sebutkan alasan izin/sakit..."
                 />
               </div>
 
               <div className="space-y-2">
-                <Label>Bukti Dokumen/Foto (Opsional)</Label>
+                <Label>Bukti Dokumen/Foto (Surat Dokter/Kegiatan) <span className="text-red-500">*</span></Label>
                 <Input 
-                  type="file" onChange={e => setFile(e.target.files ? e.target.files[0] : null)}
+                  type="file" required onChange={e => setFile(e.target.files ? e.target.files[0] : null)}
                   accept="image/*,.pdf"
                 />
               </div>
