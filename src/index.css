@@ -86,14 +86,22 @@
   z-index: 1;
   height: 100% !important;
 }
-#qr-reader__dashboard_section_csr {
+#qr-reader__dashboard {
   order: 2 !important;
+  display: flex !important;
+  flex-direction: column !important;
   padding: 15px !important;
   background-color: #1e293b !important;
   border-top: 1px solid #334155 !important;
   color: white !important;
   position: relative;
   z-index: 10;
+}
+#qr-reader__dashboard_section_csr {
+  padding: 0 !important;
+  background-color: transparent !important;
+  border: none !important;
+  color: inherit !important;
 }
 #qr-reader__dashboard_section_csr span button {
   background-color: #4f46e5 !important;
@@ -122,4 +130,13 @@
 }
 #qr-reader__dashboard_section_swaplink:hover {
   background-color: #475569 !important;
+}
+select#qr-reader__dashboard_section_csr_select {
+  width: 100%;
+  padding: 8px;
+  border-radius: 6px;
+  background: #334155;
+  color: white;
+  border: 1px solid #475569;
+  margin-bottom: 10px;
 }
