@@ -603,7 +603,7 @@ export default function Attend() {
                   <canvas ref={canvasRef} className="hidden"></canvas>
                 </div>
                 
-                <div className="mt-6 flex flex-col sm:flex-row gap-3 w-full justify-center relative z-50">
+                <div className="mt-6 flex flex-col sm:flex-row gap-3 w-full justify-center relative z-10 px-4">
                   {!isCameraActive ? (
                     <button 
                       type="button"
