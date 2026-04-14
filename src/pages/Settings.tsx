@@ -64,11 +64,6 @@ export default function Settings() {
             <Button variant="ghost" className="w-full justify-start text-indigo-700 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50">
               <User className="w-5 h-5 mr-3" /> Profil & Keamanan
             </Button>
-            {user?.role === 'SUPER_ADMIN' && (
-              <Button variant="ghost" className="w-full justify-start text-slate-600 dark:text-zinc-400 cursor-not-allowed opacity-50">
-                <Lock className="w-5 h-5 mr-3" /> Konfigurasi Sistem
-              </Button>
-            )}
           </div>
 
         {/* Content */}

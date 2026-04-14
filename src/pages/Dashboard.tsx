@@ -26,7 +26,7 @@ export default function Dashboard() {
   const user = useAuthStore((state) => state.user);
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [chartFilter, setChartFilter] = useState('30'); // Default 30 days
+  const [chartFilter, setChartFilter] = useState('ALL');
 
   useEffect(() => {
     let isMounted = true;
@@ -34,8 +34,7 @@ export default function Dashboard() {
     const fetchStats = async () => {
       setLoading(true);
       try {
-        const rangeParam = chartFilter === 'ALL' ? '30' : chartFilter; // Default fallback or use actual number
-        const res = await api.get(`/dashboard?range=${rangeParam}`);
+        const res = await api.get(`/dashboard?range=30`);
         if (isMounted) {
           setData(res.data.data);
         }
@@ -57,7 +56,7 @@ export default function Dashboard() {
     return () => {
       isMounted = false;
     };
-  }, [user?.id, chartFilter]);
+  }, [user?.id]);
 
   if (loading || !data) {
     return (

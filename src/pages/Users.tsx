@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '@/services/api';
 import { useAuthStore } from '@/stores/authStore';
-import { Plus, Search, Edit2, Trash2, X, Download, Upload } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, X, Download, Upload, Smartphone } from 'lucide-react';
 import * as ExcelJS from 'exceljs';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,7 @@ interface User {
   department: string | null;
   phone: string | null;
   is_active: boolean;
+  device_fingerprint?: string | null;
 }
 
 export default function Users() {
@@ -175,6 +176,17 @@ export default function Users() {
     }
   };
 
+  const handleResetDevice = async (id: string) => {
+    if (!window.confirm('Apakah Anda yakin ingin mereset perangkat mahasiswa ini? Mereka akan diminta login ulang di perangkat baru.')) return;
+    try {
+      await api.post(`/users/${id}/reset-device`);
+      toast.success('Perangkat berhasil di-reset');
+      fetchUsers();
+    } catch (error) {
+      toast.error('Gagal mereset perangkat');
+    }
+  };
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
@@ -220,19 +232,20 @@ export default function Users() {
                 <th className="px-6 py-4 font-medium">Peran</th>
                 <th className="px-6 py-4 font-medium">Departemen</th>
                 <th className="px-6 py-4 font-medium">Status</th>
+                <th className="px-6 py-4 font-medium">Perangkat</th>
                 <th className="px-6 py-4 font-medium text-right">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-zinc-700">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-slate-500 dark:text-zinc-400">
+                  <td colSpan={7} className="px-6 py-8 text-center text-slate-500 dark:text-zinc-400">
                     Memuat data...
                   </td>
                 </tr>
               ) : filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-slate-500 dark:text-zinc-400">
+                  <td colSpan={7} className="px-6 py-8 text-center text-slate-500 dark:text-zinc-400">
                     Tidak ada data pengguna ditemukan.
                   </td>
                 </tr>
@@ -261,8 +274,24 @@ export default function Users() {
                         {user.is_active ? 'Aktif' : 'Nonaktif'}
                       </span>
                     </td>
+                    <td className="px-6 py-4">
+                      {user.device_fingerprint ? (
+                        <span className="inline-flex px-2 py-1 text-xs rounded-full font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">Terikat</span>
+                      ) : (
+                        <span className="inline-flex px-2 py-1 text-xs rounded-full font-medium bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">Bebas</span>
+                      )}
+                    </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex justify-end gap-2">
+                        {user.device_fingerprint && (
+                          <button
+                            onClick={() => handleResetDevice(user.id)}
+                            className="p-2 text-slate-400 hover:text-orange-600 hover:bg-orange-50 dark:hover:text-orange-500 dark:hover:bg-orange-900/30 rounded-lg transition-colors"
+                            title="Reset Perangkat"
+                          >
+                            <Smartphone size={18} />
+                          </button>
+                        )}
                         <button 
                           onClick={() => handleOpenModal(user)}
                           className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors"

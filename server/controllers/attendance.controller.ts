@@ -159,7 +159,29 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
       try {
         const allowedIPs: string[] = JSON.parse(session.location.wifi_bssid as string);
         if (Array.isArray(allowedIPs) && allowedIPs.length > 0) {
-          if (!ip_address || !allowedIPs.includes(ip_address)) {
+          if (!ip_address) {
+            res.status(400).json({ success: false, error: 'Alamat IP perangkat Anda tidak terdeteksi' });
+            return;
+          }
+
+          // Function to check if IP is in range (e.g., 192.168.1.1-192.168.1.100)
+          const isIpAllowed = allowedIPs.some((allowed) => {
+            if (allowed.includes('-')) {
+              const [start, end] = allowed.split('-').map(s => s.trim());
+              const ipToLong = (ip: string) => {
+                return ip.split('.').reduce((acc, octet) => (acc << 8) + parseInt(octet, 10), 0) >>> 0;
+              };
+              try {
+                const userIpLong = ipToLong(ip_address);
+                return userIpLong >= ipToLong(start) && userIpLong <= ipToLong(end);
+              } catch (e) {
+                return false; // ignore invalid formats
+              }
+            }
+            return allowed === ip_address;
+          });
+
+          if (!isIpAllowed) {
             res.status(400).json({ success: false, error: 'Jaringan IP/WiFi Anda tidak diizinkan untuk absensi ini' });
             return;
           }
