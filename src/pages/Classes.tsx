@@ -45,6 +45,7 @@ export default function Classes() {
   const [selectedStudentId, setSelectedStudentId] = useState<string>('');
 
   const [lecturers, setLecturers] = useState<User[]>([]);
+  const [subjectsData, setSubjectsData] = useState<{code: string, name: string}[]>([]);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -75,10 +76,22 @@ export default function Classes() {
     }
   };
 
+  const fetchSubjects = async () => {
+    try {
+      const res = await api.get('/settings/subjects');
+      if (res.data.data) {
+        setSubjectsData(res.data.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch subjects');
+    }
+  };
+
   useEffect(() => {
     fetchClasses();
     fetchLecturers();
-  }, []);
+    fetchSubjects();
+  }, [currentUser]);
 
   const handleOpenModal = (cls: ClassItem | null = null) => {
     if (cls) {
@@ -344,11 +357,26 @@ export default function Classes() {
             
             <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
               <div className="space-y-2">
-                <Label>Nama Kelas / Mata Kuliah</Label>
-                <Input 
-                  type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})}
-                  placeholder="Contoh: Pemrograman Web (A)"
-                />
+                <Label>Nama Kelas <span className="text-red-500">*</span></Label>
+                {subjectsData.length > 0 ? (
+                  <Select required value={formData.name} onValueChange={val => setFormData({...formData, name: val})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih Mata Kuliah" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {subjectsData.map(s => (
+                        <SelectItem key={s.code} value={s.name}>
+                          {s.code} - {s.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input 
+                    type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})}
+                    placeholder="Contoh: Pemrograman Web (A)"
+                  />
+                )}
               </div>
               <div className="space-y-2">
                 <Label>Kode MK (Opsional)</Label>
@@ -364,9 +392,9 @@ export default function Classes() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Dosen Pengampu</Label>
+                <Label>Dosen Pengampu <span className="text-red-500">*</span></Label>
                 <Select 
-                  value={formData.lecturer_id} onValueChange={val => setFormData({...formData, lecturer_id: val})}
+                  required value={formData.lecturer_id} onValueChange={val => setFormData({...formData, lecturer_id: val})}
                   disabled={currentUser?.role !== 'SUPER_ADMIN'}
                 >
                   <SelectTrigger>

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
-import { LayoutDashboard, Users, MapPin, Calendar, Settings, LogOut, Menu, X, QrCode, BarChart3, ShieldAlert, History, BookOpen, FileText } from 'lucide-react';
+import { LayoutDashboard, Users, MapPin, Calendar, Settings, LogOut, Menu, X, QrCode, BarChart3, ShieldAlert, History, BookOpen, FileText, Building2 } from 'lucide-react';
 import api from '@/services/api';
 
 import { NotificationMenu } from './NotificationMenu';
@@ -34,6 +34,7 @@ export default function Layout() {
     { name: 'Manajemen Lokasi', path: '/locations', icon: MapPin, roles: ['SUPER_ADMIN', 'ADMIN'] },
     { name: 'Rekap Kehadiran', path: '/reports', icon: BarChart3, roles: ['SUPER_ADMIN', 'ADMIN'] },
     { name: 'Pengguna', path: '/users', icon: Users, roles: ['SUPER_ADMIN'] },
+    { name: 'Fakultas & Prodi', path: '/settings', icon: Building2, roles: ['SUPER_ADMIN'] },
     { name: 'Audit Log', path: '/audit', icon: ShieldAlert, roles: ['SUPER_ADMIN'] },
   ];
 
@@ -56,7 +57,7 @@ export default function Layout() {
         }`}
       >
         <div className="flex items-center justify-between h-16 px-6 bg-white dark:bg-zinc-950 border-b border-slate-200 dark:border-zinc-800">
-          <span className="text-xl font-bold text-indigo-600 dark:text-indigo-400">Absenyura</span>
+          <span className="text-xl font-bold text-indigo-600 dark:text-indigo-400">Absensyura</span>
           <Button 
             variant="ghost" 
             size="icon" 

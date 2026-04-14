@@ -80,3 +80,41 @@ export const updateDepartments = async (req: Request, res: Response): Promise<vo
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 };
+
+// Manajemen Mata Kuliah
+export const getSubjects = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const subjectSetting = await prisma.setting.findUnique({ where: { key: 'SUBJECTS' } });
+    let data = [];
+    if (subjectSetting) {
+      data = JSON.parse(subjectSetting.value);
+    }
+    res.status(200).json({ success: true, data });
+  } catch (error) {
+    console.error('Error fetching subjects:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+};
+
+export const updateSubjects = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const user = (req as any).user;
+    if (user.role !== 'SUPER_ADMIN') {
+      res.status(403).json({ success: false, error: 'Forbidden' });
+      return;
+    }
+
+    const { data } = req.body;
+    
+    await prisma.setting.upsert({
+      where: { key: 'SUBJECTS' },
+      update: { value: JSON.stringify(data), updated_by: user.id },
+      create: { key: 'SUBJECTS', value: JSON.stringify(data), updated_by: user.id }
+    });
+
+    res.status(200).json({ success: true, message: 'Mata Kuliah berhasil diperbarui' });
+  } catch (error) {
+    console.error('Error updating subjects:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+};
