@@ -123,7 +123,8 @@ export default function QRDisplay() {
         user_name: att.user.name,
         nim_nip: att.user.nim_nip,
         status: att.status,
-        check_in_time: att.check_in_time
+        check_in_time: att.check_in_time,
+        check_out_time: att.check_out_time
       })));
     } catch (error) {
       console.error('Failed to fetch attendees:', error);
@@ -293,11 +294,11 @@ export default function QRDisplay() {
                     </p>
                   </div>
                   <div className="text-right shrink-0">
-                    <span className={`text-xs font-bold px-2 py-1 rounded-full ${att.status === 'PRESENT' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'}`}>
-                      {att.status}
+                    <span className={`text-xs font-bold px-2 py-1 rounded-full ${att.check_out_time ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400' : att.status === 'PRESENT' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'}`}>
+                      {att.check_out_time ? 'CHECKOUT' : att.status}
                     </span>
                     <p className="text-[10px] text-slate-400 dark:text-zinc-500 mt-1">
-                      {format(new Date(att.check_in_time), 'HH:mm:ss')}
+                      {format(new Date(att.check_out_time ? att.check_out_time : att.check_in_time), 'HH:mm:ss')}
                     </p>
                   </div>
                 </div>

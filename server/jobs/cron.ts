@@ -39,6 +39,7 @@ export const runCronJob = async () => {
 
       // Notify creator that session is active
       for (const session of sessionsToActivate) {
+        // Create notification for creator
         await prisma.notification.create({
           data: {
             user_id: session.created_by_id,
@@ -47,6 +48,30 @@ export const runCronJob = async () => {
             type: 'SUCCESS'
           }
         });
+
+        // Notify students
+        let expectedUserIds: string[] = [];
+        if (session.class_id) {
+          const enrollments = await prisma.classEnrollment.findMany({
+            where: { class_id: session.class_id },
+            select: { student_id: true }
+          });
+          expectedUserIds = enrollments.map(e => e.student_id);
+        } else {
+          const allUsers = await prisma.user.findMany({ where: { role: 'USER', is_active: true } });
+          expectedUserIds = allUsers.map(u => u.id);
+        }
+
+        if (expectedUserIds.length > 0) {
+          await prisma.notification.createMany({
+            data: expectedUserIds.map(id => ({
+              user_id: id,
+              title: 'Sesi Absensi Dimulai',
+              message: `Sesi "${session.title}" telah dibuka. Segera lakukan absensi.`,
+              type: 'INFO'
+            }))
+          });
+        }
       }
       console.log(`[Cron] Marked ${sessionsToActivate.length} sessions as ACTIVE`);
     }
@@ -116,6 +141,18 @@ export const runCronJob = async () => {
             type: 'INFO'
           }
         });
+
+        // Notify absent students
+        if (absentUserIds.length > 0) {
+          await prisma.notification.createMany({
+            data: absentUserIds.map(id => ({
+              user_id: id,
+              title: 'Tidak Hadir (Alfa)',
+              message: `Anda ditandai Alfa (Tidak Hadir) pada sesi "${session.title}" karena batas waktu absensi telah berakhir.`,
+              type: 'WARNING'
+            }))
+          });
+        }
       }
       console.log(`[Cron] Marked ${sessionsToClose.length} sessions as CLOSED and processed absences.`);
     }
@@ -176,6 +213,48 @@ export const startCronJobs = () => {
       }
     } catch (error) {
       console.error('[Cron] Error cleaning up photos:', error);
+    }
+  });
+
+  // 3. Update Semester Job - Runs daily at 01:00 AM
+  cron.schedule('0 1 * * *', async () => {
+    try {
+      console.log('[Cron] Running daily semester update job...');
+      const users = await prisma.user.findMany({
+        where: { role: 'USER', is_active: true }
+      });
+
+      let updatedCount = 0;
+      let deactivatedCount = 0;
+      const now = new Date();
+
+      for (const user of users) {
+        if (!user.enrollment_date) continue;
+        
+        // Calculate months difference
+        const monthsDiff = (now.getFullYear() - user.enrollment_date.getFullYear()) * 12 + (now.getMonth() - user.enrollment_date.getMonth());
+        const newSemester = Math.floor(monthsDiff / 6) + 1;
+
+        if (newSemester !== user.semester) {
+          if (newSemester > 8) {
+            await prisma.user.update({
+              where: { id: user.id },
+              data: { semester: newSemester, is_active: false }
+            });
+            deactivatedCount++;
+          } else {
+            await prisma.user.update({
+              where: { id: user.id },
+              data: { semester: newSemester }
+            });
+            updatedCount++;
+          }
+        }
+      }
+
+      console.log(`[Cron] Semester update complete. Updated ${updatedCount} users, deactivated ${deactivatedCount} users.`);
+    } catch (error) {
+      console.error('[Cron] Error updating semesters:', error);
     }
   });
 };

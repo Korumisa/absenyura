@@ -110,9 +110,22 @@ export const createExcuse = async (req: Request, res: Response): Promise<void> =
         proof_url
       },
       include: {
-        session: { select: { title: true, session_start: true, class: { select: { name: true } } } }
+        session: { select: { title: true, session_start: true, class: { select: { name: true } }, created_by_id: true } }
       }
     });
+
+    // Notify creator
+    const userDetails = await prisma.user.findUnique({ where: { id: user_id }, select: { name: true } });
+    if (newExcuse.session.created_by_id) {
+      await prisma.notification.create({
+        data: {
+          user_id: newExcuse.session.created_by_id,
+          title: 'Pengajuan Izin Baru',
+          message: `Mahasiswa ${userDetails?.name || ''} mengajukan izin untuk sesi "${newExcuse.session.title}".`,
+          type: 'INFO'
+        }
+      });
+    }
 
     res.status(201).json({ success: true, data: newExcuse });
   } catch (error) {
@@ -174,6 +187,17 @@ export const reviewExcuse = async (req: Request, res: Response): Promise<void> =
         });
       }
     }
+
+    // Send notification to student
+    const sessionDetails = await prisma.session.findUnique({ where: { id: excuse.session_id }, select: { title: true } });
+    await prisma.notification.create({
+      data: {
+        user_id: excuse.user_id,
+        title: `Pengajuan Izin ${status === 'APPROVED' ? 'Disetujui' : 'Ditolak'}`,
+        message: `Pengajuan izin Anda untuk sesi "${sessionDetails?.title || 'Tidak diketahui'}" telah ${status === 'APPROVED' ? 'disetujui' : 'ditolak'}.`,
+        type: status === 'APPROVED' ? 'SUCCESS' : 'WARNING'
+      }
+    });
 
     res.status(200).json({ success: true, data: updatedExcuse });
   } catch (error) {

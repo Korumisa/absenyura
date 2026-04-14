@@ -30,6 +30,7 @@ interface Session {
   session_end: string;
   check_in_open_at: string;
   check_in_close_at: string;
+  require_checkout: boolean;
   status: 'UPCOMING' | 'ACTIVE' | 'CLOSED';
 }
 
@@ -382,12 +383,27 @@ export default function Sessions() {
                   {currentUser?.role === 'USER' && (
                     <TableCell className="text-right">
                       {session.status === 'ACTIVE' && (
-                        <Button 
-                          onClick={() => window.location.href = `/attend?session=${session.id}`}
-                          className="shadow-sm"
-                        >
-                          Hadir
-                        </Button>
+                        <div className="flex gap-2 justify-end">
+                          {(session as any).attendances && (session as any).attendances.length > 0 ? (
+                            (session as any).attendances[0].check_out_time || (!session.require_checkout) ? (
+                              <Badge variant="success" className="px-3 py-1 bg-green-100 text-green-700">Sudah Absen</Badge>
+                            ) : (
+                              <Button 
+                                onClick={() => window.location.href = `/attend?session=${session.id}&checkout=true`}
+                                className="shadow-lg shadow-amber-600/20 bg-amber-500 hover:bg-amber-600 text-white text-xs px-3 py-1.5 h-auto"
+                              >
+                                Checkout
+                              </Button>
+                            )
+                          ) : (
+                            <Button 
+                              onClick={() => window.location.href = `/attend?session=${session.id}`}
+                              className="shadow-sm"
+                            >
+                              Hadir
+                            </Button>
+                          )}
+                        </div>
                       )}
                     </TableCell>
                   )}

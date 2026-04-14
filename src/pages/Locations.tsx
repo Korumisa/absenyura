@@ -7,6 +7,7 @@ import L from 'leaflet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 // Fix leaflet icon issue in react-leaflet
@@ -31,6 +32,7 @@ export default function Locations() {
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [wifiFilter, setWifiFilter] = useState('ALL');
   
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -216,10 +218,16 @@ export default function Locations() {
     }
   };
 
-  const filteredLocations = locations.filter(l => 
-    l.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    (l.address && l.address.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  const filteredLocations = locations.filter(l => {
+    const matchSearch = l.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    (l.address && l.address.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    if (!matchSearch) return false;
+    
+    if (wifiFilter === 'RESTRICTED') return l.wifi_bssid && l.wifi_bssid.length > 0;
+    if (wifiFilter === 'UNRESTRICTED') return !l.wifi_bssid || l.wifi_bssid.length === 0;
+    return true;
+  });
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -232,8 +240,8 @@ export default function Locations() {
       </div>
 
       <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-800 overflow-hidden">
-        <div className="p-4 border-b border-slate-200 dark:border-zinc-800">
-          <div className="relative max-w-md">
+        <div className="p-4 border-b border-slate-200 dark:border-zinc-800 flex flex-col sm:flex-row gap-4">
+          <div className="relative max-w-md flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
             <Input 
               type="text" 
@@ -243,6 +251,16 @@ export default function Locations() {
               className="pl-9"
             />
           </div>
+          <Select value={wifiFilter} onValueChange={setWifiFilter}>
+            <SelectTrigger className="w-full sm:w-[200px]">
+              <SelectValue placeholder="Semua Batasan WiFi" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">Semua Batasan WiFi</SelectItem>
+              <SelectItem value="RESTRICTED">Ada Batasan WiFi</SelectItem>
+              <SelectItem value="UNRESTRICTED">Tanpa Batasan WiFi</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="overflow-x-auto">

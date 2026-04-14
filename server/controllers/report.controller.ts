@@ -8,6 +8,9 @@ export const getReports = async (req: Request, res: Response): Promise<void> => 
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 50;
     const skip = (page - 1) * limit;
+    
+    const startDate = req.query.startDate as string;
+    const endDate = req.query.endDate as string;
 
     let whereClause: any = {};
     if (user.role === 'USER') {
@@ -15,6 +18,17 @@ export const getReports = async (req: Request, res: Response): Promise<void> => 
     } else if (user.role === 'ADMIN') {
       whereClause = { session: { created_by_id: user.id } };
     }
+
+    if (startDate && endDate) {
+      whereClause.session = {
+        ...whereClause.session,
+        session_start: {
+          gte: new Date(startDate),
+          lte: new Date(new Date(endDate).setHours(23, 59, 59, 999))
+        }
+      };
+    }
+
 
     const [attendances, total] = await Promise.all([
       prisma.attendance.findMany({

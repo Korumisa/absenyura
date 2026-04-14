@@ -19,6 +19,8 @@ model User {
   department         String?
   phone              String?
   is_active          Boolean        @default(true)
+  semester           Int            @default(1)
+  enrollment_date    DateTime       @default(now())
   device_fingerprint String?
   created_at         DateTime       @default(now())
   updated_at         DateTime       @updatedAt

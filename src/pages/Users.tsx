@@ -20,6 +20,8 @@ interface User {
   department: string | null;
   phone: string | null;
   is_active: boolean;
+  semester?: number;
+  enrollment_date?: string;
   device_fingerprint?: string | null;
 }
 
@@ -277,7 +279,7 @@ export default function Users() {
                 <th className="px-6 py-4 font-medium">Nama & Email</th>
                 <th className="px-6 py-4 font-medium">NIM/NIP</th>
                 <th className="px-6 py-4 font-medium">Peran</th>
-                <th className="px-6 py-4 font-medium">Departemen</th>
+                <th className="px-6 py-4 font-medium">Departemen / Smt</th>
                 <th className="px-6 py-4 font-medium">Status</th>
                 <th className="px-6 py-4 font-medium">Perangkat</th>
                 <th className="px-6 py-4 font-medium text-right">Aksi</th>
@@ -313,7 +315,12 @@ export default function Users() {
                         {user.role}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-slate-600 dark:text-zinc-300">{user.department || '-'}</td>
+                    <td className="px-6 py-4">
+                      <div className="text-slate-600 dark:text-zinc-300">{user.department || '-'}</div>
+                      {user.role === 'USER' && (
+                        <div className="text-xs text-slate-500 mt-1">Semester {user.semester || 1}</div>
+                      )}
+                    </td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex px-2 py-1 text-xs rounded-full font-medium
                         ${user.is_active ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}

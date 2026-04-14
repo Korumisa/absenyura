@@ -31,6 +31,8 @@ export default function Excuses() {
   const [excuses, setExcuses] = useState<Excuse[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [reasonFilter, setReasonFilter] = useState('ALL');
   
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -111,10 +113,16 @@ export default function Excuses() {
     }
   };
 
-  const filteredExcuses = excuses.filter(ex => 
-    (ex.user?.name && ex.user.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (ex.session?.title && ex.session.title.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  const filteredExcuses = excuses.filter(ex => {
+    const matchSearch = (ex.user?.name && ex.user.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (ex.session?.title && ex.session.title.toLowerCase().includes(searchTerm.toLowerCase()));
+    if (!matchSearch) return false;
+
+    if (statusFilter !== 'ALL' && ex.status !== statusFilter) return false;
+    if (reasonFilter !== 'ALL' && ex.reason !== reasonFilter) return false;
+
+    return true;
+  });
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -129,8 +137,8 @@ export default function Excuses() {
       </div>
 
       <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-800 overflow-hidden">
-        <div className="p-4 border-b border-slate-200 dark:border-zinc-800">
-          <div className="relative max-w-md">
+        <div className="p-4 border-b border-slate-200 dark:border-zinc-800 flex flex-col sm:flex-row gap-4">
+          <div className="relative max-w-md flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
             <Input 
               type="text" 
@@ -140,6 +148,27 @@ export default function Excuses() {
               className="pl-9"
             />
           </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full sm:w-[150px]">
+              <SelectValue placeholder="Semua Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">Semua Status</SelectItem>
+              <SelectItem value="PENDING">Menunggu</SelectItem>
+              <SelectItem value="APPROVED">Disetujui</SelectItem>
+              <SelectItem value="REJECTED">Ditolak</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={reasonFilter} onValueChange={setReasonFilter}>
+            <SelectTrigger className="w-full sm:w-[150px]">
+              <SelectValue placeholder="Semua Alasan" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">Semua Alasan</SelectItem>
+              <SelectItem value="SICK">Sakit</SelectItem>
+              <SelectItem value="EXCUSED">Izin</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="overflow-x-auto">

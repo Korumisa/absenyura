@@ -46,6 +46,8 @@ export default function Reports() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   
   const [page, setPage] = useState(1);
   const [meta, setMeta] = useState<PaginationMeta | null>(null);
@@ -60,7 +62,11 @@ export default function Reports() {
     const fetchReports = async () => {
       setLoading(true);
       try {
-        const res = await api.get(`/reports?page=${page}&limit=50`);
+        let url = `/reports?page=${page}&limit=50`;
+        if (startDate && endDate) {
+          url += `&startDate=${startDate}&endDate=${endDate}`;
+        }
+        const res = await api.get(url);
         setReports(res.data.data);
         setMeta(res.data.meta);
       } catch (error) {
@@ -70,7 +76,7 @@ export default function Reports() {
       }
     };
     fetchReports();
-  }, [page]);
+  }, [page, startDate, endDate]);
 
   const filteredReports = useMemo(() => {
     return reports.filter(r => {
@@ -239,6 +245,21 @@ export default function Reports() {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-9"
+            />
+          </div>
+          <div className="flex gap-2 w-full sm:w-auto">
+            <Input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="w-full sm:w-[150px]"
+            />
+            <span className="self-center text-slate-500">-</span>
+            <Input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="w-full sm:w-[150px]"
             />
           </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>

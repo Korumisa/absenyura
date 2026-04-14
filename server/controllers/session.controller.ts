@@ -17,7 +17,7 @@ export const getSessions = async (req: Request, res: Response): Promise<void> =>
             { class: { enrollments: { some: { student_id: user.id } } } }
           ]
         },
-        include: { location: true, creator: { select: { name: true } }, class: { select: { name: true } } },
+        include: { location: true, creator: { select: { name: true } }, class: { select: { name: true } }, attendances: { where: { user_id: user.id } } },
         orderBy: { session_start: 'asc' },
       });
     } else {
@@ -69,6 +69,30 @@ export const createSession = async (req: Request, res: Response): Promise<void> 
         require_checkout: Boolean(require_checkout),
       },
     });
+
+    // Notify students about the new session
+    let expectedUserIds: string[] = [];
+    if (class_id) {
+      const enrollments = await prisma.classEnrollment.findMany({
+        where: { class_id },
+        select: { student_id: true }
+      });
+      expectedUserIds = enrollments.map(e => e.student_id);
+    } else {
+      const allUsers = await prisma.user.findMany({ where: { role: 'USER', is_active: true } });
+      expectedUserIds = allUsers.map(u => u.id);
+    }
+
+    if (expectedUserIds.length > 0) {
+      await prisma.notification.createMany({
+        data: expectedUserIds.map(id => ({
+          user_id: id,
+          title: 'Jadwal Sesi Baru',
+          message: `Sesi baru "${title}" telah dijadwalkan pada ${new Date(session_start).toLocaleString('id-ID')}.`,
+          type: 'INFO'
+        }))
+      });
+    }
 
     res.status(201).json({ success: true, data: session });
   } catch (error) {

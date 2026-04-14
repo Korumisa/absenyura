@@ -492,6 +492,36 @@ export default function Attend() {
         </div>
 
         <div className="flex-1 flex flex-col p-6 gap-6">
+          
+          {/* Map Preview */}
+          {location && sessionDetails?.location && (
+            <div className="w-full h-48 rounded-xl overflow-hidden border border-slate-200 dark:border-zinc-700 shadow-inner z-0">
+              <MapContainer 
+                center={[location.lat, location.lng]} 
+                zoom={16} 
+                style={{ height: '100%', width: '100%' }}
+                scrollWheelZoom={false}
+              >
+                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                <MapUpdater center={[location.lat, location.lng]} />
+                
+                <Marker position={[location.lat, location.lng]}>
+                  <Popup>Lokasi Anda Saat Ini</Popup>
+                </Marker>
+
+                {sessionDetails?.location && (
+                  <Circle 
+                    center={[sessionDetails.location.latitude, sessionDetails.location.longitude]} 
+                    radius={sessionDetails.location.radius} 
+                    pathOptions={{ color: isLocationValid() ? 'green' : 'red', fillColor: isLocationValid() ? 'green' : 'red', fillOpacity: 0.2 }}
+                  >
+                    <Popup>Area Absensi ({sessionDetails.location.radius}m)</Popup>
+                  </Circle>
+                )}
+              </MapContainer>
+            </div>
+          )}
+
           <div className="flex-1 flex flex-col items-center justify-center">
             {scanning ? (
               <div className="w-full max-w-md animate-in fade-in duration-500">

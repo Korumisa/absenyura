@@ -32,7 +32,11 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
         },
         orderBy: { session_start: 'asc' },
         take: 5,
-        include: { location: { select: { name: true } }, class: { select: { name: true } } }
+        include: { 
+          location: { select: { name: true } }, 
+          class: { select: { name: true } },
+          attendances: { where: { user_id: user.id } }
+        }
       });
 
       const range = parseInt((req.query.range as string) || '7', 10);

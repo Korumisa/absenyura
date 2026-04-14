@@ -7,6 +7,7 @@ import Dashboard from "@/pages/Dashboard";
 import Layout from "@/components/Layout";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useAuthStore } from "@/stores/authStore";
+import { useAutoLogout } from "@/hooks/useAutoLogout";
 
 import Users from "@/pages/Users";
 import Classes from "@/pages/Classes";
@@ -38,6 +39,8 @@ import CampusPartners from "@/pages/public/CampusPartners";
 export default function App() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const user = useAuthStore((state) => state.user);
+
+  useAutoLogout();
 
   const getDefaultRoute = () => {
     if (user?.role === 'SUPER_ADMIN') return '/dashboard';
