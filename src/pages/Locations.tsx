@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ConfirmModal } from '@/components/ConfirmModal';
 import type { Location } from '@/types/location';
 
 // Fix leaflet icon issue in react-leaflet
@@ -28,6 +29,10 @@ export default function Locations() {
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingLocation, setEditingLocation] = useState<Location | null>(null);
+
+  // Delete Confirmation Modal state
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [locationToDelete, setLocationToDelete] = useState<string | null>(null);
   
   // Custom Map hook state to force re-render map center
   const [mapCenter, setMapCenter] = useState<[number, number]>([-8.11475, 115.08865]);
@@ -89,15 +94,21 @@ export default function Locations() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (window.confirm('Apakah Anda yakin ingin menghapus lokasi ini?')) {
-      try {
-        await api.delete(`/locations/${id}`);
-        toast.success('Lokasi berhasil dihapus');
-        mutate();
-      } catch (error) {
-        toast.error('Gagal menghapus lokasi');
-      }
+  const openDeleteConfirm = (id: string) => {
+    setLocationToDelete(id);
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!locationToDelete) return;
+    try {
+      await api.delete(`/locations/${locationToDelete}`);
+      toast.success('Lokasi berhasil dihapus');
+      setIsDeleteModalOpen(false);
+      setLocationToDelete(null);
+      mutate();
+    } catch (error) {
+      toast.error('Gagal menghapus lokasi');
     }
   };
 
@@ -309,7 +320,7 @@ export default function Locations() {
                         <Button 
                           variant="ghost" 
                           size="icon"
-                          onClick={() => handleDelete(loc.id)}
+                          onClick={() => openDeleteConfirm(loc.id)}
                           className="text-slate-500 hover:text-red-600 hover:bg-red-50 dark:text-slate-400 dark:hover:bg-red-900/30"
                           title="Hapus"
                         >
@@ -455,6 +466,16 @@ export default function Locations() {
           </div>
         </div>
       )}
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal 
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={confirmDelete}
+        title="Konfirmasi Hapus Lokasi"
+        description="Apakah Anda yakin ingin menghapus lokasi ini? Data yang dihapus tidak dapat dikembalikan."
+        confirmText="Ya, Hapus Lokasi"
+        variant="danger"
+      />
     </div>
   );
 }

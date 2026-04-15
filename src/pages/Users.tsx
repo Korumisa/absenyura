@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ConfirmModal } from '@/components/ConfirmModal';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { User } from '@/types/user';
 
@@ -37,6 +38,10 @@ export default function Users() {
   const [userToReset, setUserToReset] = useState<string | null>(null);
 
   const fetcher = (url: string) => api.get(url).then(res => res.data.data);
+  // Delete Modal state
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<string | null>(null);
+
   const { data: users = [], error, isLoading: loading, mutate } = useSWR<User[]>('/users', fetcher, { revalidateOnFocus: false });
 
   const fetchFaculties = async () => {
@@ -94,15 +99,21 @@ export default function Users() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (window.confirm('Apakah Anda yakin ingin menghapus pengguna ini?')) {
-      try {
-        await api.delete(`/users/${id}`);
-        toast.success('Pengguna berhasil dihapus');
-        mutate();
-      } catch (error) {
-        toast.error('Gagal menghapus pengguna');
-      }
+  const openDeleteConfirm = (id: string) => {
+    setUserToDelete(id);
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDeleteUser = async () => {
+    if (!userToDelete) return;
+    try {
+      await api.delete(`/users/${userToDelete}`);
+      toast.success('Pengguna berhasil dihapus');
+      setIsDeleteModalOpen(false);
+      setUserToDelete(null);
+      mutate();
+    } catch (error) {
+      toast.error('Gagal menghapus pengguna');
     }
   };
 
@@ -355,7 +366,7 @@ export default function Users() {
                           <Button 
                             variant="ghost"
                             size="icon"
-                            onClick={() => handleDelete(user.id)}
+                            onClick={() => openDeleteConfirm(user.id)}
                             className="text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
                             title="Hapus"
                           >
@@ -565,22 +576,26 @@ export default function Users() {
       )}
 
       {/* Reset Device Confirmation Modal */}
-      {isResetModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm px-4">
-          <div className="bg-white dark:bg-zinc-950 rounded-xl shadow-xl w-full max-w-md overflow-hidden flex flex-col border border-slate-200 dark:border-zinc-800">
-            <div className="p-6">
-              <h2 className="text-lg font-bold text-slate-800 dark:text-white mb-2">Konfirmasi Reset Perangkat</h2>
-              <p className="text-slate-600 dark:text-zinc-400 text-sm">
-                Apakah Anda yakin ingin mereset perangkat mahasiswa ini? Mereka akan diminta login ulang dan mengikat perangkat baru pada sesi absensi berikutnya.
-              </p>
-            </div>
-            <div className="px-6 py-4 bg-slate-50 dark:bg-zinc-900/50 border-t border-slate-200 dark:border-zinc-800 flex justify-end gap-3">
-              <Button variant="outline" onClick={() => setIsResetModalOpen(false)}>Batal</Button>
-              <Button onClick={confirmResetDevice} className="bg-orange-600 hover:bg-orange-700 text-white">Ya, Reset Perangkat</Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmModal 
+        isOpen={isResetModalOpen}
+        onClose={() => setIsResetModalOpen(false)}
+        onConfirm={confirmResetDevice}
+        title="Konfirmasi Reset Perangkat"
+        description="Apakah Anda yakin ingin mereset perangkat mahasiswa ini? Mereka akan diminta login ulang dan mengikat perangkat baru pada sesi absensi berikutnya."
+        confirmText="Ya, Reset Perangkat"
+        variant="warning"
+      />
+
+      {/* Delete User Confirmation Modal */}
+      <ConfirmModal 
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={confirmDeleteUser}
+        title="Konfirmasi Hapus Pengguna"
+        description="Apakah Anda yakin ingin menghapus pengguna ini? Seluruh data yang terkait dengan pengguna ini akan dihapus secara permanen."
+        confirmText="Ya, Hapus Pengguna"
+        variant="danger"
+      />
     </div>
   );
 }

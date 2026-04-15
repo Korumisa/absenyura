@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ConfirmModal } from '@/components/ConfirmModal';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { ClassItem } from '@/types/class';
@@ -36,6 +37,10 @@ export default function Classes() {
   const [formData, setFormData] = useState({
     name: '', course_code: '', description: '', lecturer_id: ''
   });
+
+  // Delete Confirmation Modal state
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [classToDelete, setClassToDelete] = useState<string | null>(null);
 
   const fetcher = (url: string) => api.get(url).then(res => res.data.data);
   const { data: classes = [], error, isLoading: loading, mutate } = useSWR<ClassItem[]>('/classes', fetcher, { revalidateOnFocus: false });
@@ -107,15 +112,21 @@ export default function Classes() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (window.confirm('Apakah Anda yakin ingin menghapus kelas ini? Semua data enrollment akan hilang.')) {
-      try {
-        await api.delete(`/classes/${id}`);
-        toast.success('Kelas berhasil dihapus');
-        mutate();
-      } catch (error) {
-        toast.error('Gagal menghapus kelas');
-      }
+  const openDeleteConfirm = (id: string) => {
+    setClassToDelete(id);
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDeleteClass = async () => {
+    if (!classToDelete) return;
+    try {
+      await api.delete(`/classes/${classToDelete}`);
+      toast.success('Kelas berhasil dihapus');
+      setIsDeleteModalOpen(false);
+      setClassToDelete(null);
+      mutate();
+    } catch (error) {
+      toast.error('Gagal menghapus kelas');
     }
   };
 
@@ -282,7 +293,7 @@ export default function Classes() {
                               size="icon"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleDelete(c.id);
+                                openDeleteConfirm(c.id);
                               }}
                               className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/30"
                               title="Hapus"
@@ -485,6 +496,17 @@ export default function Classes() {
           </div>
         </div>
       )}
+
+      {/* Delete Class Confirmation Modal */}
+      <ConfirmModal 
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={confirmDeleteClass}
+        title="Konfirmasi Hapus Kelas"
+        description="Apakah Anda yakin ingin menghapus kelas ini? Semua data pendaftaran (enrollment) mahasiswa akan ikut terhapus secara permanen."
+        confirmText="Ya, Hapus Kelas"
+        variant="danger"
+      />
     </div>
   );
 }

@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { ConfirmModal } from '@/components/ConfirmModal';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -38,6 +39,10 @@ export default function Sessions() {
     late_threshold_minutes: 15, require_checkout: false, status: 'UPCOMING'
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Delete Session Confirmation Modal
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
 
   const fetcher = (url: string) => api.get(url).then(res => res.data.data);
   const { data: sessions = [], error, isLoading: loading, mutate } = useSWR<Session[]>('/sessions', fetcher, { revalidateOnFocus: false });
@@ -137,15 +142,21 @@ export default function Sessions() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (window.confirm('Apakah Anda yakin ingin menghapus sesi ini?')) {
-      try {
-        await api.delete(`/sessions/${id}`);
-        toast.success('Sesi berhasil dihapus');
-        mutate();
-      } catch (error) {
-        toast.error('Gagal menghapus sesi');
-      }
+  const openDeleteConfirm = (id: string) => {
+    setSessionToDelete(id);
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDeleteSession = async () => {
+    if (!sessionToDelete) return;
+    try {
+      await api.delete(`/sessions/${sessionToDelete}`);
+      toast.success('Sesi berhasil dihapus');
+      setIsDeleteModalOpen(false);
+      setSessionToDelete(null);
+      mutate();
+    } catch (error) {
+      toast.error('Gagal menghapus sesi');
     }
   };
 
@@ -349,7 +360,7 @@ export default function Sessions() {
                         <Button 
                           variant="ghost" 
                           size="icon"
-                          onClick={() => handleDelete(session.id)}
+                          onClick={() => openDeleteConfirm(session.id)}
                           className="text-slate-500 hover:text-red-600 hover:bg-red-50 dark:text-slate-400 dark:hover:bg-red-900/30"
                           title="Hapus"
                         >
@@ -544,6 +555,17 @@ export default function Sessions() {
           </div>
         </div>
       )}
+
+      {/* Delete Session Confirmation Modal */}
+      <ConfirmModal 
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={confirmDeleteSession}
+        title="Konfirmasi Hapus Sesi"
+        description="Apakah Anda yakin ingin menghapus sesi absensi ini? Seluruh data yang terkait dengan sesi ini akan ikut terhapus."
+        confirmText="Ya, Hapus Sesi"
+        variant="danger"
+      />
     </div>
   );
 }

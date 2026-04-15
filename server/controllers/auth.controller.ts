@@ -201,3 +201,35 @@ export const seedAdmin = async (req: Request, res: Response): Promise<void> => {
     });
   }
 };
+
+export const flushDb = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const seedSecret = req.headers['x-seed-secret'];
+    if (!seedSecret || seedSecret !== process.env.SEED_SECRET) {
+      res.status(403).json({ success: false, error: 'Unauthorized to flush database' });
+      return;
+    }
+
+    // We must delete in correct order due to foreign key constraints
+    await prisma.$transaction([
+      prisma.notification.deleteMany(),
+      prisma.auditLog.deleteMany(),
+      prisma.excuseRequest.deleteMany(),
+      prisma.attendance.deleteMany(),
+      prisma.classEnrollment.deleteMany(),
+      prisma.session.deleteMany(),
+      prisma.class.deleteMany(),
+      prisma.location.deleteMany(),
+      // We intentionally do NOT delete users and global settings
+    ]);
+
+    res.status(200).json({ success: true, message: 'Database flushed successfully. All transaction data removed except User accounts.' });
+  } catch (error: any) {
+    console.error('Flush DB error:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Internal server error during DB flush',
+      details: error?.message || String(error)
+    });
+  }
+};

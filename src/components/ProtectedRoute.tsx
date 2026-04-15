@@ -2,11 +2,7 @@ import React, { useEffect } from 'react';
 import axios from 'axios';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
-
-interface ProtectedRouteProps {
-  allowedRoles?: string[];
-  children?: React.ReactNode;
-}
+import { ProtectedRouteProps } from '../types/protectedroute';
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles, children }) => {
   const { isAuthenticated, user, setAuth, logout } = useAuthStore();

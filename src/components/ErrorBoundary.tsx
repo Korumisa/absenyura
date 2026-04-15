@@ -1,15 +1,8 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import React, { Component, ErrorInfo } from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { Button } from './ui/button';
-
-interface Props {
-  children: ReactNode;
-}
-
-interface State {
-  hasError: boolean;
-  error: Error | null;
-}
+import { Props } from '@/types/errorboundry'
+import { State } from '@/types/errorboundry'
 
 export class ErrorBoundary extends Component<Props, State> {
   public state: State = {

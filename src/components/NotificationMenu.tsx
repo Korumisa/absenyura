@@ -4,15 +4,7 @@ import { Bell, Check, Trash2, X } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { useAuthStore } from '@/stores/authStore';
-
-interface Notification {
-  id: string;
-  title: string;
-  message: string;
-  type: 'INFO' | 'WARNING' | 'SUCCESS';
-  is_read: boolean;
-  created_at: string;
-}
+import { Notification } from '@/types/notificationmenu';
 
 export function NotificationMenu() {
   const { isAuthenticated } = useAuthStore();
