@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '@/services/api';
+import useSWR from 'swr';
 import { useAuthStore } from '@/stores/authStore';
 import { Plus, Search, Edit2, Trash2, X, QrCode, MapPin, Clock, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
@@ -10,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -36,10 +38,8 @@ interface Session {
 
 export default function Sessions() {
   const { user: currentUser } = useAuthStore();
-  const [sessions, setSessions] = useState<Session[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [classes, setClasses] = useState<{ id: string, name: string }[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDate, setFilterDate] = useState('');
   const [filterLocation, setFilterLocation] = useState('ALL');
@@ -57,17 +57,8 @@ export default function Sessions() {
     late_threshold_minutes: 15, require_checkout: false, status: 'UPCOMING'
   });
 
-  const fetchSessions = async () => {
-    setLoading(true);
-    try {
-      const res = await api.get('/sessions');
-      setSessions(res.data.data);
-    } catch (error) {
-      toast.error('Gagal mengambil data sesi');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const fetcher = (url: string) => api.get(url).then(res => res.data.data);
+  const { data: sessions = [], error, isLoading: loading, mutate } = useSWR<Session[]>('/sessions', fetcher, { revalidateOnFocus: false });
 
   const fetchLocations = async () => {
     try {
@@ -83,7 +74,6 @@ export default function Sessions() {
   };
 
   useEffect(() => {
-    fetchSessions();
     if (currentUser?.role !== 'USER') {
       fetchLocations();
     }
@@ -154,7 +144,7 @@ export default function Sessions() {
         toast.success('Sesi berhasil dibuat');
       }
       setIsModalOpen(false);
-      fetchSessions();
+      mutate();
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Terjadi kesalahan');
     }
@@ -165,7 +155,7 @@ export default function Sessions() {
       try {
         await api.delete(`/sessions/${id}`);
         toast.success('Sesi berhasil dihapus');
-        fetchSessions();
+        mutate();
       } catch (error) {
         toast.error('Gagal menghapus sesi');
       }
@@ -439,9 +429,8 @@ export default function Sessions() {
                   </div>
                   <div className="space-y-2">
                     <Label>Deskripsi</Label>
-                    <textarea 
+                    <Textarea 
                       rows={2} value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})}
-                      className="flex w-full rounded-md border border-slate-300 bg-transparent px-3 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-50 dark:focus:ring-indigo-600 dark:focus:ring-offset-zinc-900"
                     />
                   </div>
                   <div className="space-y-2">

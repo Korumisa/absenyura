@@ -3,27 +3,18 @@ import { useAuthStore } from '../stores/authStore';
 
 const api = axios.create({
   baseURL: '/api',
-  withCredentials: true, // Send cookies for refresh token
-});
-
-// Add access token to requests
-api.interceptors.request.use((config) => {
-  const token = useAuthStore.getState().accessToken;
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
+  withCredentials: true, // Send cookies automatically
 });
 
 let isRefreshing = false;
 let failedQueue: any[] = [];
 
-const processQueue = (error: any, token: string | null = null) => {
+const processQueue = (error: any) => {
   failedQueue.forEach(prom => {
     if (error) {
       prom.reject(error);
     } else {
-      prom.resolve(token);
+      prom.resolve();
     }
   });
   failedQueue = [];
@@ -39,8 +30,7 @@ api.interceptors.response.use(
       if (isRefreshing) {
         return new Promise(function(resolve, reject) {
           failedQueue.push({ resolve, reject });
-        }).then(token => {
-          originalRequest.headers.Authorization = `Bearer ${token}`;
+        }).then(() => {
           return axios(originalRequest);
         }).catch(err => {
           return Promise.reject(err);
@@ -51,22 +41,14 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const response = await axios.post('/api/auth/refresh', {}, { withCredentials: true });
-        const newAccessToken = response.data.data.accessToken;
+        await axios.post('/api/auth/refresh', {}, { withCredentials: true });
 
-        // Update the token in Zustand store
-        const state = useAuthStore.getState();
-        if (state.user) {
-          state.setAuth(state.user, newAccessToken);
-        }
-
-        processQueue(null, newAccessToken);
+        processQueue(null);
         
         // Retry original request
-        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
         return axios(originalRequest);
       } catch (refreshError) {
-        processQueue(refreshError, null);
+        processQueue(refreshError);
         // Refresh token expired or invalid, logout
         useAuthStore.getState().logout();
         window.location.href = '/login';

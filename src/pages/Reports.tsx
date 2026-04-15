@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import api from '@/services/api';
+import useSWR from 'swr';
 import { Download, FileText, Search, CheckCircle2, Clock, XCircle, Edit3, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -32,6 +33,7 @@ interface Report {
 }
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 
 interface PaginationMeta {
   total: number;
@@ -40,43 +42,32 @@ interface PaginationMeta {
   totalPages: number;
 }
 
+const fetcher = (url: string) => api.get(url).then(res => res.data);
+
 export default function Reports() {
   const { user } = useAuthStore();
-  const [reports, setReports] = useState<Report[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   
   const [page, setPage] = useState(1);
-  const [meta, setMeta] = useState<PaginationMeta | null>(null);
 
-  // Override Modal State
-  const [isOverrideModalOpen, setIsOverrideModalOpen] = useState(false);
-  const [selectedReport, setSelectedReport] = useState<Report | null>(null);
-  const [overrideStatus, setOverrideStatus] = useState('PRESENT');
-  const [overrideNotes, setOverrideNotes] = useState('');
+  const queryParams = new URLSearchParams({
+    page: page.toString(),
+    limit: '50'
+  });
+  if (startDate && endDate) {
+    queryParams.append('startDate', startDate);
+    queryParams.append('endDate', endDate);
+  }
 
-  useEffect(() => {
-    const fetchReports = async () => {
-      setLoading(true);
-      try {
-        let url = `/reports?page=${page}&limit=50`;
-        if (startDate && endDate) {
-          url += `&startDate=${startDate}&endDate=${endDate}`;
-        }
-        const res = await api.get(url);
-        setReports(res.data.data);
-        setMeta(res.data.meta);
-      } catch (error) {
-        toast.error('Gagal mengambil laporan');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchReports();
-  }, [page, startDate, endDate]);
+  const { data, error: _error, isLoading: loading, mutate } = useSWR(`/reports?${queryParams.toString()}`, fetcher, {
+    revalidateOnFocus: false
+  });
+
+  const reports: Report[] = data?.data || [];
+  const meta: PaginationMeta | null = data?.meta || null;
 
   const filteredReports = useMemo(() => {
     return reports.filter(r => {
@@ -87,6 +78,12 @@ export default function Reports() {
       return matchStatus && matchSearch;
     });
   }, [reports, statusFilter, searchTerm]);
+
+  // Override Modal State
+  const [isOverrideModalOpen, setIsOverrideModalOpen] = useState(false);
+  const [selectedReport, setSelectedReport] = useState<Report | null>(null);
+  const [overrideStatus, setOverrideStatus] = useState('PRESENT');
+  const [overrideNotes, setOverrideNotes] = useState('');
 
   const handleExportExcel = useCallback(async () => {
     const workbook = new ExcelJS.Workbook();
@@ -115,7 +112,7 @@ export default function Reports() {
     sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E7FF' } };
 
     // Kelompokkan data per mahasiswa
-    const studentData: Record<string, any> = {};
+    const studentData: Record<string, Record<string, string | number>> = {};
     
     filteredReports.forEach((r) => {
       const studentId = r.user_id;
@@ -134,10 +131,10 @@ export default function Reports() {
       studentData[studentId][r.session_title] = r.status;
       
       // Hitung total
-      if (r.status === 'PRESENT' || r.status === 'LATE') studentData[studentId].total_present += 1;
-      else if (r.status === 'SICK') studentData[studentId].total_sick += 1;
-      else if (r.status === 'EXCUSED') studentData[studentId].total_excused += 1;
-      else if (r.status === 'ABSENT') studentData[studentId].total_absent += 1;
+      if (r.status === 'PRESENT' || r.status === 'LATE') (studentData[studentId].total_present as number) += 1;
+      else if (r.status === 'SICK') (studentData[studentId].total_sick as number) += 1;
+      else if (r.status === 'EXCUSED') (studentData[studentId].total_excused as number) += 1;
+      else if (r.status === 'ABSENT') (studentData[studentId].total_absent as number) += 1;
     });
 
     Object.values(studentData).forEach(data => {
@@ -208,10 +205,10 @@ export default function Reports() {
       setIsOverrideModalOpen(false);
       
       // Refresh reports
-      const res = await api.get('/reports');
-      setReports(res.data.data);
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Gagal mengubah status');
+      mutate();
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { error?: string } } };
+      toast.error(err.response?.data?.error || 'Gagal mengubah status');
     }
   };
 
@@ -448,10 +445,11 @@ export default function Reports() {
                 </div>
                 <div className="space-y-2">
                   <Label>Catatan / Alasan (Opsional)</Label>
-                  <textarea 
-                    rows={3} value={overrideNotes} onChange={e => setOverrideNotes(e.target.value)}
+                  <Textarea 
+                    rows={3} 
+                    value={overrideNotes} 
+                    onChange={e => setOverrideNotes(e.target.value)}
                     placeholder="Contoh: Dispensasi alat rusak"
-                    className="flex w-full rounded-md border border-slate-300 bg-transparent px-3 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-50 dark:focus:ring-indigo-600 dark:focus:ring-offset-zinc-900"
                   />
                 </div>
               </div>

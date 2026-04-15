@@ -57,10 +57,20 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     const accessToken = generateAccessToken(user.id, user.role);
     const refreshToken = generateRefreshToken(user.id, user.role);
 
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    // Send access token as HttpOnly cookie
+    res.cookie('accessToken', accessToken, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: 'strict',
+      maxAge: 15 * 60 * 1000, // 15 minutes
+    });
+
     // Send refresh token as HttpOnly cookie
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isProduction,
       sameSite: 'strict',
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
@@ -68,7 +78,6 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     res.status(200).json({
       success: true,
       data: {
-        accessToken,
         user: {
           id: user.id,
           name: user.name,
@@ -104,9 +113,18 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
     const newAccessToken = generateAccessToken(user.id, user.role);
     const newRefreshToken = generateRefreshToken(user.id, user.role);
 
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    res.cookie('accessToken', newAccessToken, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: 'strict',
+      maxAge: 15 * 60 * 1000,
+    });
+
     res.cookie('refreshToken', newRefreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isProduction,
       sameSite: 'strict',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
@@ -114,7 +132,7 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
     res.status(200).json({
       success: true,
       data: {
-        accessToken: newAccessToken,
+        message: 'Tokens refreshed successfully',
       },
     });
   } catch (error) {
@@ -123,6 +141,7 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
 };
 
 export const logout = async (req: Request, res: Response): Promise<void> => {
+  res.clearCookie('accessToken');
   res.clearCookie('refreshToken');
   res.status(200).json({ success: true, message: 'Logged out successfully' });
 };

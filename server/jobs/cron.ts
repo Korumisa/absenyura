@@ -153,6 +153,41 @@ export const runCronJob = async () => {
             }))
           });
         }
+
+        // Check Early Warning System (EWS) for < 75% attendance for absent users
+        for (const userId of absentUserIds) {
+          if (session.class_id) {
+            // Count total sessions for this class that are CLOSED
+            const totalSessions = await prisma.session.count({
+              where: { class_id: session.class_id, status: 'CLOSED' }
+            });
+
+            if (totalSessions > 0) {
+              // Count total present/late/excused/sick for this user in this class
+              const attendedCount = await prisma.attendance.count({
+                where: {
+                  user_id: userId,
+                  session: { class_id: session.class_id, status: 'CLOSED' },
+                  status: { in: ['PRESENT', 'LATE', 'SICK', 'EXCUSED'] }
+                }
+              });
+
+              const attendancePercentage = (attendedCount / totalSessions) * 100;
+
+              // If below 75%, trigger EWS notification
+              if (attendancePercentage < 75) {
+                await prisma.notification.create({
+                  data: {
+                    user_id: userId,
+                    title: 'Peringatan Dini Kehadiran (EWS)',
+                    message: `Tingkat kehadiran Anda di kelas ini telah turun menjadi ${Math.round(attendancePercentage)}% (Di bawah batas minimal 75%). Harap perhatikan kehadiran Anda.`,
+                    type: 'WARNING'
+                  }
+                });
+              }
+            }
+          }
+        }
       }
       console.log(`[Cron] Marked ${sessionsToClose.length} sessions as CLOSED and processed absences.`);
     }

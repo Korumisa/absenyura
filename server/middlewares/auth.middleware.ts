@@ -9,13 +9,21 @@ export interface AuthRequest extends Request {
 }
 
 export const authenticate = (req: AuthRequest, res: Response, next: NextFunction): void => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith('Bearer ')) {
+  // Read token from cookies first, fallback to Authorization header
+  let token = req.cookies.accessToken;
+  
+  if (!token) {
+    const authHeader = req.headers.authorization;
+    if (authHeader?.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1];
+    }
+  }
+
+  if (!token) {
     res.status(401).json({ success: false, error: 'Unauthorized: No token provided' });
     return;
   }
 
-  const token = authHeader.split(' ')[1];
   try {
     const decoded = verifyAccessToken(token);
     req.user = decoded;

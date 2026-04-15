@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '@/services/api';
+import useSWR from 'swr';
 import { useAuthStore } from '@/stores/authStore';
 import { Plus, Search, FileText, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { format } from 'date-fns';
@@ -28,8 +29,6 @@ interface Excuse {
 
 export default function Excuses() {
   const { user: currentUser } = useAuthStore();
-  const [excuses, setExcuses] = useState<Excuse[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [reasonFilter, setReasonFilter] = useState('ALL');
@@ -45,17 +44,8 @@ export default function Excuses() {
   });
   const [file, setFile] = useState<File | null>(null);
 
-  const fetchExcuses = async () => {
-    setLoading(true);
-    try {
-      const res = await api.get('/excuses');
-      setExcuses(res.data.data);
-    } catch (error) {
-      toast.error('Gagal mengambil data pengajuan izin');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const fetcher = (url: string) => api.get(url).then(res => res.data.data);
+  const { data: excuses = [], error, isLoading: loading, mutate } = useSWR<Excuse[]>('/excuses', fetcher, { revalidateOnFocus: false });
 
   const fetchSessions = async () => {
     try {
@@ -68,7 +58,6 @@ export default function Excuses() {
   };
 
   useEffect(() => {
-    fetchExcuses();
     if (currentUser?.role === 'USER') {
       fetchSessions();
     }
@@ -97,7 +86,7 @@ export default function Excuses() {
       setIsModalOpen(false);
       setFormData({ session_id: '', reason: 'SICK', description: '' });
       setFile(null);
-      fetchExcuses();
+      mutate();
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Terjadi kesalahan saat mengajukan izin');
     }
@@ -107,7 +96,7 @@ export default function Excuses() {
     try {
       await api.put(`/excuses/${id}/review`, { status });
       toast.success(`Pengajuan izin ${status === 'APPROVED' ? 'disetujui' : 'ditolak'}`);
-      fetchExcuses();
+      mutate();
     } catch (error) {
       toast.error('Gagal mereview pengajuan izin');
     }

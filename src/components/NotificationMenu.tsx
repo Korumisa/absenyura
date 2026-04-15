@@ -15,19 +15,19 @@ interface Notification {
 }
 
 export function NotificationMenu() {
-  const { isAuthenticated, accessToken } = useAuthStore();
+  const { isAuthenticated } = useAuthStore();
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
-    if (!isAuthenticated || !accessToken) {
+    if (!isAuthenticated) {
       setNotifications([]);
       setUnreadCount(0);
       return;
     }
     fetchNotifications();
-  }, [isAuthenticated, accessToken]);
+  }, [isAuthenticated]);
 
   const fetchNotifications = async () => {
     try {

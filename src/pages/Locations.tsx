@@ -4,9 +4,11 @@ import { Plus, Edit2, Trash2, Search, X, MapPin, LocateFixed } from 'lucide-reac
 import { toast } from 'sonner';
 import { MapContainer, TileLayer, Marker, Circle, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
+import useSWR from 'swr';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
@@ -29,8 +31,6 @@ interface Location {
 }
 
 export default function Locations() {
-  const [locations, setLocations] = useState<Location[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [wifiFilter, setWifiFilter] = useState('ALL');
   
@@ -50,21 +50,8 @@ export default function Locations() {
   const [isGeocoding, setIsGeocoding] = useState(false);
   const searchTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
-  const fetchLocations = async () => {
-    setLoading(true);
-    try {
-      const res = await api.get('/locations');
-      setLocations(res.data.data);
-    } catch (error) {
-      toast.error('Gagal mengambil data lokasi');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchLocations();
-  }, []);
+  const fetcher = (url: string) => api.get(url).then(res => res.data.data);
+  const { data: locations = [], error, isLoading: loading, mutate } = useSWR<Location[]>('/locations', fetcher, { revalidateOnFocus: false });
 
   const handleOpenModal = (location: Location | null = null) => {
     if (location) {
@@ -105,7 +92,7 @@ export default function Locations() {
         toast.success('Lokasi berhasil ditambahkan');
       }
       setIsModalOpen(false);
-      fetchLocations();
+      mutate();
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Terjadi kesalahan');
     }
@@ -116,7 +103,7 @@ export default function Locations() {
       try {
         await api.delete(`/locations/${id}`);
         toast.success('Lokasi berhasil dihapus');
-        fetchLocations();
+        mutate();
       } catch (error) {
         toast.error('Gagal menghapus lokasi');
       }
@@ -374,23 +361,30 @@ export default function Locations() {
                     Alamat <span className="text-red-500">*</span>
                     {isGeocoding && <span className="text-xs text-indigo-500 animate-pulse">(Mencari koordinat...)</span>}
                   </Label>
-                  <textarea 
+                  <Textarea 
                     rows={2} required value={formData.address} onChange={handleAddressChange}
                     placeholder="Ketik alamat (misal: Undiksha Singaraja)..."
-                    className="flex w-full rounded-md border border-slate-300 bg-transparent px-3 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-50 dark:focus:ring-indigo-600 dark:focus:ring-offset-zinc-900 transition-all"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Latitude <span className="text-red-500">*</span></Label>
-                    <Input 
-                      type="number" step="any" required value={formData.latitude} onChange={e => setFormData({...formData, latitude: parseFloat(e.target.value)})}
+                    <Input
+                      type="number"
+                      step="any"
+                      required
+                      value={formData.latitude}
+                      onChange={e => setFormData({...formData, latitude: parseFloat(e.target.value)})}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label>Longitude <span className="text-red-500">*</span></Label>
-                    <Input 
-                      type="number" step="any" required value={formData.longitude} onChange={e => setFormData({...formData, longitude: parseFloat(e.target.value)})}
+                    <Input
+                      type="number"
+                      step="any"
+                      required
+                      value={formData.longitude}
+                      onChange={e => setFormData({...formData, longitude: parseFloat(e.target.value)})}
                     />
                   </div>
                 </div>
@@ -411,6 +405,7 @@ export default function Locations() {
                   <Input 
                     type="text" value={formData.wifi_bssid} onChange={e => setFormData({...formData, wifi_bssid: e.target.value})}
                     placeholder="192.168.1.1, 10.0.0.0/24"
+                    className="font-mono"
                   />
                   <p className="text-xs text-slate-500 dark:text-zinc-400">Kosongkan jika tidak ada batasan IP</p>
                 </div>

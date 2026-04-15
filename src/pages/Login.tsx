@@ -30,8 +30,8 @@ export default function Login() {
       }
 
       const res = await api.post('/auth/login', { email, password, device_fingerprint });
-      const { accessToken, user } = res.data.data;
-      setAuth(user, accessToken);
+      const { user } = res.data.data;
+      setAuth(user);
       toast.success('Berhasil masuk!');
       
       let target = location.state?.from?.pathname;

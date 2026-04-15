@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import useSWR from 'swr';
 import { useAuthStore } from '@/stores/authStore';
 import api from '@/services/api';
 import { Users, Calendar, CheckCircle2, Clock, MapPin, FileText, BarChart3 } from 'lucide-react';
@@ -24,39 +25,10 @@ const COLORS = ['#4f46e5', '#f59e0b', '#ef4444'];
 
 export default function Dashboard() {
   const user = useAuthStore((state) => state.user);
-  const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
   const [chartFilter, setChartFilter] = useState('ALL');
 
-  useEffect(() => {
-    let isMounted = true;
-    
-    const fetchStats = async () => {
-      setLoading(true);
-      try {
-        const res = await api.get(`/dashboard?range=30`);
-        if (isMounted) {
-          setData(res.data.data);
-        }
-      } catch (error: any) {
-        if (isMounted) {
-          console.error('Failed to fetch dashboard stats:', error?.response?.data || error.message || error);
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
-    };
-
-    if (user && user.id) {
-      fetchStats();
-    }
-
-    return () => {
-      isMounted = false;
-    };
-  }, [user?.id]);
+  const fetcher = (url: string) => api.get(url).then(res => res.data.data);
+  const { data, error, isLoading: loading } = useSWR(user?.id ? `/dashboard?range=30` : null, fetcher, { revalidateOnFocus: false });
 
   if (loading || !data) {
     return (

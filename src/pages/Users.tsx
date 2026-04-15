@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import api from '@/services/api';
+import useSWR from 'swr';
 import { useAuthStore } from '@/stores/authStore';
 import { Plus, Search, Edit2, Trash2, X, Download, Upload, Smartphone } from 'lucide-react';
 import * as ExcelJS from 'exceljs';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -27,8 +28,6 @@ interface User {
 
 export default function Users() {
   const { user: currentUser } = useAuthStore();
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -46,17 +45,8 @@ export default function Users() {
   });
   const [facultiesData, setFacultiesData] = useState<{name: string, departments: string[]}[]>([]);
 
-  const fetchUsers = async () => {
-    setLoading(true);
-    try {
-      const res = await api.get('/users');
-      setUsers(res.data.data);
-    } catch (error) {
-      toast.error('Gagal mengambil data pengguna');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const fetcher = (url: string) => api.get(url).then(res => res.data.data);
+  const { data: users = [], error, isLoading: loading, mutate } = useSWR<User[]>('/users', fetcher, { revalidateOnFocus: false });
 
   const fetchFaculties = async () => {
     try {
@@ -70,7 +60,6 @@ export default function Users() {
   };
 
   useEffect(() => {
-    fetchUsers();
     fetchFaculties();
   }, []);
 
@@ -107,7 +96,7 @@ export default function Users() {
         toast.success('Pengguna berhasil ditambahkan');
       }
       setIsModalOpen(false);
-      fetchUsers();
+      mutate();
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Terjadi kesalahan');
     }
@@ -118,7 +107,7 @@ export default function Users() {
       try {
         await api.delete(`/users/${id}`);
         toast.success('Pengguna berhasil dihapus');
-        fetchUsers();
+        mutate();
       } catch (error) {
         toast.error('Gagal menghapus pengguna');
       }
@@ -192,7 +181,7 @@ export default function Users() {
       toast.success(res.data.message);
       setIsImportModalOpen(false);
       setImportFile(null);
-      fetchUsers(); // Refresh list
+      mutate(); // Refresh list
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Gagal mengimpor data Excel');
     } finally {
@@ -205,7 +194,7 @@ export default function Users() {
     try {
       await api.post(`/users/${id}/reset-device`);
       toast.success('Perangkat berhasil di-reset');
-      fetchUsers();
+      mutate();
     } catch (error) {
       toast.error('Gagal mereset perangkat');
     }
@@ -407,16 +396,22 @@ export default function Users() {
                 </div>
                 <div className="space-y-2">
                   <Label>Email <span className="text-red-500">*</span></Label>
-                  <Input 
-                    type="email" required value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})}
+                  <Input
+                    type="email"
+                    value={formData.email}
+                    onChange={e => setFormData({ ...formData, email: e.target.value })}
+                    required
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>
                     Kata Sandi {editingUser ? <span className="text-xs text-slate-400 font-normal">(Kosongkan jika tidak diubah)</span> : <span className="text-red-500">*</span>}
                   </Label>
-                  <Input 
-                    type="password" required={!editingUser} value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})}
+                  <Input
+                    type="password"
+                    value={formData.password}
+                    onChange={e => setFormData({ ...formData, password: e.target.value })}
+                    required={!editingUser}
                   />
                 </div>
                 <div className="space-y-2">
@@ -437,8 +432,11 @@ export default function Users() {
                 </div>
                 <div className="space-y-2">
                   <Label>NIM / NIP <span className="text-red-500">*</span></Label>
-                  <Input 
-                    type="text" required value={formData.nim_nip} onChange={e => setFormData({...formData, nim_nip: e.target.value})}
+                  <Input
+                    type="text"
+                    required
+                    value={formData.nim_nip}
+                    onChange={e => setFormData({ ...formData, nim_nip: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
@@ -467,8 +465,11 @@ export default function Users() {
                 </div>
                 <div className="space-y-2">
                   <Label>No. HP <span className="text-red-500">*</span></Label>
-                  <Input 
-                    type="text" required value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})}
+                  <Input
+                    type="tel"
+                    required
+                    value={formData.phone}
+                    onChange={e => setFormData({ ...formData, phone: e.target.value })}
                   />
                 </div>
                 {editingUser && (
@@ -489,7 +490,7 @@ export default function Users() {
                   Batal
                 </Button>
                 <Button type="submit">
-                  Simpan
+                  {editingUser ? 'Simpan' : 'Tambah'}
                 </Button>
               </div>
             </form>
@@ -525,31 +526,25 @@ export default function Users() {
               <form onSubmit={handleImportSubmit}>
                 <div className="mb-6">
                   <label className="block text-sm font-medium text-slate-700 dark:text-zinc-300 mb-2 text-left">Upload File Excel (.xlsx)</label>
-                  <input 
+                  <Input 
                     type="file" 
                     accept=".xlsx, .xls"
                     onChange={(e) => setImportFile(e.target.files ? e.target.files[0] : null)}
-                    className="w-full text-sm text-slate-500 dark:text-zinc-400
-                      file:mr-4 file:py-2 file:px-4
-                      file:rounded-full file:border-0
-                      file:text-sm file:font-semibold
-                      file:bg-indigo-50 file:text-indigo-700
-                      dark:file:bg-indigo-900/30 dark:file:text-indigo-400
-                      hover:file:bg-indigo-100 dark:hover:file:bg-indigo-900/50 cursor-pointer"
+                    className="mt-1"
                   />
                 </div>
 
                 <div className="flex justify-end gap-3">
-                  <button type="button" onClick={() => setIsImportModalOpen(false)} className="px-4 py-2 text-slate-600 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-700 rounded-lg transition-colors font-medium">
+                  <Button type="button" variant="outline" onClick={() => setIsImportModalOpen(false)}>
                     Batal
-                  </button>
-                  <button 
+                  </Button>
+                  <Button 
                     type="submit" 
                     disabled={importing || !importFile}
-                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors font-medium disabled:opacity-50 flex items-center gap-2"
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
                   >
-                    {importing ? 'Memproses...' : <><Upload size={18} /> Import Data</>}
-                  </button>
+                    {importing ? 'Memproses...' : <><Upload size={18} className="mr-2" /> Import Data</>}
+                  </Button>
                 </div>
               </form>
             </div>

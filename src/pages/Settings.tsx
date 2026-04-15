@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
 export default function Settings() {
-  const { user, setAuth, accessToken } = useAuthStore();
+  const { user, setAuth } = useAuthStore();
   const { theme, setTheme } = useTheme();
   
   const [loading, setLoading] = useState(false);
@@ -63,9 +63,7 @@ export default function Settings() {
       });
       
       // Update local state
-      if (accessToken) {
-        setAuth({ ...user!, name: formData.name }, accessToken);
-      }
+      setAuth({ ...user!, name: formData.name });
       
       toast.success(res.data.message || 'Profil berhasil diperbarui');
       setFormData(prev => ({ ...prev, current_password: '', new_password: '', confirm_password: '' }));
