@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import type { Location } from '@/types/location';
 
 // Fix leaflet icon issue in react-leaflet
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -19,16 +20,6 @@ L.Icon.Default.mergeOptions({
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
-
-interface Location {
-  id: string;
-  name: string;
-  address: string | null;
-  latitude: number;
-  longitude: number;
-  radius: number;
-  wifi_bssid: string[];
-}
 
 export default function Locations() {
   const [searchTerm, setSearchTerm] = useState('');

@@ -8,18 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-
-interface AttendanceHistory {
-  id: string;
-  session_title: string;
-  class_name: string | null;
-  session_date: string;
-  check_in_time: string;
-  status: 'PRESENT' | 'LATE' | 'ABSENT' | 'SICK' | 'EXCUSED';
-  ip: string;
-  device: string;
-  photo_url?: string;
-}
+import { AttendanceHistory } from '@/types/history'
 
 const fetcher = (url: string) => api.get(url).then(res => res.data.data);
 

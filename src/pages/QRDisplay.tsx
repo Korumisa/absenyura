@@ -8,27 +8,13 @@ import { toast } from 'sonner';
 import { Users, Clock, ArrowLeft, CheckCircle2, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
-
-interface Session {
-  id: string;
-  title: string;
-  qr_mode: 'DYNAMIC' | 'STATIC' | 'NONE';
-  status: 'UPCOMING' | 'ACTIVE' | 'CLOSED';
-}
-
-interface Attendee {
-  id: string;
-  user_name: string;
-  nim_nip: string;
-  status: string;
-  check_in_time: string;
-  check_out_time?: string | null;
-}
+import type { SessionSummary } from '@/types/session';
+import { Attendee } from '@/types/qrdisplay'
 
 export default function QRDisplay() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [session, setSession] = useState<Session | null>(null);
+  const [session, setSession] = useState<SessionSummary | null>(null);
   const [qrData, setQrData] = useState<string>('');
   const [countdown, setCountdown] = useState(15);
   const [attendees, setAttendees] = useState<Attendee[]>([]);

@@ -11,20 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  nim_nip: string | null;
-  department: string | null;
-  phone: string | null;
-  is_active: boolean;
-  semester?: number;
-  enrollment_date?: string;
-  device_fingerprint?: string | null;
-}
+import type { User } from '@/types/user';
 
 export default function Users() {
   const { user: currentUser } = useAuthStore();
@@ -41,9 +28,13 @@ export default function Users() {
   
   // Form state
   const [formData, setFormData] = useState({
-    name: '', email: '', password: '', role: 'USER', is_active: true, department: '', nim_nip: '', phone: ''
+    name: '', email: '', password: '', role: 'USER', is_active: true, department: '', nim_nip: '', phone: '', semester: 1
   });
   const [facultiesData, setFacultiesData] = useState<{name: string, departments: string[]}[]>([]);
+
+  // Reset Modal state
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+  const [userToReset, setUserToReset] = useState<string | null>(null);
 
   const fetcher = (url: string) => api.get(url).then(res => res.data.data);
   const { data: users = [], error, isLoading: loading, mutate } = useSWR<User[]>('/users', fetcher, { revalidateOnFocus: false });
@@ -74,12 +65,13 @@ export default function Users() {
         nim_nip: user.nim_nip || '',
         department: user.department || '',
         phone: user.phone || '',
+        semester: user.semester || 1,
         is_active: user.is_active
       });
     } else {
       setEditingUser(null);
       setFormData({
-        name: '', email: '', password: '', role: 'USER', nim_nip: '', department: '', phone: '', is_active: true
+        name: '', email: '', password: '', role: 'USER', nim_nip: '', department: '', phone: '', semester: 1, is_active: true
       });
     }
     setIsModalOpen(true);
@@ -189,11 +181,18 @@ export default function Users() {
     }
   };
 
-  const handleResetDevice = async (id: string) => {
-    if (!window.confirm('Apakah Anda yakin ingin mereset perangkat mahasiswa ini? Mereka akan diminta login ulang di perangkat baru.')) return;
+  const openResetConfirm = (id: string) => {
+    setUserToReset(id);
+    setIsResetModalOpen(true);
+  };
+
+  const confirmResetDevice = async () => {
+    if (!userToReset) return;
     try {
-      await api.post(`/users/${id}/reset-device`);
+      await api.post(`/users/${userToReset}/reset-device`);
       toast.success('Perangkat berhasil di-reset');
+      setIsResetModalOpen(false);
+      setUserToReset(null);
       mutate();
     } catch (error) {
       toast.error('Gagal mereset perangkat');
@@ -335,7 +334,7 @@ export default function Users() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleResetDevice(user.id)}
+                            onClick={() => openResetConfirm(user.id)}
                             className="text-orange-600 hover:text-orange-700 hover:bg-orange-50 border-orange-200 dark:text-orange-500 dark:hover:bg-orange-900/30 dark:border-orange-900"
                             title="Reset Perangkat (Mahasiswa akan diminta login ulang di perangkat baru)"
                           >
@@ -417,7 +416,7 @@ export default function Users() {
                 <div className="space-y-2">
                   <Label>Peran (Role) <span className="text-red-500">*</span></Label>
                   <Select 
-                    value={formData.role} onValueChange={val => setFormData({...formData, role: val})}
+                    value={formData.role} onValueChange={val => setFormData({...formData, role: val, semester: val === 'USER' ? 1 : 0})}
                     disabled={currentUser?.role !== 'SUPER_ADMIN'}
                   >
                     <SelectTrigger>
@@ -463,6 +462,19 @@ export default function Users() {
                     />
                   )}
                 </div>
+                {formData.role === 'USER' && (
+                  <div className="space-y-2">
+                    <Label>Semester <span className="text-red-500">*</span></Label>
+                    <Input
+                      type="number"
+                      required
+                      min={1}
+                      max={14}
+                      value={formData.semester}
+                      onChange={e => setFormData({ ...formData, semester: parseInt(e.target.value) || 1 })}
+                    />
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label>No. HP <span className="text-red-500">*</span></Label>
                   <Input
@@ -547,6 +559,24 @@ export default function Users() {
                   </Button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reset Device Confirmation Modal */}
+      {isResetModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm px-4">
+          <div className="bg-white dark:bg-zinc-950 rounded-xl shadow-xl w-full max-w-md overflow-hidden flex flex-col border border-slate-200 dark:border-zinc-800">
+            <div className="p-6">
+              <h2 className="text-lg font-bold text-slate-800 dark:text-white mb-2">Konfirmasi Reset Perangkat</h2>
+              <p className="text-slate-600 dark:text-zinc-400 text-sm">
+                Apakah Anda yakin ingin mereset perangkat mahasiswa ini? Mereka akan diminta login ulang dan mengikat perangkat baru pada sesi absensi berikutnya.
+              </p>
+            </div>
+            <div className="px-6 py-4 bg-slate-50 dark:bg-zinc-900/50 border-t border-slate-200 dark:border-zinc-800 flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setIsResetModalOpen(false)}>Batal</Button>
+              <Button onClick={confirmResetDevice} className="bg-orange-600 hover:bg-orange-700 text-white">Ya, Reset Perangkat</Button>
             </div>
           </div>
         </div>

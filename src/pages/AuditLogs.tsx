@@ -7,25 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-
-interface AuditLog {
-  id: string;
-  actor_id: string | null;
-  action: string;
-  target_table: string | null;
-  target_id: string | null;
-  old_value: string | null;
-  new_value: string | null;
-  ip_address: string | null;
-  created_at: string;
-}
-
-interface PaginationMeta {
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
+import type { AuditLog } from '@/types/audit';
+import type { PaginationMeta } from '@/types/common';
 
 export default function AuditLogs() {
   const [logs, setLogs] = useState<AuditLog[]>([]);

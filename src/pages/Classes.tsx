@@ -11,22 +11,8 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-
-interface ClassItem {
-  id: string;
-  name: string;
-  course_code: string | null;
-  description: string | null;
-  lecturer_id: string;
-  lecturer: { name: string };
-  _count: { enrollments: number, sessions: number };
-}
-
-interface User {
-  id: string;
-  name: string;
-  nim_nip: string | null;
-}
+import type { ClassItem } from '@/types/class';
+import type { User } from '@/types/user';
 
 export default function Classes() {
   const { user: currentUser } = useAuthStore();

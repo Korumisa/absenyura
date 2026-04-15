@@ -12,20 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-
-interface Excuse {
-  id: string;
-  user_id: string;
-  session_id: string;
-  reason: string;
-  description: string;
-  proof_url: string | null;
-  status: string;
-  created_at: string;
-  user: { name: string, nim_nip: string };
-  session: { title: string, session_start: string, class: { name: string } | null };
-  reviewer: { name: string } | null;
-}
+import type { Excuse } from '@/types/excuse';
 
 export default function Excuses() {
   const { user: currentUser } = useAuthStore();

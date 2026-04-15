@@ -15,26 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 
-interface Location {
-  id: string;
-  name: string;
-}
-
-interface Session {
-  id: string;
-  title: string;
-  location: Location;
-  creator: { name: string };
-  class_id?: string | null;
-  class?: { id: string; name: string } | null;
-  qr_mode: 'DYNAMIC' | 'STATIC' | 'NONE';
-  session_start: string;
-  session_end: string;
-  check_in_open_at: string;
-  check_in_close_at: string;
-  require_checkout: boolean;
-  status: 'UPCOMING' | 'ACTIVE' | 'CLOSED';
-}
+import type { Location, Session } from '@/types/session';
 
 export default function Sessions() {
   const { user: currentUser } = useAuthStore();
@@ -56,6 +37,7 @@ export default function Sessions() {
     check_in_open_at: '', check_in_close_at: '', 
     late_threshold_minutes: 15, require_checkout: false, status: 'UPCOMING'
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetcher = (url: string) => api.get(url).then(res => res.data.data);
   const { data: sessions = [], error, isLoading: loading, mutate } = useSWR<Session[]>('/sessions', fetcher, { revalidateOnFocus: false });
@@ -126,6 +108,9 @@ export default function Sessions() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+
     try {
       const payload = {
         ...formData,
@@ -147,6 +132,8 @@ export default function Sessions() {
       mutate();
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Terjadi kesalahan');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -190,7 +177,7 @@ export default function Sessions() {
       </div>
 
       <div className="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-700 overflow-hidden mb-6">
-        <div className="p-4 grid grid-cols-1 sm:grid-cols-4 gap-4 border-b border-slate-200 dark:border-zinc-700">
+        <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 border-b border-slate-200 dark:border-zinc-700">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
             <Input 
@@ -201,15 +188,15 @@ export default function Sessions() {
               className="pl-9 w-full"
             />
           </div>
-          <div>
+          <div className="w-full">
             <Input 
               type="date" 
               value={filterDate}
               onChange={(e) => setFilterDate(e.target.value)}
-              className="w-full"
+              className="w-full block"
             />
           </div>
-          <div>
+          <div className="w-full">
             <Select value={filterLocation} onValueChange={setFilterLocation}>
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Semua Lokasi" />
@@ -222,7 +209,7 @@ export default function Sessions() {
               </SelectContent>
             </Select>
           </div>
-          <div>
+          <div className="w-full">
             <Select value={filterClass} onValueChange={setFilterClass}>
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Semua Kelas" />
@@ -238,7 +225,8 @@ export default function Sessions() {
           </div>
         </div>
 
-        <Table>
+        <div className="overflow-x-auto">
+          <Table>
           <TableHeader className="bg-slate-50 dark:bg-zinc-950/50">
             <TableRow>
               <TableHead>Informasi Kelas/Event</TableHead>
@@ -402,6 +390,7 @@ export default function Sessions() {
             )}
           </TableBody>
         </Table>
+        </div>
       </div>
 
       {/* Modal Form (Admin Only) */}
@@ -544,11 +533,11 @@ export default function Sessions() {
               </div>
               
               <div className="pt-6 border-t border-slate-200 dark:border-zinc-800 flex justify-end gap-3">
-                <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
+                <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)} disabled={isSubmitting}>
                   Batal
                 </Button>
-                <Button type="submit">
-                  {editingSession ? 'Simpan Perubahan' : 'Buat Sesi'}
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? 'Menyimpan...' : (editingSession ? 'Simpan Perubahan' : 'Buat Sesi')}
                 </Button>
               </div>
             </form>
