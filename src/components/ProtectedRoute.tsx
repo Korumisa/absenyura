@@ -9,19 +9,17 @@ interface ProtectedRouteProps {
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles, children }) => {
-  const { isAuthenticated, user, accessToken, setAuth, logout } = useAuthStore();
+  const { isAuthenticated, user, setAuth, logout } = useAuthStore();
   const location = useLocation();
 
   useEffect(() => {
     let cancelled = false;
 
     const verify = async () => {
-      if (!isAuthenticated || !user || accessToken) return;
+      if (!isAuthenticated || !user) return;
       try {
-        const res = await axios.post('/api/auth/refresh', {}, { withCredentials: true });
-        const newAccessToken = res.data?.data?.accessToken;
-        if (!newAccessToken) throw new Error('Missing accessToken');
-        if (!cancelled) setAuth(user, newAccessToken);
+        await axios.post('/api/auth/refresh', {}, { withCredentials: true });
+        if (!cancelled) setAuth(user);
       } catch {
         if (!cancelled) logout();
       }
@@ -31,18 +29,10 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles, ch
     return () => {
       cancelled = true;
     };
-  }, [isAuthenticated, user, accessToken, setAuth, logout]);
+  }, [isAuthenticated, user, setAuth, logout]);
 
   if (!isAuthenticated || !user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
-  }
-
-  if (!accessToken) {
-    return (
-      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center p-8">
-        <div className="text-sm font-medium text-slate-600 dark:text-zinc-400">Memverifikasi sesi...</div>
-      </div>
-    );
   }
 
   if (allowedRoles && !allowedRoles.includes(user.role)) {

@@ -197,8 +197,13 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
           });
 
           if (!isIpAllowed) {
-            res.status(400).json({ success: false, error: 'Jaringan IP/WiFi Anda tidak diizinkan untuk absensi ini' });
-            return;
+            // For offline sync, bypass strict IP validation since user might be syncing from home/mobile data
+            if (device_fingerprint && device_fingerprint.includes('[OFFLINE_SYNC]')) {
+               console.log(`Bypassing IP restriction for offline sync: User ${user_id}`);
+            } else {
+               res.status(400).json({ success: false, error: 'Jaringan IP/WiFi Anda tidak diizinkan untuk absensi ini' });
+               return;
+            }
           }
         }
       } catch (e) {
@@ -253,10 +258,15 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
         where: { id: user_id },
         data: { device_fingerprint }
       });
-    } else if (user && user.device_fingerprint && user.device_fingerprint !== device_fingerprint) {
-      // Device mismatch
-      res.status(403).json({ success: false, error: 'Perangkat tidak dikenali. Akun Anda telah terikat pada perangkat lain. Silakan hubungi Admin.' });
-      return;
+    } else if (user && user.device_fingerprint) {
+      // Compare the base fingerprint (ignoring the [OFFLINE_SYNC] tag)
+      const storedDevice = user.device_fingerprint.replace(' [OFFLINE_SYNC]', '');
+      const incomingDevice = device_fingerprint ? device_fingerprint.replace(' [OFFLINE_SYNC]', '') : '';
+
+      if (storedDevice !== incomingDevice) {
+        res.status(403).json({ success: false, error: 'Perangkat tidak dikenali. Akun Anda telah terikat pada perangkat lain. Silakan hubungi Admin.' });
+        return;
+      }
     }
 
     // Check if already checked in

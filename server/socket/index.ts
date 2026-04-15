@@ -2,6 +2,8 @@ import { Server as HttpServer } from 'http';
 import { Server, Socket } from 'socket.io';
 import { verifyAccessToken } from '../utils/jwt.js';
 
+import cookie from 'cookie';
+
 export const initSocket = (server: HttpServer) => {
   const io = new Server(server, {
     cors: {
@@ -12,16 +14,23 @@ export const initSocket = (server: HttpServer) => {
   });
 
   io.use((socket, next) => {
-    const token = socket.handshake.auth.token;
+    let token = socket.handshake.auth.token;
+    
+    // Fallback to cookie
+    if (!token && socket.handshake.headers.cookie) {
+      const cookies = cookie.parse(socket.handshake.headers.cookie);
+      token = cookies.accessToken;
+    }
+
     if (!token) {
-      return next(new Error('Authentication error'));
+      return next(new Error('Authentication error: No token provided'));
     }
     try {
       const decoded = verifyAccessToken(token);
       (socket as any).user = decoded;
       next();
     } catch (err) {
-      next(new Error('Authentication error'));
+      next(new Error('Authentication error: Invalid token'));
     }
   });
 

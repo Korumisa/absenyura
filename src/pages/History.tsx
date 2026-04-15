@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import api from '@/services/api';
+import useSWR from 'swr';
 import { Calendar, CheckCircle2, Clock, XCircle, MapPin, Smartphone, Camera, History as HistoryIcon, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
@@ -20,24 +21,14 @@ interface AttendanceHistory {
   photo_url?: string;
 }
 
+const fetcher = (url: string) => api.get(url).then(res => res.data.data);
+
 export default function AttendanceHistory() {
-  const [history, setHistory] = useState<AttendanceHistory[]>([]);
-  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('ALL');
 
-  useEffect(() => {
-    const fetchHistory = async () => {
-      try {
-        const res = await api.get('/reports'); // Uses the same endpoint but filtered for USER in backend
-        setHistory(res.data.data);
-      } catch (error) {
-        console.error('Failed to fetch history');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchHistory();
-  }, []);
+  const { data: history = [], error, isLoading: loading } = useSWR<AttendanceHistory[]>('/reports', fetcher, {
+    revalidateOnFocus: false,
+  });
 
   const filteredHistory = history.filter(h => {
     if (filter === 'ALL') return true;

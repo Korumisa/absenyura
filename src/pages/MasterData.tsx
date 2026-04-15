@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import api from '@/services/api';
+import useSWR from 'swr';
 import { toast } from 'sonner';
 import { Building2, BookOpen, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -20,17 +21,18 @@ export default function MasterData() {
   const [newSubjectCode, setNewSubjectCode] = useState('');
   const [newSubjectName, setNewSubjectName] = useState('');
 
-  useEffect(() => {
-    if (user?.role === 'SUPER_ADMIN') {
-      api.get('/settings/departments').then(res => {
-        if (res.data.data) setFaculties(res.data.data);
-      }).catch(err => console.error('Failed to load departments', err));
+  const fetcher = (url: string) => api.get(url).then(res => res.data.data);
 
-      api.get('/settings/subjects').then(res => {
-        if (res.data.data) setSubjects(res.data.data);
-      }).catch(err => console.error('Failed to load subjects', err));
-    }
-  }, [user]);
+  const { data: serverFaculties } = useSWR(user?.role === 'SUPER_ADMIN' ? '/settings/departments' : null, fetcher, { revalidateOnFocus: false });
+  const { data: serverSubjects } = useSWR(user?.role === 'SUPER_ADMIN' ? '/settings/subjects' : null, fetcher, { revalidateOnFocus: false });
+
+  useEffect(() => {
+    if (serverFaculties) setFaculties(serverFaculties);
+  }, [serverFaculties]);
+
+  useEffect(() => {
+    if (serverSubjects) setSubjects(serverSubjects);
+  }, [serverSubjects]);
 
   const handleSaveDepartments = async () => {
     try {
@@ -108,14 +110,13 @@ export default function MasterData() {
                       {faculty.departments.map((dept, dIndex) => (
                         <div key={dIndex} className="flex justify-between items-center bg-white dark:bg-zinc-800 p-2 px-3 rounded-lg border border-slate-200 dark:border-zinc-700">
                           <span className="text-sm text-slate-700 dark:text-zinc-300">{dept}</span>
-                          <button onClick={() => {
+                          <Button variant="ghost" size="icon" onClick={() => {
                             const newFacs = [...faculties];
-                            newFacs[index].departments.filter((_, i) => i !== dIndex);
-                            newFacs[index].departments.splice(dIndex, 1);
+                            newFacs[index].departments = newFacs[index].departments.filter((_, i) => i !== dIndex);
                             setFaculties(newFacs);
-                          }} className="text-slate-400 hover:text-red-500">
+                          }} className="text-slate-400 hover:text-red-500 h-6 w-6">
                             <Trash2 className="w-4 h-4" />
-                          </button>
+                          </Button>
                         </div>
                       ))}
 

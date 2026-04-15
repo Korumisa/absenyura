@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import useSWR from 'swr';
 import api from '@/services/api';
 import { useAuthStore } from '@/stores/authStore';
 import { Plus, Search, Edit2, Trash2, X, Users, BookOpen } from 'lucide-react';
@@ -29,8 +30,6 @@ interface User {
 
 export default function Classes() {
   const { user: currentUser } = useAuthStore();
-  const [classes, setClasses] = useState<ClassItem[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   
   // Modal state
@@ -52,17 +51,8 @@ export default function Classes() {
     name: '', course_code: '', description: '', lecturer_id: ''
   });
 
-  const fetchClasses = async () => {
-    setLoading(true);
-    try {
-      const res = await api.get('/classes');
-      setClasses(res.data.data);
-    } catch (error) {
-      toast.error('Gagal mengambil data kelas');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const fetcher = (url: string) => api.get(url).then(res => res.data.data);
+  const { data: classes = [], error, isLoading: loading, mutate } = useSWR<ClassItem[]>('/classes', fetcher, { revalidateOnFocus: false });
 
   const fetchLecturers = async () => {
     if (currentUser?.role !== 'USER') {
@@ -88,7 +78,6 @@ export default function Classes() {
   };
 
   useEffect(() => {
-    fetchClasses();
     fetchLecturers();
     fetchSubjects();
   }, [currentUser]);
@@ -126,7 +115,7 @@ export default function Classes() {
         toast.success('Kelas berhasil ditambahkan');
       }
       setIsModalOpen(false);
-      fetchClasses();
+      mutate();
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Terjadi kesalahan');
     }
@@ -137,7 +126,7 @@ export default function Classes() {
       try {
         await api.delete(`/classes/${id}`);
         toast.success('Kelas berhasil dihapus');
-        fetchClasses();
+        mutate();
       } catch (error) {
         toast.error('Gagal menghapus kelas');
       }
@@ -162,7 +151,7 @@ export default function Classes() {
       toast.success('Mahasiswa berhasil ditambahkan');
       const res = await api.get(`/classes/${selectedClassId}/students`);
       setEnrolledStudents(res.data.data);
-      fetchClasses();
+      mutate();
       setSelectedStudentId('');
     } catch (error) {
       toast.error('Gagal menambahkan mahasiswa');
@@ -175,7 +164,7 @@ export default function Classes() {
       await api.delete(`/classes/${selectedClassId}/enroll/${studentId}`);
       toast.success('Mahasiswa berhasil dikeluarkan');
       setEnrolledStudents(prev => prev.filter(s => s.id !== studentId));
-      fetchClasses();
+      mutate();
     } catch (error) {
       toast.error('Gagal mengeluarkan mahasiswa');
     }

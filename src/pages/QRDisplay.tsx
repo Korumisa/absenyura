@@ -28,7 +28,6 @@ interface Attendee {
 export default function QRDisplay() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { accessToken } = useAuthStore();
   const [session, setSession] = useState<Session | null>(null);
   const [qrData, setQrData] = useState<string>('');
   const [countdown, setCountdown] = useState(15);
@@ -40,10 +39,10 @@ export default function QRDisplay() {
     fetchSession();
     fetchAttendees();
     
-    // Init Socket
+    // Init Socket (Token is no longer passed explicitly; cookies are used)
     const socketUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
     socketRef.current = io(socketUrl, {
-      auth: { token: accessToken }
+      withCredentials: true
     });
 
     socketRef.current.on('connect', () => {

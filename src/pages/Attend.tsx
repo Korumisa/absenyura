@@ -3,10 +3,11 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Html5QrcodeScanner, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import api from '@/services/api';
 import { toast } from 'sonner';
-import { MapPin, QrCode, ShieldAlert, Camera, RefreshCw, CheckCircle2, XCircle } from 'lucide-react';
+import { MapPin, QrCode, ShieldAlert, Camera, RefreshCw, CheckCircle2, XCircle, WifiOff } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { saveOfflineAttendance } from '@/lib/idb';
 
 import { Button } from '@/components/ui/button';
 
@@ -53,7 +54,18 @@ export default function Attend() {
   const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [ipAddress, setIpAddress] = useState<string>('');
-  const [sessionDetails, setSessionDetails] = useState<any>(null);
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   // Camera state for photo evidence
   const [photoBlob, setPhotoBlob] = useState<Blob | null>(null);
@@ -90,9 +102,17 @@ export default function Attend() {
 
   const { sid: derivedSessionId, tkn: parsedToken } = extractSessionIdAndToken(scanResult);
 
+  const [sessionDetails, setSessionDetails] = useState<any>(null);
+
   useEffect(() => {
     if (!derivedSessionId || derivedSessionId === NO_QR_TOKEN) return;
     
+    if (isOffline) {
+      // In offline mode, we can't fetch session details. Allow scanning to proceed.
+      toast.info('Mode Offline: Mengumpulkan data absen lokal');
+      return;
+    }
+
     api.get(`/sessions/${derivedSessionId}`)
       .then(res => {
         const s = res.data.data;
@@ -104,12 +124,11 @@ export default function Attend() {
       })
       .catch(err => {
         console.error('Gagal mengambil data sesi', err);
-        // Only show error if we came from a URL parameter, not when just scanning randomly
         if (sessionParam) {
           toast.error('Gagal mengambil detail sesi absensi.');
         }
       });
-  }, [derivedSessionId, sessionParam]);
+  }, [derivedSessionId, sessionParam, isOffline]);
 
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
   const [cameraPermissionError, setCameraPermissionError] = useState<string | null>(null);
@@ -410,6 +429,20 @@ export default function Attend() {
 
       const deviceFingerprint = localStorage.getItem('device_fingerprint') || 'unknown-device';
 
+      if (isOffline) {
+        // Save to IndexedDB
+        await saveOfflineAttendance({
+          session_id: sessionId,
+          token: qrToken !== NO_QR_TOKEN ? qrToken : undefined,
+          lat: location.lat,
+          lng: location.lng,
+          deviceInfo: deviceFingerprint
+        });
+        toast.success('Offline Mode: Data absensi disimpan lokal dan akan dikirim saat online.');
+        navigate('/dashboard');
+        return;
+      }
+
       const formData = new FormData();
       formData.append('session_id', sessionId);
       if (qrToken !== NO_QR_TOKEN) {
@@ -459,6 +492,12 @@ export default function Attend() {
 
       <div className="bg-white dark:bg-zinc-800 rounded-2xl shadow-sm border border-slate-200 dark:border-zinc-700 overflow-hidden flex-1 flex flex-col mb-8">
         
+        {isOffline && (
+          <div className="bg-amber-100 text-amber-800 p-3 text-center text-sm font-medium flex items-center justify-center gap-2">
+            <WifiOff size={16} /> Mode Offline Aktif: Data akan disimpan di perangkat lokal.
+          </div>
+        )}
+
         {/* Status Indicators */}
         <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-slate-200 dark:divide-zinc-700 border-b border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-900">
           <div className="p-4 flex flex-col items-center text-center gap-2">
