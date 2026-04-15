@@ -18,7 +18,7 @@ import Reports from "@/pages/Reports";
 import Settings from "@/pages/Settings";
 import AuditLogs from "@/pages/AuditLogs";
 import MasterData from "./pages/MasterData";
-import History from "@/pages/History";
+import HistoryPage from "@/pages/History";
 import QRDisplay from "@/pages/QRDisplay";
 import Attend from "@/pages/Attend";
 import Features from "@/pages/public/Features";
@@ -134,7 +134,7 @@ export default function App() {
               <Route path="/sessions" element={<Sessions />} />
               <Route path="/sessions/:id/qr" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}><QRDisplay /></ProtectedRoute>} />
               <Route path="/attend" element={<ProtectedRoute allowedRoles={['USER']}><Attend /></ProtectedRoute>} />
-              <Route path="/history" element={<ProtectedRoute allowedRoles={['USER']}><History /></ProtectedRoute>} />
+              <Route path="/history" element={<ProtectedRoute allowedRoles={['USER']}><HistoryPage /></ProtectedRoute>} />
               <Route path="/classes" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'USER']}><Classes /></ProtectedRoute>} />
               <Route path="/excuses" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'USER']}><Excuses /></ProtectedRoute>} />
               <Route path="/users" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><Users /></ProtectedRoute>} />

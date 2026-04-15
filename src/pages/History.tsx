@@ -8,11 +8,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AttendanceHistory } from '@/types/history'
+import type { AttendanceHistory } from '@/types/report';
 
 const fetcher = (url: string) => api.get(url).then(res => res.data.data);
 
-export default function AttendanceHistory() {
+export default function HistoryPage() {
   const [filter, setFilter] = useState('ALL');
 
   const { data: history = [], error, isLoading: loading } = useSWR<AttendanceHistory[]>('/reports', fetcher, {
