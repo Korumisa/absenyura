@@ -1,11 +1,10 @@
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET;
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
+const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_please_change_in_production_123';
+const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'fallback_refresh_secret_please_change_in_production_456';
 
-if (!JWT_SECRET || !JWT_REFRESH_SECRET) {
-  console.error('FATAL ERROR: JWT_SECRET and JWT_REFRESH_SECRET must be set in environment variables.');
-  process.exit(1);
+if (!process.env.JWT_SECRET || !process.env.JWT_REFRESH_SECRET) {
+  console.warn('WARNING: JWT_SECRET or JWT_REFRESH_SECRET is not set in environment variables. Using fallback secrets. This is not secure for production!');
 }
 
 export const generateAccessToken = (userId: string, role: string) => {

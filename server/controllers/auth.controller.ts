@@ -31,21 +31,27 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
     // One-device policy logic (enforce block on mismatch for non-admins)
     if (device_fingerprint && device_fingerprint !== 'unknown-device') {
-      if (user.device_fingerprint && user.device_fingerprint !== device_fingerprint) {
-        if (user.role === 'USER') {
-          res.status(403).json({ 
-            success: false, 
-            error: 'Login ditolak: Akun ini sudah terikat dengan perangkat lain. Hubungi Admin jika Anda mengganti perangkat.' 
-          });
-          return;
-        } else {
-          // Admins can log in from multiple devices, just update the latest
-          await prisma.user.update({
-            where: { id: user.id },
-            data: { device_fingerprint },
-          });
+      if (user.device_fingerprint) {
+        // Compare base fingerprints (ignoring the [OFFLINE_SYNC] tag)
+        const storedDevice = user.device_fingerprint.replace(' [OFFLINE_SYNC]', '');
+        const incomingDevice = device_fingerprint.replace(' [OFFLINE_SYNC]', '');
+        
+        if (storedDevice !== incomingDevice) {
+          if (user.role === 'USER') {
+            res.status(403).json({ 
+              success: false, 
+              error: 'Login ditolak: Akun ini sudah terikat dengan perangkat lain. Hubungi Admin jika Anda mengganti perangkat.' 
+            });
+            return;
+          } else {
+            // Admins can log in from multiple devices, just update the latest
+            await prisma.user.update({
+              where: { id: user.id },
+              data: { device_fingerprint },
+            });
+          }
         }
-      } else if (!user.device_fingerprint) {
+      } else {
         // Bind device on first login
         await prisma.user.update({
           where: { id: user.id },
@@ -59,19 +65,22 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
     const isProduction = process.env.NODE_ENV === 'production';
 
+    // Set cookie options
+    const cookieOptions = {
+      httpOnly: true,
+      secure: true, // Vercel is always HTTPS, so this MUST be true in production
+      sameSite: 'none' as const, // Must be 'none' for cross-origin (frontend vercel to backend vercel)
+    };
+
     // Send access token as HttpOnly cookie
     res.cookie('accessToken', accessToken, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: 'strict',
+      ...cookieOptions,
       maxAge: 15 * 60 * 1000, // 15 minutes
     });
 
     // Send refresh token as HttpOnly cookie
     res.cookie('refreshToken', refreshToken, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: 'strict',
+      ...cookieOptions,
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
@@ -88,9 +97,13 @@ export const login = async (req: Request, res: Response): Promise<void> => {
         },
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Login error:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    res.status(500).json({ 
+      success: false, 
+      error: 'Internal server error', 
+      details: error?.message || String(error)
+    });
   }
 };
 
@@ -115,17 +128,19 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
 
     const isProduction = process.env.NODE_ENV === 'production';
 
-    res.cookie('accessToken', newAccessToken, {
+    const cookieOptions = {
       httpOnly: true,
-      secure: isProduction,
-      sameSite: 'strict',
+      secure: true,
+      sameSite: 'none' as const,
+    };
+
+    res.cookie('accessToken', newAccessToken, {
+      ...cookieOptions,
       maxAge: 15 * 60 * 1000,
     });
 
     res.cookie('refreshToken', newRefreshToken, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: 'strict',
+      ...cookieOptions,
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -141,8 +156,13 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
 };
 
 export const logout = async (req: Request, res: Response): Promise<void> => {
-  res.clearCookie('accessToken');
-  res.clearCookie('refreshToken');
+  const cookieOptions = {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'none' as const,
+  };
+  res.clearCookie('accessToken', cookieOptions);
+  res.clearCookie('refreshToken', cookieOptions);
   res.status(200).json({ success: true, message: 'Logged out successfully' });
 };
 
@@ -172,8 +192,12 @@ export const seedAdmin = async (req: Request, res: Response): Promise<void> => {
     });
 
     res.status(201).json({ success: true, data: admin });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Seed error:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    res.status(500).json({ 
+      success: false, 
+      error: 'Internal server error',
+      details: error?.message || String(error)
+    });
   }
 };
