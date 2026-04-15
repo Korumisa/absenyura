@@ -97,7 +97,7 @@ export default function App() {
 
   const getDefaultRoute = () => {
     if (user?.role === 'SUPER_ADMIN') return '/dashboard';
-    if (user?.role === 'ADMIN') return '/sessions';
+    if (user?.role === 'ADMIN') return '/dashboard';
     if (user?.role === 'USER') return '/dashboard';
     return '/dashboard';
   };
