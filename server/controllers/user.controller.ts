@@ -23,7 +23,7 @@ export const getUsers = async (req: Request, res: Response): Promise<void> => {
       orderBy: { created_at: 'desc' },
     });
     res.status(200).json({ success: true, data: users });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error fetching users:', error);
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
@@ -31,11 +31,16 @@ export const getUsers = async (req: Request, res: Response): Promise<void> => {
 
 export const createUser = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, email, password, role, nim_nip, department, phone } = req.body;
+    const { name, email, password, role, nim_nip, department, phone, semester } = req.body;
 
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
       res.status(400).json({ success: false, error: 'Email already in use' });
+      return;
+    }
+
+    if (role === 'USER' && !semester) {
+      res.status(400).json({ success: false, error: 'Semester wajib diisi untuk mahasiswa' });
       return;
     }
 
@@ -50,6 +55,7 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
         nim_nip,
         department,
         phone,
+        semester: role === 'USER' ? semester : null,
       },
       select: {
         id: true,
@@ -72,7 +78,7 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
     });
 
     res.status(201).json({ success: true, data: user });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error creating user:', error);
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
@@ -81,9 +87,17 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
 export const updateUser = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { name, email, role, nim_nip, department, phone, is_active, password } = req.body;
+    const { name, email, role, nim_nip, department, phone, is_active, password, semester } = req.body;
 
-    const updateData: any = { name, email, role, nim_nip, department, phone, is_active };
+    if (role === 'USER' && !semester) {
+      res.status(400).json({ success: false, error: 'Semester wajib diisi untuk mahasiswa' });
+      return;
+    }
+
+    const updateData: any = { 
+      name, email, role, nim_nip, department, phone, is_active,
+      semester: role === 'USER' ? semester : null 
+    };
 
     if (password) {
       updateData.password = await bcrypt.hash(password, 12);
@@ -116,7 +130,7 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
     });
 
     res.status(200).json({ success: true, data: user });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error updating user:', error);
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
@@ -140,7 +154,7 @@ export const deleteUser = async (req: Request, res: Response): Promise<void> => 
     });
 
     res.status(200).json({ success: true, message: 'User deleted successfully' });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error deleting user:', error);
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
@@ -154,7 +168,9 @@ export const importUsers = async (req: Request, res: Response): Promise<void> =>
     }
 
     const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.load(req.file.buffer);
+    // ExcelJS requires ArrayBuffer, but multer provides Buffer. Convert to Uint8Array then to ArrayBuffer.
+    const arrayBuffer = new Uint8Array(req.file.buffer).buffer;
+    await workbook.xlsx.load(arrayBuffer);
     
     const worksheet = workbook.worksheets[0]; // Get the first sheet
     if (!worksheet) {
@@ -166,19 +182,20 @@ export const importUsers = async (req: Request, res: Response): Promise<void> =>
     const defaultPasswordHash = await bcrypt.hash('password123', 12);
 
     let isFirstRow = true;
-    worksheet.eachRow((row, rowNumber) => {
+    worksheet.eachRow((row, _rowNumber) => {
       if (isFirstRow) {
         isFirstRow = false; // Skip header
         return;
       }
 
-      // Expected Columns: A=Nama, B=Email, C=NIM_NIP, D=Departemen, E=No_HP, F=Role
+      // Expected Columns: A=Nama, B=Email, C=NIM_NIP, D=Departemen, E=Semester, F=No_HP, G=Role
       const name = row.getCell(1).value?.toString().trim();
       const email = row.getCell(2).value?.toString().trim();
       const nim_nip = row.getCell(3).value?.toString().trim();
       const department = row.getCell(4).value?.toString().trim();
-      const phone = row.getCell(5).value?.toString().trim();
-      const rawRole = row.getCell(6).value?.toString().trim().toUpperCase();
+      const semester = parseInt(row.getCell(5).value?.toString().trim() || '1') || 1;
+      const phone = row.getCell(6).value?.toString().trim();
+      const rawRole = row.getCell(7).value?.toString().trim().toUpperCase();
       
       const role = (rawRole === 'ADMIN' || rawRole === 'SUPER_ADMIN') ? rawRole : 'USER';
 
@@ -188,6 +205,7 @@ export const importUsers = async (req: Request, res: Response): Promise<void> =>
           email,
           nim_nip: nim_nip || null,
           department: department || null,
+          semester: role === 'USER' ? semester : null,
           phone: phone || null,
           role,
           password: defaultPasswordHash,
@@ -222,7 +240,7 @@ export const importUsers = async (req: Request, res: Response): Promise<void> =>
       data: { count: createdUsers.count }
     });
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error importing users:', error);
     res.status(500).json({ success: false, error: 'Gagal mengimpor file Excel. Pastikan format benar.' });
   }
@@ -239,7 +257,7 @@ export const resetDeviceFingerprint = async (req: Request, res: Response): Promi
     });
 
     res.json({ success: true, message: 'Perangkat mahasiswa berhasil di-reset' });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error resetting device:', error);
     res.status(500).json({ success: false, error: 'Internal server error' });
   }

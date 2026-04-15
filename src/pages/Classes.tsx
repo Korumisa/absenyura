@@ -233,11 +233,7 @@ export default function Classes() {
                 </TableRow>
               ) : (
                 filteredClasses.map((c) => (
-                  <TableRow
-                    key={c.id}
-                    onClick={() => handleOpenEnrollModal(c.id)}
-                    className="cursor-pointer hover:bg-slate-50 dark:hover:bg-zinc-900/60"
-                  >
+                  <TableRow key={c.id}>
                     <TableCell>
                       <div className="flex items-center gap-2 font-medium text-slate-900 dark:text-white">
                         <BookOpen size={16} className="text-indigo-500" />
@@ -266,10 +262,7 @@ export default function Classes() {
                           <Button 
                             variant="ghost" 
                             size="icon"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleOpenEnrollModal(c.id);
-                            }}
+                            onClick={() => handleOpenEnrollModal(c.id)}
                             className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/30"
                             title="Kelola Mahasiswa"
                           >
@@ -278,10 +271,7 @@ export default function Classes() {
                           <Button 
                             variant="ghost" 
                             size="icon"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleOpenModal(c);
-                            }}
+                            onClick={() => handleOpenModal(c)}
                             className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/30"
                             title="Edit"
                           >
@@ -291,10 +281,7 @@ export default function Classes() {
                             <Button 
                               variant="ghost" 
                               size="icon"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openDeleteConfirm(c.id);
-                              }}
+                              onClick={() => openDeleteConfirm(c.id)}
                               className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/30"
                               title="Hapus"
                             >
@@ -304,21 +291,7 @@ export default function Classes() {
                         </div>
                       </TableCell>
                     ) : (
-                      <TableCell className="text-right">
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleOpenEnrollModal(c.id);
-                          }}
-                          className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/30"
-                          title="Lihat Teman Sekelas"
-                        >
-                          <Users className="w-4 h-4 mr-2" />
-                          Lihat Teman
-                        </Button>
-                      </TableCell>
+                      <TableCell className="text-right">-</TableCell>
                     )}
                   </TableRow>
                 ))
