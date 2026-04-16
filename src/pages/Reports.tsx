@@ -304,7 +304,7 @@ export default function Reports() {
                     </TableCell>
                     <TableCell>
                       <div className="font-medium text-slate-800 dark:text-zinc-200">{report.session_title}</div>
-                      {report.class_name && <div className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 mt-0.5">{report.class_name}</div>}
+                      {report.class_name && <div className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 mt-0.5">{typeof report.class_name === 'object' ? ((report.class_name as any).name || (report.class_name as any).id) : report.class_name}</div>}
                       <div className="text-xs text-slate-500 dark:text-zinc-400 mt-1">
                         {format(new Date(report.session_date), 'dd MMMM yyyy', { locale: id })}
                       </div>

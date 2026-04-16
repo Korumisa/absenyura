@@ -107,9 +107,11 @@ export default function MasterData() {
                     </div>
 
                     <div className="pl-6 space-y-3">
-                      {faculty.departments.map((dept, dIndex) => (
+                      {faculty.departments.map((dept, dIndex) => {
+                        const deptName = typeof dept === 'object' ? ((dept as any).name || (dept as any).id) : dept;
+                        return (
                         <div key={dIndex} className="flex justify-between items-center bg-white dark:bg-zinc-800 p-2 px-3 rounded-lg border border-slate-200 dark:border-zinc-700">
-                          <span className="text-sm text-slate-700 dark:text-zinc-300">{dept}</span>
+                          <span className="text-sm text-slate-700 dark:text-zinc-300">{deptName}</span>
                           <Button variant="ghost" size="icon" onClick={() => {
                             const newFacs = [...faculties];
                             newFacs[index].departments = newFacs[index].departments.filter((_, i) => i !== dIndex);
@@ -118,7 +120,7 @@ export default function MasterData() {
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
-                      ))}
+                      )})}
 
                       <div className="flex gap-2 mt-2">
                         <Input 
