@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { User } from '@/types/user';
@@ -118,9 +118,14 @@ export default function Users() {
   };
 
   const filteredUsers = users.filter(u => {
-    const matchesSearch = u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          (u.nim_nip && u.nim_nip.toLowerCase().includes(searchTerm.toLowerCase()));
+    if (!u) return false;
+    const userName = typeof u.name === 'string' ? u.name : '';
+    const userEmail = typeof u.email === 'string' ? u.email : '';
+    const userNim = typeof u.nim_nip === 'string' ? u.nim_nip : '';
+
+    const matchesSearch = userName.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          userEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          (userNim && userNim.toLowerCase().includes(searchTerm.toLowerCase()));
     
     const matchesRole = roleFilter === 'ALL' || u.role === roleFilter;
     const matchesStatus = statusFilter === 'ALL' || 
@@ -457,14 +462,17 @@ export default function Users() {
                         <SelectValue placeholder="Pilih Prodi" />
                       </SelectTrigger>
                       <SelectContent>
-                        {facultiesData.map(f => (
-                          <optgroup key={f.name} label={f.name} className="p-2 font-semibold text-slate-500">
-                            {f.departments.map(d => {
+                        {facultiesData.map(f => {
+                          if (!f) return null;
+                          return (
+                          <SelectGroup key={f.name}>
+                            <SelectLabel>{f.name}</SelectLabel>
+                            {f.departments?.map(d => {
                               const deptName = typeof d === 'object' && d !== null ? ((d as any).name || (d as any).id) : d;
                               return <SelectItem key={deptName} value={deptName}>{deptName}</SelectItem>;
                             })}
-                          </optgroup>
-                        ))}
+                          </SelectGroup>
+                        )})}
                       </SelectContent>
                     </Select>
                   ) : (

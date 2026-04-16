@@ -183,16 +183,18 @@ export default function Attend() {
       setLocation(null);
       return;
     }
-    if (pos.coords.accuracy > 150) {
-      setGpsError(`Akurasi lokasi terlalu rendah (${Math.round(pos.coords.accuracy)}m). Silakan ke area terbuka.`);
+    
+    const acc = pos.coords.accuracy;
+    setGpsAccuracy(acc);
+
+    if (acc > 150) {
+      setGpsError(`Akurasi lokasi terlalu rendah (${Math.round(acc)}m). Silakan ke area terbuka.`);
       toast.warning('Akurasi lokasi rendah. Cari tempat terbuka.');
       setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-      setGpsAccuracy(pos.coords.accuracy);
       return;
     }
     
     setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-    setGpsAccuracy(pos.coords.accuracy ?? null);
     setGpsError(null);
   };
 
@@ -486,6 +488,23 @@ export default function Attend() {
         return;
       }
 
+      // --- ANTI-CHEAT LAYER 2: Request Nonce ---
+      const challengeRes = await api.get('/attendance/challenge');
+      const nonce = challengeRes.data?.data?.nonce;
+      if (!nonce) {
+        throw new Error('Gagal mendapatkan security token dari server');
+      }
+
+      // Generate signature (HMAC-like)
+      const secret = import.meta.env.VITE_APP_SECRET || 'absenyura-secure-2026';
+      const payloadToSign = `${nonce}:${location.lat}:${location.lng}:${secret}`;
+      const encoder = new TextEncoder();
+      const data = encoder.encode(payloadToSign);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const signature = Array.from(new Uint8Array(hashBuffer))
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('');
+
       const formData = new FormData();
       formData.append('session_id', sessionId);
       if (qrToken !== NO_QR_TOKEN) {
@@ -493,8 +512,11 @@ export default function Attend() {
       }
       formData.append('latitude', location.lat.toString());
       formData.append('longitude', location.lng.toString());
+      formData.append('accuracy', (gpsAccuracy || 0).toString());
       formData.append('ip_address', ipAddress);
       formData.append('device_fingerprint', deviceFingerprint);
+      formData.append('nonce', nonce);
+      formData.append('signature', signature);
       
       if (photoBlob) {
         formData.append('photo', photoBlob, 'attendance.jpg');

@@ -3,7 +3,7 @@ import { useAuthStore } from '@/stores/authStore';
 import api from '@/services/api';
 import useSWR from 'swr';
 import { toast } from 'sonner';
-import { Building2, BookOpen, Trash2 } from 'lucide-react';
+import { Building2, BookOpen, Trash2, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -92,12 +92,14 @@ export default function MasterData() {
               </div>
 
               <div className="space-y-6">
-                {faculties.map((faculty, index) => (
+                {faculties.map((faculty, index) => {
+                  if (!faculty) return null;
+                  return (
                   <div key={index} className="border border-slate-200 dark:border-zinc-700 rounded-xl p-4 bg-slate-50 dark:bg-zinc-900/50">
                     <div className="flex justify-between items-center mb-4">
                       <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
                         <Building2 className="w-4 h-4 text-indigo-500" />
-                        {faculty.name}
+                        {typeof faculty.name === 'object' && faculty.name !== null ? ((faculty.name as any).name || (faculty.name as any).id) : faculty.name}
                       </h3>
                       <Button variant="ghost" size="sm" className="text-red-500" onClick={() => {
                         setFaculties(faculties.filter((_, i) => i !== index));
@@ -107,7 +109,7 @@ export default function MasterData() {
                     </div>
 
                     <div className="pl-6 space-y-3">
-                      {faculty.departments.map((dept, dIndex) => {
+                      {faculty.departments?.map((dept, dIndex) => {
                         const deptName = typeof dept === 'object' && dept !== null ? ((dept as any).name || (dept as any).id) : dept;
                         return (
                         <div key={dIndex} className="flex justify-between items-center bg-white dark:bg-zinc-800 p-2 px-3 rounded-lg border border-slate-200 dark:border-zinc-700">
@@ -139,18 +141,24 @@ export default function MasterData() {
                             }
                           }}
                         />
-                        <Button size="sm" variant="secondary" onClick={() => {
-                          if (newDepartments[index]) {
-                            const newFacs = [...faculties];
-                            newFacs[index].departments.push(newDepartments[index]);
-                            setFaculties(newFacs);
-                            setNewDepartments({...newDepartments, [index]: ''});
-                          }
-                        }}>Tambah</Button>
+                        <Button 
+                          size="sm" 
+                          variant="secondary"
+                          onClick={() => {
+                            if (newDepartments[index]) {
+                              const newFacs = [...faculties];
+                              newFacs[index].departments.push(newDepartments[index]);
+                              setFaculties(newFacs);
+                              setNewDepartments({...newDepartments, [index]: ''});
+                            }
+                          }}
+                        >
+                          <Plus className="w-4 h-4" />
+                        </Button>
                       </div>
                     </div>
                   </div>
-                ))}
+                )})}
 
                 <div className="flex gap-2 pt-4 border-t border-slate-200 dark:border-zinc-700">
                   <Input 

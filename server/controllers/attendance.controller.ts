@@ -26,13 +26,73 @@ function getDistance(lat1: number, lon1: number, lat2: number, lon2: number): nu
   return R * c; // in metres
 }
 
+export const getChallenge = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const nonce = crypto.randomBytes(16).toString('hex');
+    const expires_at = new Date(Date.now() + 2 * 60000); // 2 minutes expiry
+
+    await prisma.challengeNonce.create({
+      data: { nonce, expires_at }
+    });
+
+    res.status(200).json({ success: true, data: { nonce } });
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Gagal membuat security challenge' });
+  }
+};
+
 export const checkIn = async (req: Request, res: Response): Promise<void> => {
   try {
     const user_id = (req as any).user.id;
-    const { session_id, qr_token, latitude, longitude, ip_address, device_fingerprint } = req.body;
+    const { session_id, qr_token, latitude, longitude, accuracy, ip_address, device_fingerprint, nonce, signature } = req.body;
+
+    // --- ANTI-CHEAT LAYER 1: Server-side Accuracy Validation ---
+    if (!accuracy) {
+      res.status(400).json({ success: false, error: 'Data akurasi GPS tidak ditemukan. Pastikan Anda mengizinkan akses lokasi dengan presisi tinggi.' });
+      return;
+    }
+    const accuracyValue = parseFloat(accuracy);
+    if (accuracyValue > 150) {
+      res.status(400).json({ success: false, error: `Sinyal GPS terlalu lemah/tidak akurat (Akurasi: ${Math.round(accuracyValue)}m). Coba di ruang terbuka.` });
+      return;
+    }
+
+    // --- ANTI-CHEAT LAYER 2: Cryptographic Camera Proof ---
+    if (!nonce || !signature) {
+      res.status(400).json({ success: false, error: 'Security proof (nonce/signature) tidak valid. Harap update aplikasi.' });
+      return;
+    }
+
+    const validNonce = await prisma.challengeNonce.findUnique({ where: { nonce } });
+    if (!validNonce || validNonce.expires_at < new Date()) {
+      res.status(400).json({ success: false, error: 'Sesi kamera telah kedaluwarsa. Silakan jepret foto ulang.' });
+      return;
+    }
+    // Delete to prevent replay attacks
+    await prisma.challengeNonce.delete({ where: { nonce } });
+
+    const secret = process.env.VITE_APP_SECRET || 'absenyura-secure-2026';
+    const payloadToSign = `${nonce}:${latitude}:${longitude}:${secret}`;
+    const expectedSignature = crypto.createHash('sha256').update(payloadToSign).digest('hex');
+
+    if (signature !== expectedSignature) {
+      res.status(400).json({ success: false, error: 'Terdeteksi manipulasi foto atau lokasi (Signature mismatch).' });
+      return;
+    }
 
     let photoUrl = null;
     if (req.file && (req.file as any).buffer) {
+      const fileBuffer = (req.file as any).buffer;
+      
+      // --- ANTI-CHEAT LAYER 3: EXIF / Canvas Blob Analysis ---
+      // Canvas .toBlob() in browser produces very clean JFIF with APP0, and generally lacks APP1 Exif.
+      // Photos taken from gallery / camera apps usually have "Exif" identifier near the start.
+      // We read the first 1024 bytes looking for "Exif".
+      const headerString = fileBuffer.subarray(0, Math.min(fileBuffer.length, 1024)).toString('ascii');
+      if (headerString.includes('Exif')) {
+        res.status(400).json({ success: false, error: 'Terdeteksi foto dari Galeri. Anda wajib mengambil foto langsung menggunakan kamera aplikasi.' });
+        return;
+      }
       if (process.env.CLOUDINARY_URL) {
         // Upload to Cloudinary using a stream
         const b64 = Buffer.from((req.file as any).buffer).toString('base64');
@@ -301,6 +361,7 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
         status,
         check_in_lat: parseFloat(latitude),
         check_in_lng: parseFloat(longitude),
+        check_in_accuracy: parseFloat(accuracy),
         check_in_ip: ip_address,
         check_in_device: device_fingerprint,
         photo_url: photoUrl,
