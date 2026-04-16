@@ -15,15 +15,11 @@ import { ConfirmModal } from '@/components/ConfirmModal';
 import type { Location } from '@/types/location';
 
 // Fix leaflet icon issue in react-leaflet
-import markerIcon2x from '/images/marker-icon-2x.png';
-import markerIcon from '/images/marker-icon.png';
-import markerShadow from '/images/marker-shadow.png';
-
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl: markerIcon2x,
-  iconUrl: markerIcon,
-  shadowUrl: markerShadow,
+  iconRetinaUrl: '/images/marker-icon-2x.png',
+  iconUrl: '/images/marker-icon.png',
+  shadowUrl: '/images/marker-shadow.png',
 });
 
 export default function Locations() {
