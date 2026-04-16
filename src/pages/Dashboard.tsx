@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
 import useSWR from 'swr';
 import { useAuthStore } from '@/stores/authStore';
 import api from '@/services/api';
@@ -156,10 +156,14 @@ export default function Dashboard() {
                       data?.recent_sessions?.map((session: any) => (
                         <TableRow key={session.id}>
                           <TableCell>
-                            <div className="font-bold text-slate-900 dark:text-white text-base">{session.title}</div>
+                            <div className="font-bold text-slate-900 dark:text-white text-base">
+                              {typeof session.title === 'object' ? ((session.title as any).name || (session.title as any).id) : session.title}
+                            </div>
                             {session.class && (
-                              <p className="text-sm font-semibold text-indigo-600 dark:text-indigo-400 mt-0.5">{session.class.name}</p>
-                            )}
+                                <p className="text-sm font-semibold text-indigo-600 dark:text-indigo-400 mt-0.5">
+                                  {typeof session.class === 'object' ? ((session.class as any).name || (session.class as any).id) : (session.class?.name || session.class || '-')}
+                                </p>
+                              )}
                           </TableCell>
                           <TableCell>
                             <div className="flex flex-col gap-1.5 text-slate-700 dark:text-zinc-300">
@@ -174,10 +178,10 @@ export default function Dashboard() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <div className="flex items-center gap-1.5 text-slate-700 dark:text-zinc-300">
-                              <MapPin size={14} className="text-emerald-500 shrink-0" />
-                              <span className="font-medium text-sm line-clamp-1">{session.location?.name || '-'}</span>
-                            </div>
+                            <div className="flex items-center gap-1.5 mt-1 text-slate-500 dark:text-zinc-400">
+                                <MapPin size={14} className="shrink-0" />
+                                <span className="truncate max-w-[200px]">{typeof session.location === 'object' ? ((session.location as any).name || (session.location as any).id) : (session.location?.name || session.location || '-')}</span>
+                              </div>
                           </TableCell>
                           <TableCell className="text-right">
                             {session.status === 'ACTIVE' ? (
@@ -306,7 +310,7 @@ export default function Dashboard() {
                 </div>
               </div>
               
-              <div className="h-80 w-full">
+              <div className="h-80 w-full min-h-[320px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={data?.chart_data} margin={{ top: 5, right: 20, left: -20, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" opacity={0.5} />
@@ -325,7 +329,7 @@ export default function Dashboard() {
                     />
                     <Tooltip 
                       contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                      labelFormatter={(val) => format(new Date(val as string), 'dd MMMM yyyy', { locale: id })}
+                      labelFormatter={(val) => val ? format(new Date(val as string), 'dd MMMM yyyy', { locale: id }) : ''}
                       labelStyle={{ fontWeight: 'bold', color: '#1e293b', marginBottom: '4px' }}
                     />
                     {(chartFilter === 'ALL' || chartFilter === 'PRESENT') && (
@@ -412,10 +416,14 @@ export default function Dashboard() {
                           <TableCell>
                             <div className="flex items-start gap-2">
                               <div>
-                                <h4 className="font-bold text-slate-800 dark:text-white text-base">{session.title}</h4>
+                                <h4 className="font-bold text-slate-800 dark:text-white text-base">
+                                  {typeof session.title === 'object' ? ((session.title as any).name || (session.title as any).id) : session.title}
+                                </h4>
                                 {session.class && (
-                                  <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">{session.class.name}</p>
-                                )}
+                                    <p className="mt-0.5 text-xs text-slate-500 dark:text-zinc-400">
+                                      {typeof session.class === 'object' ? ((session.class as any).name || (session.class as any).id) : (session.class?.name || session.class || '-')}
+                                    </p>
+                                  )}
                               </div>
                             </div>
                             <div className="mt-2">
