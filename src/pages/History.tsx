@@ -119,7 +119,7 @@ export default function HistoryPage() {
                     <TableCell>
                       <div className="font-bold text-slate-900 dark:text-white text-base">{item.session_title}</div>
                       {item.class_name && (
-                        <p className="text-sm font-semibold text-indigo-600 dark:text-indigo-400 mt-0.5">{typeof item.class_name === 'object' ? ((item.class_name as any).name || (item.class_name as any).id) : item.class_name}</p>
+                        <p className="text-sm font-semibold text-indigo-600 dark:text-indigo-400 mt-0.5">{typeof item.class_name === 'object' && item.class_name !== null ? ((item.class_name as any).name || (item.class_name as any).id) : item.class_name}</p>
                       )}
                     </TableCell>
                     <TableCell>

@@ -311,11 +311,11 @@ export default function Users() {
                           user.role === 'ADMIN' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : 
                           'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'}`}
                       >
-                        {typeof user.role === 'object' ? ((user.role as any).name || (user.role as any).id) : user.role}
+                        {typeof user.role === 'object' && user.role !== null ? ((user.role as any).name || (user.role as any).id) : user.role}
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-slate-600 dark:text-zinc-300">{typeof user.department === 'object' ? ((user.department as any).name || (user.department as any).id) : (user.department || '-')}</div>
+                      <div className="text-slate-600 dark:text-zinc-300">{typeof user.department === 'object' && user.department !== null ? ((user.department as any).name || (user.department as any).id) : (user.department || '-')}</div>
                       {user.role === 'USER' && (
                         <div className="text-xs text-slate-500 mt-1">Semester {user.semester || 1}</div>
                       )}
@@ -460,7 +460,7 @@ export default function Users() {
                         {facultiesData.map(f => (
                           <optgroup key={f.name} label={f.name} className="p-2 font-semibold text-slate-500">
                             {f.departments.map(d => {
-                              const deptName = typeof d === 'object' ? ((d as any).name || (d as any).id) : d;
+                              const deptName = typeof d === 'object' && d !== null ? ((d as any).name || (d as any).id) : d;
                               return <SelectItem key={deptName} value={deptName}>{deptName}</SelectItem>;
                             })}
                           </optgroup>

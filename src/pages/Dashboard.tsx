@@ -157,11 +157,11 @@ export default function Dashboard() {
                         <TableRow key={session.id}>
                           <TableCell>
                             <div className="font-bold text-slate-900 dark:text-white text-base">
-                              {typeof session.title === 'object' ? ((session.title as any).name || (session.title as any).id) : session.title}
+                              {typeof session.title === 'object' && session.title !== null ? ((session.title as any).name || (session.title as any).id) : session.title}
                             </div>
                             {session.class && (
                                 <p className="text-sm font-semibold text-indigo-600 dark:text-indigo-400 mt-0.5">
-                                  {typeof session.class === 'object' ? ((session.class as any).name || (session.class as any).id) : (session.class?.name || session.class || '-')}
+                                  {typeof session.class === 'object' && session.class !== null ? ((session.class as any).name || (session.class as any).id) : (session.class?.name || session.class || '-')}
                                 </p>
                               )}
                           </TableCell>
@@ -180,7 +180,7 @@ export default function Dashboard() {
                           <TableCell>
                             <div className="flex items-center gap-1.5 mt-1 text-slate-500 dark:text-zinc-400">
                                 <MapPin size={14} className="shrink-0" />
-                                <span className="truncate max-w-[200px]">{typeof session.location === 'object' ? ((session.location as any).name || (session.location as any).id) : (session.location?.name || session.location || '-')}</span>
+                                <span className="truncate max-w-[200px]">{typeof session.location === 'object' && session.location !== null ? ((session.location as any).name || (session.location as any).id) : (session.location?.name || session.location || '-')}</span>
                               </div>
                           </TableCell>
                           <TableCell className="text-right">
@@ -417,11 +417,11 @@ export default function Dashboard() {
                             <div className="flex items-start gap-2">
                               <div>
                                 <h4 className="font-bold text-slate-800 dark:text-white text-base">
-                                  {typeof session.title === 'object' ? ((session.title as any).name || (session.title as any).id) : session.title}
+                                  {typeof session.title === 'object' && session.title !== null ? ((session.title as any).name || (session.title as any).id) : session.title}
                                 </h4>
                                 {session.class && (
                                     <p className="mt-0.5 text-xs text-slate-500 dark:text-zinc-400">
-                                      {typeof session.class === 'object' ? ((session.class as any).name || (session.class as any).id) : (session.class?.name || session.class || '-')}
+                                      {typeof session.class === 'object' && session.class !== null ? ((session.class as any).name || (session.class as any).id) : (session.class?.name || session.class || '-')}
                                     </p>
                                   )}
                               </div>
