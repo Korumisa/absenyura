@@ -42,13 +42,14 @@ export default function Layout() {
   const allowedNavItems = navItems.filter((item) => user && item.roles.includes(user.role));
 
   return (
-    <div className="flex h-screen bg-slate-50 dark:bg-zinc-900 overflow-hidden font-sans">
-      {/* Mobile sidebar backdrop */}
+    <div className="flex min-h-dvh bg-slate-50 dark:bg-zinc-900 overflow-hidden font-sans">
       {sidebarOpen && (
-        <div
+        <button
+          type="button"
+          aria-label="Tutup sidebar"
           className="fixed inset-0 z-20 bg-slate-900/50 transition-opacity lg:hidden"
           onClick={() => setSidebarOpen(false)}
-        ></div>
+        />
       )}
 
       {/* Sidebar */}
@@ -64,6 +65,7 @@ export default function Layout() {
             size="icon" 
             className="lg:hidden text-slate-500" 
             onClick={() => setSidebarOpen(false)}
+            aria-label="Tutup sidebar"
           >
             <X size={24} />
           </Button>
@@ -104,6 +106,7 @@ export default function Layout() {
               size="icon" 
               className="lg:hidden mr-2" 
               onClick={() => setSidebarOpen(true)}
+              aria-label="Buka sidebar"
             >
               <Menu size={24} />
             </Button>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Html5QrcodeScanner, Html5QrcodeSupportedFormats } from 'html5-qrcode';
+import { Html5Qrcode, Html5QrcodeScanner, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import api from '@/services/api';
 import { toast } from 'sonner';
 import { MapPin, QrCode, ShieldAlert, Camera, RefreshCw, CheckCircle2, XCircle, WifiOff } from 'lucide-react';
@@ -8,6 +8,7 @@ import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-le
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { saveOfflineAttendance } from '@/lib/idb';
+import { pickPreferredCameraId } from '@/lib/camera';
 
 import { Button } from '@/components/ui/button';
 
@@ -74,6 +75,25 @@ export default function Attend() {
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
   const [isCameraActive, setIsCameraActive] = useState(false);
   const scannerRef = React.useRef<Html5QrcodeScanner | null>(null);
+  const [qrFacingMode, setQrFacingMode] = useState<'user' | 'environment'>('environment');
+  const [qrCameraId, setQrCameraId] = useState<string | null>(null);
+
+  const loadQrCamera = useCallback(async (preferRear: boolean) => {
+    try {
+      const cameras = await Html5Qrcode.getCameras();
+      const preferredId = pickPreferredCameraId(
+        cameras.map((c) => ({ id: c.id, label: c.label })),
+        { preferRear }
+      );
+      setQrCameraId(preferredId);
+    } catch {
+      setQrCameraId(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadQrCamera(true);
+  }, [loadQrCamera]);
 
   // Derived session ID from parameter or scan result
   const extractSessionIdAndToken = (rawResult: string | null) => {
@@ -226,13 +246,19 @@ export default function Attend() {
 
   useEffect(() => {
     if (scanning && !scanResult && !scannerRef.current) {
+      const videoConstraints = qrCameraId
+        ? { deviceId: { exact: qrCameraId } }
+        : { facingMode: { ideal: qrFacingMode } };
+
       const scanner = new Html5QrcodeScanner(
         'qr-reader',
         { 
           fps: 10, 
           qrbox: { width: 250, height: 250 },
           formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
-          aspectRatio: 1.0
+          aspectRatio: 1.0,
+          rememberLastUsedCamera: true,
+          videoConstraints
         },
         false
       );
@@ -261,7 +287,24 @@ export default function Attend() {
         scannerRef.current = null;
       }
     };
-  }, [scanning, scanResult]);
+  }, [scanning, scanResult, qrCameraId, qrFacingMode]);
+
+  const switchQrCamera = async () => {
+    const nextMode = qrFacingMode === 'environment' ? 'user' : 'environment';
+    setQrFacingMode(nextMode);
+    await loadQrCamera(nextMode === 'environment');
+
+    if (scannerRef.current) {
+      try {
+        await scannerRef.current.clear();
+      } catch {
+        void 0;
+      }
+      scannerRef.current = null;
+    }
+    setScanResult(null);
+    setScanning(true);
+  };
 
   const stopCamera = () => {
     if (videoRef.current && videoRef.current.srcObject) {
@@ -574,6 +617,12 @@ export default function Attend() {
                   <p className="text-sm font-medium text-slate-600 dark:text-zinc-400">
                     Arahkan kamera ke QR Code yang ditampilkan oleh Dosen.
                   </p>
+                  <div className="mt-4 flex justify-center">
+                    <Button type="button" variant="outline" onClick={switchQrCamera} className="gap-2">
+                      <RefreshCw size={16} />
+                      Kamera QR {qrFacingMode === 'environment' ? 'Belakang' : 'Depan'}
+                    </Button>
+                  </div>
                 </div>
               </div>
             ) : !photoBlob ? (

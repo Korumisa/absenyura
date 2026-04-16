@@ -17,6 +17,7 @@ export default function Settings() {
   
   const [formData, setFormData] = useState({
     name: user?.name || '',
+    email: user?.email || '',
     phone: '',
     current_password: '',
     new_password: '',
@@ -31,6 +32,7 @@ export default function Settings() {
         if (res.data.data) {
           setFormData({
             name: res.data.data.name || '',
+            email: res.data.data.email || '',
             phone: res.data.data.phone || '',
             current_password: '',
             new_password: '',
@@ -57,13 +59,14 @@ export default function Settings() {
     try {
       const res = await api.put('/settings/profile', {
         name: formData.name,
+        email: formData.email,
         phone: formData.phone,
         current_password: formData.current_password,
         new_password: formData.new_password
       });
       
       // Update local state
-      setAuth({ ...user!, name: formData.name });
+      setAuth({ ...user!, name: formData.name, email: formData.email });
       
       toast.success(res.data.message || 'Profil berhasil diperbarui');
       setFormData(prev => ({ ...prev, current_password: '', new_password: '', confirm_password: '' }));
@@ -117,9 +120,9 @@ export default function Settings() {
               <div className="space-y-2">
                 <Label>Email</Label>
                 <Input 
-                  type="email" disabled value={user?.email || ''}
+                  type="email" required value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})}
                 />
-                <p className="text-xs text-slate-500 mt-1">Email tidak dapat diubah. Hubungi Super Admin jika perlu bantuan.</p>
+                <p className="text-xs text-slate-500 mt-1">Gunakan email yang aktif untuk notifikasi dan pemulihan akun.</p>
               </div>
               
               <hr className="my-6 border-slate-200 dark:border-zinc-700" />

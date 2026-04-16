@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '@/services/api';
 import useSWR from 'swr';
 import { useAuthStore } from '@/stores/authStore';
-import { Plus, Search, Edit2, Trash2, X, QrCode, MapPin, Clock, Calendar } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, X, QrCode, MapPin, Clock, Calendar } from "lucide-react";
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -199,12 +199,13 @@ export default function Sessions() {
               className="pl-9 w-full"
             />
           </div>
-          <div className="w-full">
+          <div className="relative w-full">
+            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4 z-10 pointer-events-none" />
             <Input 
               type="date" 
               value={filterDate}
               onChange={(e) => setFilterDate(e.target.value)}
-              className="w-full block"
+              className="w-full pl-9 block appearance-none [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer bg-transparent"
             />
           </div>
           <div className="w-full">

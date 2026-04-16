@@ -72,12 +72,15 @@ export default function Login() {
         
         <form onSubmit={handleLogin} className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="email">Alamat Email</Label>
+            <Label htmlFor="email">Email atau NIM</Label>
             <Input
               id="email"
-              type="email"
+              type="text"
+              name="email"
+              autoComplete="username"
+              spellCheck={false}
               required
-              placeholder="email@kampus.ac.id"
+              placeholder="email@kampus.ac.id atau NIM Anda"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
@@ -87,15 +90,21 @@ export default function Login() {
             <Input
               id="password"
               type="password"
+              name="password"
+              autoComplete="current-password"
               required
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
             <div className="flex justify-end mt-1">
-              <a href="#" className="text-sm text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">
+              <button
+                type="button"
+                onClick={() => toast.info('Silakan hubungi Admin untuk reset kata sandi.')}
+                className="text-sm text-indigo-600 hover:text-indigo-500 dark:text-indigo-400"
+              >
                 Lupa kata sandi?
-              </a>
+              </button>
             </div>
           </div>
           <Button
@@ -104,7 +113,7 @@ export default function Login() {
             className="w-full"
             size="lg"
           >
-            {loading ? 'Memverifikasi...' : (
+            {loading ? 'Memverifikasi…' : (
               <>
                 <LogIn className="w-5 h-5 mr-2" />
                 Masuk ke Sistem

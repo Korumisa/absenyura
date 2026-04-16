@@ -1,141 +1,144 @@
-import { PrismaClient } from "@prisma/client";
-import bcrypt from "bcryptjs";
+import { PrismaClient } from '@prisma/client'
+import bcrypt from 'bcryptjs'
 
-const prisma = new PrismaClient();
-
-async function upsertUser({ email, name, role, password }) {
-  const passwordHash = await bcrypt.hash(password, 10);
-
-  return prisma.user.upsert({
-    where: { email },
-    update: {
-      name,
-      role,
-      password: passwordHash,
-      is_active: true,
-    },
-    create: {
-      email,
-      name,
-      role,
-      password: passwordHash,
-      is_active: true,
-    },
-  });
-}
+const prisma = new PrismaClient()
 
 async function main() {
-  const password = "demo12345";
+  console.log('🌱 Memulai seeder database...')
 
-  const superAdmin = await upsertUser({
-    email: "superadmin@demo.com",
-    name: "Super Admin",
-    role: "SUPER_ADMIN",
-    password,
-  });
-
-  const admin = await upsertUser({
-    email: "admin@demo.com",
-    name: "Admin",
-    role: "ADMIN",
-    password,
-  });
-
-  const lecturer = await upsertUser({
-    email: "lecturer@demo.com",
-    name: "Lecturer",
-    role: "USER",
-    password,
-  });
-
-  const student = await upsertUser({
-    email: "student@demo.com",
-    name: "Student",
-    role: "USER",
-    password,
-  });
-
-  let location = await prisma.location.findFirst({ where: { name: "Demo Location" } });
-  if (!location) {
-    location = await prisma.location.create({
-      data: {
-        name: "Demo Location",
-        address: "Demo Address",
-        latitude: -8.112,
-        longitude: 115.089,
-        radius: 200,
-        created_by: superAdmin.id,
-      },
-    });
-  }
-
-  let demoClass = await prisma.class.findFirst({
-    where: { name: "Demo Class", lecturer_id: lecturer.id },
-  });
-  if (!demoClass) {
-    demoClass = await prisma.class.create({
-      data: {
-        name: "Demo Class",
-        course_code: "DEMO-101",
-        description: "Demo class for testing",
-        lecturer_id: lecturer.id,
-      },
-    });
-  }
-
-  await prisma.classEnrollment.upsert({
-    where: {
-      class_id_student_id: {
-        class_id: demoClass.id,
-        student_id: student.id,
-      },
+  // 1. Buat Setting Fakultas & Prodi
+  console.log('Membuat data Fakultas dan Program Studi...')
+  const facultyData = [
+    {
+      id: 'ftk',
+      name: 'Fakultas Teknik dan Kejuruan',
+      departments: [
+        { id: 'pti', name: 'Pendidikan Teknik Informatika' },
+        { id: 'si', name: 'Sistem Informasi' },
+        { id: 'ilkom', name: 'Ilmu Komputer' },
+      ],
     },
+    {
+      id: 'fmipa',
+      name: 'Fakultas MIPA',
+      departments: [
+        { id: 'mat', name: 'Matematika' },
+        { id: 'fis', name: 'Fisika' },
+      ],
+    },
+  ]
+  
+  await prisma.setting.upsert({
+    where: { key: 'FACULTIES_AND_DEPARTMENTS' },
+    update: { value: JSON.stringify(facultyData) },
+    create: { key: 'FACULTIES_AND_DEPARTMENTS', value: JSON.stringify(facultyData) },
+  })
+
+  // 2. Buat Super Admin
+  console.log('Membuat akun Super Admin...')
+  const hashedPassword = await bcrypt.hash('demo12345', 12)
+  const superAdmin = await prisma.user.upsert({
+    where: { email: 'superadmin@demo.com' },
     update: {},
     create: {
-      class_id: demoClass.id,
-      student_id: student.id,
+      name: 'Super Admin',
+      email: 'superadmin@demo.com',
+      password: hashedPassword,
+      role: 'SUPER_ADMIN',
+      nim_nip: 'ADMIN-001',
+      is_active: true,
     },
-  });
+  })
+  
+  // 3. Buat Mahasiswa Dummy
+  console.log('Membuat akun Mahasiswa dummy...')
+  const mahasiswaPassword = await bcrypt.hash('demo12345', 12)
+  const mahasiswa = await prisma.user.upsert({
+    where: { email: 'mahasiswa@demo.com' },
+    update: {},
+    create: {
+      name: 'Mahasiswa Demo',
+      email: 'mahasiswa@demo.com',
+      password: mahasiswaPassword,
+      role: 'USER',
+      nim_nip: '2115051000',
+      department: 'Pendidikan Teknik Informatika',
+      semester: 5,
+      is_active: true,
+    },
+  })
 
-  const now = new Date();
-  const in5 = new Date(now.getTime() + 5 * 60 * 1000);
-  const in65 = new Date(now.getTime() + 65 * 60 * 1000);
+  // 4. Buat Lokasi Kampus (Geofencing)
+  console.log('Membuat data Lokasi Kampus (Undiksha)...')
+  const lokasi = await prisma.location.upsert({
+    where: { id: 'loc-undiksha' },
+    update: {},
+    create: {
+      id: 'loc-undiksha',
+      name: 'Kampus Tengah Undiksha',
+      latitude: -8.1158, // Ganti dengan koordinat asli
+      longitude: 115.0886,
+      radius: 100,
+      created_by: superAdmin.id,
+    },
+  })
 
-  const existingSession = await prisma.session.findFirst({
-    where: { title: "Demo Session", class_id: demoClass.id },
-  });
+  // 5. Buat Kelas Kuliah
+  console.log('Membuat data Kelas Kuliah...')
+  const kelas = await prisma.class.upsert({
+    where: { id: 'class-pti-5a' },
+    update: {},
+    create: {
+      id: 'class-pti-5a',
+      name: 'PTI 5A - Rekayasa Perangkat Lunak',
+      lecturer_id: superAdmin.id,
+    },
+  })
 
-  if (!existingSession) {
-    await prisma.session.create({
-      data: {
-        title: "Demo Session",
-        description: "Demo session for testing",
-        class_id: demoClass.id,
-        location_id: location.id,
-        created_by_id: lecturer.id,
-        qr_mode: "NONE",
-        session_start: in5,
-        session_end: in65,
-        check_in_open_at: in5,
-        check_in_close_at: in65,
-      },
-    });
+  // Daftarkan mahasiswa ke kelas tersebut
+  const existingEnrollment = await prisma.classEnrollment.findFirst({
+    where: { class_id: kelas.id, student_id: mahasiswa.id }
+  })
+  if (!existingEnrollment) {
+    await prisma.classEnrollment.create({
+      data: { class_id: kelas.id, student_id: mahasiswa.id }
+    })
   }
 
-  console.log("Seed completed. Demo password:", password);
-  console.log("Accounts:", [
-    "superadmin@demo.com (SUPER_ADMIN)",
-    "admin@demo.com (ADMIN)",
-    "lecturer@demo.com (USER)",
-    "student@demo.com (USER)",
-  ]);
+  // 6. Buat Sesi Absensi Aktif
+  console.log('Membuat Sesi Kehadiran Aktif...')
+  // Hapus sesi lama agar tidak duplikat QR token
+  await prisma.session.deleteMany({ where: { title: 'Pertemuan 1 - RPL' } })
+  
+  const now = new Date()
+  const twoHoursLater = new Date(Date.now() + 2 * 60 * 60 * 1000)
+
+  await prisma.session.create({
+    data: {
+      title: 'Pertemuan 1 - RPL',
+      description: 'Pengenalan Rekayasa Perangkat Lunak',
+      session_start: now, // Mulai sekarang
+      session_end: twoHoursLater, // Berakhir 2 jam lagi
+      check_in_open_at: now,
+      check_in_close_at: twoHoursLater,
+      qr_mode: 'STATIC',
+      qr_token: 'STATIC-QR-RPL-001',
+      qr_secret: 'STATIC-SECRET',
+      created_by_id: superAdmin.id,
+      location_id: lokasi.id,
+      class_id: kelas.id,
+      status: 'ACTIVE',
+    },
+  })
+
+  console.log('✅ Seeding selesai! Database siap digunakan.')
 }
 
 main()
   .catch((e) => {
-    console.error(e);
-    process.exitCode = 1;
+    console.error('❌ Terjadi kesalahan saat seeding:', e)
+    process.exit(1)
   })
   .finally(async () => {
-    await prisma.$disconnect();
-  });
+    await prisma.$disconnect()
+  })

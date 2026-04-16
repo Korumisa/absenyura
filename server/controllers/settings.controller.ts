@@ -5,7 +5,7 @@ import prisma from '../utils/prisma.js';
 export const updateProfile = async (req: Request, res: Response): Promise<void> => {
   try {
     const user_id = (req as any).user.id;
-    const { name, phone, current_password, new_password } = req.body;
+    const { name, phone, email, current_password, new_password } = req.body;
 
     const user = await prisma.user.findUnique({ where: { id: user_id } });
     if (!user) {
@@ -14,6 +14,16 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
     }
 
     const updateData: any = { name, phone };
+
+    if (email && email !== user.email) {
+      // Check if email is already taken by another user
+      const existingUser = await prisma.user.findUnique({ where: { email } });
+      if (existingUser) {
+        res.status(400).json({ success: false, error: 'Email sudah digunakan oleh pengguna lain' });
+        return;
+      }
+      updateData.email = email;
+    }
 
     if (new_password) {
       if (!current_password) {

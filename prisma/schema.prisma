@@ -15,7 +15,7 @@ model User {
   password           String
   role               String         @default("USER") // SUPER_ADMIN, ADMIN, USER
   avatar_url         String?
-  nim_nip            String?
+  nim_nip            String?        @unique
   department         String?
   phone              String?
   is_active          Boolean        @default(true)

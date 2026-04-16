@@ -12,7 +12,14 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const user = await prisma.user.findUnique({ where: { email } });
+    const user = await prisma.user.findFirst({ 
+      where: { 
+        OR: [
+          { email },
+          { nim_nip: email }
+        ]
+      } 
+    });
     if (!user) {
       res.status(401).json({ success: false, error: 'Invalid credentials' });
       return;
