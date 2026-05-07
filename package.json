@@ -11,8 +11,9 @@
     "build": "npx prisma@6.4.1 generate && tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "check": "tsc --noEmit",
+    "check": "npx prisma@6.4.1 generate --no-engine && tsc --noEmit",
     "test": "vitest run",
+    "seed": "npx prisma@6.4.1 generate && node prisma/seed.js",
     "server:dev": "nodemon",
     "dev": "concurrently \"npm run client:dev\" \"npm run server:dev\""
   },

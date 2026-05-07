@@ -145,7 +145,7 @@ export default function Users() {
       { header: 'NIM_NIP', key: 'nim', width: 20 },
       { header: 'Departemen', key: 'dept', width: 25 },
       { header: 'No_HP', key: 'phone', width: 20 },
-      { header: 'Role (USER/ADMIN)', key: 'role', width: 20 },
+      { header: 'Role (USER/ADMIN/CONTENT_ADMIN)', key: 'role', width: 26 },
     ];
 
     sheet.getRow(1).font = { bold: true };
@@ -259,6 +259,7 @@ export default function Users() {
                 <SelectItem value="ALL">Semua Peran</SelectItem>
                 <SelectItem value="USER">User / Mahasiswa</SelectItem>
                 <SelectItem value="ADMIN">Admin / Dosen</SelectItem>
+                <SelectItem value="CONTENT_ADMIN">Admin Konten</SelectItem>
                 <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
               </SelectContent>
             </Select>
@@ -441,6 +442,7 @@ export default function Users() {
                     <SelectContent>
                       <SelectItem value="USER">User / Mahasiswa</SelectItem>
                       <SelectItem value="ADMIN">Admin / Dosen</SelectItem>
+                      {currentUser?.role === 'SUPER_ADMIN' && <SelectItem value="CONTENT_ADMIN">Admin Konten</SelectItem>}
                       {currentUser?.role === 'SUPER_ADMIN' && <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>}
                     </SelectContent>
                   </Select>

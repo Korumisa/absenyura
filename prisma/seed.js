@@ -1,137 +1,116 @@
-import { PrismaClient } from '@prisma/client'
+import 'dotenv/config'
 import bcrypt from 'bcryptjs'
+import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
+function readArg(args, key) {
+  const idx = args.indexOf(key)
+  if (idx === -1) return null
+  const next = args[idx + 1]
+  if (!next || next.startsWith('--')) return ''
+  return next
+}
+
+function readNpmConfig(key) {
+  const envKey = `npm_config_${key}`.replace(/-/g, '_')
+  return process.env[envKey] || null
+}
+
+function usage() {
+  return [
+    'Seed akun role (tanpa mock konten):',
+    '  npm run seed   (pakai ENV di .env)',
+    '  npm run seed -- --super-email you@example.com --super-password "StrongPass123" --super-name "Super Admin"',
+    '  npm run seed -- --super-email=you@example.com --super-password="StrongPass123" --super-name="Super Admin"',
+    '  node prisma/seed.js --super-email you@example.com --super-password "StrongPass123" --super-name "Super Admin"',
+    '  node prisma/seed.js you@example.com "StrongPass123" "Super Admin"',
+    '',
+    'Opsional:',
+    '  --admin-email ... --admin-password ... --admin-name ...',
+    '  --content-email ... --content-password ... --content-name ...',
+    '',
+    'Atau gunakan ENV:',
+    '  SEED_SUPER_ADMIN_EMAIL, SEED_SUPER_ADMIN_PASSWORD, SEED_SUPER_ADMIN_NAME',
+    '  SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD, SEED_ADMIN_NAME',
+    '  SEED_CONTENT_ADMIN_EMAIL, SEED_CONTENT_ADMIN_PASSWORD, SEED_CONTENT_ADMIN_NAME',
+  ].join('\n')
+}
+
+async function upsertUser({ email, password, name, role }) {
+  if (!email || !password) return null
+  const passwordHash = await bcrypt.hash(password, 12)
+  return prisma.user.upsert({
+    where: { email },
+    update: { name: name || undefined, role: role || undefined, password: passwordHash },
+    create: { email, name: name || email, role: role || 'USER', password: passwordHash },
+  })
+}
+
 async function main() {
-  console.log('🌱 Memulai seeder database...')
-
-  // 1. Buat Setting Fakultas & Prodi
-  console.log('Membuat data Fakultas dan Program Studi...')
-  const facultyData = [
-    {
-      id: 'ftk',
-      name: 'Fakultas Teknik dan Kejuruan',
-      departments: [
-        { id: 'pti', name: 'Pendidikan Teknik Informatika' },
-        { id: 'si', name: 'Sistem Informasi' },
-        { id: 'ilkom', name: 'Ilmu Komputer' },
-      ],
-    },
-    {
-      id: 'fmipa',
-      name: 'Fakultas MIPA',
-      departments: [
-        { id: 'mat', name: 'Matematika' },
-        { id: 'fis', name: 'Fisika' },
-      ],
-    },
-  ]
-  
-  await prisma.setting.upsert({
-    where: { key: 'FACULTIES_AND_DEPARTMENTS' },
-    update: { value: JSON.stringify(facultyData) },
-    create: { key: 'FACULTIES_AND_DEPARTMENTS', value: JSON.stringify(facultyData) },
-  })
-
-  // 2. Buat Super Admin
-  console.log('Membuat akun Super Admin...')
-  const hashedPassword = await bcrypt.hash('demo12345', 12)
-  const superAdmin = await prisma.user.upsert({
-    where: { email: 'superadmin@demo.com' },
-    update: {},
-    create: {
-      name: 'Super Admin',
-      email: 'superadmin@demo.com',
-      password: hashedPassword,
-      role: 'SUPER_ADMIN',
-      nim_nip: 'ADMIN-001',
-      is_active: true,
-    },
-  })
-  
-  // 3. Buat Mahasiswa Dummy
-  console.log('Membuat akun Mahasiswa dummy...')
-  const mahasiswaPassword = await bcrypt.hash('demo12345', 12)
-  const mahasiswa = await prisma.user.upsert({
-    where: { email: 'mahasiswa@demo.com' },
-    update: {},
-    create: {
-      name: 'Mahasiswa Demo',
-      email: 'mahasiswa@demo.com',
-      password: mahasiswaPassword,
-      role: 'USER',
-      nim_nip: '2115051000',
-      department: 'Pendidikan Teknik Informatika',
-      semester: 5,
-      is_active: true,
-    },
-  })
-
-  // 4. Buat Lokasi Kampus (Geofencing)
-  console.log('Membuat data Lokasi Kampus (Undiksha)...')
-  const lokasi = await prisma.location.upsert({
-    where: { id: 'loc-undiksha' },
-    update: {},
-    create: {
-      id: 'loc-undiksha',
-      name: 'Kampus Tengah Undiksha',
-      latitude: -8.1158, // Ganti dengan koordinat asli
-      longitude: 115.0886,
-      radius: 100,
-      created_by: superAdmin.id,
-    },
-  })
-
-  // 5. Buat Kelas Kuliah
-  console.log('Membuat data Kelas Kuliah...')
-  const kelas = await prisma.class.upsert({
-    where: { id: 'class-pti-5a' },
-    update: {},
-    create: {
-      id: 'class-pti-5a',
-      name: 'PTI 5A - Rekayasa Perangkat Lunak',
-      lecturer_id: superAdmin.id,
-    },
-  })
-
-  // Daftarkan mahasiswa ke kelas tersebut
-  const existingEnrollment = await prisma.classEnrollment.findFirst({
-    where: { class_id: kelas.id, student_id: mahasiswa.id }
-  })
-  if (!existingEnrollment) {
-    await prisma.classEnrollment.create({
-      data: { class_id: kelas.id, student_id: mahasiswa.id }
-    })
+  const args = process.argv.slice(2)
+  if (args.includes('--help') || args.includes('-h')) {
+    console.log(usage())
+    return
   }
 
-  // 6. Buat Sesi Absensi Aktif
-  console.log('Membuat Sesi Kehadiran Aktif...')
-  // Hapus sesi lama agar tidak duplikat QR token
-  await prisma.session.deleteMany({ where: { title: 'Pertemuan 1 - RPL' } })
-  
-  const now = new Date()
-  const twoHoursLater = new Date(Date.now() + 2 * 60 * 60 * 1000)
+  const hasFlags = args.some((x) => x.startsWith('--'))
+  const posEmail = !hasFlags ? (args[0] || null) : null
+  const posPass = !hasFlags ? (args[1] || null) : null
+  const posName = !hasFlags ? (args[2] || null) : null
 
-  await prisma.session.create({
-    data: {
-      title: 'Pertemuan 1 - RPL',
-      description: 'Pengenalan Rekayasa Perangkat Lunak',
-      session_start: now, // Mulai sekarang
-      session_end: twoHoursLater, // Berakhir 2 jam lagi
-      check_in_open_at: now,
-      check_in_close_at: twoHoursLater,
-      qr_mode: 'STATIC',
-      qr_token: 'STATIC-QR-RPL-001',
-      qr_secret: 'STATIC-SECRET',
-      created_by_id: superAdmin.id,
-      location_id: lokasi.id,
-      class_id: kelas.id,
-      status: 'ACTIVE',
-    },
+  const superEmail =
+    readArg(args, '--super-email') ||
+    readNpmConfig('super-email') ||
+    process.env.SEED_SUPER_ADMIN_EMAIL ||
+    posEmail
+  const superPass =
+    readArg(args, '--super-password') ||
+    readNpmConfig('super-password') ||
+    process.env.SEED_SUPER_ADMIN_PASSWORD ||
+    posPass
+  const superName =
+    readArg(args, '--super-name') ||
+    readNpmConfig('super-name') ||
+    process.env.SEED_SUPER_ADMIN_NAME ||
+    posName
+
+  const adminEmail = readArg(args, '--admin-email') || readNpmConfig('admin-email') || process.env.SEED_ADMIN_EMAIL
+  const adminPass =
+    readArg(args, '--admin-password') || readNpmConfig('admin-password') || process.env.SEED_ADMIN_PASSWORD
+  const adminName = readArg(args, '--admin-name') || readNpmConfig('admin-name') || process.env.SEED_ADMIN_NAME
+
+  const contentEmail =
+    readArg(args, '--content-email') || readNpmConfig('content-email') || process.env.SEED_CONTENT_ADMIN_EMAIL
+  const contentPass =
+    readArg(args, '--content-password') || readNpmConfig('content-password') || process.env.SEED_CONTENT_ADMIN_PASSWORD
+  const contentName =
+    readArg(args, '--content-name') || readNpmConfig('content-name') || process.env.SEED_CONTENT_ADMIN_NAME
+
+  if (!superEmail || !superPass) {
+    console.error('Seeder butuh minimal SUPER_ADMIN (email + password).')
+    console.log(usage())
+    process.exitCode = 1
+    return
+  }
+
+  const created = []
+
+  const superAdmin = await upsertUser({ email: superEmail, password: superPass, name: superName, role: 'SUPER_ADMIN' })
+  if (superAdmin) created.push({ role: 'SUPER_ADMIN', email: superAdmin.email })
+
+  const admin = await upsertUser({ email: adminEmail, password: adminPass, name: adminName, role: 'ADMIN' })
+  if (admin) created.push({ role: 'ADMIN', email: admin.email })
+
+  const contentAdmin = await upsertUser({
+    email: contentEmail,
+    password: contentPass,
+    name: contentName,
+    role: 'CONTENT_ADMIN',
   })
+  if (contentAdmin) created.push({ role: 'CONTENT_ADMIN', email: contentAdmin.email })
 
-  console.log('✅ Seeding selesai! Database siap digunakan.')
+  console.log('Akun seeded:', created.map((x) => `${x.role}:${x.email}`).join(', '))
 }
 
 main()
@@ -142,3 +121,4 @@ main()
   .finally(async () => {
     await prisma.$disconnect()
   })
+

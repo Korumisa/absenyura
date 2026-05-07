@@ -1,7 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import Home from "@/pages/Home";
 import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
 import Layout from "@/components/Layout";
@@ -21,20 +20,17 @@ import MasterData from "./pages/MasterData";
 import HistoryPage from "@/pages/History";
 import QRDisplay from "@/pages/QRDisplay";
 import Attend from "@/pages/Attend";
-import Features from "@/pages/public/Features";
-import HowItWorks from "@/pages/public/HowItWorks";
-import Pricing from "@/pages/public/Pricing";
-import Contact from "@/pages/public/Contact";
-import ComingSoon from "@/pages/public/ComingSoon";
 import ScrollToTop from "@/components/ScrollToTop";
-import GpsSecurity from "@/pages/public/GpsSecurity";
-import ApiIntegration from "@/pages/public/ApiIntegration";
-import HelpCenter from "@/pages/public/HelpCenter";
-import ApiDocs from "@/pages/public/ApiDocs";
-import SystemStatus from "@/pages/public/SystemStatus";
-import AboutUs from "@/pages/public/AboutUs";
-import Careers from "@/pages/public/Careers";
-import CampusPartners from "@/pages/public/CampusPartners";
+import PublicSiteCMS from "@/pages/PublicSiteCMS";
+import PublicHome from "@/pages/public/PublicHome";
+import Berita from "@/pages/public/Berita";
+import BeritaDetail from "@/pages/public/BeritaDetail";
+import Fungsionaris from "@/pages/public/Fungsionaris";
+import ProgramKerja from "@/pages/public/ProgramKerja";
+import InformasiLomba from "@/pages/public/InformasiLomba";
+import Kegiatan from "@/pages/public/Kegiatan";
+import Galeri from "@/pages/public/Galeri";
+import OpenRecruitment from "@/pages/public/OpenRecruitment";
 
 import { ThemeProvider } from "@/providers/theme-provider";
 import { useEffect } from "react";
@@ -98,6 +94,7 @@ export default function App() {
   const getDefaultRoute = () => {
     if (user?.role === 'SUPER_ADMIN') return '/dashboard';
     if (user?.role === 'ADMIN') return '/dashboard';
+    if (user?.role === 'CONTENT_ADMIN') return '/public-site';
     if (user?.role === 'USER') return '/dashboard';
     return '/dashboard';
   };
@@ -109,29 +106,23 @@ export default function App() {
         <Router>
         <ScrollToTop />
         <Routes>
-          <Route path="/" element={isAuthenticated ? <Navigate to={getDefaultRoute()} replace /> : <Home />} />
+          <Route path="/" element={isAuthenticated ? <Navigate to={getDefaultRoute()} replace /> : <PublicHome />} />
           <Route path="/login" element={isAuthenticated ? <Navigate to={getDefaultRoute()} replace /> : <Login />} />
           
           {/* Public Static Pages */}
-          <Route path="/fitur-utama" element={<Features />} />
-          <Route path="/cara-kerja" element={<HowItWorks />} />
-          <Route path="/harga-paket" element={<Pricing />} />
-          <Route path="/hubungi-kami" element={<Contact />} />
-          
-          <Route path="/keamanan-gps" element={<GpsSecurity />} />
-          <Route path="/integrasi-api" element={<ApiIntegration />} />
-          <Route path="/pusat-bantuan" element={<HelpCenter />} />
-          <Route path="/dokumentasi-api" element={<ApiDocs />} />
-          <Route path="/blog-artikel" element={<ComingSoon />} />
-          <Route path="/status-sistem" element={<SystemStatus />} />
-          <Route path="/tentang-kami" element={<AboutUs />} />
-          <Route path="/karir" element={<Careers />} />
-          <Route path="/mitra-kampus" element={<CampusPartners />} />
+          <Route path="/berita" element={<Berita />} />
+          <Route path="/berita/:slug" element={<BeritaDetail />} />
+          <Route path="/kegiatan" element={<Kegiatan />} />
+          <Route path="/struktur-organisasi" element={<Fungsionaris />} />
+          <Route path="/program-kerja" element={<ProgramKerja />} />
+          <Route path="/informasi-lomba" element={<InformasiLomba />} />
+          <Route path="/galeri" element={<Galeri />} />
+          <Route path="/open-recruitment" element={<OpenRecruitment />} />
           
           <Route element={<ProtectedRoute />}>
             <Route element={<Layout />}>
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/sessions" element={<Sessions />} />
+              <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'USER']}><Dashboard /></ProtectedRoute>} />
+              <Route path="/sessions" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'USER']}><Sessions /></ProtectedRoute>} />
               <Route path="/sessions/:id/qr" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}><QRDisplay /></ProtectedRoute>} />
               <Route path="/attend" element={<ProtectedRoute allowedRoles={['USER']}><Attend /></ProtectedRoute>} />
               <Route path="/history" element={<ProtectedRoute allowedRoles={['USER']}><HistoryPage /></ProtectedRoute>} />
@@ -140,6 +131,7 @@ export default function App() {
               <Route path="/users" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><Users /></ProtectedRoute>} />
               <Route path="/locations" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}><Locations /></ProtectedRoute>} />
               <Route path="/reports" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}><Reports /></ProtectedRoute>} />
+              <Route path="/public-site" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'CONTENT_ADMIN']}><PublicSiteCMS /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'USER']}><Settings /></ProtectedRoute>} />
               <Route path="/master-data" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><MasterData /></ProtectedRoute>} />
               <Route path="/audit" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><AuditLogs /></ProtectedRoute>} />

@@ -4,8 +4,7 @@ generator client {
 
 datasource db {
   provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  url       = env("DIRECT_URL")
 }
 
 model User {
@@ -190,4 +189,138 @@ model ChallengeNonce {
   nonce      String   @unique
   expires_at DateTime
   created_at DateTime @default(now())
+}
+
+enum PublicPostType {
+  BERITA
+  KEGIATAN
+  LOMBA
+  PENGUMUMAN
+}
+
+model PublicSiteProfile {
+  id               String   @id @default(uuid())
+  org_name         String
+  campus_name      String
+  kabinet_name     String?
+  kabinet_period   String?
+  hero_subtitle    String?
+  youtube_embed_url String?
+  about_title      String?
+  about_content    String?
+  footer_tagline   String?
+  instagram_url    String?
+  tiktok_url       String?
+  youtube_url      String?
+  address          String?
+  email            String?
+  phone            String?
+  logo_light_url   String?
+  logo_dark_url    String?
+  primary_color    String?
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+}
+
+model PublicStructureGroup {
+  id         String   @id @default(uuid())
+  title      String
+  sort_order Int      @default(0)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  members PublicStructureMember[]
+}
+
+model PublicStructureMember {
+  id         String   @id @default(uuid())
+  group_id   String
+  group      PublicStructureGroup @relation(fields: [group_id], references: [id], onDelete: Cascade)
+  name       String
+  role       String
+  sort_order Int      @default(0)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
+model PublicCategory {
+  id         String   @id @default(uuid())
+  name       String
+  slug       String   @unique
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  posts PublicPost[]
+}
+
+model PublicPost {
+  id              String         @id @default(uuid())
+  type            PublicPostType @default(BERITA)
+  title           String
+  slug            String         @unique
+  date_label      String?
+  status          String?
+  excerpt         String?
+  content         String?
+  cover_image_url String?
+  category_id     String?
+  category        PublicCategory? @relation(fields: [category_id], references: [id], onDelete: SetNull)
+  is_published    Boolean        @default(false)
+  published_at    DateTime?
+  created_by      String?
+  created_at      DateTime       @default(now())
+  updated_at      DateTime       @updatedAt
+}
+
+model PublicProgram {
+  id           String   @id @default(uuid())
+  title        String
+  date_range   String?
+  description  String?
+  is_published Boolean  @default(false)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+}
+
+model PublicGalleryAlbum {
+  id           String   @id @default(uuid())
+  title        String
+  description  String?
+  is_published Boolean  @default(false)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  items PublicGalleryItem[]
+}
+
+model PublicGalleryItem {
+  id         String   @id @default(uuid())
+  album_id   String
+  album      PublicGalleryAlbum @relation(fields: [album_id], references: [id], onDelete: Cascade)
+  image_url  String
+  caption    String?
+  sort_order Int      @default(0)
+  created_at DateTime @default(now())
+}
+
+model PublicRecruitment {
+  id           String   @id @default(uuid())
+  title        String
+  date_range   String?
+  description  String?
+  form_url     String?
+  is_published Boolean  @default(false)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  committee PublicRecruitmentCommittee[]
+}
+
+model PublicRecruitmentCommittee {
+  id             String   @id @default(uuid())
+  recruitment_id String
+  recruitment    PublicRecruitment @relation(fields: [recruitment_id], references: [id], onDelete: Cascade)
+  name           String
+  role           String
+  sort_order     Int      @default(0)
 }

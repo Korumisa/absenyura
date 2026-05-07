@@ -27,6 +27,7 @@ import notificationRoutes from './routes/notifications.js'
 import auditRoutes from './routes/audit.js'
 import classRoutes from './routes/classes.js'
 import excuseRoutes from './routes/excuses.js'
+import publicSiteRoutes from './routes/public-site.js'
 import { runCronJob } from './jobs/cron.js'
 
 dotenv.config()// for esm mode
@@ -76,6 +77,7 @@ app.use('/api/attendance', attendanceRoutes)
 app.use('/api/dashboard', dashboardRoutes)
 app.use('/api/reports', reportRoutes)
 app.use('/api/settings', settingsRoutes)
+app.use('/api/public-site', publicSiteRoutes)
 app.use('/api/notifications', notificationRoutes)
 app.use('/api/audit-logs', auditRoutes)
 app.use('/api/classes', classRoutes)

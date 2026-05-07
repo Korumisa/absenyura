@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
-import { LayoutDashboard, Users, MapPin, Calendar, Settings, LogOut, Menu, X, QrCode, BarChart3, ShieldAlert, History, BookOpen, FileText, Building2 } from 'lucide-react';
+import { LayoutDashboard, Users, MapPin, Calendar, Menu, X, QrCode, BarChart3, ShieldAlert, History, BookOpen, FileText, Building2, Globe } from 'lucide-react';
 import api from '@/services/api';
 
 import { NotificationMenu } from './NotificationMenu';
@@ -34,6 +34,7 @@ export default function Layout() {
     { name: 'Riwayat Saya', path: '/history', icon: History, roles: ['USER'] },
     { name: 'Manajemen Lokasi', path: '/locations', icon: MapPin, roles: ['SUPER_ADMIN', 'ADMIN'] },
     { name: 'Rekap Kehadiran', path: '/reports', icon: BarChart3, roles: ['SUPER_ADMIN', 'ADMIN'] },
+    { name: 'Konten Website', path: '/public-site', icon: Globe, roles: ['SUPER_ADMIN', 'CONTENT_ADMIN'] },
     { name: 'Pengguna', path: '/users', icon: Users, roles: ['SUPER_ADMIN'] },
     { name: 'Fakultas & Prodi', path: '/master-data', icon: Building2, roles: ['SUPER_ADMIN'] },
     { name: 'Audit Log', path: '/audit', icon: ShieldAlert, roles: ['SUPER_ADMIN'] },

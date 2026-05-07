@@ -3,6 +3,8 @@ import bcrypt from 'bcryptjs';
 import prisma from '../utils/prisma.js';
 import ExcelJS from 'exceljs';
 
+const ALLOWED_ROLES = new Set(['USER', 'ADMIN', 'SUPER_ADMIN', 'CONTENT_ADMIN']);
+
 export const getUsers = async (req: Request, res: Response): Promise<void> => {
   try {
     const users = await prisma.user.findMany({
@@ -36,6 +38,11 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
       res.status(400).json({ success: false, error: 'Email already in use' });
+      return;
+    }
+
+    if (role && typeof role === 'string' && !ALLOWED_ROLES.has(role)) {
+      res.status(400).json({ success: false, error: 'Role tidak valid' });
       return;
     }
 
@@ -88,6 +95,11 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
   try {
     const { id } = req.params;
     const { name, email, role, nim_nip, department, phone, is_active, password, semester } = req.body;
+
+    if (role && typeof role === 'string' && !ALLOWED_ROLES.has(role)) {
+      res.status(400).json({ success: false, error: 'Role tidak valid' });
+      return;
+    }
 
     if (role === 'USER' && !semester) {
       res.status(400).json({ success: false, error: 'Semester wajib diisi untuk mahasiswa' });
@@ -197,7 +209,7 @@ export const importUsers = async (req: Request, res: Response): Promise<void> =>
       const phone = row.getCell(6).value?.toString().trim();
       const rawRole = row.getCell(7).value?.toString().trim().toUpperCase();
       
-      const role = (rawRole === 'ADMIN' || rawRole === 'SUPER_ADMIN') ? rawRole : 'USER';
+      const role = (rawRole === 'ADMIN' || rawRole === 'SUPER_ADMIN' || rawRole === 'CONTENT_ADMIN') ? rawRole : 'USER';
 
       if (name && email) {
         newUsers.push({

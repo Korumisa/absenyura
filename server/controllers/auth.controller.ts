@@ -188,11 +188,18 @@ export const seedAdmin = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const hashedPassword = await bcrypt.hash('admin123', 12);
+    const email = process.env.SEED_SUPER_ADMIN_EMAIL;
+    const password = process.env.SEED_SUPER_ADMIN_PASSWORD;
+    if (!email || !password) {
+      res.status(500).json({ success: false, error: 'Seeder env belum diatur' });
+      return;
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 12);
     const admin = await prisma.user.create({
       data: {
-        name: 'Super Admin',
-        email: 'admin@system.com',
+        name: process.env.SEED_SUPER_ADMIN_NAME || 'Super Admin',
+        email,
         password: hashedPassword,
         role: 'SUPER_ADMIN',
       },
@@ -219,6 +226,16 @@ export const flushDb = async (req: Request, res: Response): Promise<void> => {
 
     // We must delete in correct order due to foreign key constraints
     await prisma.$transaction([
+      prisma.publicGalleryItem.deleteMany(),
+      prisma.publicGalleryAlbum.deleteMany(),
+      prisma.publicRecruitmentCommittee.deleteMany(),
+      prisma.publicRecruitment.deleteMany(),
+      prisma.publicPost.deleteMany(),
+      prisma.publicCategory.deleteMany(),
+      prisma.publicStructureMember.deleteMany(),
+      prisma.publicStructureGroup.deleteMany(),
+      prisma.publicProgram.deleteMany(),
+      prisma.publicSiteProfile.deleteMany(),
       prisma.notification.deleteMany(),
       prisma.auditLog.deleteMany(),
       prisma.excuseRequest.deleteMany(),
