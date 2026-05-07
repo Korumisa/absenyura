@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import useSWR from 'swr';
+import { useNavigate, useParams } from 'react-router-dom';
 import api from '@/services/api';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -11,8 +12,10 @@ import { ConfirmModal } from '@/components/ConfirmModal';
 import type { PublicCategory, PublicGalleryAlbum, PublicPost, PublicProfile, PublicProgram, PublicRecruitment, PublicStructureGroup } from '@/types/publicSite';
 
 type SectionKey = 'profile' | 'structure' | 'programs' | 'posts' | 'galleries' | 'recruitments';
+type PageKey = 'home' | SectionKey;
 
-const SECTIONS: Array<{ key: SectionKey; label: string }> = [
+const PAGES: Array<{ key: PageKey; label: string }> = [
+  { key: 'home', label: 'Halaman Utama' },
   { key: 'profile', label: 'Profil' },
   { key: 'structure', label: 'Struktur' },
   { key: 'programs', label: 'Program Kerja' },
@@ -24,7 +27,9 @@ const SECTIONS: Array<{ key: SectionKey; label: string }> = [
 const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
 
 export default function PublicSiteCMS() {
-  const [active, setActive] = useState<SectionKey>('profile');
+  const navigate = useNavigate();
+  const { section } = useParams();
+  const active: PageKey = section && PAGES.some((p) => p.key === section) ? (section as PageKey) : 'home';
 
   const { data: profile, mutate: mutateProfile } = useSWR<PublicProfile | null>('/public-site/admin/profile', fetcher, { revalidateOnFocus: false });
   const { data: structure, mutate: mutateStructure } = useSWR<PublicStructureGroup[]>('/public-site/admin/structure', fetcher, { revalidateOnFocus: false });
@@ -214,6 +219,45 @@ export default function PublicSiteCMS() {
     return res.data.data.url as string;
   };
 
+  const [profileUploading, setProfileUploading] = useState<{ light: boolean; dark: boolean }>({ light: false, dark: false });
+  const [galleryUploading, setGalleryUploading] = useState(false);
+
+  const appendGalleryItemsFromFiles = async (files: FileList) => {
+    const list = Array.from(files);
+    if (!list.length) return;
+    setGalleryUploading(true);
+    try {
+      const uploaded: string[] = [];
+      for (const f of list) {
+        uploaded.push(await uploadImage(f));
+      }
+
+      let current: any[] = [];
+      try {
+        const parsed = galleryForm.itemsJson ? JSON.parse(galleryForm.itemsJson) : [];
+        current = Array.isArray(parsed) ? parsed : [];
+      } catch {
+        current = [];
+      }
+
+      const base = current.length;
+      const next = [
+        ...current,
+        ...uploaded.map((url, idx) => ({
+          imageUrl: url,
+          caption: '',
+          sortOrder: base + idx,
+        })),
+      ];
+      setGalleryForm((p) => ({ ...p, itemsJson: JSON.stringify(next, null, 2) }));
+      toast.success('Foto berhasil ditambahkan ke items');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Gagal upload foto');
+    } finally {
+      setGalleryUploading(false);
+    }
+  };
+
   const upsertProgram = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -355,13 +399,42 @@ export default function PublicSiteCMS() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex flex-wrap items-center gap-2">
-        {SECTIONS.map((s) => (
-          <Button key={s.key} variant={active === s.key ? 'default' : 'outline'} onClick={() => setActive(s.key)}>
-            {s.label}
-          </Button>
-        ))}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="space-y-1">
+          <div className="text-lg font-bold text-slate-900 dark:text-zinc-100">Konten Website</div>
+          <div className="text-sm text-slate-600 dark:text-zinc-400">Kelola profil, struktur, berita, galeri, dan open recruitment.</div>
+        </div>
+        <div className="flex items-center gap-3">
+          <Label className="text-sm">Pilih Halaman</Label>
+          <select
+            className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-800 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
+            value={active}
+            onChange={(e) => {
+              const key = e.target.value as PageKey;
+              navigate(key === 'home' ? '/public-site' : `/public-site/${key}`);
+            }}
+          >
+            {PAGES.map((p) => (
+              <option key={p.key} value={p.key}>
+                {p.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
+
+      {active === 'home' ? (
+        <div className="rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-6 space-y-4">
+          <div className="text-sm font-semibold text-slate-900 dark:text-zinc-100">Akses Cepat</div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {PAGES.filter((p) => p.key !== 'home').map((p) => (
+              <Button key={p.key} variant="outline" className="justify-start" onClick={() => navigate(`/public-site/${p.key}`)}>
+                {p.label}
+              </Button>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       {active === 'profile' ? (
         <div className="rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-6 space-y-5">
@@ -441,6 +514,52 @@ export default function PublicSiteCMS() {
             <div className="space-y-2">
               <Label>Logo (Dark URL)</Label>
               <Input value={profileDraft.logoDarkUrl} onChange={(e) => setProfileDraft((p) => ({ ...p, logoDarkUrl: e.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label>Upload Logo Light (Cloudinary)</Label>
+              <input
+                type="file"
+                accept="image/*"
+                disabled={profileUploading.light}
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  setProfileUploading((x) => ({ ...x, light: true }));
+                  try {
+                    const url = await uploadImage(file);
+                    setProfileDraft((p) => ({ ...p, logoLightUrl: url }));
+                    toast.success('Upload logo light berhasil');
+                  } catch (err: any) {
+                    toast.error(err?.response?.data?.error || 'Gagal upload');
+                  } finally {
+                    setProfileUploading((x) => ({ ...x, light: false }));
+                    e.target.value = '';
+                  }
+                }}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Upload Logo Dark (Cloudinary)</Label>
+              <input
+                type="file"
+                accept="image/*"
+                disabled={profileUploading.dark}
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  setProfileUploading((x) => ({ ...x, dark: true }));
+                  try {
+                    const url = await uploadImage(file);
+                    setProfileDraft((p) => ({ ...p, logoDarkUrl: url }));
+                    toast.success('Upload logo dark berhasil');
+                  } catch (err: any) {
+                    toast.error(err?.response?.data?.error || 'Gagal upload');
+                  } finally {
+                    setProfileUploading((x) => ({ ...x, dark: false }));
+                    e.target.value = '';
+                  }
+                }}
+              />
             </div>
             <div className="space-y-2">
               <Label>Warna Utama (HEX)</Label>
@@ -824,6 +943,21 @@ export default function PublicSiteCMS() {
                 value={galleryForm.itemsJson ?? ''}
                 onChange={(e) => setGalleryForm((p) => ({ ...p, itemsJson: e.target.value }))}
                 placeholder='[{"imageUrl":"https://...","caption":"..."},{"imageUrl":"https://...","caption":"..."}]'
+              />
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label>Upload Foto untuk Items (Cloudinary)</Label>
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                disabled={galleryUploading}
+                onChange={async (e) => {
+                  const files = e.target.files;
+                  if (!files || !files.length) return;
+                  await appendGalleryItemsFromFiles(files);
+                  e.target.value = '';
+                }}
               />
             </div>
             <div className="md:col-span-2 flex justify-end gap-3">

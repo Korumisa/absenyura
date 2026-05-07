@@ -132,6 +132,7 @@ export default function App() {
               <Route path="/locations" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}><Locations /></ProtectedRoute>} />
               <Route path="/reports" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}><Reports /></ProtectedRoute>} />
               <Route path="/public-site" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'CONTENT_ADMIN']}><PublicSiteCMS /></ProtectedRoute>} />
+              <Route path="/public-site/:section" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'CONTENT_ADMIN']}><PublicSiteCMS /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'USER']}><Settings /></ProtectedRoute>} />
               <Route path="/master-data" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><MasterData /></ProtectedRoute>} />
               <Route path="/audit" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><AuditLogs /></ProtectedRoute>} />
