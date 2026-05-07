@@ -1,8 +1,10 @@
 import axios from 'axios';
 import { useAuthStore } from '../stores/authStore';
 
+const apiBaseUrl = (import.meta as any)?.env?.VITE_API_BASE_URL || '/api';
+
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: apiBaseUrl,
   withCredentials: true, // Send cookies automatically
 });
 
@@ -27,7 +29,13 @@ api.interceptors.response.use(
     const originalRequest = error.config;
 
     const url = String(originalRequest?.url || '');
-    const isPublicRequest = url.startsWith('/public-site/');
+    let pathname = url;
+    try {
+      pathname = new URL(url, window.location.origin).pathname;
+    } catch {
+      pathname = url;
+    }
+    const isPublicRequest = pathname.includes('/public-site/');
     const { isAuthenticated } = useAuthStore.getState();
 
     if (error.response?.status === 401 && (!isAuthenticated || isPublicRequest)) {
@@ -39,7 +47,7 @@ api.interceptors.response.use(
         return new Promise(function(resolve, reject) {
           failedQueue.push({ resolve, reject });
         }).then(() => {
-          return axios(originalRequest);
+          return api.request(originalRequest);
         }).catch(err => {
           return Promise.reject(err);
         });
@@ -49,12 +57,12 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        await axios.post('/api/auth/refresh', {}, { withCredentials: true });
+        await api.post('/auth/refresh', {});
 
         processQueue(null);
         
         // Retry original request
-        return axios(originalRequest);
+        return api.request(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError);
         // Refresh token expired or invalid, logout

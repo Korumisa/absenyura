@@ -6,7 +6,9 @@ declare global {
 }
 
 if (!process.env.DATABASE_URL && process.env.DIRECT_URL) {
-  process.env.DATABASE_URL = process.env.DIRECT_URL;
+  if (process.env.NODE_ENV !== 'production') {
+    process.env.DATABASE_URL = process.env.DIRECT_URL;
+  }
 }
 
 if (!(process.env.DATABASE_URL || '').startsWith('prisma://')) {

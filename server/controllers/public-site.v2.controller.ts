@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import prisma from '../utils/prisma.js';
 import { upload } from '../utils/upload.js';
 import { v2 as cloudinary } from 'cloudinary';
+import { sendInternalServerError } from '../utils/errorResponse.js';
 
 type PublicRoleRequest = Request & { user?: { id: string; role: string } };
 
@@ -89,7 +90,7 @@ export const getPublicProfile = async (req: Request, res: Response): Promise<voi
     res.status(200).json({ success: true, data: row });
   } catch (error) {
     console.error('Error fetching public profile:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -142,7 +143,7 @@ export const upsertAdminProfile = async (req: PublicRoleRequest, res: Response):
     res.status(200).json({ success: true, data: saved });
   } catch (error) {
     console.error('Error upserting public profile:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -155,7 +156,7 @@ export const getPublicStructure = async (req: Request, res: Response): Promise<v
     res.status(200).json({ success: true, data: groups });
   } catch (error) {
     console.error('Error fetching public structure:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -168,7 +169,7 @@ export const getAdminStructure = async (req: Request, res: Response): Promise<vo
     res.status(200).json({ success: true, data: groups });
   } catch (error) {
     console.error('Error fetching admin structure:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -207,7 +208,7 @@ export const replaceAdminStructure = async (req: PublicRoleRequest, res: Respons
     res.status(200).json({ success: true, message: 'Struktur organisasi berhasil disimpan' });
   } catch (error) {
     console.error('Error replacing structure:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -220,7 +221,7 @@ export const getPublicPrograms = async (req: Request, res: Response): Promise<vo
     res.status(200).json({ success: true, data: items });
   } catch (error) {
     console.error('Error fetching public programs:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -230,7 +231,7 @@ export const listAdminPrograms = async (req: Request, res: Response): Promise<vo
     res.status(200).json({ success: true, data: items });
   } catch (error) {
     console.error('Error fetching admin programs:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -253,7 +254,7 @@ export const createAdminProgram = async (req: PublicRoleRequest, res: Response):
     res.status(201).json({ success: true, data: row });
   } catch (error) {
     console.error('Error creating program:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -283,7 +284,7 @@ export const updateAdminProgram = async (req: PublicRoleRequest, res: Response):
     res.status(200).json({ success: true, data: row });
   } catch (error) {
     console.error('Error updating program:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -294,7 +295,7 @@ export const deleteAdminProgram = async (req: PublicRoleRequest, res: Response):
     res.status(200).json({ success: true, message: 'Program kerja berhasil dihapus' });
   } catch (error) {
     console.error('Error deleting program:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -304,7 +305,7 @@ export const listPublicCategories = async (req: Request, res: Response): Promise
     res.status(200).json({ success: true, data: items });
   } catch (error) {
     console.error('Error fetching categories:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -314,7 +315,7 @@ export const listAdminCategories = async (req: Request, res: Response): Promise<
     res.status(200).json({ success: true, data: items });
   } catch (error) {
     console.error('Error fetching admin categories:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -332,7 +333,7 @@ export const createAdminCategory = async (req: PublicRoleRequest, res: Response)
     res.status(201).json({ success: true, data: row });
   } catch (error) {
     console.error('Error creating category:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -359,7 +360,7 @@ export const updateAdminCategory = async (req: PublicRoleRequest, res: Response)
     res.status(200).json({ success: true, data: row });
   } catch (error) {
     console.error('Error updating category:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -370,7 +371,7 @@ export const deleteAdminCategory = async (req: PublicRoleRequest, res: Response)
     res.status(200).json({ success: true, message: 'Kategori berhasil dihapus' });
   } catch (error) {
     console.error('Error deleting category:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -405,7 +406,7 @@ export const listPublicPosts = async (req: Request, res: Response): Promise<void
     });
   } catch (error) {
     console.error('Error listing public posts:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -423,7 +424,7 @@ export const getPublicPostBySlug = async (req: Request, res: Response): Promise<
     res.status(200).json({ success: true, data: row });
   } catch (error) {
     console.error('Error fetching public post:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -440,7 +441,7 @@ export const listAdminPosts = async (req: Request, res: Response): Promise<void>
     res.status(200).json({ success: true, data: items });
   } catch (error) {
     console.error('Error listing admin posts:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -476,7 +477,7 @@ export const createAdminPost = async (req: PublicRoleRequest, res: Response): Pr
     res.status(201).json({ success: true, data: row });
   } catch (error) {
     console.error('Error creating post:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -525,7 +526,7 @@ export const updateAdminPost = async (req: PublicRoleRequest, res: Response): Pr
     res.status(200).json({ success: true, data: row });
   } catch (error) {
     console.error('Error updating post:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -536,7 +537,7 @@ export const deleteAdminPost = async (req: PublicRoleRequest, res: Response): Pr
     res.status(200).json({ success: true, message: 'Konten berhasil dihapus' });
   } catch (error) {
     console.error('Error deleting post:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -550,7 +551,7 @@ export const getPublicGalleries = async (req: Request, res: Response): Promise<v
     res.status(200).json({ success: true, data: albums });
   } catch (error) {
     console.error('Error fetching public galleries:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -563,7 +564,7 @@ export const listAdminGalleries = async (req: Request, res: Response): Promise<v
     res.status(200).json({ success: true, data: albums });
   } catch (error) {
     console.error('Error fetching admin galleries:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -596,7 +597,7 @@ export const createAdminGallery = async (req: PublicRoleRequest, res: Response):
     res.status(201).json({ success: true, data: row });
   } catch (error) {
     console.error('Error creating gallery:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -640,7 +641,7 @@ export const updateAdminGallery = async (req: PublicRoleRequest, res: Response):
     res.status(200).json({ success: true, data: row });
   } catch (error) {
     console.error('Error updating gallery:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -651,7 +652,7 @@ export const deleteAdminGallery = async (req: PublicRoleRequest, res: Response):
     res.status(200).json({ success: true, message: 'Album berhasil dihapus' });
   } catch (error) {
     console.error('Error deleting gallery:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -665,7 +666,7 @@ export const getPublicRecruitments = async (req: Request, res: Response): Promis
     res.status(200).json({ success: true, data: items });
   } catch (error) {
     console.error('Error fetching public recruitments:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -678,7 +679,7 @@ export const listAdminRecruitments = async (req: Request, res: Response): Promis
     res.status(200).json({ success: true, data: items });
   } catch (error) {
     console.error('Error fetching admin recruitments:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -713,7 +714,7 @@ export const createAdminRecruitment = async (req: PublicRoleRequest, res: Respon
     res.status(201).json({ success: true, data: row });
   } catch (error) {
     console.error('Error creating recruitment:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -758,7 +759,7 @@ export const updateAdminRecruitment = async (req: PublicRoleRequest, res: Respon
     res.status(200).json({ success: true, data: row });
   } catch (error) {
     console.error('Error updating recruitment:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -769,7 +770,7 @@ export const deleteAdminRecruitment = async (req: PublicRoleRequest, res: Respon
     res.status(200).json({ success: true, message: 'Open recruitment berhasil dihapus' });
   } catch (error) {
     console.error('Error deleting recruitment:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 

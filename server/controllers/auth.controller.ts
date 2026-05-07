@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import prisma from '../utils/prisma.js';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../utils/jwt.js';
+import { sendInternalServerError } from '../utils/errorResponse.js';
 
 export const login = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -72,11 +73,10 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
     const isProduction = process.env.NODE_ENV === 'production';
 
-    // Set cookie options
     const cookieOptions = {
       httpOnly: true,
-      secure: true, // Vercel is always HTTPS, so this MUST be true in production
-      sameSite: 'none' as const, // Must be 'none' for cross-origin (frontend vercel to backend vercel)
+      secure: isProduction,
+      sameSite: (isProduction ? 'none' : 'lax') as 'none' | 'lax',
     };
 
     // Send access token as HttpOnly cookie
@@ -106,11 +106,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     });
   } catch (error: any) {
     console.error('Login error:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Internal server error', 
-      details: error?.message || String(error)
-    });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -133,12 +129,10 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
     const newAccessToken = generateAccessToken(user.id, user.role);
     const newRefreshToken = generateRefreshToken(user.id, user.role);
 
-    const isProduction = process.env.NODE_ENV === 'production';
-
     const cookieOptions = {
       httpOnly: true,
-      secure: true,
-      sameSite: 'none' as const,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: (process.env.NODE_ENV === 'production' ? 'none' : 'lax') as 'none' | 'lax',
     };
 
     res.cookie('accessToken', newAccessToken, {
@@ -165,8 +159,8 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
 export const logout = async (req: Request, res: Response): Promise<void> => {
   const cookieOptions = {
     httpOnly: true,
-    secure: true,
-    sameSite: 'none' as const,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: (process.env.NODE_ENV === 'production' ? 'none' : 'lax') as 'none' | 'lax',
   };
   res.clearCookie('accessToken', cookieOptions);
   res.clearCookie('refreshToken', cookieOptions);
@@ -208,11 +202,7 @@ export const seedAdmin = async (req: Request, res: Response): Promise<void> => {
     res.status(201).json({ success: true, data: admin });
   } catch (error: any) {
     console.error('Seed error:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Internal server error',
-      details: error?.message || String(error)
-    });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -250,10 +240,6 @@ export const flushDb = async (req: Request, res: Response): Promise<void> => {
     res.status(200).json({ success: true, message: 'Database flushed successfully. All transaction data removed except User accounts.' });
   } catch (error: any) {
     console.error('Flush DB error:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Internal server error during DB flush',
-      details: error?.message || String(error)
-    });
+    sendInternalServerError(res, error);
   }
 };
