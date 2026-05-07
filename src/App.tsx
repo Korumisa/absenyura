@@ -21,7 +21,6 @@ import HistoryPage from "@/pages/History";
 import QRDisplay from "@/pages/QRDisplay";
 import Attend from "@/pages/Attend";
 import ScrollToTop from "@/components/ScrollToTop";
-import PublicSiteHome from "@/pages/publicSiteAdmin/PublicSiteHome";
 import PublicSiteProfile from "@/pages/publicSiteAdmin/PublicSiteProfile";
 import PublicSiteStructure from "@/pages/publicSiteAdmin/PublicSiteStructure";
 import PublicSitePrograms from "@/pages/publicSiteAdmin/PublicSitePrograms";
@@ -100,7 +99,7 @@ export default function App() {
   const getDefaultRoute = () => {
     if (user?.role === 'SUPER_ADMIN') return '/dashboard';
     if (user?.role === 'ADMIN') return '/dashboard';
-    if (user?.role === 'CONTENT_ADMIN') return '/public-site';
+    if (user?.role === 'CONTENT_ADMIN') return '/public-site/profile';
     if (user?.role === 'USER') return '/dashboard';
     return '/dashboard';
   };
@@ -137,7 +136,7 @@ export default function App() {
               <Route path="/users" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><Users /></ProtectedRoute>} />
               <Route path="/locations" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}><Locations /></ProtectedRoute>} />
               <Route path="/reports" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}><Reports /></ProtectedRoute>} />
-              <Route path="/public-site" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'CONTENT_ADMIN']}><PublicSiteHome /></ProtectedRoute>} />
+              <Route path="/public-site" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'CONTENT_ADMIN']}><Navigate to="/public-site/profile" replace /></ProtectedRoute>} />
               <Route path="/public-site/profile" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'CONTENT_ADMIN']}><PublicSiteProfile /></ProtectedRoute>} />
               <Route path="/public-site/structure" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'CONTENT_ADMIN']}><PublicSiteStructure /></ProtectedRoute>} />
               <Route path="/public-site/programs" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'CONTENT_ADMIN']}><PublicSitePrograms /></ProtectedRoute>} />

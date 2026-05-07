@@ -26,6 +26,14 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
+    const url = String(originalRequest?.url || '');
+    const isPublicRequest = url.startsWith('/public-site/');
+    const { isAuthenticated } = useAuthStore.getState();
+
+    if (error.response?.status === 401 && (!isAuthenticated || isPublicRequest)) {
+      return Promise.reject(error);
+    }
+
     if (error.response?.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
         return new Promise(function(resolve, reject) {

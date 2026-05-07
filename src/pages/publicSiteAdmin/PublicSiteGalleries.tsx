@@ -15,7 +15,8 @@ export default function PublicSiteGalleries() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
   const { data: galleries = [], mutate } = useSWR<PublicGalleryAlbum[]>('/public-site/admin/galleries', fetcher, { revalidateOnFocus: false });
 
-  const [form, setForm] = useState<{ id?: string; title?: string; description?: string; isPublished?: boolean; itemsJson?: string }>({});
+  type ItemDraft = { imageUrl: string; caption: string };
+  const [form, setForm] = useState<{ id?: string; title?: string; description?: string; isPublished?: boolean; items?: ItemDraft[] }>({ items: [] });
   const resetForm = () => setForm({});
 
   const uploadImage = async (file: File) => {
@@ -34,21 +35,7 @@ export default function PublicSiteGalleries() {
     try {
       const uploaded: string[] = [];
       for (const f of list) uploaded.push(await uploadImage(f));
-
-      let current: any[] = [];
-      try {
-        const parsed = form.itemsJson ? JSON.parse(form.itemsJson) : [];
-        current = Array.isArray(parsed) ? parsed : [];
-      } catch {
-        current = [];
-      }
-
-      const base = current.length;
-      const next = [
-        ...current,
-        ...uploaded.map((url, idx) => ({ imageUrl: url, caption: '', sortOrder: base + idx })),
-      ];
-      setForm((p) => ({ ...p, itemsJson: JSON.stringify(next, null, 2) }));
+      setForm((p) => ({ ...p, items: [...(p.items ?? []), ...uploaded.map((url) => ({ imageUrl: url, caption: '' }))] }));
       toast.success('Foto berhasil ditambahkan ke items');
     } catch (e: any) {
       toast.error(e?.response?.data?.error || 'Gagal upload foto');
@@ -60,7 +47,7 @@ export default function PublicSiteGalleries() {
   const upsert = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const items = form.itemsJson ? JSON.parse(form.itemsJson) : undefined;
+      const items = (form.items ?? []).map((x, idx) => ({ imageUrl: x.imageUrl, caption: x.caption, sortOrder: idx }));
       if (form.id) {
         await api.put(`/public-site/admin/galleries/${form.id}`, {
           title: form.title,
@@ -81,7 +68,7 @@ export default function PublicSiteGalleries() {
       resetForm();
       mutate();
     } catch (err: any) {
-      toast.error(err?.response?.data?.error || 'JSON item galeri tidak valid');
+      toast.error(err?.response?.data?.error || 'Gagal menyimpan');
     }
   };
 
@@ -136,24 +123,70 @@ export default function PublicSiteGalleries() {
             <Label>Deskripsi</Label>
             <Textarea value={form.description ?? ''} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} />
           </div>
-          <div className="space-y-2 md:col-span-2">
-            <Label>Items (JSON array: [&#123;imageUrl, caption&#125;])</Label>
-            <Textarea value={form.itemsJson ?? ''} onChange={(e) => setForm((p) => ({ ...p, itemsJson: e.target.value }))} className="min-h-[180px]" />
-          </div>
-          <div className="space-y-2 md:col-span-2">
-            <Label>Upload Foto untuk Items</Label>
-            <Input
-              type="file"
-              accept="image/*"
-              multiple
-              disabled={uploading}
-              onChange={async (e) => {
-                const files = e.target.files;
-                if (!files || !files.length) return;
-                await appendItemsFromFiles(files);
-                e.target.value = '';
-              }}
-            />
+          <div className="space-y-3 md:col-span-2">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <Label>Items Foto</Label>
+              <Button type="button" variant="outline" onClick={() => setForm((p) => ({ ...p, items: [...(p.items ?? []), { imageUrl: '', caption: '' }] }))}>
+                Tambah Manual
+              </Button>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Upload Foto</Label>
+              <Input
+                type="file"
+                accept="image/*"
+                multiple
+                disabled={uploading}
+                onChange={async (e) => {
+                  const files = e.target.files;
+                  if (!files || !files.length) return;
+                  await appendItemsFromFiles(files);
+                  e.target.value = '';
+                }}
+              />
+            </div>
+
+            {(form.items ?? []).length === 0 ? (
+              <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-600 dark:border-zinc-700 dark:bg-zinc-900/40 dark:text-zinc-300">
+                Belum ada foto. Upload atau klik “Tambah Manual”.
+              </div>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {(form.items ?? []).map((it, idx) => (
+                  <div key={idx} className="rounded-xl border border-slate-200 bg-white p-3 dark:border-zinc-700 dark:bg-zinc-950/40">
+                    <div className="aspect-video w-full overflow-hidden rounded-lg bg-slate-100 dark:bg-zinc-900">
+                      {it.imageUrl ? <img src={it.imageUrl} alt="Foto" className="h-full w-full object-cover" loading="lazy" /> : null}
+                    </div>
+                    <div className="mt-3 space-y-2">
+                      <Input
+                        value={it.imageUrl}
+                        onChange={(e) =>
+                          setForm((p) => ({
+                            ...p,
+                            items: (p.items ?? []).map((x, i) => (i === idx ? { ...x, imageUrl: e.target.value } : x)),
+                          }))
+                        }
+                        placeholder="Image URL"
+                      />
+                      <Input
+                        value={it.caption}
+                        onChange={(e) =>
+                          setForm((p) => ({
+                            ...p,
+                            items: (p.items ?? []).map((x, i) => (i === idx ? { ...x, caption: e.target.value } : x)),
+                          }))
+                        }
+                        placeholder="Caption (opsional)"
+                      />
+                      <Button type="button" variant="outline" className="w-full" onClick={() => setForm((p) => ({ ...p, items: (p.items ?? []).filter((_, i) => i !== idx) }))}>
+                        Hapus
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           <div className="md:col-span-2 flex justify-end gap-3">
             {form.id ? (
@@ -192,15 +225,7 @@ export default function PublicSiteGalleries() {
                           title: g.title,
                           description: g.description ?? '',
                           isPublished: g.is_published,
-                          itemsJson: JSON.stringify(
-                            (g.items ?? []).map((it) => ({
-                              imageUrl: it.image_url,
-                              caption: it.caption ?? '',
-                              sortOrder: (it as any).sort_order ?? 0,
-                            })),
-                            null,
-                            2
-                          ),
+                          items: (g.items ?? []).map((it) => ({ imageUrl: it.image_url, caption: it.caption ?? '' })),
                         })
                       }
                     >

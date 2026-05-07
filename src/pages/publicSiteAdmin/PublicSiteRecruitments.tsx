@@ -15,13 +15,22 @@ export default function PublicSiteRecruitments() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
   const { data: recruitments = [], mutate } = useSWR<PublicRecruitment[]>('/public-site/admin/recruitments', fetcher, { revalidateOnFocus: false });
 
-  const [form, setForm] = useState<{ id?: string; title?: string; dateRange?: string; description?: string; formUrl?: string; isPublished?: boolean; committeeJson?: string }>({});
+  type CommitteeDraft = { name: string; role: string };
+  const [form, setForm] = useState<{
+    id?: string;
+    title?: string;
+    dateRange?: string;
+    description?: string;
+    formUrl?: string;
+    isPublished?: boolean;
+    committee?: CommitteeDraft[];
+  }>({ committee: [] });
   const resetForm = () => setForm({});
 
   const upsert = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const committee = form.committeeJson ? JSON.parse(form.committeeJson) : undefined;
+      const committee = (form.committee ?? []).map((x, idx) => ({ name: x.name, role: x.role, sortOrder: idx }));
       if (form.id) {
         await api.put(`/public-site/admin/recruitments/${form.id}`, {
           title: form.title,
@@ -46,7 +55,7 @@ export default function PublicSiteRecruitments() {
       resetForm();
       mutate();
     } catch (err: any) {
-      toast.error(err?.response?.data?.error || 'JSON panitia tidak valid');
+      toast.error(err?.response?.data?.error || 'Gagal menyimpan');
     }
   };
 
@@ -109,9 +118,60 @@ export default function PublicSiteRecruitments() {
             <Label>Deskripsi</Label>
             <Textarea value={form.description ?? ''} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} />
           </div>
-          <div className="space-y-2 md:col-span-2">
-            <Label>Panitia (JSON array: [&#123;name, role&#125;])</Label>
-            <Textarea value={form.committeeJson ?? ''} onChange={(e) => setForm((p) => ({ ...p, committeeJson: e.target.value }))} className="min-h-[160px]" />
+          <div className="space-y-3 md:col-span-2">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <Label>Panitia</Label>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setForm((p) => ({ ...p, committee: [...(p.committee ?? []), { name: '', role: '' }] }))}
+              >
+                Tambah Panitia
+              </Button>
+            </div>
+            {(form.committee ?? []).length === 0 ? (
+              <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-600 dark:border-zinc-700 dark:bg-zinc-900/40 dark:text-zinc-300">
+                Belum ada panitia. Klik “Tambah Panitia”.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {(form.committee ?? []).map((c, idx) => (
+                  <div key={idx} className="grid gap-3 md:grid-cols-2">
+                    <Input
+                      value={c.name}
+                      onChange={(e) =>
+                        setForm((p) => ({
+                          ...p,
+                          committee: (p.committee ?? []).map((x, i) => (i === idx ? { ...x, name: e.target.value } : x)),
+                        }))
+                      }
+                      placeholder="Nama"
+                    />
+                    <div className="flex gap-2">
+                      <Input
+                        value={c.role}
+                        onChange={(e) =>
+                          setForm((p) => ({
+                            ...p,
+                            committee: (p.committee ?? []).map((x, i) => (i === idx ? { ...x, role: e.target.value } : x)),
+                          }))
+                        }
+                        placeholder="Jabatan"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() =>
+                          setForm((p) => ({ ...p, committee: (p.committee ?? []).filter((_, i) => i !== idx) }))
+                        }
+                      >
+                        Hapus
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           <div className="md:col-span-2 flex justify-end gap-3">
             {form.id ? (
@@ -152,11 +212,7 @@ export default function PublicSiteRecruitments() {
                           description: r.description ?? '',
                           formUrl: r.form_url ?? '',
                           isPublished: r.is_published,
-                          committeeJson: JSON.stringify(
-                            (r.committee ?? []).map((x) => ({ name: x.name, role: x.role, sortOrder: (x as any).sort_order ?? 0 })),
-                            null,
-                            2
-                          ),
+                          committee: (r.committee ?? []).map((x) => ({ name: x.name, role: x.role })),
                         })
                       }
                     >

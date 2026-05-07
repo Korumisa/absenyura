@@ -9,8 +9,44 @@ import { Skeleton } from '@/components/ui/skeleton';
 import PublicEnter from '@/components/PublicEnter';
 import PublicReveal from '@/components/PublicReveal';
 
-function BrandMark({ className, src }: { className?: string; src: string }) {
-  return <img className={className} src={src} alt="Logo" />;
+function BrandMark({ className, src, name }: { className?: string; src: string; name: string }) {
+  if (src) return <img className={className} src={src} alt="Logo" />;
+  const first = String(name || '').trim().slice(0, 1).toUpperCase() || 'H';
+  return (
+    <div
+      className={[
+        className,
+        'grid place-items-center rounded-2xl bg-[var(--public-primary)]/15 text-[var(--public-primary)] ring-1 ring-black/10 dark:ring-white/10',
+      ].join(' ')}
+    >
+      <div className="text-2xl font-extrabold">{first}</div>
+    </div>
+  );
+}
+
+function normalizeYoutubeEmbedUrl(input: string) {
+  const raw = String(input ?? '').trim();
+  if (!raw) return '';
+  if (raw.includes('youtube.com/embed/') || raw.includes('youtube-nocookie.com/embed/')) return raw;
+  const directId = raw.match(/^[a-zA-Z0-9_-]{6,}$/)?.[0];
+  if (directId) return `https://www.youtube.com/embed/${directId}`;
+  try {
+    const url = new URL(raw.startsWith('http') ? raw : `https://${raw}`);
+    const host = url.hostname.replace(/^www\./, '');
+    let id = '';
+    if (host === 'youtu.be') id = url.pathname.split('/').filter(Boolean)[0] || '';
+    if (host.endsWith('youtube.com')) {
+      if (url.pathname === '/watch') id = url.searchParams.get('v') || '';
+      else if (url.pathname.startsWith('/shorts/')) id = url.pathname.split('/')[2] || '';
+      else if (url.pathname.startsWith('/embed/')) id = url.pathname.split('/')[2] || '';
+      else if (url.pathname.startsWith('/live/')) id = url.pathname.split('/')[2] || '';
+    }
+    id = id.trim();
+    if (!id) return '';
+    return `https://www.youtube.com/embed/${id}`;
+  } catch {
+    return '';
+  }
 }
 
 export default function PublicHome() {
@@ -30,11 +66,12 @@ export default function PublicHome() {
   const kabinetPeriod = profile?.kabinet_period ?? '';
   const heroSubtitle = profile?.hero_subtitle ?? '';
   const youtubeEmbedUrl = profile?.youtube_embed_url ?? '';
+  const videoSrc = normalizeYoutubeEmbedUrl(youtubeEmbedUrl);
   const aboutTitle = profile?.about_title ?? '';
   const aboutContent = profile?.about_content ?? '';
   const aboutParagraphs = aboutContent.split('\n').map((x) => x.trim()).filter(Boolean);
 
-  const logoSrc = profile?.logo_light_url || '/3.%20HM%20SDP.png';
+  const logoSrc = profile?.logo_light_url ?? '';
   const posts = latest?.items ?? [];
 
   return (
@@ -42,7 +79,7 @@ export default function PublicHome() {
       <section className="relative overflow-hidden bg-[radial-gradient(circle_at_20%_20%,rgba(37,99,235,0.18),transparent_50%),radial-gradient(circle_at_70%_10%,rgba(59,130,246,0.14),transparent_55%),linear-gradient(180deg,rgba(15,23,42,0.02),transparent)] dark:bg-[radial-gradient(circle_at_20%_20%,rgba(37,99,235,0.22),transparent_55%),radial-gradient(circle_at_70%_10%,rgba(59,130,246,0.16),transparent_55%),linear-gradient(180deg,rgba(15,23,42,0.7),rgba(15,23,42,0.85))]">
         <PublicEnter className="mx-auto grid max-w-7xl items-center gap-12 px-6 py-16 md:grid-cols-2 md:py-24">
           <div className="flex items-start gap-6">
-            <BrandMark className="h-20 w-20 shrink-0 rounded-2xl bg-white/70 p-2 shadow-sm ring-1 ring-black/10 dark:bg-white/10 dark:ring-white/10" src={logoSrc} />
+            <BrandMark className="h-20 w-20 shrink-0 shadow-sm" src={logoSrc} name={orgName || campusName} />
             <div>
               <div className="font-display text-4xl italic tracking-tight text-slate-900 dark:text-white md:text-5xl">Kabinet</div>
               <div className="mt-1 text-5xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] md:text-7xl">
@@ -75,22 +112,23 @@ export default function PublicHome() {
           </div>
 
           <div className="relative">
-            <div className="absolute inset-0 -z-10 rounded-3xl bg-gradient-to-tr from-black/5 to-transparent dark:from-white/10" />
             <div className="overflow-hidden rounded-3xl border border-black/10 bg-white shadow-[0_28px_70px_-50px_rgba(15,23,42,0.4)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_28px_70px_-50px_rgba(0,0,0,0.6)]">
-              <div className="relative h-[280px] w-full bg-[radial-gradient(circle_at_25%_25%,rgba(37,99,235,0.22),transparent_55%),radial-gradient(circle_at_70%_20%,rgba(59,130,246,0.18),transparent_60%),linear-gradient(135deg,rgba(15,23,42,0.06),rgba(15,23,42,0.02))] md:h-[360px] dark:bg-[radial-gradient(circle_at_25%_25%,rgba(37,99,235,0.26),transparent_55%),radial-gradient(circle_at_70%_20%,rgba(59,130,246,0.22),transparent_60%),linear-gradient(135deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02))]">
-                <div className="absolute left-8 top-8 h-28 w-28 rounded-full bg-[var(--public-primary)]/20 blur-2xl" />
-                <div className="absolute bottom-10 right-10 h-44 w-44 rounded-full bg-sky-400/15 blur-3xl" />
-                <div className="absolute bottom-7 left-7 rounded-2xl border border-black/10 bg-white/70 p-5 backdrop-blur dark:border-white/10 dark:bg-white/10">
-                  <div className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-600 dark:text-slate-300">
-                    {orgName || campusName ? `${orgName || 'Organisasi'} • ${campusName || 'Kampus'}` : 'Profil belum diatur'}
+              <div className="relative aspect-[4/3] w-full bg-slate-50 dark:bg-zinc-900">
+                {profile?.home_image_url ? (
+                  <img
+                    src={profile.home_image_url}
+                    alt="Foto Anggota"
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center p-8">
+                    <div className="w-full rounded-2xl border border-dashed border-black/20 bg-white/60 p-8 text-center text-sm text-slate-600 dark:border-white/20 dark:bg-white/5 dark:text-slate-300">
+                      <div className="text-base font-extrabold tracking-tight text-slate-900 dark:text-white">Tempat Foto Anggota</div>
+                      <div className="mt-2">Upload lewat admin: Konten Website → Profil → Upload Foto Anggota.</div>
+                    </div>
                   </div>
-                  <div className="mt-2 text-lg font-extrabold tracking-tight text-slate-900 dark:text-white">
-                    {kabinetName ? `Kabinet ${kabinetName}` : 'Konten publik belum diatur'}
-                  </div>
-                  <div className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                    {heroSubtitle ? heroSubtitle : 'Admin dapat mengatur profil, struktur, program kerja, berita, dan galeri dari menu Konten Website.'}
-                  </div>
-                </div>
+                )}
               </div>
             </div>
           </div>
@@ -117,10 +155,10 @@ export default function PublicHome() {
 
           <div className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_22px_56px_-48px_rgba(15,23,42,0.45)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_22px_56px_-48px_rgba(0,0,0,0.6)]">
             <div className="aspect-video w-full">
-              {youtubeEmbedUrl ? (
+              {videoSrc ? (
                 <iframe
                   className="h-full w-full"
-                  src={youtubeEmbedUrl}
+                  src={videoSrc}
                   title="Video Profil"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                   referrerPolicy="strict-origin-when-cross-origin"

@@ -5,6 +5,7 @@ export type PublicProfile = {
   kabinet_name: string | null;
   kabinet_period: string | null;
   hero_subtitle: string | null;
+  home_image_url: string | null;
   youtube_embed_url: string | null;
   about_title: string | null;
   about_content: string | null;

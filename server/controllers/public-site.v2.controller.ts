@@ -20,6 +20,45 @@ function slugify(input: string) {
     .slice(0, 80);
 }
 
+function normalizeYoutubeEmbedUrl(input: string): string | null {
+  const raw = String(input ?? '').trim();
+  if (!raw) return null;
+
+  const directId = raw.match(/^[a-zA-Z0-9_-]{6,}$/)?.[0];
+  if (directId) return `https://www.youtube.com/embed/${directId}`;
+
+  if (raw.includes('youtube.com/embed/') || raw.includes('youtube-nocookie.com/embed/')) {
+    return raw.startsWith('http://') ? raw.replace(/^http:\/\//, 'https://') : raw;
+  }
+
+  try {
+    const url = new URL(raw.startsWith('http') ? raw : `https://${raw}`);
+    const host = url.hostname.replace(/^www\./, '');
+    let id = '';
+
+    if (host === 'youtu.be') {
+      id = url.pathname.split('/').filter(Boolean)[0] || '';
+    } else if (host.endsWith('youtube.com')) {
+      if (url.pathname === '/watch') {
+        id = url.searchParams.get('v') || '';
+      } else if (url.pathname.startsWith('/shorts/')) {
+        id = url.pathname.split('/')[2] || '';
+      } else if (url.pathname.startsWith('/embed/')) {
+        id = url.pathname.split('/')[2] || '';
+      } else if (url.pathname.startsWith('/live/')) {
+        id = url.pathname.split('/')[2] || '';
+      }
+    }
+
+    id = id.trim();
+    if (!id) return null;
+    if (!/^[a-zA-Z0-9_-]{6,}$/.test(id)) return null;
+    return `https://www.youtube.com/embed/${id}`;
+  } catch {
+    return null;
+  }
+}
+
 async function ensureUniquePostSlug(base: string) {
   const clean = base || 'post';
   let slug = clean;
@@ -69,7 +108,11 @@ export const upsertAdminProfile = async (req: PublicRoleRequest, res: Response):
       kabinet_name: String((data as any).kabinetName ?? '').trim() || null,
       kabinet_period: String((data as any).kabinetPeriod ?? '').trim() || null,
       hero_subtitle: String((data as any).heroSubtitle ?? '').trim() || null,
-      youtube_embed_url: String((data as any).youtubeEmbedUrl ?? '').trim() || null,
+      home_image_url: String((data as any).homeImageUrl ?? '').trim() || null,
+      youtube_embed_url:
+        typeof (data as any).youtubeEmbedUrl === 'string'
+          ? normalizeYoutubeEmbedUrl((data as any).youtubeEmbedUrl)
+          : (existing?.youtube_embed_url ?? null),
       about_title: String((data as any).aboutTitle ?? '').trim() || null,
       about_content: String((data as any).aboutContent ?? '').trim() || null,
       footer_tagline: String((data as any).footerTagline ?? '').trim() || null,
@@ -81,7 +124,10 @@ export const upsertAdminProfile = async (req: PublicRoleRequest, res: Response):
       phone: String((data as any).phone ?? '').trim() || null,
       logo_light_url: String((data as any).logoLightUrl ?? '').trim() || null,
       logo_dark_url: String((data as any).logoDarkUrl ?? '').trim() || null,
-      primary_color: String((data as any).primaryColor ?? '').trim() || null,
+      primary_color:
+        typeof (data as any).primaryColor === 'string'
+          ? String((data as any).primaryColor ?? '').trim() || null
+          : (existing?.primary_color ?? null),
     };
 
     if (!payload.org_name || !payload.campus_name) {

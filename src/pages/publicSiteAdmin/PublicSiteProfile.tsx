@@ -30,7 +30,7 @@ export default function PublicSiteProfile() {
     phone: string;
     logoLightUrl: string;
     logoDarkUrl: string;
-    primaryColor: string;
+    homeImageUrl: string;
   };
 
   const [draft, setDraft] = useState<Draft>({
@@ -51,7 +51,7 @@ export default function PublicSiteProfile() {
     phone: '',
     logoLightUrl: '',
     logoDarkUrl: '',
-    primaryColor: '#2563eb',
+    homeImageUrl: '',
   });
 
   useEffect(() => {
@@ -74,7 +74,7 @@ export default function PublicSiteProfile() {
       phone: profile.phone ?? '',
       logoLightUrl: profile.logo_light_url ?? '',
       logoDarkUrl: profile.logo_dark_url ?? '',
-      primaryColor: profile.primary_color ?? '#2563eb',
+      homeImageUrl: profile.home_image_url ?? '',
     });
   }, [profile]);
 
@@ -121,7 +121,7 @@ export default function PublicSiteProfile() {
       phone: profile.phone ?? '',
       logoLightUrl: profile.logo_light_url ?? '',
       logoDarkUrl: profile.logo_dark_url ?? '',
-      primaryColor: profile.primary_color ?? '#2563eb',
+      homeImageUrl: profile.home_image_url ?? '',
     });
   };
 
@@ -205,6 +205,31 @@ export default function PublicSiteProfile() {
             <Label>Logo (Dark URL)</Label>
             <Input value={draft.logoDarkUrl} onChange={(e) => setDraft((p) => ({ ...p, logoDarkUrl: e.target.value }))} />
           </div>
+          <div className="space-y-2 md:col-span-2">
+            <Label>Foto Anggota (URL)</Label>
+            <Input value={draft.homeImageUrl} onChange={(e) => setDraft((p) => ({ ...p, homeImageUrl: e.target.value }))} placeholder="https://..." />
+          </div>
+          <div className="space-y-2 md:col-span-2">
+            <Label>Upload Foto Anggota</Label>
+            <Input
+              type="file"
+              accept="image/*"
+              disabled={uploading.light || uploading.dark}
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                try {
+                  const url = await uploadImage(file);
+                  setDraft((p) => ({ ...p, homeImageUrl: url }));
+                  toast.success('Upload foto anggota berhasil');
+                } catch (err: any) {
+                  toast.error(err?.response?.data?.error || 'Gagal upload');
+                } finally {
+                  e.target.value = '';
+                }
+              }}
+            />
+          </div>
           <div className="space-y-2">
             <Label>Upload Logo Light</Label>
             <Input
@@ -250,10 +275,6 @@ export default function PublicSiteProfile() {
                 }
               }}
             />
-          </div>
-          <div className="space-y-2 md:col-span-2">
-            <Label>Warna Utama (HEX)</Label>
-            <Input value={draft.primaryColor} onChange={(e) => setDraft((p) => ({ ...p, primaryColor: e.target.value }))} placeholder="#2563eb" />
           </div>
         </div>
 

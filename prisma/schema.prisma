@@ -205,6 +205,7 @@ model PublicSiteProfile {
   kabinet_name     String?
   kabinet_period   String?
   hero_subtitle    String?
+  home_image_url   String?
   youtube_embed_url String?
   about_title      String?
   about_content    String?
