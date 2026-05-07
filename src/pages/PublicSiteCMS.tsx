@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import useSWR from 'swr';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import api from '@/services/api';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -26,10 +26,11 @@ const PAGES: Array<{ key: PageKey; label: string }> = [
 
 const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
 
-export default function PublicSiteCMS() {
+export default function PublicSiteCMS(props: { initial: PageKey; showSwitcher?: boolean }) {
+  const { initial, showSwitcher = false } = props;
   const navigate = useNavigate();
-  const { section } = useParams();
-  const active: PageKey = section && PAGES.some((p) => p.key === section) ? (section as PageKey) : 'home';
+  const [active, setActive] = useState<PageKey>(initial);
+  useEffect(() => setActive(initial), [initial]);
 
   const { data: profile, mutate: mutateProfile } = useSWR<PublicProfile | null>('/public-site/admin/profile', fetcher, { revalidateOnFocus: false });
   const { data: structure, mutate: mutateStructure } = useSWR<PublicStructureGroup[]>('/public-site/admin/structure', fetcher, { revalidateOnFocus: false });
@@ -398,29 +399,32 @@ export default function PublicSiteCMS() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 max-w-6xl mx-auto space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="space-y-1">
-          <div className="text-lg font-bold text-slate-900 dark:text-zinc-100">Konten Website</div>
-          <div className="text-sm text-slate-600 dark:text-zinc-400">Kelola profil, struktur, berita, galeri, dan open recruitment.</div>
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Konten Website</h1>
+          <p className="text-slate-500 dark:text-zinc-400">Kelola profil, struktur, berita, galeri, dan open recruitment.</p>
         </div>
-        <div className="flex items-center gap-3">
-          <Label className="text-sm">Pilih Halaman</Label>
-          <select
-            className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-800 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
-            value={active}
-            onChange={(e) => {
-              const key = e.target.value as PageKey;
-              navigate(key === 'home' ? '/public-site' : `/public-site/${key}`);
-            }}
-          >
-            {PAGES.map((p) => (
-              <option key={p.key} value={p.key}>
-                {p.label}
-              </option>
-            ))}
-          </select>
-        </div>
+        {showSwitcher ? (
+          <div className="flex items-center gap-3">
+            <Label className="text-sm">Pilih Halaman</Label>
+            <select
+              className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-800 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
+              value={active}
+              onChange={(e) => {
+                const key = e.target.value as PageKey;
+                setActive(key);
+                navigate(key === 'home' ? '/public-site' : `/public-site/${key}`);
+              }}
+            >
+              {PAGES.map((p) => (
+                <option key={p.key} value={p.key}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : null}
       </div>
 
       {active === 'home' ? (
@@ -428,7 +432,12 @@ export default function PublicSiteCMS() {
           <div className="text-sm font-semibold text-slate-900 dark:text-zinc-100">Akses Cepat</div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {PAGES.filter((p) => p.key !== 'home').map((p) => (
-              <Button key={p.key} variant="outline" className="justify-start" onClick={() => navigate(`/public-site/${p.key}`)}>
+              <Button
+                key={p.key}
+                variant="outline"
+                className="justify-start"
+                onClick={() => navigate(p.key === 'home' ? '/public-site' : `/public-site/${p.key}`)}
+              >
                 {p.label}
               </Button>
             ))}

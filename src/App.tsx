@@ -21,7 +21,13 @@ import HistoryPage from "@/pages/History";
 import QRDisplay from "@/pages/QRDisplay";
 import Attend from "@/pages/Attend";
 import ScrollToTop from "@/components/ScrollToTop";
-import PublicSiteCMS from "@/pages/PublicSiteCMS";
+import PublicSiteHome from "@/pages/publicSiteAdmin/PublicSiteHome";
+import PublicSiteProfile from "@/pages/publicSiteAdmin/PublicSiteProfile";
+import PublicSiteStructure from "@/pages/publicSiteAdmin/PublicSiteStructure";
+import PublicSitePrograms from "@/pages/publicSiteAdmin/PublicSitePrograms";
+import PublicSitePosts from "@/pages/publicSiteAdmin/PublicSitePosts";
+import PublicSiteGalleries from "@/pages/publicSiteAdmin/PublicSiteGalleries";
+import PublicSiteRecruitments from "@/pages/publicSiteAdmin/PublicSiteRecruitments";
 import PublicHome from "@/pages/public/PublicHome";
 import Berita from "@/pages/public/Berita";
 import BeritaDetail from "@/pages/public/BeritaDetail";
@@ -131,8 +137,13 @@ export default function App() {
               <Route path="/users" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><Users /></ProtectedRoute>} />
               <Route path="/locations" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}><Locations /></ProtectedRoute>} />
               <Route path="/reports" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}><Reports /></ProtectedRoute>} />
-              <Route path="/public-site" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'CONTENT_ADMIN']}><PublicSiteCMS /></ProtectedRoute>} />
-              <Route path="/public-site/:section" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'CONTENT_ADMIN']}><PublicSiteCMS /></ProtectedRoute>} />
+              <Route path="/public-site" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'CONTENT_ADMIN']}><PublicSiteHome /></ProtectedRoute>} />
+              <Route path="/public-site/profile" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'CONTENT_ADMIN']}><PublicSiteProfile /></ProtectedRoute>} />
+              <Route path="/public-site/structure" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'CONTENT_ADMIN']}><PublicSiteStructure /></ProtectedRoute>} />
+              <Route path="/public-site/programs" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'CONTENT_ADMIN']}><PublicSitePrograms /></ProtectedRoute>} />
+              <Route path="/public-site/posts" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'CONTENT_ADMIN']}><PublicSitePosts /></ProtectedRoute>} />
+              <Route path="/public-site/galleries" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'CONTENT_ADMIN']}><PublicSiteGalleries /></ProtectedRoute>} />
+              <Route path="/public-site/recruitments" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'CONTENT_ADMIN']}><PublicSiteRecruitments /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'USER']}><Settings /></ProtectedRoute>} />
               <Route path="/master-data" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><MasterData /></ProtectedRoute>} />
               <Route path="/audit" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><AuditLogs /></ProtectedRoute>} />

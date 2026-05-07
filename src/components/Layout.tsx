@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
-import { LayoutDashboard, Users, MapPin, Calendar, Menu, X, QrCode, BarChart3, ShieldAlert, History, BookOpen, FileText, Building2, Globe } from 'lucide-react';
+import { LayoutDashboard, Users, MapPin, Calendar, Menu, X, QrCode, BarChart3, ShieldAlert, History, BookOpen, FileText, Building2, Globe, ChevronDown, ChevronRight } from 'lucide-react';
 import api from '@/services/api';
 
 import { NotificationMenu } from './NotificationMenu';
@@ -11,6 +11,7 @@ import { ModeToggle } from '@/components/ThemeToggle';
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [publicSiteOpen, setPublicSiteOpen] = useState(false);
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
@@ -41,6 +42,12 @@ export default function Layout() {
   ];
 
   const allowedNavItems = navItems.filter((item) => user && item.roles.includes(user.role));
+  const canPublicSite = Boolean(user && ['SUPER_ADMIN', 'CONTENT_ADMIN'].includes(user.role));
+
+  useEffect(() => {
+    if (!canPublicSite) return;
+    if (location.pathname.startsWith('/public-site')) setPublicSiteOpen(true);
+  }, [canPublicSite, location.pathname]);
 
   return (
     <div className="flex min-h-dvh bg-slate-50 dark:bg-zinc-900 overflow-hidden font-sans">
@@ -77,6 +84,58 @@ export default function Layout() {
             {allowedNavItems.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname.startsWith(item.path);
+
+              if (item.path === '/public-site') {
+                if (!canPublicSite) return null;
+                return (
+                  <div key={item.name} className="space-y-1">
+                    <button
+                      type="button"
+                      onClick={() => setPublicSiteOpen((v) => !v)}
+                      className={`w-full flex items-center px-4 py-3 rounded-lg transition-colors ${
+                        isActive
+                          ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400'
+                          : 'text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800/50'
+                      }`}
+                    >
+                      <Icon size={20} className="mr-3" />
+                      <span className="font-medium flex-1 text-left">{item.name}</span>
+                      {publicSiteOpen ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+                    </button>
+
+                    {publicSiteOpen ? (
+                      <div className="pl-4 space-y-1">
+                        {[
+                          { name: 'Halaman Utama', path: '/public-site' },
+                          { name: 'Profil', path: '/public-site/profile' },
+                          { name: 'Struktur', path: '/public-site/structure' },
+                          { name: 'Program Kerja', path: '/public-site/programs' },
+                          { name: 'Berita & Info', path: '/public-site/posts' },
+                          { name: 'Galeri', path: '/public-site/galleries' },
+                          { name: 'Open Recruitment', path: '/public-site/recruitments' },
+                        ].map((sub) => {
+                          const subActive = location.pathname === sub.path;
+                          return (
+                            <Link
+                              key={sub.path}
+                              to={sub.path}
+                              onClick={() => setSidebarOpen(false)}
+                              className={`flex items-center px-4 py-2 rounded-lg transition-colors text-sm ${
+                                subActive
+                                  ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400'
+                                  : 'text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800/50'
+                              }`}
+                            >
+                              <span className="font-medium">{sub.name}</span>
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              }
+
               return (
                 <Link
                   key={item.name}
