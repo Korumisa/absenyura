@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import type { PublicProfile } from '@/types/publicSite';
+import { getErrorMessage } from '@/lib/errorMessage';
 
 export default function PublicSiteProfile() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
@@ -95,7 +96,7 @@ export default function PublicSiteProfile() {
       toast.success('Profil publik tersimpan');
       mutate();
     } catch (e: any) {
-      toast.error(e?.response?.data?.error || 'Gagal menyimpan');
+      toast.error(getErrorMessage(e, 'Gagal menyimpan'));
     } finally {
       setSaving(false);
     }
@@ -223,7 +224,7 @@ export default function PublicSiteProfile() {
                   setDraft((p) => ({ ...p, homeImageUrl: url }));
                   toast.success('Upload foto anggota berhasil');
                 } catch (err: any) {
-                  toast.error(err?.response?.data?.error || 'Gagal upload');
+                  toast.error(getErrorMessage(err, 'Gagal upload'));
                 } finally {
                   e.target.value = '';
                 }
@@ -245,7 +246,7 @@ export default function PublicSiteProfile() {
                   setDraft((p) => ({ ...p, logoLightUrl: url }));
                   toast.success('Upload logo light berhasil');
                 } catch (err: any) {
-                  toast.error(err?.response?.data?.error || 'Gagal upload');
+                  toast.error(getErrorMessage(err, 'Gagal upload'));
                 } finally {
                   setUploading((x) => ({ ...x, light: false }));
                   e.target.value = '';
@@ -268,7 +269,7 @@ export default function PublicSiteProfile() {
                   setDraft((p) => ({ ...p, logoDarkUrl: url }));
                   toast.success('Upload logo dark berhasil');
                 } catch (err: any) {
-                  toast.error(err?.response?.data?.error || 'Gagal upload');
+                  toast.error(getErrorMessage(err, 'Gagal upload'));
                 } finally {
                   setUploading((x) => ({ ...x, dark: false }));
                   e.target.value = '';

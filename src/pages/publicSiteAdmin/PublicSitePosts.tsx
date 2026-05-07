@@ -10,6 +10,7 @@ import { ConfirmModal } from '@/components/ConfirmModal';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { PublicCategory, PublicPost, PublicPostType } from '@/types/publicSite';
+import { getErrorMessage } from '@/lib/errorMessage';
 
 export default function PublicSitePosts() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
@@ -68,7 +69,7 @@ export default function PublicSitePosts() {
       if (deleteTarget.kind === 'categories') mutateCategories();
       if (deleteTarget.kind === 'posts') mutatePosts();
     } catch (e: any) {
-      toast.error(e?.response?.data?.error || 'Gagal menghapus');
+      toast.error(getErrorMessage(e, 'Gagal menghapus'));
     }
   };
 
@@ -85,7 +86,7 @@ export default function PublicSitePosts() {
       resetCategoryForm();
       mutateCategories();
     } catch (err: any) {
-      toast.error(err?.response?.data?.error || 'Gagal menyimpan kategori');
+      toast.error(getErrorMessage(err, 'Gagal menyimpan kategori'));
     }
   };
 
@@ -114,7 +115,7 @@ export default function PublicSitePosts() {
       resetPostForm();
       mutatePosts();
     } catch (err: any) {
-      toast.error(err?.response?.data?.error || 'Gagal menyimpan konten');
+      toast.error(getErrorMessage(err, 'Gagal menyimpan konten'));
     }
   };
 
@@ -279,7 +280,7 @@ export default function PublicSitePosts() {
                     setPostForm((p) => ({ ...p, coverImageUrl: url }));
                     toast.success('Upload berhasil');
                   } catch (err: any) {
-                    toast.error(err?.response?.data?.error || 'Gagal upload');
+                    toast.error(getErrorMessage(err, 'Gagal upload'));
                   } finally {
                     e.target.value = '';
                   }

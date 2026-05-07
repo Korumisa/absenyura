@@ -10,6 +10,7 @@ import { ConfirmModal } from '@/components/ConfirmModal';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { PublicGalleryAlbum } from '@/types/publicSite';
+import { getErrorMessage } from '@/lib/errorMessage';
 
 export default function PublicSiteGalleries() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
@@ -38,7 +39,7 @@ export default function PublicSiteGalleries() {
       setForm((p) => ({ ...p, items: [...(p.items ?? []), ...uploaded.map((url) => ({ imageUrl: url, caption: '' }))] }));
       toast.success('Foto berhasil ditambahkan ke items');
     } catch (e: any) {
-      toast.error(e?.response?.data?.error || 'Gagal upload foto');
+      toast.error(getErrorMessage(e, 'Gagal upload foto'));
     } finally {
       setUploading(false);
     }
@@ -68,7 +69,7 @@ export default function PublicSiteGalleries() {
       resetForm();
       mutate();
     } catch (err: any) {
-      toast.error(err?.response?.data?.error || 'Gagal menyimpan');
+      toast.error(getErrorMessage(err, 'Gagal menyimpan'));
     }
   };
 
@@ -90,7 +91,7 @@ export default function PublicSiteGalleries() {
       setDeleteId(null);
       mutate();
     } catch (e: any) {
-      toast.error(e?.response?.data?.error || 'Gagal menghapus');
+      toast.error(getErrorMessage(e, 'Gagal menghapus'));
     }
   };
 

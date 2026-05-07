@@ -10,6 +10,7 @@ import { ConfirmModal } from '@/components/ConfirmModal';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { PublicProgram } from '@/types/publicSite';
+import { getErrorMessage } from '@/lib/errorMessage';
 
 export default function PublicSitePrograms() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
@@ -37,7 +38,7 @@ export default function PublicSitePrograms() {
       setDeleteId(null);
       mutate();
     } catch (e: any) {
-      toast.error(e?.response?.data?.error || 'Gagal menghapus');
+      toast.error(getErrorMessage(e, 'Gagal menghapus'));
     }
   };
 
@@ -64,7 +65,7 @@ export default function PublicSitePrograms() {
       resetForm();
       mutate();
     } catch (err: any) {
-      toast.error(err?.response?.data?.error || 'Gagal menyimpan');
+      toast.error(getErrorMessage(err, 'Gagal menyimpan'));
     }
   };
 

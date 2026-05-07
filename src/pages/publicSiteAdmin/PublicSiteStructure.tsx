@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import type { PublicStructureGroup } from '@/types/publicSite';
+import { getErrorMessage } from '@/lib/errorMessage';
 
 export default function PublicSiteStructure() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
@@ -36,7 +37,7 @@ export default function PublicSiteStructure() {
       toast.success('Struktur organisasi tersimpan');
       mutate();
     } catch (e: any) {
-      toast.error(e?.response?.data?.error || 'Gagal menyimpan');
+      toast.error(getErrorMessage(e, 'Gagal menyimpan'));
     } finally {
       setSaving(false);
     }

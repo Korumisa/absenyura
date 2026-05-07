@@ -10,6 +10,7 @@ import { ConfirmModal } from '@/components/ConfirmModal';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { PublicRecruitment } from '@/types/publicSite';
+import { getErrorMessage } from '@/lib/errorMessage';
 
 export default function PublicSiteRecruitments() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
@@ -55,7 +56,7 @@ export default function PublicSiteRecruitments() {
       resetForm();
       mutate();
     } catch (err: any) {
-      toast.error(err?.response?.data?.error || 'Gagal menyimpan');
+      toast.error(getErrorMessage(err, 'Gagal menyimpan'));
     }
   };
 
@@ -77,7 +78,7 @@ export default function PublicSiteRecruitments() {
       setDeleteId(null);
       mutate();
     } catch (e: any) {
-      toast.error(e?.response?.data?.error || 'Gagal menghapus');
+      toast.error(getErrorMessage(e, 'Gagal menghapus'));
     }
   };
 
