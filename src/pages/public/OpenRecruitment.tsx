@@ -7,16 +7,19 @@ import { Skeleton } from '@/components/ui/skeleton';
 import PublicEnter from '@/components/PublicEnter';
 import PublicReveal from '@/components/PublicReveal';
 import PublicPageHero from '@/components/PublicPageHero';
+import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 
 export default function OpenRecruitment() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
   const { data: items = [], isLoading } = useSWR<PublicRecruitment[]>('/public-site/recruitments', fetcher, { revalidateOnFocus: false });
+  const showLoading = isLoading && items.length === 0;
 
   const [openId, setOpenId] = useState<string | null>(null);
   const selected = useMemo(() => items.find((x) => x.id === openId) ?? null, [items, openId]);
 
   return (
     <PublicLayout>
+      <PublicLoadingOverlay show={showLoading} />
       <PublicEnter>
         <PublicPageHero top="Open" bottom="Recruitment" subtitle="Informasi pendaftaran, deskripsi, dan link form. Bisa dikelola dari menu Konten Website." />
 

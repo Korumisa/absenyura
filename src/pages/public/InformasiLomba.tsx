@@ -8,14 +8,16 @@ import { Skeleton } from '@/components/ui/skeleton';
 import PublicEnter from '@/components/PublicEnter';
 import PublicReveal from '@/components/PublicReveal';
 import PublicPageHero from '@/components/PublicPageHero';
+import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 
 type Status = 'Buka' | 'Tutup';
 type Paged<T> = { items: T[]; total: number; page: number; pageSize: number; totalPages: number };
 
 export default function InformasiLomba() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
-  const { data: paged } = useSWR<Paged<PublicPost>>('/public-site/posts?type=LOMBA&page=1&pageSize=24', fetcher, { revalidateOnFocus: false });
+  const { data: paged, isLoading } = useSWR<Paged<PublicPost>>('/public-site/posts?type=LOMBA&page=1&pageSize=24', fetcher, { revalidateOnFocus: false });
   const lomba = paged?.items ?? [];
+  const showLoading = isLoading && !paged;
 
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<'Semua' | Status>('Semua');
@@ -34,55 +36,56 @@ export default function InformasiLomba() {
 
   return (
     <PublicLayout>
+      <PublicLoadingOverlay show={showLoading} />
       <PublicEnter>
         <PublicPageHero top="Informasi" bottom="Lomba" subtitle="Info lomba yang masih buka/tutup, lengkap dengan detail. Konten dikelola dari menu Konten Website." />
 
         <PublicReveal className="mx-auto max-w-7xl px-6 pb-16">
           <div className="mt-8 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-          <div className="relative w-full md:max-w-sm">
-            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Cari nama lomba..."
-              className="h-11 w-full rounded-xl border border-black/10 bg-white pl-11 pr-4 text-sm text-slate-700 outline-none focus:border-[var(--public-primary)]/50 dark:border-white/10 dark:bg-zinc-950 dark:text-slate-100"
-            />
-          </div>
+            <div className="relative w-full md:max-w-sm">
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Cari nama lomba..."
+                className="h-11 w-full rounded-xl border border-black/10 bg-white pl-11 pr-4 text-sm text-slate-700 outline-none focus:border-[var(--public-primary)]/50 dark:border-white/10 dark:bg-zinc-950 dark:text-slate-100"
+              />
+            </div>
 
-          <div className="inline-flex w-fit overflow-hidden rounded-xl border border-black/10 bg-white dark:border-white/10 dark:bg-zinc-950">
-            {(['Semua', 'Buka', 'Tutup'] as const).map((t) => {
-              const isActive = filter === t;
-              return (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => setFilter(t)}
-                  className={`h-11 px-6 text-sm font-semibold transition ${
-                    isActive ? 'bg-[var(--public-primary)] text-white' : 'text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-white/5'
-                  }`}
-                >
-                  {t}
-                </button>
-              );
-            })}
-          </div>
+            <div className="flex w-full flex-wrap justify-center overflow-hidden rounded-xl border border-black/10 bg-white dark:border-white/10 dark:bg-zinc-950 md:w-fit md:flex-nowrap">
+              {(['Semua', 'Buka', 'Tutup'] as const).map((t) => {
+                const isActive = filter === t;
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setFilter(t)}
+                    className={`h-11 px-4 text-sm font-semibold transition sm:px-6 ${
+                      isActive ? 'bg-[var(--public-primary)] text-white' : 'text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-white/5'
+                    }`}
+                  >
+                    {t}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {!paged ? (
             <div className="mt-10 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, idx) => (
-              <div key={idx} className="overflow-hidden rounded-2xl border border-black/10 bg-white dark:border-white/10 dark:bg-zinc-950">
-                <Skeleton className="aspect-[16/10] w-full rounded-none" />
-                <div className="p-5">
-                  <Skeleton className="h-5 w-10/12" />
-                  <Skeleton className="mt-2 h-4 w-24" />
-                  <div className="mt-4 flex items-center justify-between">
-                    <Skeleton className="h-6 w-16 rounded-full" />
-                    <Skeleton className="h-9 w-28 rounded-xl" />
+              {Array.from({ length: 6 }).map((_, idx) => (
+                <div key={idx} className="overflow-hidden rounded-2xl border border-black/10 bg-white dark:border-white/10 dark:bg-zinc-950">
+                  <Skeleton className="aspect-[16/10] w-full rounded-none" />
+                  <div className="p-5">
+                    <Skeleton className="h-5 w-10/12" />
+                    <Skeleton className="mt-2 h-4 w-24" />
+                    <div className="mt-4 flex items-center justify-between">
+                      <Skeleton className="h-6 w-16 rounded-full" />
+                      <Skeleton className="h-9 w-28 rounded-xl" />
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
             </div>
           ) : items.length === 0 ? (
             <div className="relative mt-10 overflow-hidden rounded-2xl border border-dashed border-black/15 bg-white/60 p-10 text-left text-sm text-slate-600 dark:border-white/15 dark:bg-white/5 dark:text-slate-300">
@@ -95,29 +98,38 @@ export default function InformasiLomba() {
             </div>
           ) : (
             <div className="mt-10 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-            {items.map((l) => (
-              <div key={l.id} className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)]">
-                <div className="aspect-[16/10] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.2),rgba(255,255,255,0.04))]">
-                  {l.cover_image_url ? <img src={l.cover_image_url} alt={l.title} className="h-full w-full object-cover" /> : null}
-                </div>
-                <div className="p-5">
-                  <div className="text-sm font-semibold text-slate-800 dark:text-white">{l.title}</div>
-                  <div className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">{l.date_label ?? '-'}</div>
-                  <div className="mt-4 flex items-center justify-between">
-                    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${(l.status ?? 'Buka') === 'Buka' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-200'}`}>
-                      {l.status ?? 'Buka'}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setOpenId(l.id)}
-                      className="rounded-xl border border-black/10 bg-white px-4 py-2 text-xs font-semibold text-slate-900 transition hover:border-[var(--public-primary)]/30 dark:border-white/10 dark:bg-zinc-950 dark:text-white"
-                    >
-                      Lihat Detail
-                    </button>
+              {items.map((l) => (
+                <div
+                  key={l.id}
+                  className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)]"
+                >
+                  <div className="aspect-[16/10] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.2),rgba(255,255,255,0.04))]">
+                    {l.cover_image_url ? <img src={l.cover_image_url} alt={l.title} className="h-full w-full object-cover" /> : null}
+                  </div>
+                  <div className="p-5">
+                    <div className="text-sm font-semibold text-slate-800 dark:text-white">{l.title}</div>
+                    <div className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">{l.date_label ?? '-'}</div>
+                    <div className="mt-4 flex items-center justify-between">
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                          (l.status ?? 'Buka') === 'Buka'
+                            ? 'bg-emerald-50 text-emerald-700'
+                            : 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-200'
+                        }`}
+                      >
+                        {l.status ?? 'Buka'}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setOpenId(l.id)}
+                        className="rounded-xl border border-black/10 bg-white px-4 py-2 text-xs font-semibold text-slate-900 transition hover:border-[var(--public-primary)]/30 dark:border-white/10 dark:bg-zinc-950 dark:text-white"
+                      >
+                        Lihat Detail
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
             </div>
           )}
         </PublicReveal>
@@ -150,7 +162,7 @@ export default function InformasiLomba() {
                 </button>
               </div>
               {selected.excerpt ? <div className="mt-5 text-sm leading-relaxed text-slate-700 dark:text-slate-200">{selected.excerpt}</div> : null}
-              {selected.content ? <div className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-slate-700 dark:text-slate-200">{selected.content}</div> : null}
+              {selected.content ? <div className="mt-4 break-words whitespace-pre-wrap text-sm leading-relaxed text-slate-700 dark:text-slate-200">{selected.content}</div> : null}
             </div>
           </div>
         </div>

@@ -7,13 +7,16 @@ import { Skeleton } from '@/components/ui/skeleton';
 import PublicEnter from '@/components/PublicEnter';
 import PublicReveal from '@/components/PublicReveal';
 import PublicPageHero from '@/components/PublicPageHero';
+import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 
 export default function Fungsionaris() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
   const { data: groups = [], isLoading } = useSWR<PublicStructureGroup[]>('/public-site/structure', fetcher, { revalidateOnFocus: false });
+  const showLoading = isLoading && groups.length === 0;
 
   return (
     <PublicLayout>
+      <PublicLoadingOverlay show={showLoading} />
       <PublicEnter>
         <PublicPageHero top="Struktur" bottom="Organisasi" subtitle="Susunan fungsionaris yang dapat dikelola dari menu Konten Website." />
 
@@ -54,7 +57,7 @@ export default function Fungsionaris() {
             <div className="mt-10 space-y-16">
             {groups.map((group) => (
               <section key={group.id}>
-                <div className="mb-8 text-center text-4xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] md:text-5xl">
+                <div className="mb-8 text-center text-3xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] sm:text-4xl md:text-5xl">
                   {group.title}
                 </div>
                 <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">

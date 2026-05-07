@@ -7,14 +7,17 @@ import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import PublicEnter from '@/components/PublicEnter';
+import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 
 export default function BeritaDetail() {
   const { slug } = useParams();
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
   const { data: post, isLoading } = useSWR<PublicPost>(slug ? `/public-site/posts/${slug}` : null, fetcher, { revalidateOnFocus: false });
+  const showLoading = isLoading && !post;
 
   return (
     <PublicLayout>
+      <PublicLoadingOverlay show={showLoading} />
       <PublicEnter className="mx-auto max-w-4xl px-6 py-12">
         <Link to="/berita" className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--public-primary)]">
           <ArrowLeft size={18} />
@@ -61,7 +64,7 @@ export default function BeritaDetail() {
               ) : null}
 
               {post.content ? (
-                <div className="mt-8 whitespace-pre-wrap text-[15px] leading-relaxed text-slate-700 dark:text-slate-200">
+                <div className="mt-8 break-words whitespace-pre-wrap text-[15px] leading-relaxed text-slate-700 dark:text-slate-200">
                   {post.content}
                 </div>
               ) : (

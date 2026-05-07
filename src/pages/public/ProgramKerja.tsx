@@ -7,13 +7,16 @@ import { Skeleton } from '@/components/ui/skeleton';
 import PublicEnter from '@/components/PublicEnter';
 import PublicReveal from '@/components/PublicReveal';
 import PublicPageHero from '@/components/PublicPageHero';
+import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 
 export default function ProgramKerja() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
   const { data: items = [], isLoading } = useSWR<PublicProgram[]>('/public-site/programs', fetcher, { revalidateOnFocus: false });
+  const showLoading = isLoading && items.length === 0;
 
   return (
     <PublicLayout>
+      <PublicLoadingOverlay show={showLoading} />
       <PublicEnter>
         <PublicPageHero top="Program" bottom="Kerja" subtitle="Daftar program kerja yang dapat dipantau publik dan dikelola oleh admin." />
 

@@ -7,16 +7,19 @@ import { Skeleton } from '@/components/ui/skeleton';
 import PublicEnter from '@/components/PublicEnter';
 import PublicReveal from '@/components/PublicReveal';
 import PublicPageHero from '@/components/PublicPageHero';
+import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 
 export default function Galeri() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
   const { data: albums = [], isLoading } = useSWR<PublicGalleryAlbum[]>('/public-site/galleries', fetcher, { revalidateOnFocus: false });
+  const showLoading = isLoading && albums.length === 0;
 
   const [openId, setOpenId] = useState<string | null>(null);
   const selected = useMemo(() => albums.find((a) => a.id === openId) ?? null, [albums, openId]);
 
   return (
     <PublicLayout>
+      <PublicLoadingOverlay show={showLoading} />
       <PublicEnter>
         <PublicPageHero top="Galeri" bottom="Kegiatan" subtitle="Dokumentasi kegiatan, momen, dan karya. Album bisa dikelola dari menu Konten Website." />
 

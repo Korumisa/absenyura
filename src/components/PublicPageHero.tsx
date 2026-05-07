@@ -28,8 +28,12 @@ export default function PublicPageHero({
 
       <div className="mx-auto max-w-7xl px-6">
         <div className="text-center">
-          <div className="font-display text-6xl italic tracking-tight text-slate-900 dark:text-white md:text-7xl">{top}</div>
-          <div className="-mt-3 text-6xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] md:text-7xl">{bottom}</div>
+          <div className="font-display text-4xl italic tracking-tight text-slate-900 dark:text-white sm:text-5xl md:text-6xl">
+            {top}
+          </div>
+          <div className="-mt-1 text-4xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] sm:-mt-2 sm:text-5xl md:text-6xl">
+            {bottom}
+          </div>
           {subtitle ? <div className="mx-auto mt-3 max-w-2xl text-sm text-slate-700 dark:text-slate-300">{subtitle}</div> : null}
           {children ? <div className="mx-auto mt-8 flex flex-wrap justify-center gap-3">{children}</div> : null}
         </div>
@@ -37,4 +41,3 @@ export default function PublicPageHero({
     </section>
   );
 }
-

@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import PublicEnter from '@/components/PublicEnter';
 import PublicReveal from '@/components/PublicReveal';
 import PublicPageHero from '@/components/PublicPageHero';
+import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 
 const TABS: Array<{ label: string; type?: PublicPostType }> = [
   { label: 'Semua' },
@@ -31,7 +32,7 @@ export default function Kegiatan() {
     return `/public-site/posts?${sp.toString()}`;
   }, [tab]);
 
-  const { data: paged } = useSWR<Paged<PublicPost>>(url, fetcher, { revalidateOnFocus: false });
+  const { data: paged, isLoading } = useSWR<Paged<PublicPost>>(url, fetcher, { revalidateOnFocus: false });
   const items = useMemo(() => {
     const list = paged?.items ?? [];
     const selected = TABS.find((t) => t.label === tab);
@@ -40,46 +41,50 @@ export default function Kegiatan() {
   }, [paged?.items, tab]);
 
   const selected = useMemo(() => (paged?.items ?? []).find((e) => e.id === openId) ?? null, [paged?.items, openId]);
+  const showLoading = isLoading && !paged;
 
   return (
     <PublicLayout>
+      <PublicLoadingOverlay show={showLoading} />
       <PublicEnter>
         <PublicPageHero top="Informasi" bottom="Kegiatan" subtitle="Kumpulan kegiatan, berita, dan pengumuman (tanpa lomba). Konten dikelola dari menu Konten Website." />
 
         <PublicReveal className="mx-auto max-w-7xl px-6 pb-16">
           <div className="mt-8 flex justify-center">
-          <div className="inline-flex w-fit overflow-hidden rounded-xl border border-black/10 bg-white dark:border-white/10 dark:bg-zinc-950">
-            {TABS.map((t) => {
-              const active = tab === t.label;
-              return (
-                <button
-                  key={t.label}
-                  type="button"
-                  onClick={() => setTab(t.label)}
-                  className={`h-11 px-6 text-sm font-semibold transition ${active ? 'bg-[var(--public-primary)] text-white' : 'text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-white/5'}`}
-                >
-                  {t.label}
-                </button>
-              );
-            })}
-          </div>
+            <div className="flex w-full flex-wrap justify-center overflow-hidden rounded-xl border border-black/10 bg-white dark:border-white/10 dark:bg-zinc-950 md:w-fit md:flex-nowrap">
+              {TABS.map((t) => {
+                const active = tab === t.label;
+                return (
+                  <button
+                    key={t.label}
+                    type="button"
+                    onClick={() => setTab(t.label)}
+                    className={`h-11 px-4 text-sm font-semibold transition sm:px-6 ${
+                      active ? 'bg-[var(--public-primary)] text-white' : 'text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-white/5'
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {!paged ? (
             <div className="mt-10 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, idx) => (
-              <div key={idx} className="overflow-hidden rounded-2xl border border-black/10 bg-white dark:border-white/10 dark:bg-zinc-950">
-                <Skeleton className="aspect-[16/10] w-full rounded-none" />
-                <div className="p-5">
-                  <Skeleton className="h-4 w-20" />
-                  <Skeleton className="mt-3 h-5 w-11/12" />
-                  <Skeleton className="mt-3 h-4 w-24" />
-                  <Skeleton className="mt-4 h-4 w-full" />
-                  <Skeleton className="mt-2 h-4 w-10/12" />
-                  <Skeleton className="mt-6 h-9 w-28 rounded-xl" />
+              {Array.from({ length: 6 }).map((_, idx) => (
+                <div key={idx} className="overflow-hidden rounded-2xl border border-black/10 bg-white dark:border-white/10 dark:bg-zinc-950">
+                  <Skeleton className="aspect-[16/10] w-full rounded-none" />
+                  <div className="p-5">
+                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="mt-3 h-5 w-11/12" />
+                    <Skeleton className="mt-3 h-4 w-24" />
+                    <Skeleton className="mt-4 h-4 w-full" />
+                    <Skeleton className="mt-2 h-4 w-10/12" />
+                    <Skeleton className="mt-6 h-9 w-28 rounded-xl" />
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
             </div>
           ) : items.length === 0 ? (
             <div className="relative mt-10 overflow-hidden rounded-2xl border border-dashed border-black/15 bg-white/60 p-10 text-left text-sm text-slate-600 dark:border-white/15 dark:bg-white/5 dark:text-slate-300">
@@ -92,28 +97,31 @@ export default function Kegiatan() {
             </div>
           ) : (
             <div className="mt-10 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-            {items.map((e) => (
-              <div key={e.id} className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)]">
-                <div className="aspect-[16/10] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.2),rgba(255,255,255,0.04))]">
-                  {e.cover_image_url ? <img src={e.cover_image_url} alt={e.title} className="h-full w-full object-cover" /> : null}
-                </div>
-                <div className="p-5">
-                  <div className="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-300">{e.type}</div>
-                  <div className="mt-2 text-base font-semibold text-slate-900 dark:text-white">{e.title}</div>
-                  <div className="mt-2 text-xs font-medium text-slate-500 dark:text-slate-400">{e.date_label ?? '-'}</div>
-                  {e.excerpt ? <div className="mt-4 line-clamp-3 text-sm leading-relaxed text-slate-700 dark:text-slate-300">{e.excerpt}</div> : null}
-                  <div className="mt-5">
-                    <button
-                      type="button"
-                      onClick={() => setOpenId(e.id)}
-                      className="rounded-xl border border-black/10 bg-white px-4 py-2 text-xs font-semibold text-slate-900 transition hover:border-[var(--public-primary)]/30 dark:border-white/10 dark:bg-zinc-950 dark:text-white"
-                    >
-                      Lihat Detail
-                    </button>
+              {items.map((e) => (
+                <div
+                  key={e.id}
+                  className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)]"
+                >
+                  <div className="aspect-[16/10] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.2),rgba(255,255,255,0.04))]">
+                    {e.cover_image_url ? <img src={e.cover_image_url} alt={e.title} className="h-full w-full object-cover" /> : null}
+                  </div>
+                  <div className="p-5">
+                    <div className="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-300">{e.type}</div>
+                    <div className="mt-2 text-base font-semibold text-slate-900 dark:text-white">{e.title}</div>
+                    <div className="mt-2 text-xs font-medium text-slate-500 dark:text-slate-400">{e.date_label ?? '-'}</div>
+                    {e.excerpt ? <div className="mt-4 line-clamp-3 text-sm leading-relaxed text-slate-700 dark:text-slate-300">{e.excerpt}</div> : null}
+                    <div className="mt-5">
+                      <button
+                        type="button"
+                        onClick={() => setOpenId(e.id)}
+                        className="rounded-xl border border-black/10 bg-white px-4 py-2 text-xs font-semibold text-slate-900 transition hover:border-[var(--public-primary)]/30 dark:border-white/10 dark:bg-zinc-950 dark:text-white"
+                      >
+                        Lihat Detail
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
             </div>
           )}
         </PublicReveal>
@@ -141,7 +149,7 @@ export default function Kegiatan() {
                 </button>
               </div>
               {selected.excerpt ? <div className="mt-5 text-sm leading-relaxed text-slate-700 dark:text-slate-200">{selected.excerpt}</div> : null}
-              {selected.content ? <div className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-slate-700 dark:text-slate-200">{selected.content}</div> : null}
+              {selected.content ? <div className="mt-4 break-words whitespace-pre-wrap text-sm leading-relaxed text-slate-700 dark:text-slate-200">{selected.content}</div> : null}
             </div>
           </div>
         </div>
