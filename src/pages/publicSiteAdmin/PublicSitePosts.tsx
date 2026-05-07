@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { PublicCategory, PublicPost, PublicPostType } from '@/types/publicSite';
 import { getErrorMessage } from '@/lib/errorMessage';
+import { prepareImageForUpload } from '@/lib/imageUpload';
 
 export default function PublicSitePosts() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
@@ -37,8 +38,9 @@ export default function PublicSitePosts() {
   const resetPostForm = () => setPostForm({ type: postType });
 
   const uploadImage = async (file: File) => {
+    const prepared = await prepareImageForUpload(file, { maxBytes: 4 * 1024 * 1024, maxWidth: 1920, quality: 0.82 });
     const form = new FormData();
-    form.append('file', file);
+    form.append('file', prepared);
     const res = await api.post('/public-site/admin/upload', form, { headers: { 'Content-Type': 'multipart/form-data' } });
     return res.data.data.url as string;
   };
@@ -234,11 +236,13 @@ export default function PublicSitePosts() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none__">-</SelectItem>
-                  {categories.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
+                  {categories
+                    .filter((c) => Boolean(c?.id))
+                    .map((c) => (
+                      <SelectItem key={c.id} value={String(c.id)}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>
@@ -342,7 +346,7 @@ export default function PublicSitePosts() {
                           excerpt: p.excerpt ?? '',
                           content: p.content ?? '',
                           coverImageUrl: p.cover_image_url ?? '',
-                          categoryId: p.category_id ?? '',
+                          categoryId: p.category_id ?? undefined,
                           isPublished: p.is_published,
                         });
                       }}

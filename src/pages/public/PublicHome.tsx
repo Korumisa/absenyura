@@ -73,6 +73,7 @@ export default function PublicHome() {
 
   const logoSrc = profile?.logo_light_url ?? '';
   const posts = latest?.items ?? [];
+  const heroKabinetName = kabinetName || (!isLoadingProfile ? 'Kabinet belum diatur' : '');
 
   return (
     <PublicLayout>
@@ -96,7 +97,7 @@ export default function PublicHome() {
               ) : (
                 <>
                   <div className="mt-1 text-5xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] md:text-7xl">
-                    {kabinetName}
+                    {heroKabinetName}
                   </div>
                   {kabinetPeriod ? <div className="mt-2 text-sm font-semibold tracking-wide text-slate-600 dark:text-slate-300">{kabinetPeriod}</div> : null}
                   <div className="mt-5 max-w-md text-sm font-medium text-slate-700 dark:text-slate-200 md:text-base">
@@ -157,7 +158,14 @@ export default function PublicHome() {
         <PublicReveal className="relative mx-auto grid max-w-7xl gap-10 px-6 py-16 md:grid-cols-2 md:py-20">
           <div className="text-slate-800 dark:text-slate-100">
             <div className="mb-4 font-display text-3xl italic tracking-tight md:text-4xl">{aboutTitle || 'Tentang'}</div>
-            {aboutParagraphs.length ? (
+            {isLoadingProfile ? (
+              <div className="space-y-4">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-11/12" />
+                <Skeleton className="h-4 w-10/12" />
+                <Skeleton className="h-4 w-9/12" />
+              </div>
+            ) : aboutParagraphs.length ? (
               <div className="space-y-5 text-[17px] leading-relaxed text-slate-700 dark:text-slate-300">
                 {aboutParagraphs.map((p) => (
                   <p key={p}>{p}</p>
@@ -172,7 +180,9 @@ export default function PublicHome() {
 
           <div className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_22px_56px_-48px_rgba(15,23,42,0.45)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_22px_56px_-48px_rgba(0,0,0,0.6)]">
             <div className="aspect-video w-full">
-              {videoSrc ? (
+              {isLoadingProfile ? (
+                <Skeleton className="h-full w-full rounded-none" />
+              ) : videoSrc ? (
                 <iframe
                   className="h-full w-full"
                   src={videoSrc}

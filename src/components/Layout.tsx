@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
-import { LayoutDashboard, Users, MapPin, Calendar, Menu, X, QrCode, BarChart3, ShieldAlert, History, BookOpen, FileText, Building2, Globe, ChevronDown, ChevronRight, User, Layers, Newspaper, Image, ClipboardList } from 'lucide-react';
+import { LayoutDashboard, Users, MapPin, Calendar, Menu, X, QrCode, BarChart3, ShieldAlert, History, BookOpen, FileText, Building2, Globe, ChevronDown, User, Layers, Newspaper, Image, ClipboardList } from 'lucide-react';
 import api from '@/services/api';
 
 import { NotificationMenu } from './NotificationMenu';
@@ -67,7 +67,7 @@ export default function Layout() {
         }`}
       >
         <div className="flex items-center justify-between h-16 px-6 bg-white dark:bg-zinc-950 border-b border-slate-200 dark:border-zinc-800">
-          <span className="text-xl font-bold text-indigo-600 dark:text-indigo-400">Absensyura</span>
+          <span className="text-xl font-bold text-indigo-600 dark:text-indigo-400">E-Absensi</span>
           <Button 
             variant="ghost" 
             size="icon" 
@@ -80,7 +80,7 @@ export default function Layout() {
         </div>
 
         <div className="flex flex-col h-[calc(100vh-4rem)] justify-between pb-6">
-          <nav className="p-4 space-y-1 overflow-y-auto">
+          <nav className="scrollbar-hide p-4 space-y-1 overflow-y-auto">
             {allowedNavItems.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname.startsWith(item.path);
@@ -100,11 +100,15 @@ export default function Layout() {
                     >
                       <Icon size={20} className="mr-3" />
                       <span className="font-semibold flex-1 text-left">{item.name}</span>
-                      {publicSiteOpen ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+                      <ChevronDown size={18} className={`transition-transform duration-200 ${publicSiteOpen ? 'rotate-0' : '-rotate-90'}`} />
                     </button>
 
-                    {publicSiteOpen ? (
-                      <div className="pl-4 space-y-1">
+                    <div
+                      className={`overflow-hidden pl-4 transition-all duration-200 ease-out ${
+                        publicSiteOpen ? 'max-h-96 opacity-100 translate-y-0' : 'max-h-0 opacity-0 -translate-y-1'
+                      }`}
+                    >
+                      <div className="space-y-1 pt-1">
                         {[
                           { name: 'Profil', path: '/public-site/profile', icon: User },
                           { name: 'Struktur', path: '/public-site/structure', icon: Layers },
@@ -132,7 +136,7 @@ export default function Layout() {
                           );
                         })}
                       </div>
-                    ) : null}
+                    </div>
                   </div>
                 );
               }
@@ -171,7 +175,7 @@ export default function Layout() {
             >
               <Menu size={24} />
             </Button>
-            <span className="lg:hidden text-lg font-bold text-indigo-600 dark:text-indigo-400">Absensyura</span>
+            <span className="lg:hidden text-lg font-bold text-indigo-600 dark:text-indigo-400">E-Absensi</span>
           </div>
           
           <div className="flex items-center gap-4 ml-auto">
