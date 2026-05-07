@@ -2,6 +2,10 @@ import 'dotenv/config'
 import bcrypt from 'bcryptjs'
 import { PrismaClient } from '@prisma/client'
 
+if (!process.env.DATABASE_URL && process.env.DIRECT_URL) {
+  process.env.DATABASE_URL = process.env.DIRECT_URL
+}
+
 const prisma = new PrismaClient()
 
 function readArg(args, key) {
