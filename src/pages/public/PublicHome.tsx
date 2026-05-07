@@ -83,7 +83,7 @@ export default function PublicHome() {
           <section className="relative overflow-hidden bg-[radial-gradient(circle_at_20%_20%,rgba(37,99,235,0.18),transparent_50%),radial-gradient(circle_at_70%_10%,rgba(59,130,246,0.14),transparent_55%),linear-gradient(180deg,rgba(15,23,42,0.02),transparent)] dark:bg-[radial-gradient(circle_at_20%_20%,rgba(37,99,235,0.22),transparent_55%),radial-gradient(circle_at_70%_10%,rgba(59,130,246,0.16),transparent_55%),linear-gradient(180deg,rgba(15,23,42,0.7),rgba(15,23,42,0.85))]">
             <PublicEnter className="mx-auto grid max-w-7xl items-center gap-12 px-6 py-16 md:grid-cols-2 md:py-24">
               <div className="flex items-start gap-6">
-                <BrandMark className="h-20 w-20 shrink-0 shadow-sm" src={logoSrc} name={orgName || campusName} />
+                <BrandMark className="hidden h-20 w-20 shrink-0 shadow-sm sm:block" src={logoSrc} name={orgName || campusName} />
                 <div>
                   <div className="font-display text-4xl italic tracking-tight text-slate-900 dark:text-white md:text-5xl">Kabinet</div>
                   <div className="mt-1 text-5xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] md:text-7xl">
@@ -271,8 +271,10 @@ export default function PublicHome() {
       <section className="relative bg-white pb-24 pt-10 dark:bg-zinc-950">
         <PublicReveal className="mx-auto max-w-7xl px-6">
           <div className="text-center">
-            <div className="font-display text-6xl italic tracking-tight text-slate-900 dark:text-white md:text-7xl">Susunan</div>
-            <div className="-mt-3 text-6xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] md:text-7xl">Fungsionaris</div>
+            <div className="font-display text-5xl italic tracking-tight text-slate-900 dark:text-white sm:text-6xl md:text-7xl">Susunan</div>
+            <div className="-mt-2 text-5xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] sm:-mt-3 sm:text-6xl md:text-7xl">
+              Fungsionaris
+            </div>
           </div>
 
           {isLoadingStructure ? (
