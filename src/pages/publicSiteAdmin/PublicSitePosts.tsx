@@ -18,7 +18,7 @@ export default function PublicSitePosts() {
   const { data: categories = [], mutate: mutateCategories } = useSWR<PublicCategory[]>('/public-site/admin/categories', fetcher, { revalidateOnFocus: false });
   const { data: posts = [], mutate: mutatePosts } = useSWR<PublicPost[]>('/public-site/admin/posts', fetcher, { revalidateOnFocus: false });
 
-  const [postType, setPostType] = useState<PublicPostType>('BERITA');
+  const postType: PublicPostType = 'BERITA';
   const [categoryForm, setCategoryForm] = useState<{ id?: string; name?: string; slug?: string }>({});
   const [postForm, setPostForm] = useState<{
     id?: string;
@@ -121,41 +121,12 @@ export default function PublicSitePosts() {
     }
   };
 
-  const typeOptions: Array<{ value: PublicPostType; label: string }> = [
-    { value: 'BERITA', label: 'Berita' },
-    { value: 'KEGIATAN', label: 'Kegiatan' },
-    { value: 'PENGUMUMAN', label: 'Pengumuman' },
-    { value: 'LOMBA', label: 'Informasi Lomba' },
-  ];
-
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="space-y-1">
-          <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Berita & Info</h1>
-          <p className="text-slate-500 dark:text-zinc-400">Kelola kategori dan konten berita/informasi.</p>
-        </div>
-        <div className="w-full sm:w-64 space-y-2">
-          <Label>Tipe Konten</Label>
-          <Select
-            value={postType}
-            onValueChange={(v) => {
-              const next = v as PublicPostType;
-              setPostType(next);
-              setPostForm((p) => ({ ...p, type: next }));
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {typeOptions.map((t) => (
-                <SelectItem key={t.value} value={t.value}>
-                  {t.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Berita</h1>
+          <p className="text-slate-500 dark:text-zinc-400">Kelola kategori dan konten berita.</p>
         </div>
       </div>
 
@@ -335,7 +306,6 @@ export default function PublicSitePosts() {
                       size="sm"
                       type="button"
                       onClick={() => {
-                        setPostType(p.type);
                         setPostForm({
                           id: p.id,
                           type: p.type,

@@ -67,7 +67,14 @@ export default function Layout() {
         }`}
       >
         <div className="flex items-center justify-between h-16 px-6 bg-white dark:bg-zinc-950 border-b border-slate-200 dark:border-zinc-800">
-          <span className="text-xl font-bold text-indigo-600 dark:text-indigo-400">E-Absensi</span>
+          <div className="flex items-center gap-3">
+            <img
+              src="/3.%20HM%20SDP.png"
+              alt="Logo HM"
+              className="h-9 w-9 rounded-xl bg-white/70 p-1.5 ring-1 ring-black/10 dark:bg-white/10 dark:ring-white/10"
+            />
+            <span className="text-lg font-semibold text-indigo-600 dark:text-indigo-400">E-Absensi</span>
+          </div>
           <Button 
             variant="ghost" 
             size="icon" 
@@ -175,7 +182,14 @@ export default function Layout() {
             >
               <Menu size={24} />
             </Button>
-            <span className="lg:hidden text-lg font-bold text-indigo-600 dark:text-indigo-400">E-Absensi</span>
+            <div className="lg:hidden flex items-center gap-2">
+              <img
+                src="/3.%20HM%20SDP.png"
+                alt="Logo HM"
+                className="h-8 w-8 rounded-lg bg-white/70 p-1 ring-1 ring-black/10 dark:bg-white/10 dark:ring-white/10"
+              />
+              <span className="text-lg font-semibold text-indigo-600 dark:text-indigo-400">E-Absensi</span>
+            </div>
           </div>
           
           <div className="flex items-center gap-4 ml-auto">
