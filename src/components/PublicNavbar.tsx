@@ -55,7 +55,7 @@ function BrandMark() {
 
 export default function PublicNavbar() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
-  const { data: profile } = useSWR<PublicProfile | null>('/public-site/profile', fetcher, { revalidateOnFocus: false });
+  const { data: profile, isLoading: isLoadingProfile } = useSWR<PublicProfile | null>('/public-site/profile', fetcher, { revalidateOnFocus: false });
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const location = useLocation();
@@ -95,10 +95,10 @@ export default function PublicNavbar() {
           <BrandMark />
           <div className="hidden flex-col leading-tight md:flex">
             <div className="text-sm font-extrabold tracking-tight text-slate-900 dark:text-white">
-              {profile?.org_name ? profile.org_name : 'Profil belum diatur'}
+              {isLoadingProfile ? 'Memuat...' : profile?.org_name ? profile.org_name : 'Profil belum diatur'}
             </div>
             <div className="text-xs font-medium text-slate-500 dark:text-slate-300">
-              {profile?.campus_name ? profile.campus_name : 'Konten Website'}
+              {isLoadingProfile ? '' : profile?.campus_name ? profile.campus_name : 'Konten Website'}
             </div>
           </div>
         </Link>

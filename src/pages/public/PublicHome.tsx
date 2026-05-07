@@ -78,7 +78,7 @@ export default function PublicHome() {
   return (
     <PublicLayout>
       <div className="relative">
-        <div className={`transition-[filter,opacity] duration-200 ${isPageLoading ? 'pointer-events-none select-none blur-sm opacity-70' : ''}`}>
+        <div className={`transition-opacity duration-200 ${isPageLoading ? 'pointer-events-none select-none opacity-75' : ''}`}>
           <section className="relative overflow-hidden bg-[radial-gradient(circle_at_20%_20%,rgba(37,99,235,0.18),transparent_50%),radial-gradient(circle_at_70%_10%,rgba(59,130,246,0.14),transparent_55%),linear-gradient(180deg,rgba(15,23,42,0.02),transparent)] dark:bg-[radial-gradient(circle_at_20%_20%,rgba(37,99,235,0.22),transparent_55%),radial-gradient(circle_at_70%_10%,rgba(59,130,246,0.16),transparent_55%),linear-gradient(180deg,rgba(15,23,42,0.7),rgba(15,23,42,0.85))]">
             <PublicEnter className="mx-auto grid max-w-7xl items-center gap-12 px-6 py-16 md:grid-cols-2 md:py-24">
               <div className="flex items-start gap-6">
@@ -387,10 +387,18 @@ export default function PublicHome() {
         </div>
 
         {isPageLoading ? (
-          <div className="absolute inset-0 z-40 flex items-center justify-center bg-white/35 backdrop-blur-sm dark:bg-zinc-950/35">
-            <div className="flex flex-col items-center gap-3 rounded-2xl border border-black/10 bg-white/75 px-6 py-5 text-slate-800 shadow-[0_22px_60px_-45px_rgba(15,23,42,0.55)] backdrop-blur dark:border-white/10 dark:bg-zinc-950/70 dark:text-slate-100 dark:shadow-[0_22px_60px_-45px_rgba(0,0,0,0.8)]">
-              <div className="h-10 w-10 animate-spin rounded-full border-[4px] border-slate-200 border-t-[var(--public-primary)] dark:border-zinc-800" />
-              <div className="text-sm font-semibold">Memuat...</div>
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-white/25 backdrop-blur-md dark:bg-zinc-950/30">
+            <div className="flex flex-col items-center gap-3 rounded-3xl border border-black/10 bg-white/75 px-8 py-7 text-slate-800 shadow-[0_30px_90px_-60px_rgba(15,23,42,0.7)] backdrop-blur dark:border-white/10 dark:bg-zinc-950/70 dark:text-slate-100 dark:shadow-[0_30px_90px_-60px_rgba(0,0,0,0.9)]">
+              <div className="relative h-12 w-12">
+                <div className="absolute inset-0 animate-spin rounded-full border-[4px] border-slate-200 border-t-[var(--public-primary)] dark:border-zinc-800" />
+                <div className="absolute inset-2 rounded-full bg-[var(--public-primary)]/10" />
+              </div>
+              <div className="text-sm font-medium">Memuat data...</div>
+              <div className="flex items-center gap-1">
+                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[var(--public-primary)] [animation-delay:-0.2s]" />
+                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[var(--public-primary)] [animation-delay:-0.1s]" />
+                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[var(--public-primary)]" />
+              </div>
             </div>
           </div>
         ) : null}
