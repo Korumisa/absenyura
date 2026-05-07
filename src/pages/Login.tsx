@@ -94,7 +94,7 @@ export default function Login() {
               Dashboard
             </div>
             <div className="mt-4 max-w-md text-sm text-slate-700 dark:text-slate-300">
-              Masuk untuk absen, lihat riwayat kehadiran, dan (jika punya akses) kelola konten website.
+              Masuk untuk absen, lihat riwayat kehadiran, dan persentase kehadiran anda.
             </div>
 
             <div className="mt-8">
