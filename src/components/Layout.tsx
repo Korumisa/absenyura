@@ -99,7 +99,7 @@ export default function Layout() {
                       }`}
                     >
                       <Icon size={20} className="mr-3" />
-                      <span className="font-semibold flex-1 text-left">{item.name}</span>
+                      <span className="font-medium flex-1 text-left">{item.name}</span>
                       <ChevronDown size={18} className={`transition-transform duration-200 ${publicSiteOpen ? 'rotate-0' : '-rotate-90'}`} />
                     </button>
 

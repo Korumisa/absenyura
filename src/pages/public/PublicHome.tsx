@@ -5,7 +5,6 @@ import { Link } from 'react-router-dom';
 import useSWR from 'swr';
 import api from '@/services/api';
 import type { PublicPost, PublicProfile, PublicProgram, PublicStructureGroup } from '@/types/publicSite';
-import { Skeleton } from '@/components/ui/skeleton';
 import PublicEnter from '@/components/PublicEnter';
 import PublicReveal from '@/components/PublicReveal';
 
@@ -59,6 +58,7 @@ export default function PublicHome() {
     (url) => api.get(url).then((r) => r.data.data),
     { revalidateOnFocus: false }
   );
+  const isPageLoading = isLoadingProfile || isLoadingPrograms || isLoadingStructure || isLoadingLatest;
 
   const orgName = profile?.org_name ?? '';
   const campusName = profile?.campus_name ?? '';
@@ -77,25 +77,14 @@ export default function PublicHome() {
 
   return (
     <PublicLayout>
-      <section className="relative overflow-hidden bg-[radial-gradient(circle_at_20%_20%,rgba(37,99,235,0.18),transparent_50%),radial-gradient(circle_at_70%_10%,rgba(59,130,246,0.14),transparent_55%),linear-gradient(180deg,rgba(15,23,42,0.02),transparent)] dark:bg-[radial-gradient(circle_at_20%_20%,rgba(37,99,235,0.22),transparent_55%),radial-gradient(circle_at_70%_10%,rgba(59,130,246,0.16),transparent_55%),linear-gradient(180deg,rgba(15,23,42,0.7),rgba(15,23,42,0.85))]">
-        <PublicEnter className="mx-auto grid max-w-7xl items-center gap-12 px-6 py-16 md:grid-cols-2 md:py-24">
-          <div className="flex items-start gap-6">
-            {isLoadingProfile ? (
-              <Skeleton className="h-20 w-20 shrink-0 rounded-2xl" />
-            ) : (
-              <BrandMark className="h-20 w-20 shrink-0 shadow-sm" src={logoSrc} name={orgName || campusName} />
-            )}
-            <div>
-              <div className="font-display text-4xl italic tracking-tight text-slate-900 dark:text-white md:text-5xl">Kabinet</div>
-              {isLoadingProfile ? (
-                <>
-                  <Skeleton className="mt-3 h-10 w-56 rounded-xl md:h-14 md:w-80" />
-                  <Skeleton className="mt-3 h-4 w-40" />
-                  <Skeleton className="mt-6 h-4 w-72" />
-                  <Skeleton className="mt-2 h-4 w-64" />
-                </>
-              ) : (
-                <>
+      <div className="relative">
+        <div className={`transition-[filter,opacity] duration-200 ${isPageLoading ? 'pointer-events-none select-none blur-sm opacity-70' : ''}`}>
+          <section className="relative overflow-hidden bg-[radial-gradient(circle_at_20%_20%,rgba(37,99,235,0.18),transparent_50%),radial-gradient(circle_at_70%_10%,rgba(59,130,246,0.14),transparent_55%),linear-gradient(180deg,rgba(15,23,42,0.02),transparent)] dark:bg-[radial-gradient(circle_at_20%_20%,rgba(37,99,235,0.22),transparent_55%),radial-gradient(circle_at_70%_10%,rgba(59,130,246,0.16),transparent_55%),linear-gradient(180deg,rgba(15,23,42,0.7),rgba(15,23,42,0.85))]">
+            <PublicEnter className="mx-auto grid max-w-7xl items-center gap-12 px-6 py-16 md:grid-cols-2 md:py-24">
+              <div className="flex items-start gap-6">
+                <BrandMark className="h-20 w-20 shrink-0 shadow-sm" src={logoSrc} name={orgName || campusName} />
+                <div>
+                  <div className="font-display text-4xl italic tracking-tight text-slate-900 dark:text-white md:text-5xl">Kabinet</div>
                   <div className="mt-1 text-5xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] md:text-7xl">
                     {heroKabinetName}
                   </div>
@@ -105,119 +94,106 @@ export default function PublicHome() {
                     <div className="text-slate-500 dark:text-slate-300">{campusName}</div>
                   </div>
                   {heroSubtitle ? <div className="mt-4 max-w-xl text-sm text-slate-600 dark:text-slate-300 md:text-base">{heroSubtitle}</div> : null}
-                </>
-              )}
 
-              <div className="mt-10 flex flex-wrap items-center gap-4">
-                <Link
-                  to="/struktur-organisasi"
-                  className="inline-flex items-center gap-2 rounded-xl bg-[var(--public-primary)] px-6 py-3 text-sm font-semibold text-white shadow-[0_16px_32px_rgba(37,99,235,0.35)] transition hover:brightness-110"
-                >
-                  Struktur Organisasi
-                  <ArrowRight size={18} />
-                </Link>
-                <Link
-                  to="/berita"
-                  className="inline-flex items-center gap-2 rounded-xl border border-black/10 bg-white/70 px-6 py-3 text-sm font-semibold text-slate-900 backdrop-blur transition hover:bg-white dark:border-white/10 dark:bg-white/10 dark:text-white dark:hover:bg-white/15"
-                >
-                  Berita Terbaru
-                  <ArrowRight size={18} />
-                </Link>
+                  <div className="mt-10 flex flex-wrap items-center gap-4">
+                    <Link
+                      to="/struktur-organisasi"
+                      className="inline-flex items-center gap-2 rounded-xl bg-[var(--public-primary)] px-6 py-3 text-sm font-semibold text-white shadow-[0_16px_32px_rgba(37,99,235,0.35)] transition hover:brightness-110"
+                    >
+                      Struktur Organisasi
+                      <ArrowRight size={18} />
+                    </Link>
+                    <Link
+                      to="/berita"
+                      className="inline-flex items-center gap-2 rounded-xl border border-black/10 bg-white/70 px-6 py-3 text-sm font-semibold text-slate-900 backdrop-blur transition hover:bg-white dark:border-white/10 dark:bg-white/10 dark:text-white dark:hover:bg-white/15"
+                    >
+                      Berita Terbaru
+                      <ArrowRight size={18} />
+                    </Link>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
 
-          <div className="relative">
-            <div className="overflow-hidden rounded-3xl border border-black/10 bg-white shadow-[0_28px_70px_-50px_rgba(15,23,42,0.4)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_28px_70px_-50px_rgba(0,0,0,0.6)]">
-              <div className="relative aspect-[4/3] w-full bg-slate-50 dark:bg-zinc-900">
-                {isLoadingProfile ? (
-                  <Skeleton className="h-full w-full rounded-none" />
-                ) : profile?.home_image_url ? (
-                  <img
-                    src={profile.home_image_url}
-                    alt="Foto Anggota"
-                    className="h-full w-full object-cover"
-                    loading="lazy"
-                  />
+              <div className="relative">
+                <div className="overflow-hidden rounded-3xl border border-black/10 bg-white shadow-[0_28px_70px_-50px_rgba(15,23,42,0.4)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_28px_70px_-50px_rgba(0,0,0,0.6)]">
+                  <div className="relative aspect-[4/3] w-full bg-slate-50 dark:bg-zinc-900">
+                    {profile?.home_image_url ? (
+                      <img
+                        src={profile.home_image_url}
+                        alt="Foto Anggota"
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center p-8">
+                        <div className="w-full rounded-2xl border border-dashed border-black/20 bg-white/60 p-8 text-center text-sm text-slate-600 dark:border-white/20 dark:bg-white/5 dark:text-slate-300">
+                          <div className="text-base font-extrabold tracking-tight text-slate-900 dark:text-white">Tempat Foto Anggota</div>
+                          <div className="mt-2">Upload lewat admin: Konten Website → Profil → Upload Foto Anggota.</div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </PublicEnter>
+          </section>
+
+          <section className="relative overflow-hidden bg-white dark:bg-zinc-950">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_10%,rgba(37,99,235,0.12),transparent_55%),radial-gradient(circle_at_75%_20%,rgba(59,130,246,0.10),transparent_60%)] opacity-70 dark:opacity-50" />
+            <PublicReveal className="relative mx-auto grid max-w-7xl gap-10 px-6 py-16 md:grid-cols-2 md:py-20">
+              <div className="text-slate-800 dark:text-slate-100">
+                <div className="mb-4 font-display text-3xl italic tracking-tight md:text-4xl">{aboutTitle || 'Tentang'}</div>
+                {aboutParagraphs.length ? (
+                  <div className="space-y-5 text-[17px] leading-relaxed text-slate-700 dark:text-slate-300">
+                    {aboutParagraphs.map((p) => (
+                      <p key={p}>{p}</p>
+                    ))}
+                  </div>
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center p-8">
-                    <div className="w-full rounded-2xl border border-dashed border-black/20 bg-white/60 p-8 text-center text-sm text-slate-600 dark:border-white/20 dark:bg-white/5 dark:text-slate-300">
-                      <div className="text-base font-extrabold tracking-tight text-slate-900 dark:text-white">Tempat Foto Anggota</div>
-                      <div className="mt-2">Upload lewat admin: Konten Website → Profil → Upload Foto Anggota.</div>
-                    </div>
+                  <div className="rounded-2xl border border-dashed border-black/15 bg-white/60 p-6 text-sm text-slate-600 dark:border-white/15 dark:bg-white/5 dark:text-slate-300">
+                    Konten “Tentang” belum diatur. Admin bisa isi dari menu Konten Website.
                   </div>
                 )}
               </div>
-            </div>
-          </div>
-        </PublicEnter>
-      </section>
 
-      <section className="relative overflow-hidden bg-white dark:bg-zinc-950">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_10%,rgba(37,99,235,0.12),transparent_55%),radial-gradient(circle_at_75%_20%,rgba(59,130,246,0.10),transparent_60%)] opacity-70 dark:opacity-50" />
-        <PublicReveal className="relative mx-auto grid max-w-7xl gap-10 px-6 py-16 md:grid-cols-2 md:py-20">
-          <div className="text-slate-800 dark:text-slate-100">
-            <div className="mb-4 font-display text-3xl italic tracking-tight md:text-4xl">{aboutTitle || 'Tentang'}</div>
-            {isLoadingProfile ? (
-              <div className="space-y-4">
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-11/12" />
-                <Skeleton className="h-4 w-10/12" />
-                <Skeleton className="h-4 w-9/12" />
-              </div>
-            ) : aboutParagraphs.length ? (
-              <div className="space-y-5 text-[17px] leading-relaxed text-slate-700 dark:text-slate-300">
-                {aboutParagraphs.map((p) => (
-                  <p key={p}>{p}</p>
-                ))}
-              </div>
-            ) : (
-              <div className="rounded-2xl border border-dashed border-black/15 bg-white/60 p-6 text-sm text-slate-600 dark:border-white/15 dark:bg-white/5 dark:text-slate-300">
-                Konten “Tentang” belum diatur. Admin bisa isi dari menu Konten Website.
-              </div>
-            )}
-          </div>
-
-          <div className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_22px_56px_-48px_rgba(15,23,42,0.45)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_22px_56px_-48px_rgba(0,0,0,0.6)]">
-            <div className="aspect-video w-full">
-              {isLoadingProfile ? (
-                <Skeleton className="h-full w-full rounded-none" />
-              ) : videoSrc ? (
-                <iframe
-                  className="h-full w-full"
-                  src={videoSrc}
-                  title="Video Profil"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  referrerPolicy="strict-origin-when-cross-origin"
-                  allowFullScreen
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_25%_25%,rgba(37,99,235,0.22),transparent_58%),radial-gradient(circle_at_70%_20%,rgba(59,130,246,0.14),transparent_60%),linear-gradient(135deg,rgba(15,23,42,0.06),rgba(15,23,42,0.02))] dark:bg-[radial-gradient(circle_at_25%_25%,rgba(37,99,235,0.22),transparent_58%),radial-gradient(circle_at_70%_20%,rgba(59,130,246,0.14),transparent_60%),linear-gradient(135deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02))]">
-                  <div className="rounded-xl border border-black/10 bg-white/70 px-5 py-3 text-sm font-semibold text-slate-700 backdrop-blur dark:border-white/10 dark:bg-white/10 dark:text-slate-200">
-                    Video profil belum diatur
-                  </div>
+              <div className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_22px_56px_-48px_rgba(15,23,42,0.45)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_22px_56px_-48px_rgba(0,0,0,0.6)]">
+                <div className="aspect-video w-full">
+                  {videoSrc ? (
+                    <iframe
+                      className="h-full w-full"
+                      src={videoSrc}
+                      title="Video Profil"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      referrerPolicy="strict-origin-when-cross-origin"
+                      allowFullScreen
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_25%_25%,rgba(37,99,235,0.22),transparent_58%),radial-gradient(circle_at_70%_20%,rgba(59,130,246,0.14),transparent_60%),linear-gradient(135deg,rgba(15,23,42,0.06),rgba(15,23,42,0.02))] dark:bg-[radial-gradient(circle_at_25%_25%,rgba(37,99,235,0.22),transparent_58%),radial-gradient(circle_at_70%_20%,rgba(59,130,246,0.14),transparent_60%),linear-gradient(135deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02))]">
+                      <div className="rounded-xl border border-black/10 bg-white/70 px-5 py-3 text-sm font-semibold text-slate-700 backdrop-blur dark:border-white/10 dark:bg-white/10 dark:text-slate-200">
+                        Video profil belum diatur
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
+            </PublicReveal>
+
+            <div className="relative mx-auto max-w-7xl px-6">
+              <div className="pointer-events-none absolute left-0 top-0 -translate-y-1/2">
+                <div className="h-16 w-16 rounded-full bg-[var(--public-primary)]/14 blur-2xl" />
+              </div>
+              <div className="pointer-events-none absolute right-0 top-0 -translate-y-1/2">
+                <div className="h-16 w-16 rounded-full bg-sky-400/12 blur-2xl" />
+              </div>
+              <div className="relative h-10 w-full">
+                <div className="absolute left-1/2 top-1/2 h-10 w-44 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--public-primary)]/18 blur-2xl" />
+                <div className="absolute left-1/2 top-1/2 h-1 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--public-primary)]/70" />
+              </div>
             </div>
-          </div>
-        </PublicReveal>
+          </section>
 
-        <div className="relative mx-auto max-w-7xl px-6">
-          <div className="pointer-events-none absolute left-0 top-0 -translate-y-1/2">
-            <div className="h-16 w-16 rounded-full bg-[var(--public-primary)]/14 blur-2xl" />
-          </div>
-          <div className="pointer-events-none absolute right-0 top-0 -translate-y-1/2">
-            <div className="h-16 w-16 rounded-full bg-sky-400/12 blur-2xl" />
-          </div>
-          <div className="relative h-10 w-full">
-            <div className="absolute left-1/2 top-1/2 h-10 w-44 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--public-primary)]/18 blur-2xl" />
-            <div className="absolute left-1/2 top-1/2 h-1 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--public-primary)]/70" />
-          </div>
-        </div>
-      </section>
-
-      <section className="relative bg-white py-20 dark:bg-zinc-950">
-        <PublicReveal className="mx-auto max-w-7xl px-6 text-center">
+          <section className="relative bg-white py-20 dark:bg-zinc-950">
+            <PublicReveal className="mx-auto max-w-7xl px-6 text-center">
           <div className="pointer-events-none absolute left-0 top-12 hidden md:block">
             <div className="h-24 w-24 rounded-full bg-[var(--public-primary)]/16 blur-2xl" />
           </div>
@@ -235,18 +211,7 @@ export default function PublicHome() {
             <div className="pointer-events-none absolute -left-10 top-10 h-44 w-44 rounded-full bg-[var(--public-primary)]/10 blur-3xl" />
             <div className="pointer-events-none absolute -right-10 bottom-8 h-52 w-52 rounded-full bg-sky-400/10 blur-3xl" />
             {isLoadingPrograms ? (
-              <div className="grid gap-5 md:grid-cols-3">
-                {Array.from({ length: 3 }).map((_, idx) => (
-                  <div key={idx} className="overflow-hidden rounded-2xl border border-black/10 bg-white p-6 dark:border-white/10 dark:bg-zinc-950">
-                    <Skeleton className="h-4 w-28" />
-                    <Skeleton className="mt-4 h-6 w-10/12" />
-                    <Skeleton className="mt-3 h-4 w-full" />
-                    <Skeleton className="mt-2 h-4 w-11/12" />
-                    <Skeleton className="mt-2 h-4 w-10/12" />
-                    <Skeleton className="mt-5 h-4 w-20" />
-                  </div>
-                ))}
-              </div>
+              <div className="h-40" />
             ) : programs.length === 0 ? (
               <div className="relative overflow-hidden rounded-2xl border border-dashed border-black/15 bg-white/60 p-10 text-left text-sm text-slate-600 dark:border-white/15 dark:bg-white/5 dark:text-slate-300">
                 <div className="pointer-events-none absolute -left-16 -top-16 h-52 w-52 rounded-[48%_52%_58%_42%/44%_43%_57%_56%] bg-[var(--public-primary)]/14 blur-3xl" />
@@ -310,16 +275,7 @@ export default function PublicHome() {
           </div>
 
           {isLoadingStructure ? (
-            <div className="mt-12 grid gap-5 md:grid-cols-3">
-              {Array.from({ length: 3 }).map((_, idx) => (
-                <div key={idx} className="overflow-hidden rounded-2xl border border-black/10 bg-white p-6 dark:border-white/10 dark:bg-zinc-950">
-                  <Skeleton className="h-6 w-40" />
-                  <Skeleton className="mt-4 h-4 w-56" />
-                  <Skeleton className="mt-2 h-4 w-52" />
-                  <Skeleton className="mt-2 h-4 w-44" />
-                </div>
-              ))}
-            </div>
+            <div className="mt-12 h-40" />
           ) : structure.length === 0 ? (
             <div className="relative mt-12 overflow-hidden rounded-2xl border border-dashed border-black/15 bg-white/60 p-10 text-left text-sm text-slate-600 dark:border-white/15 dark:bg-white/5 dark:text-slate-300">
               <div className="pointer-events-none absolute -left-16 -top-16 h-52 w-52 rounded-[48%_52%_58%_42%/44%_43%_57%_56%] bg-[var(--public-primary)]/12 blur-3xl" />
@@ -387,20 +343,7 @@ export default function PublicHome() {
           </div>
 
           {isLoadingLatest ? (
-            <div className="mt-10 grid gap-6 md:grid-cols-3">
-              {Array.from({ length: 3 }).map((_, idx) => (
-                <div key={idx} className="overflow-hidden rounded-2xl border border-black/10 bg-white dark:border-white/10 dark:bg-zinc-950">
-                  <Skeleton className="aspect-[16/10] w-full rounded-none" />
-                  <div className="p-5">
-                    <Skeleton className="h-4 w-32" />
-                    <Skeleton className="mt-3 h-6 w-11/12" />
-                    <Skeleton className="mt-2 h-4 w-full" />
-                    <Skeleton className="mt-2 h-4 w-10/12" />
-                    <Skeleton className="mt-5 h-4 w-24" />
-                  </div>
-                </div>
-              ))}
-            </div>
+            <div className="mt-10 h-40" />
           ) : posts.length === 0 ? (
             <div className="mt-10 rounded-2xl border border-dashed border-black/15 bg-white/60 p-8 text-sm text-slate-600 dark:border-white/15 dark:bg-white/5 dark:text-slate-300">
               Belum ada berita yang dipublikasikan.
@@ -439,8 +382,19 @@ export default function PublicHome() {
               ))}
             </div>
           )}
-        </PublicReveal>
-      </section>
+            </PublicReveal>
+          </section>
+        </div>
+
+        {isPageLoading ? (
+          <div className="absolute inset-0 z-40 flex items-center justify-center bg-white/35 backdrop-blur-sm dark:bg-zinc-950/35">
+            <div className="flex flex-col items-center gap-3 rounded-2xl border border-black/10 bg-white/75 px-6 py-5 text-slate-800 shadow-[0_22px_60px_-45px_rgba(15,23,42,0.55)] backdrop-blur dark:border-white/10 dark:bg-zinc-950/70 dark:text-slate-100 dark:shadow-[0_22px_60px_-45px_rgba(0,0,0,0.8)]">
+              <div className="h-10 w-10 animate-spin rounded-full border-[4px] border-slate-200 border-t-[var(--public-primary)] dark:border-zinc-800" />
+              <div className="text-sm font-semibold">Memuat...</div>
+            </div>
+          </div>
+        ) : null}
+      </div>
     </PublicLayout>
   );
 }
