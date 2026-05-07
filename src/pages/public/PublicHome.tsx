@@ -51,7 +51,7 @@ function normalizeYoutubeEmbedUrl(input: string) {
 
 export default function PublicHome() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
-  const { data: profile } = useSWR<PublicProfile | null>('/public-site/profile', fetcher, { revalidateOnFocus: false });
+  const { data: profile, isLoading: isLoadingProfile } = useSWR<PublicProfile | null>('/public-site/profile', fetcher, { revalidateOnFocus: false });
   const { data: programs = [], isLoading: isLoadingPrograms } = useSWR<PublicProgram[]>('/public-site/programs', fetcher, { revalidateOnFocus: false });
   const { data: structure = [], isLoading: isLoadingStructure } = useSWR<PublicStructureGroup[]>('/public-site/structure', fetcher, { revalidateOnFocus: false });
   const { data: latest, isLoading: isLoadingLatest } = useSWR<{ items: PublicPost[] }>(
@@ -79,18 +79,33 @@ export default function PublicHome() {
       <section className="relative overflow-hidden bg-[radial-gradient(circle_at_20%_20%,rgba(37,99,235,0.18),transparent_50%),radial-gradient(circle_at_70%_10%,rgba(59,130,246,0.14),transparent_55%),linear-gradient(180deg,rgba(15,23,42,0.02),transparent)] dark:bg-[radial-gradient(circle_at_20%_20%,rgba(37,99,235,0.22),transparent_55%),radial-gradient(circle_at_70%_10%,rgba(59,130,246,0.16),transparent_55%),linear-gradient(180deg,rgba(15,23,42,0.7),rgba(15,23,42,0.85))]">
         <PublicEnter className="mx-auto grid max-w-7xl items-center gap-12 px-6 py-16 md:grid-cols-2 md:py-24">
           <div className="flex items-start gap-6">
-            <BrandMark className="h-20 w-20 shrink-0 shadow-sm" src={logoSrc} name={orgName || campusName} />
+            {isLoadingProfile ? (
+              <Skeleton className="h-20 w-20 shrink-0 rounded-2xl" />
+            ) : (
+              <BrandMark className="h-20 w-20 shrink-0 shadow-sm" src={logoSrc} name={orgName || campusName} />
+            )}
             <div>
               <div className="font-display text-4xl italic tracking-tight text-slate-900 dark:text-white md:text-5xl">Kabinet</div>
-              <div className="mt-1 text-5xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] md:text-7xl">
-                {kabinetName}
-              </div>
-              {kabinetPeriod ? <div className="mt-2 text-sm font-semibold tracking-wide text-slate-600 dark:text-slate-300">{kabinetPeriod}</div> : null}
-              <div className="mt-5 max-w-md text-sm font-medium text-slate-700 dark:text-slate-200 md:text-base">
-                {orgName}
-                <div className="text-slate-500 dark:text-slate-300">{campusName}</div>
-              </div>
-              {heroSubtitle ? <div className="mt-4 max-w-xl text-sm text-slate-600 dark:text-slate-300 md:text-base">{heroSubtitle}</div> : null}
+              {isLoadingProfile ? (
+                <>
+                  <Skeleton className="mt-3 h-10 w-56 rounded-xl md:h-14 md:w-80" />
+                  <Skeleton className="mt-3 h-4 w-40" />
+                  <Skeleton className="mt-6 h-4 w-72" />
+                  <Skeleton className="mt-2 h-4 w-64" />
+                </>
+              ) : (
+                <>
+                  <div className="mt-1 text-5xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] md:text-7xl">
+                    {kabinetName}
+                  </div>
+                  {kabinetPeriod ? <div className="mt-2 text-sm font-semibold tracking-wide text-slate-600 dark:text-slate-300">{kabinetPeriod}</div> : null}
+                  <div className="mt-5 max-w-md text-sm font-medium text-slate-700 dark:text-slate-200 md:text-base">
+                    {orgName}
+                    <div className="text-slate-500 dark:text-slate-300">{campusName}</div>
+                  </div>
+                  {heroSubtitle ? <div className="mt-4 max-w-xl text-sm text-slate-600 dark:text-slate-300 md:text-base">{heroSubtitle}</div> : null}
+                </>
+              )}
 
               <div className="mt-10 flex flex-wrap items-center gap-4">
                 <Link
@@ -114,7 +129,9 @@ export default function PublicHome() {
           <div className="relative">
             <div className="overflow-hidden rounded-3xl border border-black/10 bg-white shadow-[0_28px_70px_-50px_rgba(15,23,42,0.4)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_28px_70px_-50px_rgba(0,0,0,0.6)]">
               <div className="relative aspect-[4/3] w-full bg-slate-50 dark:bg-zinc-900">
-                {profile?.home_image_url ? (
+                {isLoadingProfile ? (
+                  <Skeleton className="h-full w-full rounded-none" />
+                ) : profile?.home_image_url ? (
                   <img
                     src={profile.home_image_url}
                     alt="Foto Anggota"

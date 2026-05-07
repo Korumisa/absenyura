@@ -20,22 +20,40 @@ export default function PublicSiteRecruitments() {
   const [form, setForm] = useState<{
     id?: string;
     title?: string;
-    dateRange?: string;
     description?: string;
     formUrl?: string;
     isPublished?: boolean;
     committee?: CommitteeDraft[];
   }>({ committee: [] });
   const resetForm = () => setForm({});
+  const [dateStart, setDateStart] = useState('');
+  const [dateEnd, setDateEnd] = useState('');
+  const resetDatesFromRange = (range: string) => {
+    const raw = String(range ?? '').trim();
+    if (!raw) {
+      setDateStart('');
+      setDateEnd('');
+      return;
+    }
+    const parts = raw.split(' - ');
+    if (parts.length >= 2) {
+      setDateStart(parts[0] || '');
+      setDateEnd(parts.slice(1).join(' - ') || '');
+      return;
+    }
+    setDateStart(raw);
+    setDateEnd('');
+  };
 
   const upsert = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const dateRange = dateStart && dateEnd ? `${dateStart} - ${dateEnd}` : dateStart || dateEnd || undefined;
       const committee = (form.committee ?? []).map((x, idx) => ({ name: x.name, role: x.role, sortOrder: idx }));
       if (form.id) {
         await api.put(`/public-site/admin/recruitments/${form.id}`, {
           title: form.title,
-          dateRange: form.dateRange,
+          dateRange,
           description: form.description,
           formUrl: form.formUrl,
           isPublished: form.isPublished ?? false,
@@ -45,7 +63,7 @@ export default function PublicSiteRecruitments() {
       } else {
         await api.post('/public-site/admin/recruitments', {
           title: form.title,
-          dateRange: form.dateRange,
+          dateRange,
           description: form.description,
           formUrl: form.formUrl,
           isPublished: form.isPublished ?? false,
@@ -54,6 +72,8 @@ export default function PublicSiteRecruitments() {
         toast.success('Open recruitment ditambahkan');
       }
       resetForm();
+      setDateStart('');
+      setDateEnd('');
       mutate();
     } catch (err: any) {
       toast.error(getErrorMessage(err, 'Gagal menyimpan'));
@@ -96,8 +116,12 @@ export default function PublicSiteRecruitments() {
             <Input value={form.title ?? ''} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} />
           </div>
           <div className="space-y-2">
-            <Label>Rentang Tanggal</Label>
-            <Input value={form.dateRange ?? ''} onChange={(e) => setForm((p) => ({ ...p, dateRange: e.target.value }))} />
+            <Label>Tanggal Mulai</Label>
+            <Input type="date" value={dateStart} onChange={(e) => setDateStart(e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label>Tanggal Selesai</Label>
+            <Input type="date" value={dateEnd} onChange={(e) => setDateEnd(e.target.value)} />
           </div>
           <div className="space-y-2">
             <Label>Link Form</Label>
@@ -206,15 +230,15 @@ export default function PublicSiteRecruitments() {
                       size="sm"
                       type="button"
                       onClick={() =>
-                        setForm({
+                        (setForm({
                           id: r.id,
                           title: r.title,
-                          dateRange: r.date_range ?? '',
                           description: r.description ?? '',
                           formUrl: r.form_url ?? '',
                           isPublished: r.is_published,
                           committee: (r.committee ?? []).map((x) => ({ name: x.name, role: x.role })),
-                        })
+                        }),
+                        resetDatesFromRange(r.date_range ?? ''))
                       }
                     >
                       Edit

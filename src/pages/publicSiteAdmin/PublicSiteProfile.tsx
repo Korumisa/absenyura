@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import type { PublicProfile } from '@/types/publicSite';
 import { getErrorMessage } from '@/lib/errorMessage';
+import { prepareImageForUpload } from '@/lib/imageUpload';
 
 export default function PublicSiteProfile() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
@@ -83,8 +84,9 @@ export default function PublicSiteProfile() {
   const [uploading, setUploading] = useState<{ light: boolean; dark: boolean }>({ light: false, dark: false });
 
   const uploadImage = async (file: File) => {
+    const prepared = await prepareImageForUpload(file, { maxBytes: 4 * 1024 * 1024, maxWidth: 1920, quality: 0.82 });
     const form = new FormData();
-    form.append('file', file);
+    form.append('file', prepared);
     const res = await api.post('/public-site/admin/upload', form, { headers: { 'Content-Type': 'multipart/form-data' } });
     return res.data.data.url as string;
   };
@@ -224,7 +226,7 @@ export default function PublicSiteProfile() {
                   setDraft((p) => ({ ...p, homeImageUrl: url }));
                   toast.success('Upload foto anggota berhasil');
                 } catch (err: any) {
-                  toast.error(getErrorMessage(err, 'Gagal upload'));
+                  toast.error(String(getErrorMessage(err, 'Gagal upload')));
                 } finally {
                   e.target.value = '';
                 }
@@ -246,7 +248,7 @@ export default function PublicSiteProfile() {
                   setDraft((p) => ({ ...p, logoLightUrl: url }));
                   toast.success('Upload logo light berhasil');
                 } catch (err: any) {
-                  toast.error(getErrorMessage(err, 'Gagal upload'));
+                  toast.error(String(getErrorMessage(err, 'Gagal upload')));
                 } finally {
                   setUploading((x) => ({ ...x, light: false }));
                   e.target.value = '';
@@ -269,7 +271,7 @@ export default function PublicSiteProfile() {
                   setDraft((p) => ({ ...p, logoDarkUrl: url }));
                   toast.success('Upload logo dark berhasil');
                 } catch (err: any) {
-                  toast.error(getErrorMessage(err, 'Gagal upload'));
+                  toast.error(String(getErrorMessage(err, 'Gagal upload')));
                 } finally {
                   setUploading((x) => ({ ...x, dark: false }));
                   e.target.value = '';

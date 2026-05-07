@@ -225,12 +225,15 @@ export default function PublicSitePosts() {
             </div>
             <div className="space-y-2">
               <Label>Kategori</Label>
-              <Select value={postForm.categoryId ?? ''} onValueChange={(v) => setPostForm((p) => ({ ...p, categoryId: v || undefined }))}>
+              <Select
+                value={postForm.categoryId ?? '__none__'}
+                onValueChange={(v) => setPostForm((p) => ({ ...p, categoryId: v === '__none__' ? undefined : v }))}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="-" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">-</SelectItem>
+                  <SelectItem value="__none__">-</SelectItem>
                   {categories.map((c) => (
                     <SelectItem key={c.id} value={c.id}>
                       {c.name}

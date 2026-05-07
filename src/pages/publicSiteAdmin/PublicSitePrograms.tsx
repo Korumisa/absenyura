@@ -16,8 +16,26 @@ export default function PublicSitePrograms() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
   const { data: programs = [], mutate } = useSWR<PublicProgram[]>('/public-site/admin/programs', fetcher, { revalidateOnFocus: false });
 
-  const [form, setForm] = useState<{ id?: string; title?: string; dateRange?: string; description?: string; isPublished?: boolean }>({});
+  const [form, setForm] = useState<{ id?: string; title?: string; description?: string; isPublished?: boolean }>({});
+  const [dateStart, setDateStart] = useState('');
+  const [dateEnd, setDateEnd] = useState('');
   const resetForm = () => setForm({});
+  const resetDatesFromRange = (range: string) => {
+    const raw = String(range ?? '').trim();
+    if (!raw) {
+      setDateStart('');
+      setDateEnd('');
+      return;
+    }
+    const parts = raw.split(' - ');
+    if (parts.length >= 2) {
+      setDateStart(parts[0] || '');
+      setDateEnd(parts.slice(1).join(' - ') || '');
+      return;
+    }
+    setDateStart(raw);
+    setDateEnd('');
+  };
 
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -45,10 +63,11 @@ export default function PublicSitePrograms() {
   const upsert = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const dateRange = dateStart && dateEnd ? `${dateStart} - ${dateEnd}` : dateStart || dateEnd || undefined;
       if (form.id) {
         await api.put(`/public-site/admin/programs/${form.id}`, {
           title: form.title,
-          dateRange: form.dateRange,
+          dateRange,
           description: form.description,
           isPublished: form.isPublished ?? false,
         });
@@ -56,13 +75,15 @@ export default function PublicSitePrograms() {
       } else {
         await api.post('/public-site/admin/programs', {
           title: form.title,
-          dateRange: form.dateRange,
+          dateRange,
           description: form.description,
           isPublished: form.isPublished ?? false,
         });
         toast.success('Program kerja ditambahkan');
       }
       resetForm();
+      setDateStart('');
+      setDateEnd('');
       mutate();
     } catch (err: any) {
       toast.error(getErrorMessage(err, 'Gagal menyimpan'));
@@ -83,8 +104,12 @@ export default function PublicSitePrograms() {
             <Input value={form.title ?? ''} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} />
           </div>
           <div className="space-y-2">
-            <Label>Rentang Tanggal</Label>
-            <Input value={form.dateRange ?? ''} onChange={(e) => setForm((p) => ({ ...p, dateRange: e.target.value }))} />
+            <Label>Tanggal Mulai</Label>
+            <Input type="date" value={dateStart} onChange={(e) => setDateStart(e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label>Tanggal Selesai</Label>
+            <Input type="date" value={dateEnd} onChange={(e) => setDateEnd(e.target.value)} />
           </div>
           <div className="space-y-2">
             <Label>Publik</Label>
@@ -137,13 +162,13 @@ export default function PublicSitePrograms() {
                       size="sm"
                       type="button"
                       onClick={() =>
-                        setForm({
+                        (setForm({
                           id: p.id,
                           title: p.title,
-                          dateRange: p.date_range ?? '',
                           description: p.description ?? '',
                           isPublished: p.is_published,
-                        })
+                        }),
+                        resetDatesFromRange(p.date_range ?? ''))
                       }
                     >
                       Edit

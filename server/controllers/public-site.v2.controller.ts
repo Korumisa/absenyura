@@ -773,9 +773,16 @@ export const deleteAdminRecruitment = async (req: PublicRoleRequest, res: Respon
   }
 };
 
-export const uploadPublicAsset = [
-  upload.single('file'),
-  async (req: PublicRoleRequest, res: Response): Promise<void> => {
+export const uploadPublicAsset = async (req: PublicRoleRequest, res: Response): Promise<void> => {
+  upload.single('file')(req as any, res as any, async (err: any) => {
+    if (err) {
+      if (err?.code === 'LIMIT_FILE_SIZE') {
+        res.status(413).json({ success: false, error: 'File terlalu besar. Maks 5MB.' });
+        return;
+      }
+      res.status(400).json({ success: false, error: err?.message || 'Gagal mengunggah file' });
+      return;
+    }
     try {
       if (!process.env.CLOUDINARY_URL) {
         res.status(500).json({ success: false, error: 'Cloudinary belum dikonfigurasi' });
@@ -793,6 +800,6 @@ export const uploadPublicAsset = [
       console.error('Error uploading public asset:', error);
       res.status(500).json({ success: false, error: 'Gagal mengunggah file' });
     }
-  },
-];
+  });
+};
 
