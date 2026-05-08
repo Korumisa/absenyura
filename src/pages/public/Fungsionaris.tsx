@@ -8,6 +8,7 @@ import PublicEnter from '@/components/PublicEnter';
 import PublicReveal from '@/components/PublicReveal';
 import PublicPageHero from '@/components/PublicPageHero';
 import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
+import PublicPhotoFrame from '@/components/PublicPhotoFrame';
 
 export default function Fungsionaris() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
@@ -60,17 +61,8 @@ export default function Fungsionaris() {
                 <div className="pointer-events-none absolute -left-16 -top-12 h-56 w-56 rounded-[48%_52%_58%_42%/44%_43%_57%_56%] bg-[var(--public-primary)]/10 blur-3xl" />
                 <div className={`pointer-events-none absolute -right-20 -bottom-10 h-64 w-64 blur-3xl ${gidx % 2 === 0 ? 'rounded-[53%_47%_45%_55%/48%_56%_44%_52%] bg-sky-400/10' : 'rounded-[42%_58%_52%_48%/54%_44%_56%_46%] bg-indigo-400/10'}`} />
 
-                <div className="mb-8 flex flex-col items-center gap-3 text-center">
-                  <div className="inline-flex items-center gap-3 rounded-full border border-black/10 bg-white/70 px-5 py-2 text-sm font-semibold text-slate-700 backdrop-blur dark:border-white/10 dark:bg-white/5 dark:text-slate-200">
-                    <span className="h-2 w-2 rounded-full bg-[var(--public-primary)]" />
-                    {group.title}
-                    <span className="rounded-full bg-black/5 px-2 py-0.5 text-xs font-bold text-slate-600 dark:bg-white/10 dark:text-slate-200">
-                      {(group.members ?? []).length}
-                    </span>
-                  </div>
-                  <div className="text-3xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] sm:text-4xl md:text-5xl">
-                    {group.title}
-                  </div>
+                <div className="mb-8 text-center text-3xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] sm:text-4xl md:text-5xl">
+                  {group.title}
                 </div>
                 {(group.members ?? []).length === 0 ? (
                   <div className="rounded-2xl border border-dashed border-black/15 bg-white/60 px-6 py-5 text-sm text-slate-600 dark:border-white/15 dark:bg-white/5 dark:text-slate-300">
@@ -93,7 +85,7 @@ export default function Fungsionaris() {
                           key={p.id}
                           className="group relative overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-[var(--public-primary)]/35 hover:shadow-[0_30px_70px_-52px_rgba(15,23,42,0.55)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)] dark:hover:shadow-[0_30px_70px_-52px_rgba(0,0,0,0.85)] active:scale-[0.99]"
                         >
-                          <div className="aspect-[4/5] w-full">
+                          <PublicPhotoFrame className="aspect-[4/5] w-full" inset={14}>
                             {p.photo_url ? (
                               <img
                                 src={p.photo_url}
@@ -109,7 +101,7 @@ export default function Fungsionaris() {
                                 </div>
                               </div>
                             )}
-                          </div>
+                          </PublicPhotoFrame>
                           <div className={`pointer-events-none absolute inset-0 bg-gradient-to-t ${variant} to-transparent`} />
                           <div className={`pointer-events-none absolute inset-0 opacity-0 transition duration-300 group-hover:opacity-100 bg-[radial-gradient(circle_at_20%_15%,rgba(37,99,235,0.35),transparent_55%)]`} />
                           <div className="absolute inset-x-0 bottom-0 p-5">
