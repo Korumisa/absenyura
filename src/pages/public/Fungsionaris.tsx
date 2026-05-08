@@ -83,9 +83,9 @@ export default function Fungsionaris() {
                       return (
                         <div
                           key={p.id}
-                          className="group relative overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-[var(--public-primary)]/35 hover:shadow-[0_30px_70px_-52px_rgba(15,23,42,0.55)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)] dark:hover:shadow-[0_30px_70px_-52px_rgba(0,0,0,0.85)] active:scale-[0.99]"
+                          className="group relative w-full max-w-[420px] mx-auto overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-[var(--public-primary)]/35 hover:shadow-[0_30px_70px_-52px_rgba(15,23,42,0.55)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)] dark:hover:shadow-[0_30px_70px_-52px_rgba(0,0,0,0.85)] active:scale-[0.99] sm:max-w-none"
                         >
-                          <PublicPhotoFrame className="aspect-[16/11] w-full" inset={10}>
+                          <PublicPhotoFrame className="aspect-[16/11] w-full sm:aspect-[3/4]" inset={10}>
                             {p.photo_url ? (
                               <img
                                 src={p.photo_url}
@@ -103,7 +103,6 @@ export default function Fungsionaris() {
                             )}
                           </PublicPhotoFrame>
                           <div className={`pointer-events-none absolute inset-0 bg-gradient-to-t ${variant} to-transparent`} />
-                          <div className={`pointer-events-none absolute inset-0 opacity-0 transition duration-300 group-hover:opacity-100 bg-[radial-gradient(circle_at_20%_15%,rgba(37,99,235,0.35),transparent_55%)]`} />
                           <div className="absolute inset-x-0 bottom-0 p-4">
                             <div className="truncate text-sm font-extrabold tracking-tight text-white sm:text-base">{p.name}</div>
                             <div className="mt-1 inline-flex max-w-full rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white/90 ring-1 ring-white/10 backdrop-blur">

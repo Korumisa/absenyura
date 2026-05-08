@@ -34,6 +34,23 @@ export default function PublicPhotoFrame({
         className="pointer-events-none absolute z-20 border-b-[3px] border-r-[3px] border-white/85 drop-shadow-[0_1px_10px_rgba(0,0,0,0.35)] dark:border-white/55"
         style={{ right: pad, bottom: pad, width: corner, height: corner }}
       />
+
+      <span
+        className="pointer-events-none absolute z-20 border-l border-t border-white/35 dark:border-white/25"
+        style={{ left: pad + 6, top: pad + 6, width: Math.max(10, corner - 8), height: Math.max(10, corner - 8) }}
+      />
+      <span
+        className="pointer-events-none absolute z-20 border-r border-t border-white/35 dark:border-white/25"
+        style={{ right: pad + 6, top: pad + 6, width: Math.max(10, corner - 8), height: Math.max(10, corner - 8) }}
+      />
+      <span
+        className="pointer-events-none absolute z-20 border-b border-l border-white/35 dark:border-white/25"
+        style={{ left: pad + 6, bottom: pad + 6, width: Math.max(10, corner - 8), height: Math.max(10, corner - 8) }}
+      />
+      <span
+        className="pointer-events-none absolute z-20 border-b border-r border-white/35 dark:border-white/25"
+        style={{ right: pad + 6, bottom: pad + 6, width: Math.max(10, corner - 8), height: Math.max(10, corner - 8) }}
+      />
     </div>
   );
 }

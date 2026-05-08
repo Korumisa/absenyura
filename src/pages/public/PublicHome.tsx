@@ -300,52 +300,69 @@ export default function PublicHome() {
                     <div className="h-px flex-1 bg-black/10 dark:bg-white/10" />
                   </div>
 
-                  {(g.members ?? []).length === 0 ? (
+                  {(() => {
+                    const members = g.members ?? [];
+                    const single = members.length === 1;
+                    if (members.length === 0) {
+                      return (
                     <div className="mt-4 rounded-2xl border border-dashed border-black/15 bg-white/60 px-5 py-4 text-sm text-slate-600 dark:border-white/15 dark:bg-white/5 dark:text-slate-300">
                       Anggota belum diisi.
                     </div>
-                  ) : (
-                    <div className="relative mt-4">
-                      <div className="pointer-events-none absolute inset-y-0 left-0 w-10 bg-gradient-to-r from-white to-transparent dark:from-zinc-950" />
-                      <div className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-white to-transparent dark:from-zinc-950" />
-                      <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 pl-1 pr-1 scrollbar-hide">
-                      {(g.members ?? []).map((m) => {
-                        const initial = String(m.name ?? '').trim().slice(0, 1).toUpperCase() || 'A';
-                        return (
-                          <div
-                            key={m.id}
-                            className="group snap-start relative overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-[var(--public-primary)]/35 hover:shadow-[0_30px_70px_-52px_rgba(15,23,42,0.55)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)] dark:hover:shadow-[0_30px_70px_-52px_rgba(0,0,0,0.8)] min-w-[210px] sm:min-w-[240px] active:scale-[0.99]"
-                          >
-                            <PublicPhotoFrame className="aspect-[16/11] w-full" inset={10}>
-                              {m.photo_url ? (
-                                <img
-                                  src={m.photo_url}
-                                  alt={m.name}
-                                  className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"
-                                  loading="lazy"
-                                />
-                              ) : (
-                                <div className="relative h-full w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.32),rgba(15,23,42,0.08))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.28),rgba(255,255,255,0.04))]">
-                                  <div className="pointer-events-none absolute inset-0 opacity-70 [background:radial-gradient(circle_at_30%_25%,rgba(255,255,255,0.75),transparent_58%)]" />
-                                  <div className="grid h-full w-full place-items-center text-5xl font-extrabold text-white/90 drop-shadow-sm">
-                                    {initial}
+                      );
+                    }
+
+                    return (
+                      <div className="relative mt-4">
+                        {!single ? (
+                          <>
+                            <div className="pointer-events-none absolute inset-y-0 left-0 w-10 bg-gradient-to-r from-white to-transparent dark:from-zinc-950" />
+                            <div className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-white to-transparent dark:from-zinc-950" />
+                          </>
+                        ) : null}
+
+                        <div
+                          className={`flex gap-4 pb-2 ${single ? 'justify-center overflow-x-hidden' : 'snap-x snap-mandatory overflow-x-auto'} pl-1 pr-1 scrollbar-hide`}
+                        >
+                          {members.map((m) => {
+                            const initial = String(m.name ?? '').trim().slice(0, 1).toUpperCase() || 'A';
+                            return (
+                              <div
+                                key={m.id}
+                                className={`group relative overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-[var(--public-primary)]/35 hover:shadow-[0_30px_70px_-52px_rgba(15,23,42,0.55)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)] dark:hover:shadow-[0_30px_70px_-52px_rgba(0,0,0,0.8)] active:scale-[0.99] ${
+                                  single ? 'w-[220px] sm:w-[240px]' : 'snap-start min-w-[190px] sm:min-w-[220px]'
+                                }`}
+                              >
+                                <PublicPhotoFrame className="aspect-[16/11] w-full" inset={10}>
+                                  {m.photo_url ? (
+                                    <img
+                                      src={m.photo_url}
+                                      alt={m.name}
+                                      className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"
+                                      loading="lazy"
+                                    />
+                                  ) : (
+                                    <div className="relative h-full w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.32),rgba(15,23,42,0.08))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.28),rgba(255,255,255,0.04))]">
+                                      <div className="pointer-events-none absolute inset-0 opacity-70 [background:radial-gradient(circle_at_30%_25%,rgba(255,255,255,0.75),transparent_58%)]" />
+                                      <div className="grid h-full w-full place-items-center text-5xl font-extrabold text-white/90 drop-shadow-sm">
+                                        {initial}
+                                      </div>
+                                    </div>
+                                  )}
+                                </PublicPhotoFrame>
+                                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/25 to-transparent" />
+                                <div className="absolute inset-x-0 bottom-0 p-4">
+                                  <div className="truncate text-sm font-extrabold tracking-tight text-white sm:text-base">{m.name}</div>
+                                  <div className="mt-1 inline-flex max-w-full rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white/90 ring-1 ring-white/10 backdrop-blur">
+                                    <span className="truncate">{m.role}</span>
                                   </div>
                                 </div>
-                              )}
-                            </PublicPhotoFrame>
-                            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/25 to-transparent" />
-                            <div className="absolute inset-x-0 bottom-0 p-4">
-                              <div className="truncate text-sm font-extrabold tracking-tight text-white sm:text-base">{m.name}</div>
-                              <div className="mt-1 inline-flex max-w-full rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white/90 ring-1 ring-white/10 backdrop-blur">
-                                <span className="truncate">{m.role}</span>
                               </div>
-                            </div>
-                          </div>
-                        );
-                      })}
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
                 </section>
               ))}
             </div>
