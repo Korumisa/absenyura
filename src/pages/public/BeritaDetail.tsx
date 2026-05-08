@@ -8,6 +8,7 @@ import { ArrowLeft } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import PublicEnter from '@/components/PublicEnter';
 import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
+import { ensureHttpsUrl } from '@/lib/ensureHttpsUrl';
 
 export default function BeritaDetail() {
   const { slug } = useParams();
@@ -43,9 +44,22 @@ export default function BeritaDetail() {
             Konten tidak ditemukan atau belum dipublikasikan.
           </div>
         ) : (
+          (() => {
+            const coverUrl = ensureHttpsUrl(post.cover_image_url);
+            return (
           <article className="mt-8 overflow-hidden rounded-3xl border border-black/10 bg-white shadow-[0_28px_70px_-52px_rgba(15,23,42,0.45)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_28px_70px_-52px_rgba(0,0,0,0.7)]">
             <div className="aspect-[16/8] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.2),rgba(255,255,255,0.04))]">
-              {post.cover_image_url ? <img src={post.cover_image_url} alt={post.title} className="h-full w-full object-cover" /> : null}
+              {coverUrl ? (
+                <img
+                  src={coverUrl}
+                  alt={post.title}
+                  className="h-full w-full object-cover"
+                  loading="lazy"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              ) : null}
             </div>
             <div className="p-7 md:p-10">
               <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-300">
@@ -74,6 +88,8 @@ export default function BeritaDetail() {
               )}
             </div>
           </article>
+            );
+          })()
         )}
       </PublicEnter>
     </PublicLayout>

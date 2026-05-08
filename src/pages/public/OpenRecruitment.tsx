@@ -8,6 +8,7 @@ import PublicEnter from '@/components/PublicEnter';
 import PublicReveal from '@/components/PublicReveal';
 import PublicPageHero from '@/components/PublicPageHero';
 import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
+import { ensureHttpsUrl } from '@/lib/ensureHttpsUrl';
 
 export default function OpenRecruitment() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
@@ -16,6 +17,17 @@ export default function OpenRecruitment() {
 
   const [openId, setOpenId] = useState<string | null>(null);
   const selected = useMemo(() => items.find((x) => x.id === openId) ?? null, [items, openId]);
+
+  const contactHref = (value: string) => {
+    const raw = String(value ?? '').trim();
+    if (!raw) return '';
+    if (/^https?:\/\//i.test(raw)) return raw;
+    if (/^mailto:/i.test(raw)) return raw;
+    const digits = raw.replace(/[^\d]/g, '');
+    if (!digits) return '';
+    const normalized = digits.startsWith('0') ? `62${digits.slice(1)}` : digits;
+    return `https://wa.me/${normalized}`;
+  };
 
   return (
     <PublicLayout>
@@ -58,7 +70,19 @@ export default function OpenRecruitment() {
                 key={r.id}
                 className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)]"
               >
-                <div className="aspect-[16/10] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.2),rgba(255,255,255,0.04))]" />
+                <div className="aspect-[4/5] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.2),rgba(255,255,255,0.04))]">
+                  {ensureHttpsUrl(r.poster_image_url) ? (
+                    <img
+                      src={ensureHttpsUrl(r.poster_image_url)}
+                      alt={r.title}
+                      className="h-full w-full object-cover"
+                      loading="lazy"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                  ) : null}
+                </div>
                 <div className="p-5">
                   <div className="text-base font-semibold text-slate-900 dark:text-white">{r.title}</div>
                   <div className="mt-2 text-xs font-medium text-slate-500 dark:text-slate-400">{r.date_range ?? '-'}</div>
@@ -91,6 +115,9 @@ export default function OpenRecruitment() {
       </PublicEnter>
 
       {selected ? (
+        (() => {
+          const posterUrl = ensureHttpsUrl(selected.poster_image_url);
+          return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center px-6">
           <button type="button" aria-label="Tutup" className="absolute inset-0 bg-black/50" onClick={() => setOpenId(null)} />
           <div
@@ -98,7 +125,19 @@ export default function OpenRecruitment() {
             aria-modal="true"
             className="relative w-full max-w-2xl overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_30px_80px_-45px_rgba(15,23,42,0.55)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_30px_80px_-45px_rgba(0,0,0,0.7)]"
           >
-            <div className="aspect-[16/8] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.2),rgba(255,255,255,0.04))]" />
+            <div className="aspect-[16/9] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.2),rgba(255,255,255,0.04))]">
+              {posterUrl ? (
+                <img
+                  src={posterUrl}
+                  alt={selected.title}
+                  className="h-full w-full object-cover"
+                  loading="lazy"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              ) : null}
+            </div>
             <div className="p-6">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
@@ -114,6 +153,26 @@ export default function OpenRecruitment() {
                 </button>
               </div>
               {selected.description ? <div className="mt-5 text-sm leading-relaxed text-slate-700 dark:text-slate-200">{selected.description}</div> : null}
+
+              {selected.contacts?.length ? (
+                <div className="mt-7">
+                  <div className="text-sm font-semibold text-slate-900 dark:text-white">Contact Person</div>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    {selected.contacts.map((c) => (
+                      <a
+                        key={c.id}
+                        href={contactHref(c.contact)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded-xl border border-black/10 bg-white p-4 text-left transition hover:border-[var(--public-primary)]/30 dark:border-white/10 dark:bg-zinc-950"
+                      >
+                        <div className="text-sm font-semibold text-slate-800 dark:text-white">{c.name}</div>
+                        <div className="mt-1 text-sm text-slate-600 dark:text-slate-300">{c.contact}</div>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
 
               {selected.committee?.length ? (
                 <div className="mt-6">
@@ -144,6 +203,8 @@ export default function OpenRecruitment() {
             </div>
           </div>
         </div>
+          );
+        })()
       ) : null}
     </PublicLayout>
   );

@@ -227,13 +227,27 @@ export default function PublicHome() {
               </div>
             ) : (
               <div className="grid gap-5 md:grid-cols-3">
-                {programs.slice(0, 3).map((item: PublicProgram) => (
+                {programs.slice(0, 3).map((item: PublicProgram, idx: number) => {
+                  const blobA =
+                    idx % 3 === 0
+                      ? 'bg-[var(--public-primary)]/16'
+                      : idx % 3 === 1
+                        ? 'bg-sky-400/14'
+                        : 'bg-indigo-400/14';
+                  const blobB =
+                    idx % 3 === 0
+                      ? 'bg-sky-400/10'
+                      : idx % 3 === 1
+                        ? 'bg-[var(--public-primary)]/10'
+                        : 'bg-emerald-400/10';
+                  return (
                   <div
                     key={item.id}
-                    className="relative overflow-hidden rounded-2xl border border-black/10 bg-white p-6 text-left shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)]"
+                    className="group relative overflow-hidden rounded-2xl border border-black/10 bg-white p-6 text-left shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-[var(--public-primary)]/30 hover:shadow-[0_30px_70px_-52px_rgba(15,23,42,0.55)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)] dark:hover:shadow-[0_30px_70px_-52px_rgba(0,0,0,0.85)]"
                   >
-                    <div className="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-[53%_47%_45%_55%/48%_56%_44%_52%] bg-[var(--public-primary)]/18 blur-2xl" />
-                    <div className="pointer-events-none absolute -bottom-10 -left-10 h-32 w-32 rounded-[48%_52%_58%_42%/44%_43%_57%_56%] bg-sky-400/14 blur-3xl" />
+                    <div className={`pointer-events-none absolute -right-10 -top-12 h-32 w-32 rounded-[53%_47%_45%_55%/48%_56%_44%_52%] blur-2xl ${blobA}`} />
+                    <div className={`pointer-events-none absolute -bottom-12 -left-12 h-36 w-36 rounded-[48%_52%_58%_42%/44%_43%_57%_56%] blur-3xl ${blobB}`} />
+                    <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[var(--public-primary)]/25 to-transparent" />
                     <div className="relative">
                       <div className="inline-flex items-center gap-2">
                         <span className="h-2 w-2 rounded-full bg-[var(--public-primary)]" />
@@ -253,7 +267,8 @@ export default function PublicHome() {
                       )}
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -321,7 +336,7 @@ export default function PublicHome() {
                         ) : null}
 
                         <div
-                          className={`flex gap-4 pb-2 ${single ? 'justify-center overflow-x-hidden' : 'snap-x snap-mandatory overflow-x-auto'} pl-1 pr-1 scrollbar-hide`}
+                          className={`flex gap-4 pb-2 ${single ? 'justify-start overflow-x-hidden' : 'snap-x snap-mandatory overflow-x-auto'} pl-1 pr-1 scrollbar-hide`}
                         >
                           {members.map((m) => {
                             const initial = String(m.name ?? '').trim().slice(0, 1).toUpperCase() || 'A';
@@ -329,10 +344,10 @@ export default function PublicHome() {
                               <div
                                 key={m.id}
                                 className={`group relative overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-[var(--public-primary)]/35 hover:shadow-[0_30px_70px_-52px_rgba(15,23,42,0.55)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)] dark:hover:shadow-[0_30px_70px_-52px_rgba(0,0,0,0.8)] active:scale-[0.99] ${
-                                  single ? 'w-[220px] sm:w-[240px]' : 'snap-start min-w-[190px] sm:min-w-[220px]'
+                                  single ? 'w-[200px] sm:w-[220px]' : 'snap-start min-w-[180px] sm:min-w-[200px]'
                                 }`}
                               >
-                                <PublicPhotoFrame className="aspect-[16/11] w-full" inset={10}>
+                                <PublicPhotoFrame className="aspect-[4/3] w-full" inset={10}>
                                   {m.photo_url ? (
                                     <img
                                       src={m.photo_url}

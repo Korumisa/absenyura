@@ -85,7 +85,7 @@ export default function Fungsionaris() {
                           key={p.id}
                           className="group relative w-full max-w-[420px] mx-auto overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-[var(--public-primary)]/35 hover:shadow-[0_30px_70px_-52px_rgba(15,23,42,0.55)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)] dark:hover:shadow-[0_30px_70px_-52px_rgba(0,0,0,0.85)] active:scale-[0.99] sm:max-w-none"
                         >
-                          <PublicPhotoFrame className="aspect-[16/11] w-full sm:aspect-[3/4]" inset={10}>
+                          <PublicPhotoFrame className="aspect-[4/3] w-full sm:aspect-[4/5]" inset={10}>
                             {p.photo_url ? (
                               <img
                                 src={p.photo_url}

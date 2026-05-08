@@ -8,6 +8,8 @@ import PublicEnter from '@/components/PublicEnter';
 import PublicReveal from '@/components/PublicReveal';
 import PublicPageHero from '@/components/PublicPageHero';
 import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
+import { ensureHttpsUrl } from '@/lib/ensureHttpsUrl';
+import PublicPhotoFrame from '@/components/PublicPhotoFrame';
 
 export default function Galeri() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
@@ -49,27 +51,46 @@ export default function Galeri() {
             </div>
           ) : (
             <div className="mt-6 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-            {albums.map((a) => (
+            {albums.map((a, idx) => {
+              const firstUrl = ensureHttpsUrl(a.items?.[0]?.image_url);
+              const accent =
+                idx % 3 === 0 ? 'from-[var(--public-primary)]/35' : idx % 3 === 1 ? 'from-sky-400/35' : 'from-indigo-400/35';
+              return (
               <button
                 key={a.id}
                 type="button"
                 onClick={() => setOpenId(a.id)}
                 className="group text-left overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-[var(--public-primary)]/30 dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)]"
               >
-                <div className="aspect-[16/10] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.2),rgba(255,255,255,0.04))]">
-                  {a.items?.[0]?.image_url ? (
-                    <img src={a.items[0].image_url} alt={a.title} className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.02]" />
-                  ) : null}
-                </div>
-                <div className="p-5">
-                  <div className="text-base font-semibold text-slate-900 dark:text-white">{a.title}</div>
-                  {a.description ? <div className="mt-2 line-clamp-2 text-sm text-slate-600 dark:text-slate-300">{a.description}</div> : null}
-                  <div className="mt-4 text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-300">
-                    {a.items.length} foto
+                <div className="relative">
+                  <div className={`pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${accent} via-transparent to-transparent`} />
+                  <PublicPhotoFrame className="aspect-[16/10] w-full" inset={10}>
+                    {firstUrl ? (
+                      <img
+                        src={firstUrl}
+                        alt={a.title}
+                        className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.02]"
+                        loading="lazy"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    ) : null}
+                  </PublicPhotoFrame>
+                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/65 via-black/15 to-transparent opacity-90" />
+                  <div className="absolute inset-x-0 bottom-0 p-4">
+                    <div className="text-base font-extrabold tracking-tight text-white line-clamp-1">{a.title}</div>
+                    <div className="mt-1 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white/90 ring-1 ring-white/10 backdrop-blur">
+                      <span>{a.items.length} foto</span>
+                    </div>
                   </div>
                 </div>
+                <div className="p-5">
+                  {a.description ? <div className="mt-2 line-clamp-2 text-sm text-slate-600 dark:text-slate-300">{a.description}</div> : null}
+                </div>
               </button>
-            ))}
+              );
+            })}
             </div>
           )}
         </PublicReveal>
@@ -103,9 +124,19 @@ export default function Galeri() {
                 <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
                   {selected.items.map((it) => (
                     <div key={it.id} className="overflow-hidden rounded-2xl border border-black/10 bg-white dark:border-white/10 dark:bg-zinc-950">
-                      <div className="aspect-[4/3] w-full bg-slate-100 dark:bg-white/5">
-                        {it.image_url ? <img src={it.image_url} alt={it.caption || selected.title} className="h-full w-full object-cover" /> : null}
-                      </div>
+                      <PublicPhotoFrame className="aspect-[4/3] w-full" inset={10}>
+                        {ensureHttpsUrl(it.image_url) ? (
+                          <img
+                            src={ensureHttpsUrl(it.image_url)}
+                            alt={it.caption || selected.title}
+                            className="h-full w-full object-cover"
+                            loading="lazy"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                        ) : null}
+                      </PublicPhotoFrame>
                       {it.caption ? <div className="p-3 text-sm text-slate-700 dark:text-slate-200">{it.caption}</div> : null}
                     </div>
                   ))}

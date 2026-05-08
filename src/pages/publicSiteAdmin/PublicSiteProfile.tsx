@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import type { PublicProfile } from '@/types/publicSite';
 import { getErrorMessage } from '@/lib/errorMessage';
 import { prepareImageForUpload } from '@/lib/imageUpload';
+import { ConfirmModal } from '@/components/ConfirmModal';
 
 export default function PublicSiteProfile() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
@@ -82,6 +83,7 @@ export default function PublicSiteProfile() {
 
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState<{ light: boolean; dark: boolean }>({ light: false, dark: false });
+  const [isResetOpen, setIsResetOpen] = useState(false);
 
   const uploadImage = async (file: File) => {
     const prepared = await prepareImageForUpload(file, { maxBytes: 4 * 1024 * 1024, maxWidth: 1920, quality: 0.82 });
@@ -130,6 +132,19 @@ export default function PublicSiteProfile() {
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
+      <ConfirmModal
+        isOpen={isResetOpen}
+        onClose={() => setIsResetOpen(false)}
+        onConfirm={() => {
+          handleReset();
+          setIsResetOpen(false);
+        }}
+        title="Reset perubahan?"
+        description="Semua perubahan yang belum disimpan akan dikembalikan ke data terakhir yang tersimpan."
+        confirmText="Reset"
+        cancelText="Batal"
+        variant="primary"
+      />
       <div className="space-y-1">
         <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Profil Publik</h1>
         <p className="text-slate-500 dark:text-zinc-400">Atur identitas, deskripsi, logo, dan tautan sosial media.</p>
@@ -282,7 +297,7 @@ export default function PublicSiteProfile() {
         </div>
 
         <div className="flex justify-end gap-3">
-          <Button variant="outline" type="button" onClick={handleReset} disabled={saving}>
+          <Button variant="outline" type="button" onClick={() => setIsResetOpen(true)} disabled={saving}>
             Reset
           </Button>
           <Button type="button" onClick={handleSave} disabled={saving}>

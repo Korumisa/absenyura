@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import type { PublicStructureGroup } from '@/types/publicSite';
 import { getErrorMessage } from '@/lib/errorMessage';
 import { prepareImageForUpload } from '@/lib/imageUpload';
+import { ConfirmModal } from '@/components/ConfirmModal';
 
 export default function PublicSiteStructure() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
@@ -26,6 +27,14 @@ export default function PublicSiteStructure() {
 
   const [saving, setSaving] = useState(false);
   const [uploadingKey, setUploadingKey] = useState<string | null>(null);
+  const [confirm, setConfirm] = useState<{
+    open: boolean;
+    title: string;
+    description: string;
+    confirmText?: string;
+    variant?: 'danger' | 'warning' | 'primary';
+    onConfirm?: () => void;
+  }>({ open: false, title: '', description: '' });
 
   const uploadImage = async (file: File) => {
     const prepared = await prepareImageForUpload(file, { maxBytes: 4 * 1024 * 1024, maxWidth: 1200, quality: 0.82 });
@@ -81,6 +90,19 @@ export default function PublicSiteStructure() {
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
+      <ConfirmModal
+        isOpen={confirm.open}
+        onClose={() => setConfirm((prev) => ({ ...prev, open: false }))}
+        onConfirm={() => {
+          confirm.onConfirm?.();
+          setConfirm((prev) => ({ ...prev, open: false }));
+        }}
+        title={confirm.title}
+        description={confirm.description}
+        confirmText={confirm.confirmText}
+        cancelText="Batal"
+        variant={confirm.variant}
+      />
       <div className="space-y-1">
         <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Struktur Organisasi</h1>
         <p className="text-slate-500 dark:text-zinc-400">Tambahkan grup dan anggota tanpa perlu JSON.</p>
@@ -134,7 +156,16 @@ export default function PublicSiteStructure() {
                     <Button
                       type="button"
                       variant="destructive"
-                      onClick={() => setGroups((prev) => prev.filter((_, idx) => idx !== gi))}
+                      onClick={() =>
+                        setConfirm({
+                          open: true,
+                          title: 'Hapus grup ini?',
+                          description: 'Semua anggota di dalam grup ini juga akan ikut terhapus.',
+                          confirmText: 'Hapus Grup',
+                          variant: 'danger',
+                          onConfirm: () => setGroups((prev) => prev.filter((_, idx) => idx !== gi)),
+                        })
+                      }
                     >
                       Hapus Grup
                     </Button>
@@ -196,9 +227,19 @@ export default function PublicSiteStructure() {
                           type="button"
                           variant="outline"
                           onClick={() =>
-                            setGroups((prev) =>
-                              prev.map((x, idx) => (idx === gi ? { ...x, people: x.people.filter((_, pidx) => pidx !== pi) } : x))
-                            )
+                            setConfirm({
+                              open: true,
+                              title: 'Hapus anggota ini?',
+                              description: 'Tindakan ini tidak bisa dibatalkan.',
+                              confirmText: 'Hapus',
+                              variant: 'danger',
+                              onConfirm: () =>
+                                setGroups((prev) =>
+                                  prev.map((x, idx) =>
+                                    idx === gi ? { ...x, people: x.people.filter((_, pidx) => pidx !== pi) } : x
+                                  )
+                                ),
+                            })
                           }
                         >
                           Hapus
@@ -213,7 +254,21 @@ export default function PublicSiteStructure() {
         )}
 
         <div className="flex justify-end gap-3">
-          <Button variant="outline" type="button" onClick={handleReset} disabled={saving}>
+          <Button
+            variant="outline"
+            type="button"
+            onClick={() =>
+              setConfirm({
+                open: true,
+                title: 'Reset perubahan?',
+                description: 'Semua perubahan yang belum disimpan akan dikembalikan ke data terakhir yang tersimpan.',
+                confirmText: 'Reset',
+                variant: 'primary',
+                onConfirm: handleReset,
+              })
+            }
+            disabled={saving}
+          >
             Reset
           </Button>
           <Button type="button" onClick={handleSave} disabled={saving}>

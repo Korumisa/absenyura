@@ -662,7 +662,10 @@ export const getPublicRecruitments = async (req: Request, res: Response): Promis
     const items = await prisma.publicRecruitment.findMany({
       where: { is_published: true },
       orderBy: [{ updated_at: 'desc' }],
-      include: { committee: { orderBy: [{ sort_order: 'asc' }] } },
+      include: {
+        committee: { orderBy: [{ sort_order: 'asc' }] },
+        contacts: { orderBy: [{ sort_order: 'asc' }] },
+      },
     });
     res.status(200).json({ success: true, data: items });
   } catch (error) {
@@ -675,7 +678,10 @@ export const listAdminRecruitments = async (req: Request, res: Response): Promis
   try {
     const items = await prisma.publicRecruitment.findMany({
       orderBy: [{ updated_at: 'desc' }],
-      include: { committee: { orderBy: [{ sort_order: 'asc' }] } },
+      include: {
+        committee: { orderBy: [{ sort_order: 'asc' }] },
+        contacts: { orderBy: [{ sort_order: 'asc' }] },
+      },
     });
     res.status(200).json({ success: true, data: items });
   } catch (error) {
@@ -693,12 +699,14 @@ export const createAdminRecruitment = async (req: PublicRoleRequest, res: Respon
       return;
     }
     const committee = Array.isArray(payload.committee) ? payload.committee : [];
+    const contacts = Array.isArray(payload.contacts) ? payload.contacts : [];
     const row = await prisma.publicRecruitment.create({
       data: {
         title,
         date_range: String(payload.dateRange ?? '').trim() || null,
         description: String(payload.description ?? '').trim() || null,
         form_url: String(payload.formUrl ?? '').trim() || null,
+        poster_image_url: String(payload.posterImageUrl ?? '').trim() || null,
         is_published: Boolean(payload.isPublished ?? false),
         committee: {
           create: committee
@@ -709,8 +717,17 @@ export const createAdminRecruitment = async (req: PublicRoleRequest, res: Respon
             }))
             .filter((x: any) => Boolean(x.name) && Boolean(x.role)),
         },
+        contacts: {
+          create: contacts
+            .map((x: any, idx: number) => ({
+              name: String(x?.name ?? '').trim(),
+              contact: String(x?.contact ?? '').trim(),
+              sort_order: toInt(x?.sortOrder, idx),
+            }))
+            .filter((x: any) => Boolean(x.name) && Boolean(x.contact)),
+        },
       },
-      include: { committee: true },
+      include: { committee: true, contacts: true },
     });
     res.status(201).json({ success: true, data: row });
   } catch (error) {
@@ -722,7 +739,10 @@ export const createAdminRecruitment = async (req: PublicRoleRequest, res: Respon
 export const updateAdminRecruitment = async (req: PublicRoleRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const existing = await prisma.publicRecruitment.findUnique({ where: { id }, include: { committee: true } });
+    const existing = await prisma.publicRecruitment.findUnique({
+      where: { id },
+      include: { committee: true, contacts: true },
+    });
     if (!existing) {
       res.status(404).json({ success: false, error: 'Open recruitment tidak ditemukan' });
       return;
@@ -734,6 +754,7 @@ export const updateAdminRecruitment = async (req: PublicRoleRequest, res: Respon
       return;
     }
     const committee = Array.isArray(payload.committee) ? payload.committee : null;
+    const contacts = Array.isArray(payload.contacts) ? payload.contacts : null;
     const row = await prisma.publicRecruitment.update({
       where: { id },
       data: {
@@ -741,6 +762,8 @@ export const updateAdminRecruitment = async (req: PublicRoleRequest, res: Respon
         date_range: typeof payload.dateRange === 'string' ? payload.dateRange.trim() || null : existing.date_range,
         description: typeof payload.description === 'string' ? payload.description.trim() || null : existing.description,
         form_url: typeof payload.formUrl === 'string' ? payload.formUrl.trim() || null : existing.form_url,
+        poster_image_url:
+          typeof payload.posterImageUrl === 'string' ? payload.posterImageUrl.trim() || null : existing.poster_image_url,
         is_published: typeof payload.isPublished === 'boolean' ? payload.isPublished : existing.is_published,
         committee: committee
           ? {
@@ -754,8 +777,20 @@ export const updateAdminRecruitment = async (req: PublicRoleRequest, res: Respon
                 .filter((x: any) => Boolean(x.name) && Boolean(x.role)),
             }
           : undefined,
+        contacts: contacts
+          ? {
+              deleteMany: {},
+              create: contacts
+                .map((x: any, idx: number) => ({
+                  name: String(x?.name ?? '').trim(),
+                  contact: String(x?.contact ?? '').trim(),
+                  sort_order: toInt(x?.sortOrder, idx),
+                }))
+                .filter((x: any) => Boolean(x.name) && Boolean(x.contact)),
+            }
+          : undefined,
       },
-      include: { committee: true },
+      include: { committee: true, contacts: true },
     });
     res.status(200).json({ success: true, data: row });
   } catch (error) {

@@ -11,23 +11,28 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { PublicRecruitment } from '@/types/publicSite';
 import { getErrorMessage } from '@/lib/errorMessage';
+import { prepareImageForUpload } from '@/lib/imageUpload';
 
 export default function PublicSiteRecruitments() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
   const { data: recruitments = [], mutate } = useSWR<PublicRecruitment[]>('/public-site/admin/recruitments', fetcher, { revalidateOnFocus: false });
 
   type CommitteeDraft = { name: string; role: string };
+  type ContactDraft = { name: string; contact: string };
   const [form, setForm] = useState<{
     id?: string;
     title?: string;
     description?: string;
     formUrl?: string;
+    posterImageUrl?: string;
     isPublished?: boolean;
     committee?: CommitteeDraft[];
+    contacts?: ContactDraft[];
   }>({ committee: [] });
   const resetForm = () => setForm({});
   const [dateStart, setDateStart] = useState('');
   const [dateEnd, setDateEnd] = useState('');
+  const [uploadingPoster, setUploadingPoster] = useState(false);
   const resetDatesFromRange = (range: string) => {
     const raw = String(range ?? '').trim();
     if (!raw) {
@@ -45,19 +50,30 @@ export default function PublicSiteRecruitments() {
     setDateEnd('');
   };
 
+  const uploadImage = async (file: File) => {
+    const prepared = await prepareImageForUpload(file, { maxBytes: 4 * 1024 * 1024, maxWidth: 1600, quality: 0.82 });
+    const formData = new FormData();
+    formData.append('file', prepared);
+    const res = await api.post('/public-site/admin/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+    return res.data.data.url as string;
+  };
+
   const upsert = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       const dateRange = dateStart && dateEnd ? `${dateStart} - ${dateEnd}` : dateStart || dateEnd || undefined;
       const committee = (form.committee ?? []).map((x, idx) => ({ name: x.name, role: x.role, sortOrder: idx }));
+      const contacts = (form.contacts ?? []).map((x, idx) => ({ name: x.name, contact: x.contact, sortOrder: idx }));
       if (form.id) {
         await api.put(`/public-site/admin/recruitments/${form.id}`, {
           title: form.title,
           dateRange,
           description: form.description,
           formUrl: form.formUrl,
+          posterImageUrl: form.posterImageUrl,
           isPublished: form.isPublished ?? false,
           committee,
+          contacts,
         });
         toast.success('Open recruitment diperbarui');
       } else {
@@ -66,8 +82,10 @@ export default function PublicSiteRecruitments() {
           dateRange,
           description: form.description,
           formUrl: form.formUrl,
+          posterImageUrl: form.posterImageUrl,
           isPublished: form.isPublished ?? false,
           committee,
+          contacts,
         });
         toast.success('Open recruitment ditambahkan');
       }
@@ -143,6 +161,40 @@ export default function PublicSiteRecruitments() {
             <Label>Deskripsi</Label>
             <Textarea value={form.description ?? ''} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} />
           </div>
+          <div className="space-y-2 md:col-span-2">
+            <Label>Poster Image URL</Label>
+            <Input value={form.posterImageUrl ?? ''} onChange={(e) => setForm((p) => ({ ...p, posterImageUrl: e.target.value }))} placeholder="https://..." />
+          </div>
+          <div className="space-y-2 md:col-span-2">
+            <Label>Upload Poster</Label>
+            <div className="grid gap-3 md:grid-cols-[1fr_220px]">
+              <Input
+                type="file"
+                accept="image/*"
+                disabled={uploadingPoster}
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  setUploadingPoster(true);
+                  try {
+                    const url = await uploadImage(file);
+                    setForm((p) => ({ ...p, posterImageUrl: url }));
+                    toast.success('Upload poster berhasil');
+                  } catch (err: any) {
+                    toast.error(getErrorMessage(err, 'Gagal upload poster'));
+                  } finally {
+                    setUploadingPoster(false);
+                    e.target.value = '';
+                  }
+                }}
+              />
+              <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50 dark:border-zinc-700 dark:bg-zinc-900/40">
+                <div className="aspect-[4/5] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.2),rgba(255,255,255,0.04))]">
+                  {form.posterImageUrl ? <img src={form.posterImageUrl} alt="Poster" className="h-full w-full object-cover" /> : null}
+                </div>
+              </div>
+            </div>
+          </div>
           <div className="space-y-3 md:col-span-2">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <Label>Panitia</Label>
@@ -198,6 +250,61 @@ export default function PublicSiteRecruitments() {
               </div>
             )}
           </div>
+
+          <div className="space-y-3 md:col-span-2">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <Label>Contact Person</Label>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setForm((p) => ({ ...p, contacts: [...(p.contacts ?? []), { name: '', contact: '' }] }))}
+              >
+                Tambah Kontak
+              </Button>
+            </div>
+            {(form.contacts ?? []).length === 0 ? (
+              <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-600 dark:border-zinc-700 dark:bg-zinc-900/40 dark:text-zinc-300">
+                Belum ada kontak. Klik “Tambah Kontak”.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {(form.contacts ?? []).map((c, idx) => (
+                  <div key={idx} className="grid gap-3 md:grid-cols-2">
+                    <Input
+                      value={c.name}
+                      onChange={(e) =>
+                        setForm((p) => ({
+                          ...p,
+                          contacts: (p.contacts ?? []).map((x, i) => (i === idx ? { ...x, name: e.target.value } : x)),
+                        }))
+                      }
+                      placeholder="Nama"
+                    />
+                    <div className="flex gap-2">
+                      <Input
+                        value={c.contact}
+                        onChange={(e) =>
+                          setForm((p) => ({
+                            ...p,
+                            contacts: (p.contacts ?? []).map((x, i) => (i === idx ? { ...x, contact: e.target.value } : x)),
+                          }))
+                        }
+                        placeholder="WhatsApp/Link (contoh: 0812... atau https://wa.me/62...)"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setForm((p) => ({ ...p, contacts: (p.contacts ?? []).filter((_, i) => i !== idx) }))}
+                      >
+                        Hapus
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div className="md:col-span-2 flex justify-end gap-3">
             {form.id ? (
               <Button variant="outline" type="button" onClick={resetForm}>
@@ -235,8 +342,10 @@ export default function PublicSiteRecruitments() {
                           title: r.title,
                           description: r.description ?? '',
                           formUrl: r.form_url ?? '',
+                          posterImageUrl: r.poster_image_url ?? '',
                           isPublished: r.is_published,
                           committee: (r.committee ?? []).map((x) => ({ name: x.name, role: x.role })),
+                          contacts: (r.contacts ?? []).map((x) => ({ name: x.name, contact: x.contact })),
                         }),
                         resetDatesFromRange(r.date_range ?? ''))
                       }

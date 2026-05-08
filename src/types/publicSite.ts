@@ -75,8 +75,10 @@ export type PublicRecruitment = {
   date_range: string | null;
   description: string | null;
   form_url: string | null;
+  poster_image_url: string | null;
   is_published: boolean;
   committee: { id: string; name: string; role: string; sort_order?: number }[];
+  contacts: { id: string; name: string; contact: string; sort_order?: number }[];
   created_at: string;
   updated_at: string;
 };

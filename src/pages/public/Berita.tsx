@@ -10,6 +10,7 @@ import PublicEnter from '@/components/PublicEnter';
 import PublicReveal from '@/components/PublicReveal';
 import PublicPageHero from '@/components/PublicPageHero';
 import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
+import { ensureHttpsUrl } from '@/lib/ensureHttpsUrl';
 
 type Paged<T> = { items: T[]; total: number; page: number; pageSize: number; totalPages: number };
 
@@ -135,14 +136,26 @@ export default function Berita() {
             </div>
           ) : (
             <div className="mt-10 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-              {items.map((p) => (
+              {items.map((p) => {
+                const coverUrl = ensureHttpsUrl(p.cover_image_url);
+                return (
                 <Link
                   key={p.id}
                   to={`/berita/${p.slug}`}
                   className="group overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-[var(--public-primary)]/30 dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)]"
                 >
                   <div className="aspect-[16/10] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.2),rgba(255,255,255,0.04))]">
-                    {p.cover_image_url ? <img src={p.cover_image_url} alt={p.title} className="h-full w-full object-cover" /> : null}
+                    {coverUrl ? (
+                      <img
+                        src={coverUrl}
+                        alt={p.title}
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    ) : null}
                   </div>
                   <div className="p-5">
                     <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-300">
@@ -157,7 +170,8 @@ export default function Berita() {
                     <div className="mt-5 text-sm font-semibold text-[var(--public-primary)]">Baca selengkapnya</div>
                   </div>
                 </Link>
-              ))}
+                );
+              })}
             </div>
           )}
 
