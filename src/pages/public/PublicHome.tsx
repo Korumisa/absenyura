@@ -1,6 +1,6 @@
 import React from 'react';
 import PublicLayout from '@/components/PublicLayout';
-import { ArrowRight, Images, Megaphone, Users } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import useSWR from 'swr';
 import api from '@/services/api';
@@ -101,7 +101,6 @@ export default function PublicHome() {
   const posts = latest?.items ?? [];
   const lomba = lombaPaged?.items ?? [];
   const heroKabinetName = kabinetName || (!isLoadingProfile ? 'Kabinet belum diatur' : '');
-  const memberCount = structure.reduce((acc, g) => acc + (g.members?.length ?? 0), 0);
 
   return (
     <PublicLayout>
@@ -159,84 +158,6 @@ export default function PublicHome() {
                 </div>
               </div>
             </PublicEnter>
-          </section>
-
-          <section className="relative bg-white py-10 dark:bg-zinc-950">
-            <PublicReveal className="mx-auto max-w-7xl px-6">
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <Link
-                  to="/struktur-organisasi"
-                  className="group relative overflow-hidden rounded-2xl border border-black/10 bg-white p-5 shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-[var(--public-primary)]/30 dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)]"
-                >
-                  <div className="pointer-events-none absolute -right-8 -top-10 h-32 w-32 rounded-[53%_47%_45%_55%/48%_56%_44%_52%] bg-[var(--public-primary)]/12 blur-3xl" />
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="grid h-10 w-10 place-items-center rounded-xl bg-[var(--public-primary)]/12 text-[var(--public-primary)] ring-1 ring-black/10 dark:ring-white/10">
-                      <Users size={18} />
-                    </div>
-                    <div className="text-right">
-                      <div className="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-300">Fungsionaris</div>
-                      <div className="mt-1 text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">{memberCount || '-'}</div>
-                    </div>
-                  </div>
-                  <div className="mt-4 text-sm font-semibold text-slate-900 dark:text-white">Struktur Organisasi</div>
-                  <div className="mt-1 text-sm text-slate-600 dark:text-slate-300">Lihat susunan per divisi.</div>
-                </Link>
-
-                <Link
-                  to="/program-kerja"
-                  className="group relative overflow-hidden rounded-2xl border border-black/10 bg-white p-5 shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-[var(--public-primary)]/30 dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)]"
-                >
-                  <div className="pointer-events-none absolute -left-10 -bottom-10 h-36 w-36 rounded-[48%_52%_58%_42%/44%_43%_57%_56%] bg-sky-400/10 blur-3xl" />
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="grid h-10 w-10 place-items-center rounded-xl bg-sky-400/12 text-sky-700 ring-1 ring-black/10 dark:text-sky-300 dark:ring-white/10">
-                      <Megaphone size={18} />
-                    </div>
-                    <div className="text-right">
-                      <div className="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-300">Program</div>
-                      <div className="mt-1 text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">{programs.length || '-'}</div>
-                    </div>
-                  </div>
-                  <div className="mt-4 text-sm font-semibold text-slate-900 dark:text-white">Program Kerja</div>
-                  <div className="mt-1 text-sm text-slate-600 dark:text-slate-300">Yang jalan & yang disiapin.</div>
-                </Link>
-
-                <Link
-                  to="/open-recruitment"
-                  className="group relative overflow-hidden rounded-2xl border border-black/10 bg-white p-5 shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-[var(--public-primary)]/30 dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)]"
-                >
-                  <div className="pointer-events-none absolute -right-10 -bottom-12 h-44 w-44 rounded-[42%_58%_52%_48%/54%_44%_56%_46%] bg-indigo-400/10 blur-3xl" />
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="grid h-10 w-10 place-items-center rounded-xl bg-indigo-400/12 text-indigo-700 ring-1 ring-black/10 dark:text-indigo-300 dark:ring-white/10">
-                      <ArrowRight size={18} />
-                    </div>
-                    <div className="text-right">
-                      <div className="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-300">Oprec</div>
-                      <div className="mt-1 text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">{recruitments.length || '-'}</div>
-                    </div>
-                  </div>
-                  <div className="mt-4 text-sm font-semibold text-slate-900 dark:text-white">Open Recruitment</div>
-                  <div className="mt-1 text-sm text-slate-600 dark:text-slate-300">Info, poster, & CP.</div>
-                </Link>
-
-                <Link
-                  to="/galeri"
-                  className="group relative overflow-hidden rounded-2xl border border-black/10 bg-white p-5 shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-[var(--public-primary)]/30 dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)]"
-                >
-                  <div className="pointer-events-none absolute -left-12 -top-10 h-44 w-44 rounded-[53%_47%_45%_55%/48%_56%_44%_52%] bg-emerald-400/10 blur-3xl" />
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-400/12 text-emerald-700 ring-1 ring-black/10 dark:text-emerald-300 dark:ring-white/10">
-                      <Images size={18} />
-                    </div>
-                    <div className="text-right">
-                      <div className="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-300">Album</div>
-                      <div className="mt-1 text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">{galleries.length || '-'}</div>
-                    </div>
-                  </div>
-                  <div className="mt-4 text-sm font-semibold text-slate-900 dark:text-white">Galeri</div>
-                  <div className="mt-1 text-sm text-slate-600 dark:text-slate-300">Dokumentasi kegiatan.</div>
-                </Link>
-              </div>
-            </PublicReveal>
           </section>
 
           <section className="relative overflow-hidden bg-white dark:bg-zinc-950">
@@ -302,8 +223,8 @@ export default function PublicHome() {
             <div className="h-24 w-24 rounded-full bg-sky-400/14 blur-2xl" />
           </div>
 
-          <div className="font-display text-6xl italic tracking-tight text-slate-900 dark:text-white md:text-7xl">Program</div>
-          <div className="-mt-3 text-6xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] md:text-7xl">Kerja</div>
+          <div className="font-display text-5xl italic tracking-tight text-slate-900 dark:text-white sm:text-6xl md:text-7xl">Program</div>
+          <div className="-mt-2 text-5xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] sm:-mt-3 sm:text-6xl md:text-7xl">Kerja</div>
           <div className="mx-auto mt-3 max-w-xl text-sm text-slate-700 dark:text-slate-300">
             Program yang lagi jalan, yang sudah selesai, dan yang lagi disiapin.
           </div>
@@ -314,7 +235,7 @@ export default function PublicHome() {
             {isLoadingPrograms ? (
               <div className="h-40" />
             ) : programs.length === 0 ? (
-              <div className="relative overflow-hidden rounded-2xl border border-dashed border-black/15 bg-white/60 p-10 text-left text-sm text-slate-600 dark:border-white/15 dark:bg-white/5 dark:text-slate-300">
+              <div className="relative overflow-hidden rounded-2xl border border-dashed border-black/15 bg-white/60 p-6 text-left text-sm text-slate-600 dark:border-white/15 dark:bg-white/5 dark:text-slate-300 sm:p-10">
                 <div className="pointer-events-none absolute -left-16 -top-16 h-52 w-52 rounded-[48%_52%_58%_42%/44%_43%_57%_56%] bg-[var(--public-primary)]/14 blur-3xl" />
                 <div className="pointer-events-none absolute -right-16 -bottom-16 h-56 w-56 rounded-[53%_47%_45%_55%/48%_56%_44%_52%] bg-sky-400/10 blur-3xl" />
                 <div className="relative">
@@ -423,7 +344,7 @@ export default function PublicHome() {
           {isLoadingStructure ? (
             <div className="mt-12 h-40" />
           ) : structure.length === 0 ? (
-            <div className="relative mt-12 overflow-hidden rounded-2xl border border-dashed border-black/15 bg-white/60 p-10 text-left text-sm text-slate-600 dark:border-white/15 dark:bg-white/5 dark:text-slate-300">
+            <div className="relative mt-12 overflow-hidden rounded-2xl border border-dashed border-black/15 bg-white/60 p-6 text-left text-sm text-slate-600 dark:border-white/15 dark:bg-white/5 dark:text-slate-300 sm:p-10">
               <div className="pointer-events-none absolute -left-16 -top-16 h-52 w-52 rounded-[48%_52%_58%_42%/44%_43%_57%_56%] bg-[var(--public-primary)]/12 blur-3xl" />
               <div className="pointer-events-none absolute -right-16 -bottom-16 h-56 w-56 rounded-[53%_47%_45%_55%/48%_56%_44%_52%] bg-sky-400/10 blur-3xl" />
               <div className="relative">

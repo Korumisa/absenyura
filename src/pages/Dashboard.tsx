@@ -62,7 +62,7 @@ export default function Dashboard() {
   const isUser = user?.role === 'USER';
 
   return (
-    <div className="p-6 lg:p-8 max-w-7xl mx-auto">
+    <div className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-slate-800 dark:text-white">Dashboard</h1>
         <p className="text-slate-500 dark:text-zinc-400 mt-1">
@@ -74,7 +74,7 @@ export default function Dashboard() {
         // ================= USER DASHBOARD (Modern & Clean) =================
         <div className="space-y-8">
           {/* Welcome Banner */}
-          <div className="bg-gradient-to-r from-indigo-600 to-violet-600 rounded-3xl p-8 sm:p-10 text-white shadow-xl relative overflow-hidden">
+          <div className="bg-gradient-to-r from-indigo-600 to-violet-600 rounded-3xl p-6 sm:p-10 text-white shadow-xl relative overflow-hidden">
             <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 blur-[80px] rounded-full pointer-events-none"></div>
             <div className="relative z-10">
               <h2 className="text-3xl sm:text-4xl font-extrabold mb-2">Halo, {user?.name}! 👋</h2>
@@ -86,21 +86,21 @@ export default function Dashboard() {
 
           {/* Stats Grid */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            <div className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm hover:shadow-md transition-shadow group">
+            <div className="bg-white dark:bg-zinc-900 p-4 sm:p-6 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm hover:shadow-md transition-shadow group">
               <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 mb-4 group-hover:scale-110 transition-transform">
                 <Calendar size={24} />
               </div>
               <p className="text-sm text-slate-500 dark:text-zinc-400 font-medium mb-1">Total Sesi</p>
               <p className="text-3xl font-extrabold text-slate-800 dark:text-white">{data?.stats.total}</p>
             </div>
-            <div className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm hover:shadow-md transition-shadow group">
+            <div className="bg-white dark:bg-zinc-900 p-4 sm:p-6 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm hover:shadow-md transition-shadow group">
               <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-900/30 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 mb-4 group-hover:scale-110 transition-transform">
                 <CheckCircle2 size={24} />
               </div>
               <p className="text-sm text-slate-500 dark:text-zinc-400 font-medium mb-1">Hadir Tepat Waktu</p>
               <p className="text-3xl font-extrabold text-slate-800 dark:text-white">{data?.stats.present}</p>
             </div>
-            <div className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm hover:shadow-md transition-shadow group">
+            <div className="bg-white dark:bg-zinc-900 p-4 sm:p-6 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm hover:shadow-md transition-shadow group">
               <div className="w-12 h-12 bg-amber-50 dark:bg-amber-900/30 rounded-2xl flex items-center justify-center text-amber-600 dark:text-amber-400 mb-4 group-hover:scale-110 transition-transform">
                 <FileText size={24} />
               </div>
@@ -110,7 +110,7 @@ export default function Dashboard() {
               </h3>
             </div>
 
-            <div className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm hover:shadow-md transition-shadow group">
+            <div className="bg-white dark:bg-zinc-900 p-4 sm:p-6 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm hover:shadow-md transition-shadow group">
               <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center text-blue-600 dark:text-blue-400 mb-4 group-hover:scale-110 transition-transform">
                 <BarChart3 size={24} />
               </div>
@@ -281,12 +281,12 @@ export default function Dashboard() {
 
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
             {/* Chart Section */}
-            <div className="xl:col-span-2 bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm">
+            <div className="xl:col-span-2 bg-white dark:bg-zinc-900 p-4 sm:p-6 lg:p-8 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
                 <h2 className="text-xl font-bold text-slate-800 dark:text-white">Tren Kehadiran</h2>
-                <div className="flex items-center gap-3">
+                <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
                   <Select value={dateRange} onValueChange={setDateRange}>
-                    <SelectTrigger className="w-[140px] bg-slate-50 dark:bg-zinc-800">
+                    <SelectTrigger className="w-full bg-slate-50 dark:bg-zinc-800 sm:w-[140px]">
                       <SelectValue placeholder="Rentang Waktu" />
                     </SelectTrigger>
                     <SelectContent>
@@ -296,7 +296,7 @@ export default function Dashboard() {
                     </SelectContent>
                   </Select>
                   <Select value={chartFilter} onValueChange={setChartFilter}>
-                    <SelectTrigger className="w-[180px] bg-slate-50 dark:bg-zinc-800">
+                    <SelectTrigger className="w-full bg-slate-50 dark:bg-zinc-800 sm:w-[180px]">
                       <SelectValue placeholder="Pilih Filter Data" />
                     </SelectTrigger>
                     <SelectContent>
@@ -312,7 +312,7 @@ export default function Dashboard() {
               
               <div className="h-80 w-full min-h-[320px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={data?.chart_data} margin={{ top: 5, right: 20, left: -20, bottom: 0 }}>
+                  <LineChart data={data?.chart_data} margin={{ top: 5, right: 12, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" opacity={0.5} />
                     <XAxis 
                       dataKey="date" 
@@ -469,4 +469,3 @@ export default function Dashboard() {
     </div>
   );
 }
-

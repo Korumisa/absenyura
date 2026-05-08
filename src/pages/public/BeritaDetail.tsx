@@ -19,7 +19,7 @@ export default function BeritaDetail() {
   return (
     <PublicLayout>
       <PublicLoadingOverlay show={showLoading} />
-      <PublicEnter className="mx-auto max-w-5xl px-6 py-12">
+      <PublicEnter className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-12">
         <Link to="/berita" className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--public-primary)]">
           <ArrowLeft size={18} />
           Kembali ke Berita
@@ -27,7 +27,7 @@ export default function BeritaDetail() {
 
         {isLoading ? (
           <div className="mt-8">
-            <Skeleton className="h-[260px] w-full rounded-3xl sm:h-[420px] md:h-[540px]" />
+            <Skeleton className="h-[220px] w-full rounded-3xl sm:h-[360px] md:h-[480px]" />
             <div className="mx-auto mt-8 max-w-3xl rounded-3xl border border-black/10 bg-white p-7 shadow-[0_28px_70px_-52px_rgba(15,23,42,0.45)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_28px_70px_-52px_rgba(0,0,0,0.7)] md:p-10">
               <div className="flex flex-wrap items-center gap-2">
                 <Skeleton className="h-4 w-24" />
@@ -40,13 +40,13 @@ export default function BeritaDetail() {
             </div>
           </div>
         ) : !post ? (
-          <div className="mt-10 rounded-2xl border border-dashed border-black/15 bg-white/60 p-8 text-sm text-slate-600 dark:border-white/15 dark:bg-white/5 dark:text-slate-300">
+          <div className="mt-10 rounded-2xl border border-dashed border-black/15 bg-white/60 p-6 text-sm text-slate-600 dark:border-white/15 dark:bg-white/5 dark:text-slate-300 sm:p-8">
             Konten tidak ditemukan atau belum dipublikasikan.
           </div>
         ) : (
           <div className="mt-8">
             <div className="overflow-hidden rounded-3xl border border-black/10 bg-white shadow-[0_28px_70px_-52px_rgba(15,23,42,0.45)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_28px_70px_-52px_rgba(0,0,0,0.7)]">
-              <div className="h-[260px] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.2),rgba(255,255,255,0.04))] sm:h-[420px] md:h-[540px]">
+              <div className="h-[220px] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.2),rgba(255,255,255,0.04))] sm:h-[360px] md:h-[480px]">
                 <PublicCoverImage url={post.cover_image_url} alt={post.title} />
               </div>
             </div>
