@@ -316,7 +316,7 @@ export default function PublicHome() {
                             key={m.id}
                             className="group snap-start relative overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-[var(--public-primary)]/35 hover:shadow-[0_30px_70px_-52px_rgba(15,23,42,0.55)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)] dark:hover:shadow-[0_30px_70px_-52px_rgba(0,0,0,0.8)] min-w-[210px] sm:min-w-[240px] active:scale-[0.99]"
                           >
-                            <PublicPhotoFrame className="aspect-[16/11] w-full" inset={12}>
+                            <PublicPhotoFrame className="aspect-[16/11] w-full" inset={10}>
                               {m.photo_url ? (
                                 <img
                                   src={m.photo_url}
@@ -334,8 +334,8 @@ export default function PublicHome() {
                               )}
                             </PublicPhotoFrame>
                             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/25 to-transparent" />
-                            <div className="absolute inset-x-0 bottom-0 p-3">
-                              <div className="truncate text-base font-extrabold tracking-tight text-white">{m.name}</div>
+                            <div className="absolute inset-x-0 bottom-0 p-4">
+                              <div className="truncate text-sm font-extrabold tracking-tight text-white sm:text-base">{m.name}</div>
                               <div className="mt-1 inline-flex max-w-full rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white/90 ring-1 ring-white/10 backdrop-blur">
                                 <span className="truncate">{m.role}</span>
                               </div>

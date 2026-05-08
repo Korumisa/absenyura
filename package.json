@@ -24,6 +24,7 @@
     "@radix-ui/react-slot": "^1.2.4",
     "@react-leaflet/core": "2.1.0",
     "@types/bcryptjs": "^2.4.6",
+    "@vercel/speed-insights": "^2.0.0",
     "axios": "^1.15.0",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
