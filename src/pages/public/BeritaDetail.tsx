@@ -8,7 +8,7 @@ import { ArrowLeft } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import PublicEnter from '@/components/PublicEnter';
 import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
-import { ensureHttpsUrl } from '@/lib/ensureHttpsUrl';
+import PublicCoverImage from '@/components/PublicCoverImage';
 
 export default function BeritaDetail() {
   const { slug } = useParams();
@@ -19,22 +19,22 @@ export default function BeritaDetail() {
   return (
     <PublicLayout>
       <PublicLoadingOverlay show={showLoading} />
-      <PublicEnter className="mx-auto max-w-4xl px-6 py-12">
+      <PublicEnter className="mx-auto max-w-5xl px-6 py-12">
         <Link to="/berita" className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--public-primary)]">
           <ArrowLeft size={18} />
           Kembali ke Berita
         </Link>
 
         {isLoading ? (
-          <div className="mt-8 overflow-hidden rounded-3xl border border-black/10 bg-white shadow-[0_28px_70px_-52px_rgba(15,23,42,0.45)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_28px_70px_-52px_rgba(0,0,0,0.7)]">
-            <Skeleton className="aspect-[16/8] w-full rounded-none" />
-            <div className="p-7 md:p-10">
+          <div className="mt-8">
+            <Skeleton className="h-[260px] w-full rounded-3xl sm:h-[420px] md:h-[540px]" />
+            <div className="mx-auto mt-8 max-w-3xl rounded-3xl border border-black/10 bg-white p-7 shadow-[0_28px_70px_-52px_rgba(15,23,42,0.45)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_28px_70px_-52px_rgba(0,0,0,0.7)] md:p-10">
               <div className="flex flex-wrap items-center gap-2">
                 <Skeleton className="h-4 w-24" />
                 <Skeleton className="h-4 w-16" />
               </div>
               <Skeleton className="mt-5 h-9 w-4/5" />
-              <Skeleton className="mt-3 h-5 w-full" />
+              <Skeleton className="mt-5 h-5 w-full" />
               <Skeleton className="mt-2 h-5 w-11/12" />
               <Skeleton className="mt-2 h-5 w-10/12" />
             </div>
@@ -44,24 +44,14 @@ export default function BeritaDetail() {
             Konten tidak ditemukan atau belum dipublikasikan.
           </div>
         ) : (
-          (() => {
-            const coverUrl = ensureHttpsUrl(post.cover_image_url);
-            return (
-          <article className="mt-8 overflow-hidden rounded-3xl border border-black/10 bg-white shadow-[0_28px_70px_-52px_rgba(15,23,42,0.45)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_28px_70px_-52px_rgba(0,0,0,0.7)]">
-            <div className="aspect-[16/8] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.2),rgba(255,255,255,0.04))]">
-              {coverUrl ? (
-                <img
-                  src={coverUrl}
-                  alt={post.title}
-                  className="h-full w-full object-cover"
-                  loading="lazy"
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none';
-                  }}
-                />
-              ) : null}
+          <div className="mt-8">
+            <div className="overflow-hidden rounded-3xl border border-black/10 bg-white shadow-[0_28px_70px_-52px_rgba(15,23,42,0.45)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_28px_70px_-52px_rgba(0,0,0,0.7)]">
+              <div className="h-[260px] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.2),rgba(255,255,255,0.04))] sm:h-[420px] md:h-[540px]">
+                <PublicCoverImage url={post.cover_image_url} alt={post.title} />
+              </div>
             </div>
-            <div className="p-7 md:p-10">
+
+            <article className="mx-auto mt-8 max-w-3xl rounded-3xl border border-black/10 bg-white p-7 shadow-[0_28px_70px_-52px_rgba(15,23,42,0.45)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_28px_70px_-52px_rgba(0,0,0,0.7)] md:p-10">
               <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-300">
                 <span>{post.category?.name ?? 'Berita'}</span>
                 {post.date_label ? <span className="text-slate-300 dark:text-slate-600">•</span> : null}
@@ -72,9 +62,7 @@ export default function BeritaDetail() {
               </h1>
 
               {post.excerpt ? (
-                <p className="mt-5 text-base leading-relaxed text-slate-700 dark:text-slate-300">
-                  {post.excerpt}
-                </p>
+                <p className="mt-5 text-base leading-relaxed text-slate-700 dark:text-slate-300">{post.excerpt}</p>
               ) : null}
 
               {post.content ? (
@@ -82,14 +70,10 @@ export default function BeritaDetail() {
                   {post.content}
                 </div>
               ) : (
-                <div className="mt-8 text-sm text-slate-500 dark:text-slate-400">
-                  Konten detail belum diisi.
-                </div>
+                <div className="mt-8 text-sm text-slate-500 dark:text-slate-400">Konten detail belum diisi.</div>
               )}
-            </div>
-          </article>
-            );
-          })()
+            </article>
+          </div>
         )}
       </PublicEnter>
     </PublicLayout>

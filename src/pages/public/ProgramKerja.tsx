@@ -8,6 +8,7 @@ import PublicEnter from '@/components/PublicEnter';
 import PublicReveal from '@/components/PublicReveal';
 import PublicPageHero from '@/components/PublicPageHero';
 import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
+import PublicProgramCard from '@/components/PublicProgramCard';
 
 export default function ProgramKerja() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
@@ -47,26 +48,8 @@ export default function ProgramKerja() {
             </div>
           ) : (
             <div className="mt-6 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {items.map((p) => (
-                <div
-                  key={p.id}
-                  className="relative overflow-hidden rounded-2xl border border-black/10 bg-white p-6 shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)]"
-                >
-                  <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-[53%_47%_45%_55%/48%_56%_44%_52%] bg-[var(--public-primary)]/10 blur-3xl" />
-                  <div className="pointer-events-none absolute -left-10 -bottom-10 h-44 w-44 rounded-[48%_52%_58%_42%/44%_43%_57%_56%] bg-sky-400/10 blur-3xl" />
-                  <div className="relative">
-                    <div className="flex items-center justify-between">
-                      <div className="text-sm font-semibold text-slate-800 dark:text-white">{p.title}</div>
-                      <span className="rounded-full bg-[var(--public-primary)]/10 px-3 py-1 text-xs font-semibold text-[var(--public-primary)]">
-                        Publik
-                      </span>
-                    </div>
-                    <div className="mt-2 text-sm text-slate-600 dark:text-slate-300">{p.date_range ?? '-'}</div>
-                    {p.description ? (
-                      <div className="mt-4 text-sm leading-relaxed text-slate-700 dark:text-slate-200">{p.description}</div>
-                    ) : null}
-                  </div>
-                </div>
+              {items.map((program, idx) => (
+                <PublicProgramCard key={program.id} program={program} index={idx} />
               ))}
             </div>
           )}

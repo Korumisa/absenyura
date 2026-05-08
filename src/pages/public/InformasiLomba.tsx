@@ -9,6 +9,7 @@ import PublicEnter from '@/components/PublicEnter';
 import PublicReveal from '@/components/PublicReveal';
 import PublicPageHero from '@/components/PublicPageHero';
 import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
+import PublicCoverImage from '@/components/PublicCoverImage';
 
 type Status = 'Buka' | 'Tutup';
 type Paged<T> = { items: T[]; total: number; page: number; pageSize: number; totalPages: number };
@@ -104,7 +105,7 @@ export default function InformasiLomba() {
                   className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)]"
                 >
                   <div className="aspect-[16/10] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.2),rgba(255,255,255,0.04))]">
-                    {l.cover_image_url ? <img src={l.cover_image_url} alt={l.title} className="h-full w-full object-cover" /> : null}
+                    <PublicCoverImage url={l.cover_image_url} alt={l.title} />
                   </div>
                   <div className="p-5">
                     <div className="text-sm font-semibold text-slate-800 dark:text-white">{l.title}</div>
@@ -145,7 +146,7 @@ export default function InformasiLomba() {
           />
           <div role="dialog" aria-modal="true" className="relative w-full max-w-2xl overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_30px_80px_-45px_rgba(15,23,42,0.55)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_30px_80px_-45px_rgba(0,0,0,0.7)]">
             <div className="aspect-[16/8] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.2),rgba(255,255,255,0.04))]">
-              {selected.cover_image_url ? <img src={selected.cover_image_url} alt={selected.title} className="h-full w-full object-cover" /> : null}
+              <PublicCoverImage url={selected.cover_image_url} alt={selected.title} />
             </div>
             <div className="p-6">
               <div className="flex flex-wrap items-start justify-between gap-4">

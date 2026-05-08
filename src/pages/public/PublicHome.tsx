@@ -9,9 +9,16 @@ import PublicEnter from '@/components/PublicEnter';
 import PublicReveal from '@/components/PublicReveal';
 import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 import PublicPhotoFrame from '@/components/PublicPhotoFrame';
+import PublicCoverImage from '@/components/PublicCoverImage';
+import PublicProgramCard from '@/components/PublicProgramCard';
 
 function BrandMark({ className, src, name }: { className?: string; src: string; name: string }) {
-  if (src) return <img className={className} src={src} alt="Logo" />;
+  if (src)
+    return (
+      <div className={[className, 'overflow-hidden rounded-2xl shadow-sm'].join(' ')}>
+        <PublicCoverImage url={src} alt={name || 'Logo'} imgClassName="object-contain p-2" />
+      </div>
+    );
   const first = String(name || '').trim().slice(0, 1).toUpperCase() || 'H';
   return (
     <div
@@ -120,12 +127,7 @@ export default function PublicHome() {
                 <div className="overflow-hidden rounded-3xl border border-black/10 bg-white shadow-[0_28px_70px_-50px_rgba(15,23,42,0.4)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_28px_70px_-50px_rgba(0,0,0,0.6)]">
                   <div className="relative aspect-[4/3] w-full bg-slate-50 dark:bg-zinc-900">
                     {profile?.home_image_url ? (
-                      <img
-                        src={profile.home_image_url}
-                        alt="Foto Anggota"
-                        className="h-full w-full object-cover"
-                        loading="lazy"
-                      />
+                      <PublicCoverImage url={profile.home_image_url} alt="Foto Anggota" />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center p-8">
                         <div className="w-full rounded-2xl border border-dashed border-black/20 bg-white/60 p-8 text-center text-sm text-slate-600 dark:border-white/20 dark:bg-white/5 dark:text-slate-300">
@@ -227,48 +229,9 @@ export default function PublicHome() {
               </div>
             ) : (
               <div className="grid gap-5 md:grid-cols-3">
-                {programs.slice(0, 3).map((item: PublicProgram, idx: number) => {
-                  const blobA =
-                    idx % 3 === 0
-                      ? 'bg-[var(--public-primary)]/16'
-                      : idx % 3 === 1
-                        ? 'bg-sky-400/14'
-                        : 'bg-indigo-400/14';
-                  const blobB =
-                    idx % 3 === 0
-                      ? 'bg-sky-400/10'
-                      : idx % 3 === 1
-                        ? 'bg-[var(--public-primary)]/10'
-                        : 'bg-emerald-400/10';
-                  return (
-                  <div
-                    key={item.id}
-                    className="group relative overflow-hidden rounded-2xl border border-black/10 bg-white p-6 text-left shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-[var(--public-primary)]/30 hover:shadow-[0_30px_70px_-52px_rgba(15,23,42,0.55)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)] dark:hover:shadow-[0_30px_70px_-52px_rgba(0,0,0,0.85)]"
-                  >
-                    <div className={`pointer-events-none absolute -right-10 -top-12 h-32 w-32 rounded-[53%_47%_45%_55%/48%_56%_44%_52%] blur-2xl ${blobA}`} />
-                    <div className={`pointer-events-none absolute -bottom-12 -left-12 h-36 w-36 rounded-[48%_52%_58%_42%/44%_43%_57%_56%] blur-3xl ${blobB}`} />
-                    <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[var(--public-primary)]/25 to-transparent" />
-                    <div className="relative">
-                      <div className="inline-flex items-center gap-2">
-                        <span className="h-2 w-2 rounded-full bg-[var(--public-primary)]" />
-                        <span className="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-300">
-                          {item.date_range ?? '-'}
-                        </span>
-                      </div>
-                      <div className="mt-3 text-lg font-extrabold tracking-tight text-slate-900 dark:text-white">
-                        {item.title}
-                      </div>
-                      {item.description ? (
-                        <div className="mt-3 text-sm leading-relaxed text-slate-700 dark:text-slate-300 line-clamp-4">
-                          {item.description}
-                        </div>
-                      ) : (
-                        <div className="mt-3 text-sm text-slate-500 dark:text-slate-400">Deskripsi belum diisi.</div>
-                      )}
-                    </div>
-                  </div>
-                  );
-                })}
+                {programs.slice(0, 3).map((program: PublicProgram, idx: number) => (
+                  <PublicProgramCard key={program.id} program={program} index={idx} />
+                ))}
               </div>
             )}
           </div>
@@ -343,18 +306,13 @@ export default function PublicHome() {
                             return (
                               <div
                                 key={m.id}
-                                className={`group relative overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-[var(--public-primary)]/35 hover:shadow-[0_30px_70px_-52px_rgba(15,23,42,0.55)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)] dark:hover:shadow-[0_30px_70px_-52px_rgba(0,0,0,0.8)] active:scale-[0.99] ${
+                                className={`group relative overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:border-[var(--public-primary)]/25 hover:shadow-[0_22px_56px_-48px_rgba(15,23,42,0.45)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)] dark:hover:shadow-[0_22px_56px_-48px_rgba(0,0,0,0.75)] active:scale-[0.99] ${
                                   single ? 'w-[200px] sm:w-[220px]' : 'snap-start min-w-[180px] sm:min-w-[200px]'
                                 }`}
                               >
                                 <PublicPhotoFrame className="aspect-[4/3] w-full" inset={10}>
                                   {m.photo_url ? (
-                                    <img
-                                      src={m.photo_url}
-                                      alt={m.name}
-                                      className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"
-                                      loading="lazy"
-                                    />
+                                    <PublicCoverImage url={m.photo_url} alt={m.name} imgClassName="transition duration-300 group-hover:scale-[1.03]" />
                                   ) : (
                                     <div className="relative h-full w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.32),rgba(15,23,42,0.08))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.28),rgba(255,255,255,0.04))]">
                                       <div className="pointer-events-none absolute inset-0 opacity-70 [background:radial-gradient(circle_at_30%_25%,rgba(255,255,255,0.75),transparent_58%)]" />
@@ -364,7 +322,7 @@ export default function PublicHome() {
                                     </div>
                                   )}
                                 </PublicPhotoFrame>
-                                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/25 to-transparent" />
+                                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/70 via-black/12 to-transparent sm:h-28" />
                                 <div className="absolute inset-x-0 bottom-0 p-4">
                                   <div className="truncate text-sm font-extrabold tracking-tight text-white sm:text-base">{m.name}</div>
                                   <div className="mt-1 inline-flex max-w-full rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white/90 ring-1 ring-white/10 backdrop-blur">
@@ -429,7 +387,7 @@ export default function PublicHome() {
                   className="group overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-[var(--public-primary)]/30 dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)]"
                 >
                   <div className="aspect-[16/10] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.2),rgba(255,255,255,0.04))]">
-                    {p.cover_image_url ? <img src={p.cover_image_url} alt={p.title} className="h-full w-full object-cover" /> : null}
+                    <PublicCoverImage url={p.cover_image_url} alt={p.title} />
                   </div>
                   <div className="p-5">
                     <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-300">

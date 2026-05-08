@@ -8,8 +8,8 @@ import PublicEnter from '@/components/PublicEnter';
 import PublicReveal from '@/components/PublicReveal';
 import PublicPageHero from '@/components/PublicPageHero';
 import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
-import { ensureHttpsUrl } from '@/lib/ensureHttpsUrl';
 import PublicPhotoFrame from '@/components/PublicPhotoFrame';
+import PublicCoverImage from '@/components/PublicCoverImage';
 
 export default function Galeri() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
@@ -52,7 +52,6 @@ export default function Galeri() {
           ) : (
             <div className="mt-6 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
             {albums.map((a, idx) => {
-              const firstUrl = ensureHttpsUrl(a.items?.[0]?.image_url);
               const accent =
                 idx % 3 === 0 ? 'from-[var(--public-primary)]/35' : idx % 3 === 1 ? 'from-sky-400/35' : 'from-indigo-400/35';
               return (
@@ -65,17 +64,7 @@ export default function Galeri() {
                 <div className="relative">
                   <div className={`pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${accent} via-transparent to-transparent`} />
                   <PublicPhotoFrame className="aspect-[16/10] w-full" inset={10}>
-                    {firstUrl ? (
-                      <img
-                        src={firstUrl}
-                        alt={a.title}
-                        className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.02]"
-                        loading="lazy"
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none';
-                        }}
-                      />
-                    ) : null}
+                    <PublicCoverImage url={a.items?.[0]?.image_url} alt={a.title} imgClassName="transition duration-500 group-hover:scale-[1.02]" />
                   </PublicPhotoFrame>
                   <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/65 via-black/15 to-transparent opacity-90" />
                   <div className="absolute inset-x-0 bottom-0 p-4">
@@ -125,17 +114,7 @@ export default function Galeri() {
                   {selected.items.map((it) => (
                     <div key={it.id} className="overflow-hidden rounded-2xl border border-black/10 bg-white dark:border-white/10 dark:bg-zinc-950">
                       <PublicPhotoFrame className="aspect-[4/3] w-full" inset={10}>
-                        {ensureHttpsUrl(it.image_url) ? (
-                          <img
-                            src={ensureHttpsUrl(it.image_url)}
-                            alt={it.caption || selected.title}
-                            className="h-full w-full object-cover"
-                            loading="lazy"
-                            onError={(e) => {
-                              e.currentTarget.style.display = 'none';
-                            }}
-                          />
-                        ) : null}
+                        <PublicCoverImage url={it.image_url} alt={it.caption || selected.title} />
                       </PublicPhotoFrame>
                       {it.caption ? <div className="p-3 text-sm text-slate-700 dark:text-slate-200">{it.caption}</div> : null}
                     </div>

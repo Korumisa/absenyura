@@ -8,7 +8,7 @@ import PublicEnter from '@/components/PublicEnter';
 import PublicReveal from '@/components/PublicReveal';
 import PublicPageHero from '@/components/PublicPageHero';
 import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
-import { ensureHttpsUrl } from '@/lib/ensureHttpsUrl';
+import PublicCoverImage from '@/components/PublicCoverImage';
 
 export default function OpenRecruitment() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
@@ -71,17 +71,7 @@ export default function OpenRecruitment() {
                 className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)]"
               >
                 <div className="aspect-[4/5] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.2),rgba(255,255,255,0.04))]">
-                  {ensureHttpsUrl(r.poster_image_url) ? (
-                    <img
-                      src={ensureHttpsUrl(r.poster_image_url)}
-                      alt={r.title}
-                      className="h-full w-full object-cover"
-                      loading="lazy"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                      }}
-                    />
-                  ) : null}
+                  <PublicCoverImage url={r.poster_image_url} alt={r.title} />
                 </div>
                 <div className="p-5">
                   <div className="text-base font-semibold text-slate-900 dark:text-white">{r.title}</div>
@@ -116,7 +106,6 @@ export default function OpenRecruitment() {
 
       {selected ? (
         (() => {
-          const posterUrl = ensureHttpsUrl(selected.poster_image_url);
           return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center px-6">
           <button type="button" aria-label="Tutup" className="absolute inset-0 bg-black/50" onClick={() => setOpenId(null)} />
@@ -126,17 +115,7 @@ export default function OpenRecruitment() {
             className="relative w-full max-w-2xl overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_30px_80px_-45px_rgba(15,23,42,0.55)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_30px_80px_-45px_rgba(0,0,0,0.7)]"
           >
             <div className="aspect-[16/9] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.2),rgba(255,255,255,0.04))]">
-              {posterUrl ? (
-                <img
-                  src={posterUrl}
-                  alt={selected.title}
-                  className="h-full w-full object-cover"
-                  loading="lazy"
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none';
-                  }}
-                />
-              ) : null}
+              <PublicCoverImage url={selected.poster_image_url} alt={selected.title} />
             </div>
             <div className="p-6">
               <div className="flex flex-wrap items-start justify-between gap-4">

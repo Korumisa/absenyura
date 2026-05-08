@@ -9,6 +9,7 @@ import PublicReveal from '@/components/PublicReveal';
 import PublicPageHero from '@/components/PublicPageHero';
 import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 import PublicPhotoFrame from '@/components/PublicPhotoFrame';
+import PublicCoverImage from '@/components/PublicCoverImage';
 
 export default function Fungsionaris() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
@@ -76,23 +77,18 @@ export default function Fungsionaris() {
                       const initial = String(p.name ?? '').trim().slice(0, 1).toUpperCase() || 'A';
                       const variant =
                         idx % 3 === 0
-                          ? 'from-black/75 via-black/25'
+                          ? 'from-black/75 via-black/10'
                           : idx % 3 === 1
-                            ? 'from-black/70 via-black/15'
-                            : 'from-black/80 via-black/30';
+                            ? 'from-black/70 via-black/8'
+                            : 'from-black/80 via-black/12';
                       return (
                         <div
                           key={p.id}
-                          className="group relative w-full max-w-[420px] mx-auto overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-[var(--public-primary)]/35 hover:shadow-[0_30px_70px_-52px_rgba(15,23,42,0.55)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)] dark:hover:shadow-[0_30px_70px_-52px_rgba(0,0,0,0.85)] active:scale-[0.99] sm:max-w-none"
+                          className="group relative mx-auto w-full max-w-[420px] overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:border-[var(--public-primary)]/25 hover:shadow-[0_22px_56px_-48px_rgba(15,23,42,0.45)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)] dark:hover:shadow-[0_22px_56px_-48px_rgba(0,0,0,0.75)] active:scale-[0.99] sm:max-w-none"
                         >
                           <PublicPhotoFrame className="aspect-[4/3] w-full sm:aspect-[4/5]" inset={10}>
                             {p.photo_url ? (
-                              <img
-                                src={p.photo_url}
-                                alt={p.name}
-                                className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"
-                                loading="lazy"
-                              />
+                              <PublicCoverImage url={p.photo_url} alt={p.name} imgClassName="transition duration-300 group-hover:scale-[1.02]" />
                             ) : (
                               <div className="relative h-full w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.32),rgba(15,23,42,0.08))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.28),rgba(255,255,255,0.04))]">
                                 <div className="pointer-events-none absolute inset-0 opacity-70 [background:radial-gradient(circle_at_30%_25%,rgba(255,255,255,0.75),transparent_58%)]" />
@@ -102,7 +98,7 @@ export default function Fungsionaris() {
                               </div>
                             )}
                           </PublicPhotoFrame>
-                          <div className={`pointer-events-none absolute inset-0 bg-gradient-to-t ${variant} to-transparent`} />
+                          <div className={`pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t ${variant} to-transparent sm:h-28`} />
                           <div className="absolute inset-x-0 bottom-0 p-4">
                             <div className="truncate text-sm font-extrabold tracking-tight text-white sm:text-base">{p.name}</div>
                             <div className="mt-1 inline-flex max-w-full rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white/90 ring-1 ring-white/10 backdrop-blur">

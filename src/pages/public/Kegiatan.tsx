@@ -8,6 +8,7 @@ import PublicEnter from '@/components/PublicEnter';
 import PublicReveal from '@/components/PublicReveal';
 import PublicPageHero from '@/components/PublicPageHero';
 import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
+import PublicCoverImage from '@/components/PublicCoverImage';
 
 const TABS: Array<{ label: string; type?: PublicPostType }> = [
   { label: 'Semua' },
@@ -103,7 +104,7 @@ export default function Kegiatan() {
                   className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)]"
                 >
                   <div className="aspect-[16/10] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.2),rgba(255,255,255,0.04))]">
-                    {e.cover_image_url ? <img src={e.cover_image_url} alt={e.title} className="h-full w-full object-cover" /> : null}
+                    <PublicCoverImage url={e.cover_image_url} alt={e.title} />
                   </div>
                   <div className="p-5">
                     <div className="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-300">{e.type}</div>
@@ -132,7 +133,7 @@ export default function Kegiatan() {
           <button type="button" aria-label="Tutup" className="absolute inset-0 bg-black/40" onClick={() => setOpenId(null)} />
           <div role="dialog" aria-modal="true" className="relative w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-[0_30px_80px_-45px_rgba(15,23,42,0.55)] dark:bg-zinc-950">
             <div className="aspect-[16/8] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.2),rgba(255,255,255,0.04))]">
-              {selected.cover_image_url ? <img src={selected.cover_image_url} alt={selected.title} className="h-full w-full object-cover" /> : null}
+              <PublicCoverImage url={selected.cover_image_url} alt={selected.title} />
             </div>
             <div className="p-6">
               <div className="flex flex-wrap items-start justify-between gap-4">
