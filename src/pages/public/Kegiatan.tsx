@@ -129,14 +129,14 @@ export default function Kegiatan() {
       </PublicEnter>
 
       {selected ? (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center px-6">
-          <button type="button" aria-label="Tutup" className="absolute inset-0 bg-black/40" onClick={() => setOpenId(null)} />
-          <div role="dialog" aria-modal="true" className="relative w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-[0_30px_80px_-45px_rgba(15,23,42,0.55)] dark:bg-zinc-950">
-            <div className="aspect-[16/8] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.2),rgba(255,255,255,0.04))]">
+        <div className="fixed inset-0 z-[60] flex items-end justify-center p-3 sm:items-center sm:p-6">
+          <button type="button" aria-label="Tutup" className="absolute inset-0 bg-black/45 backdrop-blur-[2px]" onClick={() => setOpenId(null)} />
+          <div role="dialog" aria-modal="true" className="relative flex w-full max-w-2xl max-h-[92vh] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_30px_80px_-45px_rgba(15,23,42,0.55)] dark:border-white/10 dark:bg-zinc-950">
+            <div className="aspect-[16/8] w-full shrink-0 bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.2),rgba(255,255,255,0.04))]">
               <PublicCoverImage url={selected.cover_image_url} alt={selected.title} />
             </div>
-            <div className="p-6">
-              <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="sticky top-0 z-10 -mx-6 -mt-6 mb-5 flex flex-wrap items-start justify-between gap-4 border-b border-black/10 bg-white/95 px-6 py-4 backdrop-blur dark:border-white/10 dark:bg-zinc-950/95">
                 <div>
                   <div className="text-base font-semibold text-slate-900 dark:text-white">{selected.title}</div>
                   <div className="mt-1 text-sm text-slate-600 dark:text-slate-300">{selected.date_label ?? '-'}</div>
@@ -149,7 +149,7 @@ export default function Kegiatan() {
                   Tutup
                 </button>
               </div>
-              {selected.excerpt ? <div className="mt-5 text-sm leading-relaxed text-slate-700 dark:text-slate-200">{selected.excerpt}</div> : null}
+              {selected.excerpt ? <div className="text-sm leading-relaxed text-slate-700 dark:text-slate-200">{selected.excerpt}</div> : null}
               {selected.content ? <div className="mt-4 break-words whitespace-pre-wrap text-sm leading-relaxed text-slate-700 dark:text-slate-200">{selected.content}</div> : null}
             </div>
           </div>

@@ -214,7 +214,7 @@ export default function PublicHome() {
             </div>
           </section>
 
-          <section className="relative bg-white py-20 dark:bg-zinc-950">
+          <section className="relative bg-slate-50/55 py-20 dark:bg-zinc-900/60">
             <PublicReveal className="mx-auto max-w-7xl px-6 text-center">
           <div className="pointer-events-none absolute left-0 top-12 hidden md:block">
             <div className="h-24 w-24 rounded-full bg-[var(--public-primary)]/16 blur-2xl" />
@@ -265,7 +265,7 @@ export default function PublicHome() {
         </PublicReveal>
       </section>
 
-      <section className="relative bg-white pb-24 pt-8 dark:bg-zinc-950">
+      <section className="relative bg-white py-20 dark:bg-zinc-950">
         <PublicReveal className="mx-auto max-w-7xl px-6">
           <div className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
             <div>
@@ -332,7 +332,7 @@ export default function PublicHome() {
         </PublicReveal>
       </section>
 
-      <section className="relative bg-white pb-24 pt-10 dark:bg-zinc-950">
+      <section className="relative bg-slate-50/55 py-20 dark:bg-zinc-900/60">
         <PublicReveal className="mx-auto max-w-7xl px-6">
           <div className="text-center">
             <div className="font-display text-5xl italic tracking-tight text-slate-900 dark:text-white sm:text-6xl md:text-7xl">Susunan</div>
@@ -448,7 +448,7 @@ export default function PublicHome() {
         </PublicReveal>
       </section>
 
-      <section className="relative bg-white pb-24 dark:bg-zinc-950">
+      <section className="relative bg-white py-20 dark:bg-zinc-950">
         <PublicReveal className="mx-auto max-w-7xl px-6">
           <div className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
             <div>
@@ -502,7 +502,7 @@ export default function PublicHome() {
         </PublicReveal>
       </section>
 
-      <section className="relative bg-white pb-24 dark:bg-zinc-950">
+      <section className="relative bg-slate-50/55 py-20 dark:bg-zinc-900/60">
         <PublicReveal className="mx-auto max-w-7xl px-6">
           <div className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
             <div>
@@ -556,7 +556,7 @@ export default function PublicHome() {
         </PublicReveal>
       </section>
 
-      <section className="relative bg-white pb-24 dark:bg-zinc-950">
+      <section className="relative bg-white py-20 dark:bg-zinc-950">
         <PublicReveal className="mx-auto max-w-7xl px-6">
           <div className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
             <div>

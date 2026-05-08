@@ -157,14 +157,14 @@ export default function Galeri() {
       </PublicEnter>
 
       {selected ? (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center px-6">
-          <button type="button" aria-label="Tutup" className="absolute inset-0 bg-black/50" onClick={() => setOpenId(null)} />
+        <div className="fixed inset-0 z-[60] flex items-end justify-center p-3 sm:items-center sm:p-6">
+          <button type="button" aria-label="Tutup" className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" onClick={() => setOpenId(null)} />
           <div
             role="dialog"
             aria-modal="true"
-            className="relative w-full max-w-4xl overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_30px_80px_-45px_rgba(15,23,42,0.55)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_30px_80px_-45px_rgba(0,0,0,0.7)]"
+            className="relative flex w-full max-w-4xl max-h-[92vh] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_30px_80px_-45px_rgba(15,23,42,0.55)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_30px_80px_-45px_rgba(0,0,0,0.7)]"
           >
-            <div className="flex items-start justify-between gap-6 border-b border-black/10 p-6 dark:border-white/10">
+            <div className="sticky top-0 z-10 flex items-start justify-between gap-6 border-b border-black/10 bg-white/95 p-6 backdrop-blur dark:border-white/10 dark:bg-zinc-950/95">
               <div>
                 <div className="text-base font-semibold text-slate-900 dark:text-white">{selected.title}</div>
                 {selected.description ? <div className="mt-1 text-sm text-slate-600 dark:text-slate-300">{selected.description}</div> : null}
@@ -177,7 +177,7 @@ export default function Galeri() {
                 Tutup
               </button>
             </div>
-            <div className="max-h-[70vh] overflow-y-auto p-6">
+            <div className="flex-1 overflow-y-auto p-6">
               {selected.items.length === 0 ? (
                 <div className="text-center text-sm font-medium text-slate-500 dark:text-slate-300">Belum ada foto</div>
               ) : (

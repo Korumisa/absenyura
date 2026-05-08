@@ -59,6 +59,16 @@ export default function Berita() {
     next.set('page', String(p));
     setParams(next);
   };
+  const pageNumbers = useMemo(() => {
+    if (!paged) return [];
+    const total = paged.totalPages;
+    if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+    const start = Math.max(1, paged.page - 2);
+    const end = Math.min(total, start + 4);
+    const adjustedStart = Math.max(1, end - 4);
+    const middle = Array.from({ length: end - adjustedStart + 1 }, (_, i) => adjustedStart + i);
+    return [1, ...middle.filter((n) => n !== 1 && n !== total), total];
+  }, [paged]);
 
   return (
     <PublicLayout>
@@ -174,22 +184,25 @@ export default function Berita() {
               >
                 Sebelumnya
               </button>
-              {Array.from({ length: Math.min(paged.totalPages, 7) }).map((_, idx) => {
-                const p = idx + 1;
+              {pageNumbers.map((p, idx) => {
                 const active = p === paged.page;
+                const prev = pageNumbers[idx - 1];
+                const showEllipsis = typeof prev === 'number' && p - prev > 1;
                 return (
-                  <button
-                    key={p}
-                    type="button"
-                    onClick={() => goPage(p)}
-                    className={`h-10 w-10 rounded-xl text-sm font-semibold transition ${
-                      active
-                        ? 'bg-[var(--public-primary)] text-white'
-                        : 'border border-black/10 bg-white text-slate-700 hover:border-[var(--public-primary)]/30 dark:border-white/10 dark:bg-zinc-950 dark:text-slate-200'
-                    }`}
-                  >
-                    {p}
-                  </button>
+                  <React.Fragment key={p}>
+                    {showEllipsis ? <span className="px-1 text-sm text-slate-400">...</span> : null}
+                    <button
+                      type="button"
+                      onClick={() => goPage(p)}
+                      className={`h-10 w-10 rounded-xl text-sm font-semibold transition ${
+                        active
+                          ? 'bg-[var(--public-primary)] text-white'
+                          : 'border border-black/10 bg-white text-slate-700 hover:border-[var(--public-primary)]/30 dark:border-white/10 dark:bg-zinc-950 dark:text-slate-200'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  </React.Fragment>
                 );
               })}
               <button
