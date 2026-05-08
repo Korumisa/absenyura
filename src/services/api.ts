@@ -35,7 +35,9 @@ api.interceptors.response.use(
     } catch {
       pathname = url;
     }
-    const isPublicRequest = pathname.includes('/public-site/');
+    const isPublicSiteRequest = pathname.includes('/public-site/');
+    const isAdminPublicSiteRequest = pathname.includes('/public-site/admin');
+    const isPublicRequest = isPublicSiteRequest && !isAdminPublicSiteRequest;
     const { isAuthenticated } = useAuthStore.getState();
 
     if (error.response?.status === 401 && (!isAuthenticated || isPublicRequest)) {

@@ -11,6 +11,7 @@ import PublicLayout from '@/components/PublicLayout';
 import PublicEnter from '@/components/PublicEnter';
 import useSWR from 'swr';
 import type { PublicProfile } from '@/types/publicSite';
+import { getErrorMessage } from '@/lib/errorMessage';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -48,17 +49,7 @@ export default function Login() {
 
       navigate(target, { replace: true });
     } catch (err: any) {
-      let errorMsg = 'Gagal masuk. Periksa email dan kata sandi Anda.';
-      if (err.response?.data?.error) {
-        if (typeof err.response.data.error === 'string') {
-          errorMsg = err.response.data.error;
-        } else if (typeof err.response.data.error === 'object' && err.response.data.error.message) {
-          errorMsg = err.response.data.error.message;
-        }
-      } else if (err.message) {
-        errorMsg = err.message;
-      }
-      toast.error(errorMsg);
+      toast.error(getErrorMessage(err, 'Gagal masuk. Periksa email/NIM dan kata sandi Anda.'));
     } finally {
       setLoading(false);
     }
