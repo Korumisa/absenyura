@@ -365,7 +365,6 @@ export default function PublicHome() {
 
                   {(() => {
                     const members = g.members ?? [];
-                    const single = members.length === 1;
                     if (members.length === 0) {
                       return (
                     <div className="mt-4 rounded-2xl border border-dashed border-black/15 bg-white/60 px-5 py-4 text-sm text-slate-600 dark:border-white/15 dark:bg-white/5 dark:text-slate-300">
@@ -374,49 +373,60 @@ export default function PublicHome() {
                       );
                     }
 
+                    const shown = members.slice(0, 12);
+                    const single = shown.length === 1;
+                    const renderCard = (m: (typeof members)[number], variant: 'scroll' | 'grid') => {
+                      const initial = String(m.name ?? '').trim().slice(0, 1).toUpperCase() || 'A';
+                      const cardBase =
+                        'group relative overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:border-[var(--public-primary)]/25 hover:shadow-[0_22px_56px_-48px_rgba(15,23,42,0.45)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)] dark:hover:shadow-[0_22px_56px_-48px_rgba(0,0,0,0.75)] active:scale-[0.99]';
+                      const size =
+                        variant === 'grid'
+                          ? 'w-full'
+                          : single
+                            ? 'w-[200px] sm:w-[220px]'
+                            : 'snap-start min-w-[180px] sm:min-w-[200px]';
+                      return (
+                        <div key={m.id} className={`${cardBase} ${size}`}>
+                          <PublicPhotoFrame className="aspect-[1/1] w-full" inset={10}>
+                            {m.photo_url ? (
+                              <PublicCoverImage url={m.photo_url} alt={m.name} imgClassName="transition duration-300 group-hover:scale-[1.03]" />
+                            ) : (
+                              <div className="relative h-full w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.32),rgba(15,23,42,0.08))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.28),rgba(255,255,255,0.04))]">
+                                <div className="pointer-events-none absolute inset-0 opacity-70 [background:radial-gradient(circle_at_30%_25%,rgba(255,255,255,0.75),transparent_58%)]" />
+                                <div className="grid h-full w-full place-items-center text-5xl font-extrabold text-white/90 drop-shadow-sm">{initial}</div>
+                              </div>
+                            )}
+                          </PublicPhotoFrame>
+                          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/75 via-black/18 to-transparent sm:h-32" />
+                          <div className="absolute inset-x-0 bottom-0 p-4">
+                            <div className="truncate text-sm font-extrabold tracking-tight text-white sm:text-base">{m.name}</div>
+                            <div className="mt-1 inline-flex max-w-full rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white/90 ring-1 ring-white/10 backdrop-blur">
+                              <span className="truncate">{m.role}</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    };
+
                     return (
                       <div className="relative mt-4">
-                        {!single ? (
-                          <>
-                            <div className="pointer-events-none absolute inset-y-0 left-0 w-10 bg-gradient-to-r from-white to-transparent dark:from-zinc-950" />
-                            <div className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-white to-transparent dark:from-zinc-950" />
-                          </>
-                        ) : null}
+                        <div className="md:hidden">
+                          {!single ? (
+                            <>
+                              <div className="pointer-events-none absolute inset-y-0 left-0 w-10 bg-gradient-to-r from-white to-transparent dark:from-zinc-950" />
+                              <div className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-white to-transparent dark:from-zinc-950" />
+                            </>
+                          ) : null}
 
-                        <div
-                          className={`flex gap-4 pb-2 ${single ? 'justify-start overflow-x-hidden' : 'snap-x snap-mandatory overflow-x-auto'} pl-1 pr-1 scrollbar-hide`}
-                        >
-                          {members.map((m) => {
-                            const initial = String(m.name ?? '').trim().slice(0, 1).toUpperCase() || 'A';
-                            return (
-                              <div
-                                key={m.id}
-                                className={`group relative overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:border-[var(--public-primary)]/25 hover:shadow-[0_22px_56px_-48px_rgba(15,23,42,0.45)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)] dark:hover:shadow-[0_22px_56px_-48px_rgba(0,0,0,0.75)] active:scale-[0.99] ${
-                                  single ? 'w-[200px] sm:w-[220px]' : 'snap-start min-w-[180px] sm:min-w-[200px]'
-                                }`}
-                              >
-                                <PublicPhotoFrame className="aspect-[4/3] w-full" inset={10}>
-                                  {m.photo_url ? (
-                                    <PublicCoverImage url={m.photo_url} alt={m.name} imgClassName="transition duration-300 group-hover:scale-[1.03]" />
-                                  ) : (
-                                    <div className="relative h-full w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.32),rgba(15,23,42,0.08))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.28),rgba(255,255,255,0.04))]">
-                                      <div className="pointer-events-none absolute inset-0 opacity-70 [background:radial-gradient(circle_at_30%_25%,rgba(255,255,255,0.75),transparent_58%)]" />
-                                      <div className="grid h-full w-full place-items-center text-5xl font-extrabold text-white/90 drop-shadow-sm">
-                                        {initial}
-                                      </div>
-                                    </div>
-                                  )}
-                                </PublicPhotoFrame>
-                                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/70 via-black/12 to-transparent sm:h-28" />
-                                <div className="absolute inset-x-0 bottom-0 p-4">
-                                  <div className="truncate text-sm font-extrabold tracking-tight text-white sm:text-base">{m.name}</div>
-                                  <div className="mt-1 inline-flex max-w-full rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white/90 ring-1 ring-white/10 backdrop-blur">
-                                    <span className="truncate">{m.role}</span>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
+                          <div
+                            className={`flex gap-4 pb-2 ${single ? 'justify-start overflow-x-hidden' : 'snap-x snap-mandatory overflow-x-auto'} pl-1 pr-1 scrollbar-hide`}
+                          >
+                            {shown.map((m) => renderCard(m, 'scroll'))}
+                          </div>
+                        </div>
+
+                        <div className="hidden gap-4 md:grid md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+                          {shown.map((m) => renderCard(m, 'grid'))}
                         </div>
                       </div>
                     );
