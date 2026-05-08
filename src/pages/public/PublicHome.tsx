@@ -291,25 +291,50 @@ export default function PublicHome() {
               </div>
             </div>
           ) : (
-            <div className="mt-12 grid gap-5 md:grid-cols-3">
+            <div className="mt-12 space-y-8">
               {structure.slice(0, 3).map((g) => (
-                <div key={g.id} className="relative overflow-hidden rounded-2xl border border-black/10 bg-white p-6 shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)]">
-                  <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-[53%_47%_45%_55%/48%_56%_44%_52%] bg-[var(--public-primary)]/12 blur-3xl" />
-                  <div className="text-base font-extrabold tracking-tight text-slate-900 dark:text-white">{g.title}</div>
-                  <div className="mt-4 space-y-2">
-                    {(g.members ?? []).slice(0, 4).map((m) => (
-                      <div key={m.id} className="flex items-center justify-between gap-3 rounded-xl border border-black/10 bg-white/70 px-3 py-2 text-sm dark:border-white/10 dark:bg-white/5">
-                        <div className="font-semibold text-slate-900 dark:text-white">{m.role}</div>
-                        <div className="text-slate-600 dark:text-slate-300">{m.name}</div>
-                      </div>
-                    ))}
-                    {(g.members ?? []).length === 0 ? (
-                      <div className="rounded-xl border border-dashed border-black/15 bg-white/60 px-3 py-2 text-sm text-slate-600 dark:border-white/15 dark:bg-white/5 dark:text-slate-300">
-                        Anggota belum diisi.
-                      </div>
-                    ) : null}
+                <section key={g.id} className="relative">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="text-xl font-extrabold tracking-tight text-slate-900 dark:text-white">{g.title}</div>
+                    <div className="h-px flex-1 bg-black/10 dark:bg-white/10" />
                   </div>
-                </div>
+
+                  {(g.members ?? []).length === 0 ? (
+                    <div className="mt-4 rounded-2xl border border-dashed border-black/15 bg-white/60 px-5 py-4 text-sm text-slate-600 dark:border-white/15 dark:bg-white/5 dark:text-slate-300">
+                      Anggota belum diisi.
+                    </div>
+                  ) : (
+                    <div className="relative mt-4">
+                      <div className="pointer-events-none absolute inset-y-0 left-0 w-10 bg-gradient-to-r from-white to-transparent dark:from-zinc-950" />
+                      <div className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-white to-transparent dark:from-zinc-950" />
+                      <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 pl-1 pr-1 scrollbar-hide">
+                      {(g.members ?? []).map((m) => {
+                        const initial = String(m.name ?? '').trim().slice(0, 1).toUpperCase() || 'A';
+                        return (
+                          <div
+                            key={m.id}
+                            className="snap-start rounded-2xl border border-black/10 bg-white p-4 shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-[var(--public-primary)]/30 dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)] min-w-[240px] active:scale-[0.99]"
+                          >
+                            <div className="flex items-center gap-4">
+                              <div className="h-14 w-14 overflow-hidden rounded-full border border-black/10 bg-slate-100 dark:border-white/10 dark:bg-white/10">
+                                {m.photo_url ? (
+                                  <img src={m.photo_url} alt={m.name} className="h-full w-full object-cover" loading="lazy" />
+                                ) : (
+                                  <div className="grid h-full w-full place-items-center text-lg font-extrabold text-[var(--public-primary)]">{initial}</div>
+                                )}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="truncate text-sm font-semibold text-slate-900 dark:text-white">{m.name}</div>
+                                <div className="truncate text-xs font-medium text-slate-600 dark:text-slate-300">{m.role}</div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      </div>
+                    </div>
+                  )}
+                </section>
               ))}
             </div>
           )}

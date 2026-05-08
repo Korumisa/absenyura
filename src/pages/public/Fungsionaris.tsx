@@ -60,25 +60,38 @@ export default function Fungsionaris() {
                 <div className="mb-8 text-center text-3xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] sm:text-4xl md:text-5xl">
                   {group.title}
                 </div>
-                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                  {(group.members ?? []).map((p) => (
-                    <div
-                      key={p.id}
-                      className="relative overflow-hidden rounded-2xl border border-black/10 bg-white p-6 shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)]"
-                    >
-                      <div className="pointer-events-none absolute -right-12 -top-12 h-48 w-48 rounded-[53%_47%_45%_55%/48%_56%_44%_52%] bg-[var(--public-primary)]/10 blur-3xl" />
-                      <div className="flex items-center gap-4">
-                        <div className="relative h-16 w-16 overflow-hidden rounded-full border border-[var(--public-primary)]/30 bg-[linear-gradient(135deg,rgba(37,99,235,0.25),rgba(15,23,42,0.03))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(255,255,255,0.04))]">
-                          <div className="absolute inset-0 opacity-60 [background:radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.8),transparent_60%)]" />
+                {(group.members ?? []).length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-black/15 bg-white/60 px-6 py-5 text-sm text-slate-600 dark:border-white/15 dark:bg-white/5 dark:text-slate-300">
+                    Anggota belum diisi.
+                  </div>
+                ) : (
+                  <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
+                    {(group.members ?? []).map((p) => {
+                      const initial = String(p.name ?? '').trim().slice(0, 1).toUpperCase() || 'A';
+                      return (
+                        <div
+                          key={p.id}
+                          className="relative overflow-hidden rounded-2xl border border-black/10 bg-white p-6 shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-[var(--public-primary)]/30 dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)] active:scale-[0.99]"
+                        >
+                          <div className="pointer-events-none absolute -right-12 -top-12 h-48 w-48 rounded-[53%_47%_45%_55%/48%_56%_44%_52%] bg-[var(--public-primary)]/10 blur-3xl" />
+                          <div className="flex items-center gap-4">
+                            <div className="h-16 w-16 overflow-hidden rounded-full border border-[var(--public-primary)]/30 bg-[linear-gradient(135deg,rgba(37,99,235,0.25),rgba(15,23,42,0.03))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(255,255,255,0.04))]">
+                              {p.photo_url ? (
+                                <img src={p.photo_url} alt={p.name} className="h-full w-full object-cover" loading="lazy" />
+                              ) : (
+                                <div className="grid h-full w-full place-items-center text-xl font-extrabold text-[var(--public-primary)]">{initial}</div>
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="truncate text-sm font-semibold text-slate-800 dark:text-white">{p.name}</div>
+                              <div className="truncate text-sm text-slate-600 dark:text-slate-300">{p.role}</div>
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <div className="text-sm font-semibold text-slate-800 dark:text-white">{p.role}</div>
-                          <div className="text-sm text-slate-600 dark:text-slate-300">{p.name}</div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                      );
+                    })}
+                  </div>
+                )}
               </section>
             ))}
             </div>

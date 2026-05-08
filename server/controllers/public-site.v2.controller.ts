@@ -198,8 +198,9 @@ export const replaceAdminStructure = async (req: PublicRoleRequest, res: Respons
           const name = String(p.name ?? '').trim();
           const role = String(p.role ?? '').trim();
           if (!name || !role) continue;
+          const photo_url = String(p.photoUrl ?? '').trim() || null;
           await tx.publicStructureMember.create({
-            data: { group_id: group.id, name, role, sort_order: toInt(p.sortOrder, pi) },
+            data: { group_id: group.id, name, role, photo_url, sort_order: toInt(p.sortOrder, pi) } as any,
           });
         }
       }

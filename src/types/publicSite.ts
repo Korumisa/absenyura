@@ -85,6 +85,6 @@ export type PublicStructureGroup = {
   id: string;
   title: string;
   sort_order: number;
-  members: { id: string; name: string; role: string; sort_order: number }[];
+  members: { id: string; name: string; role: string; photo_url: string | null; sort_order: number }[];
 };
 

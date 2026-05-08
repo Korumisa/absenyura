@@ -7,23 +7,51 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import type { PublicStructureGroup } from '@/types/publicSite';
 import { getErrorMessage } from '@/lib/errorMessage';
+import { prepareImageForUpload } from '@/lib/imageUpload';
 
 export default function PublicSiteStructure() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
   const { data: structure = [], mutate } = useSWR<PublicStructureGroup[]>('/public-site/admin/structure', fetcher, { revalidateOnFocus: false });
 
-  type MemberDraft = { name: string; role: string };
+  type MemberDraft = { name: string; role: string; photoUrl: string };
   type GroupDraft = { title: string; people: MemberDraft[] };
   const [groups, setGroups] = useState<GroupDraft[]>([]);
   useEffect(() => {
     const mapped: GroupDraft[] = (structure ?? []).map((g) => ({
       title: g.title ?? '',
-      people: (g.members ?? []).map((m) => ({ name: m.name ?? '', role: m.role ?? '' })),
+      people: (g.members ?? []).map((m) => ({ name: m.name ?? '', role: m.role ?? '', photoUrl: m.photo_url ?? '' })),
     }));
     setGroups(mapped);
   }, [structure]);
 
   const [saving, setSaving] = useState(false);
+  const [uploadingKey, setUploadingKey] = useState<string | null>(null);
+
+  const uploadImage = async (file: File) => {
+    const prepared = await prepareImageForUpload(file, { maxBytes: 4 * 1024 * 1024, maxWidth: 1200, quality: 0.82 });
+    const form = new FormData();
+    form.append('file', prepared);
+    const res = await api.post('/public-site/admin/upload', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+    return res.data.data.url as string;
+  };
+
+  const onPickMemberPhoto = async (gi: number, pi: number, file: File) => {
+    const key = `${gi}:${pi}`;
+    setUploadingKey(key);
+    try {
+      const url = await uploadImage(file);
+      setGroups((prev) =>
+        prev.map((g, gidx) =>
+          gidx === gi ? { ...g, people: g.people.map((p, pidx) => (pidx === pi ? { ...p, photoUrl: url } : p)) } : g
+        )
+      );
+      toast.success('Upload foto anggota berhasil');
+    } catch (e: any) {
+      toast.error(getErrorMessage(e, 'Gagal upload foto'));
+    } finally {
+      setUploadingKey(null);
+    }
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -31,7 +59,7 @@ export default function PublicSiteStructure() {
       const payload = groups.map((g, gi) => ({
         title: g.title,
         sortOrder: gi,
-        people: (g.people ?? []).map((p, pi) => ({ name: p.name, role: p.role, sortOrder: pi })),
+        people: (g.people ?? []).map((p, pi) => ({ name: p.name, role: p.role, photoUrl: p.photoUrl, sortOrder: pi })),
       }));
       await api.put('/public-site/admin/structure', { data: payload });
       toast.success('Struktur organisasi tersimpan');
@@ -46,7 +74,7 @@ export default function PublicSiteStructure() {
   const handleReset = () => {
     const mapped: GroupDraft[] = (structure ?? []).map((g) => ({
       title: g.title ?? '',
-      people: (g.members ?? []).map((m) => ({ name: m.name ?? '', role: m.role ?? '' })),
+      people: (g.members ?? []).map((m) => ({ name: m.name ?? '', role: m.role ?? '', photoUrl: m.photo_url ?? '' })),
     }));
     setGroups(mapped);
   };
@@ -64,7 +92,7 @@ export default function PublicSiteStructure() {
           <Button
             type="button"
             variant="outline"
-            onClick={() => setGroups((prev) => [...prev, { title: '', people: [{ name: '', role: '' }] }])}
+            onClick={() => setGroups((prev) => [...prev, { title: '', people: [{ name: '', role: '', photoUrl: '' }] }])}
           >
             Tambah Grup
           </Button>
@@ -96,7 +124,9 @@ export default function PublicSiteStructure() {
                       type="button"
                       variant="outline"
                       onClick={() =>
-                        setGroups((prev) => prev.map((x, idx) => (idx === gi ? { ...x, people: [...x.people, { name: '', role: '' }] } : x)))
+                        setGroups((prev) =>
+                          prev.map((x, idx) => (idx === gi ? { ...x, people: [...x.people, { name: '', role: '', photoUrl: '' }] } : x))
+                        )
                       }
                     >
                       Tambah Anggota
@@ -112,12 +142,29 @@ export default function PublicSiteStructure() {
                 </div>
 
                 <div className="mt-4 space-y-3">
-                  <div className="grid gap-3 md:grid-cols-2">
+                  <div className="grid gap-3 md:grid-cols-3">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-zinc-400">Foto</div>
                     <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-zinc-400">Nama</div>
                     <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-zinc-400">Jabatan</div>
                   </div>
                   {g.people.map((p, pi) => (
-                    <div key={pi} className="grid gap-3 md:grid-cols-2">
+                    <div key={pi} className="grid gap-3 md:grid-cols-3">
+                      <div className="flex items-center gap-3">
+                        <div className="h-12 w-12 overflow-hidden rounded-full border border-slate-200 bg-slate-100 dark:border-zinc-700 dark:bg-zinc-900">
+                          {p.photoUrl ? <img src={p.photoUrl} alt="Foto" className="h-full w-full object-cover" /> : null}
+                        </div>
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          disabled={saving || uploadingKey === `${gi}:${pi}`}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            onPickMemberPhoto(gi, pi, file);
+                            e.currentTarget.value = '';
+                          }}
+                        />
+                      </div>
                       <Input
                         value={p.name}
                         onChange={(e) =>
