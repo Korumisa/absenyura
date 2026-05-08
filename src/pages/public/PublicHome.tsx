@@ -313,19 +313,30 @@ export default function PublicHome() {
                         return (
                           <div
                             key={m.id}
-                            className="snap-start rounded-2xl border border-black/10 bg-white p-4 shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-[var(--public-primary)]/30 dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)] min-w-[240px] active:scale-[0.99]"
+                            className="group snap-start relative overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-[var(--public-primary)]/35 hover:shadow-[0_30px_70px_-52px_rgba(15,23,42,0.55)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)] dark:hover:shadow-[0_30px_70px_-52px_rgba(0,0,0,0.8)] min-w-[260px] active:scale-[0.99]"
                           >
-                            <div className="flex items-center gap-4">
-                              <div className="h-14 w-14 overflow-hidden rounded-full border border-black/10 bg-slate-100 dark:border-white/10 dark:bg-white/10">
-                                {m.photo_url ? (
-                                  <img src={m.photo_url} alt={m.name} className="h-full w-full object-cover" loading="lazy" />
-                                ) : (
-                                  <div className="grid h-full w-full place-items-center text-lg font-extrabold text-[var(--public-primary)]">{initial}</div>
-                                )}
-                              </div>
-                              <div className="min-w-0">
-                                <div className="truncate text-sm font-semibold text-slate-900 dark:text-white">{m.name}</div>
-                                <div className="truncate text-xs font-medium text-slate-600 dark:text-slate-300">{m.role}</div>
+                            <div className="aspect-[4/3] w-full">
+                              {m.photo_url ? (
+                                <img
+                                  src={m.photo_url}
+                                  alt={m.name}
+                                  className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"
+                                  loading="lazy"
+                                />
+                              ) : (
+                                <div className="relative h-full w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.32),rgba(15,23,42,0.08))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.28),rgba(255,255,255,0.04))]">
+                                  <div className="pointer-events-none absolute inset-0 opacity-70 [background:radial-gradient(circle_at_30%_25%,rgba(255,255,255,0.75),transparent_58%)]" />
+                                  <div className="grid h-full w-full place-items-center text-5xl font-extrabold text-white/90 drop-shadow-sm">
+                                    {initial}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/25 to-transparent" />
+                            <div className="absolute inset-x-0 bottom-0 p-4">
+                              <div className="truncate text-base font-extrabold tracking-tight text-white">{m.name}</div>
+                              <div className="mt-1 inline-flex max-w-full rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white/90 ring-1 ring-white/10 backdrop-blur">
+                                <span className="truncate">{m.role}</span>
                               </div>
                             </div>
                           </div>

@@ -55,41 +55,73 @@ export default function Fungsionaris() {
             </div>
           ) : (
             <div className="mt-10 space-y-16">
-            {groups.map((group) => (
-              <section key={group.id}>
-                <div className="mb-8 text-center text-3xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] sm:text-4xl md:text-5xl">
-                  {group.title}
+            {groups.map((group, gidx) => (
+              <section key={group.id} className="relative">
+                <div className="pointer-events-none absolute -left-16 -top-12 h-56 w-56 rounded-[48%_52%_58%_42%/44%_43%_57%_56%] bg-[var(--public-primary)]/10 blur-3xl" />
+                <div className={`pointer-events-none absolute -right-20 -bottom-10 h-64 w-64 blur-3xl ${gidx % 2 === 0 ? 'rounded-[53%_47%_45%_55%/48%_56%_44%_52%] bg-sky-400/10' : 'rounded-[42%_58%_52%_48%/54%_44%_56%_46%] bg-indigo-400/10'}`} />
+
+                <div className="mb-8 flex flex-col items-center gap-3 text-center">
+                  <div className="inline-flex items-center gap-3 rounded-full border border-black/10 bg-white/70 px-5 py-2 text-sm font-semibold text-slate-700 backdrop-blur dark:border-white/10 dark:bg-white/5 dark:text-slate-200">
+                    <span className="h-2 w-2 rounded-full bg-[var(--public-primary)]" />
+                    {group.title}
+                    <span className="rounded-full bg-black/5 px-2 py-0.5 text-xs font-bold text-slate-600 dark:bg-white/10 dark:text-slate-200">
+                      {(group.members ?? []).length}
+                    </span>
+                  </div>
+                  <div className="text-3xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] sm:text-4xl md:text-5xl">
+                    {group.title}
+                  </div>
                 </div>
                 {(group.members ?? []).length === 0 ? (
                   <div className="rounded-2xl border border-dashed border-black/15 bg-white/60 px-6 py-5 text-sm text-slate-600 dark:border-white/15 dark:bg-white/5 dark:text-slate-300">
                     Anggota belum diisi.
                   </div>
                 ) : (
-                  <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
-                    {(group.members ?? []).map((p) => {
+                  <div className="relative">
+                    <div className="pointer-events-none absolute inset-x-0 -top-6 h-px bg-gradient-to-r from-transparent via-black/10 to-transparent dark:via-white/10" />
+                    <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
+                    {(group.members ?? []).map((p, idx) => {
                       const initial = String(p.name ?? '').trim().slice(0, 1).toUpperCase() || 'A';
+                      const variant =
+                        idx % 3 === 0
+                          ? 'from-black/75 via-black/25'
+                          : idx % 3 === 1
+                            ? 'from-black/70 via-black/15'
+                            : 'from-black/80 via-black/30';
                       return (
                         <div
                           key={p.id}
-                          className="relative overflow-hidden rounded-2xl border border-black/10 bg-white p-6 shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-[var(--public-primary)]/30 dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)] active:scale-[0.99]"
+                          className="group relative overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-[var(--public-primary)]/35 hover:shadow-[0_30px_70px_-52px_rgba(15,23,42,0.55)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)] dark:hover:shadow-[0_30px_70px_-52px_rgba(0,0,0,0.85)] active:scale-[0.99]"
                         >
-                          <div className="pointer-events-none absolute -right-12 -top-12 h-48 w-48 rounded-[53%_47%_45%_55%/48%_56%_44%_52%] bg-[var(--public-primary)]/10 blur-3xl" />
-                          <div className="flex items-center gap-4">
-                            <div className="h-16 w-16 overflow-hidden rounded-full border border-[var(--public-primary)]/30 bg-[linear-gradient(135deg,rgba(37,99,235,0.25),rgba(15,23,42,0.03))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(255,255,255,0.04))]">
-                              {p.photo_url ? (
-                                <img src={p.photo_url} alt={p.name} className="h-full w-full object-cover" loading="lazy" />
-                              ) : (
-                                <div className="grid h-full w-full place-items-center text-xl font-extrabold text-[var(--public-primary)]">{initial}</div>
-                              )}
-                            </div>
-                            <div className="min-w-0">
-                              <div className="truncate text-sm font-semibold text-slate-800 dark:text-white">{p.name}</div>
-                              <div className="truncate text-sm text-slate-600 dark:text-slate-300">{p.role}</div>
+                          <div className="aspect-[4/5] w-full">
+                            {p.photo_url ? (
+                              <img
+                                src={p.photo_url}
+                                alt={p.name}
+                                className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"
+                                loading="lazy"
+                              />
+                            ) : (
+                              <div className="relative h-full w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.32),rgba(15,23,42,0.08))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.28),rgba(255,255,255,0.04))]">
+                                <div className="pointer-events-none absolute inset-0 opacity-70 [background:radial-gradient(circle_at_30%_25%,rgba(255,255,255,0.75),transparent_58%)]" />
+                                <div className="grid h-full w-full place-items-center text-6xl font-extrabold text-white/90 drop-shadow-sm">
+                                  {initial}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          <div className={`pointer-events-none absolute inset-0 bg-gradient-to-t ${variant} to-transparent`} />
+                          <div className={`pointer-events-none absolute inset-0 opacity-0 transition duration-300 group-hover:opacity-100 bg-[radial-gradient(circle_at_20%_15%,rgba(37,99,235,0.35),transparent_55%)]`} />
+                          <div className="absolute inset-x-0 bottom-0 p-5">
+                            <div className="truncate text-base font-extrabold tracking-tight text-white">{p.name}</div>
+                            <div className="mt-1 inline-flex max-w-full rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white/90 ring-1 ring-white/10 backdrop-blur">
+                              <span className="truncate">{p.role}</span>
                             </div>
                           </div>
                         </div>
                       );
                     })}
+                    </div>
                   </div>
                 )}
               </section>
