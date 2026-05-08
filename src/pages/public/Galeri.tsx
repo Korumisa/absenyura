@@ -50,37 +50,108 @@ export default function Galeri() {
               </div>
             </div>
           ) : (
-            <div className="mt-6 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-            {albums.map((a, idx) => {
-              const accent =
-                idx % 3 === 0 ? 'from-[var(--public-primary)]/35' : idx % 3 === 1 ? 'from-sky-400/35' : 'from-indigo-400/35';
+            (() => {
+              const featured = albums[0];
+              const rest = albums.slice(1);
+
               return (
-              <button
-                key={a.id}
-                type="button"
-                onClick={() => setOpenId(a.id)}
-                className="group text-left overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-[var(--public-primary)]/30 dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)]"
-              >
-                <div className="relative">
-                  <div className={`pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${accent} via-transparent to-transparent`} />
-                  <PublicPhotoFrame className="aspect-[16/10] w-full" inset={10}>
-                    <PublicCoverImage url={a.items?.[0]?.image_url} alt={a.title} imgClassName="transition duration-500 group-hover:scale-[1.02]" />
-                  </PublicPhotoFrame>
-                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/65 via-black/15 to-transparent opacity-90" />
-                  <div className="absolute inset-x-0 bottom-0 p-4">
-                    <div className="text-base font-extrabold tracking-tight text-white line-clamp-1">{a.title}</div>
-                    <div className="mt-1 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white/90 ring-1 ring-white/10 backdrop-blur">
-                      <span>{a.items.length} foto</span>
+                <div className="mt-6 space-y-8">
+                  <button
+                    type="button"
+                    onClick={() => setOpenId(featured.id)}
+                    className="group relative w-full overflow-hidden rounded-3xl border border-black/10 bg-white text-left shadow-[0_28px_70px_-52px_rgba(15,23,42,0.45)] transition hover:-translate-y-0.5 hover:border-[var(--public-primary)]/30 dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_28px_70px_-52px_rgba(0,0,0,0.7)]"
+                  >
+                    <div className="grid gap-0 lg:grid-cols-2">
+                      <div className="relative">
+                        <PublicPhotoFrame className="aspect-[16/10] w-full lg:aspect-auto lg:h-full" inset={12}>
+                          <PublicCoverImage
+                            url={featured.items?.[0]?.image_url}
+                            alt={featured.title}
+                            imgClassName="transition duration-700 group-hover:scale-[1.02]"
+                          />
+                        </PublicPhotoFrame>
+                        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent opacity-90 lg:hidden" />
+                        <div className="absolute inset-x-0 bottom-0 p-5 lg:hidden">
+                          <div className="text-xl font-extrabold tracking-tight text-white line-clamp-2">{featured.title}</div>
+                          <div className="mt-2 inline-flex items-center rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white/90 ring-1 ring-white/10 backdrop-blur">
+                            {featured.items?.length ?? 0} foto
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="relative p-6 md:p-8">
+                        <div className="pointer-events-none absolute -right-16 -top-16 h-52 w-52 rounded-[53%_47%_45%_55%/48%_56%_44%_52%] bg-[var(--public-primary)]/10 blur-3xl" />
+                        <div className="relative">
+                          <div className="hidden text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-300 lg:block">
+                            Highlight Album
+                          </div>
+                          <div className="mt-2 hidden text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white lg:block">
+                            {featured.title}
+                          </div>
+                          {featured.description ? (
+                            <div className="mt-3 text-sm leading-relaxed text-slate-700 line-clamp-4 dark:text-slate-300">
+                              {featured.description}
+                            </div>
+                          ) : (
+                            <div className="mt-3 text-sm text-slate-500 dark:text-slate-400">Dokumentasi kegiatan terbaru.</div>
+                          )}
+                          <div className="mt-6 flex flex-wrap items-center gap-2">
+                            <div className="inline-flex items-center rounded-full bg-[var(--public-primary)]/10 px-3 py-1 text-xs font-semibold text-[var(--public-primary)]">
+                              {featured.items?.length ?? 0} foto
+                            </div>
+                            <div className="inline-flex items-center rounded-full bg-black/5 px-3 py-1 text-xs font-semibold text-slate-700 dark:bg-white/10 dark:text-slate-200">
+                              Klik untuk lihat
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
+                  </button>
+
+                  <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+                    {rest.map((a, idx) => {
+                      const accent =
+                        idx % 3 === 0
+                          ? 'from-[var(--public-primary)]/35'
+                          : idx % 3 === 1
+                            ? 'from-sky-400/35'
+                            : 'from-indigo-400/35';
+                      return (
+                        <button
+                          key={a.id}
+                          type="button"
+                          onClick={() => setOpenId(a.id)}
+                          className="group overflow-hidden rounded-2xl border border-black/10 bg-white text-left shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-[var(--public-primary)]/30 dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)]"
+                        >
+                          <div className="relative">
+                            <div className={`pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${accent} via-transparent to-transparent`} />
+                            <PublicPhotoFrame className="aspect-[16/10] w-full" inset={10}>
+                              <PublicCoverImage
+                                url={a.items?.[0]?.image_url}
+                                alt={a.title}
+                                imgClassName="transition duration-500 group-hover:scale-[1.02]"
+                              />
+                            </PublicPhotoFrame>
+                            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/65 via-black/15 to-transparent opacity-90" />
+                            <div className="absolute inset-x-0 bottom-0 p-4">
+                              <div className="text-base font-extrabold tracking-tight text-white line-clamp-1">{a.title}</div>
+                              <div className="mt-1 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white/90 ring-1 ring-white/10 backdrop-blur">
+                                <span>{a.items.length} foto</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="p-5">
+                            {a.description ? (
+                              <div className="mt-2 line-clamp-2 text-sm text-slate-600 dark:text-slate-300">{a.description}</div>
+                            ) : null}
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
-                <div className="p-5">
-                  {a.description ? <div className="mt-2 line-clamp-2 text-sm text-slate-600 dark:text-slate-300">{a.description}</div> : null}
-                </div>
-              </button>
               );
-            })}
-            </div>
+            })()
           )}
         </PublicReveal>
       </PublicEnter>

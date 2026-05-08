@@ -64,42 +64,103 @@ export default function OpenRecruitment() {
               </div>
             </div>
           ) : (
-            <div className="mt-6 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-            {items.map((r) => (
-              <div
-                key={r.id}
-                className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)]"
-              >
-                <div className="aspect-[4/5] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.2),rgba(255,255,255,0.04))]">
-                  <PublicCoverImage url={r.poster_image_url} alt={r.title} />
-                </div>
-                <div className="p-5">
-                  <div className="text-base font-semibold text-slate-900 dark:text-white">{r.title}</div>
-                  <div className="mt-2 text-xs font-medium text-slate-500 dark:text-slate-400">{r.date_range ?? '-'}</div>
-                  {r.description ? <div className="mt-4 line-clamp-3 text-sm leading-relaxed text-slate-700 dark:text-slate-300">{r.description}</div> : null}
-                  <div className="mt-5 flex items-center justify-between">
-                    <button
-                      type="button"
-                      onClick={() => setOpenId(r.id)}
-                      className="rounded-lg border border-black/10 bg-white px-4 py-2 text-xs font-semibold text-slate-700 transition hover:border-[var(--public-primary)]/30 dark:border-white/10 dark:bg-zinc-950 dark:text-slate-200"
-                    >
-                      Detail
-                    </button>
-                    {r.form_url ? (
-                      <a
-                        href={r.form_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="rounded-lg bg-[var(--public-primary)] px-4 py-2 text-xs font-semibold text-white hover:brightness-110"
+            (() => {
+              const featured = items[0];
+              const rest = items.slice(1);
+              return (
+                <div className="mt-6 space-y-8">
+                  <div className="overflow-hidden rounded-3xl border border-black/10 bg-white shadow-[0_28px_70px_-52px_rgba(15,23,42,0.45)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_28px_70px_-52px_rgba(0,0,0,0.7)]">
+                    <div className="grid gap-0 lg:grid-cols-2">
+                      <div className="relative">
+                        <div className="aspect-[4/5] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.2),rgba(255,255,255,0.04))]">
+                          <PublicCoverImage url={featured.poster_image_url} alt={featured.title} imgClassName="transition duration-700 hover:scale-[1.01]" />
+                        </div>
+                        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent opacity-90 lg:hidden" />
+                        <div className="absolute inset-x-0 bottom-0 p-6 lg:hidden">
+                          <div className="text-2xl font-extrabold tracking-tight text-white line-clamp-2">{featured.title}</div>
+                          <div className="mt-2 inline-flex items-center rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white/90 ring-1 ring-white/10 backdrop-blur">
+                            {featured.date_range ?? '-'}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="relative p-6 md:p-8">
+                        <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-[53%_47%_45%_55%/48%_56%_44%_52%] bg-[var(--public-primary)]/10 blur-3xl" />
+                        <div className="relative">
+                          <div className="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-300">Highlight</div>
+                          <div className="mt-2 text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">{featured.title}</div>
+                          <div className="mt-2 text-sm font-semibold text-slate-600 dark:text-slate-300">{featured.date_range ?? '-'}</div>
+                          {featured.description ? (
+                            <div className="mt-4 text-sm leading-relaxed text-slate-700 dark:text-slate-200">{featured.description}</div>
+                          ) : (
+                            <div className="mt-4 text-sm text-slate-500 dark:text-slate-400">Info pendaftaran dan detail akan tampil di sini.</div>
+                          )}
+
+                          <div className="mt-6 flex flex-wrap items-center gap-3">
+                            <button
+                              type="button"
+                              onClick={() => setOpenId(featured.id)}
+                              className="rounded-xl border border-black/10 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-[var(--public-primary)]/30 dark:border-white/10 dark:bg-zinc-950 dark:text-slate-200"
+                            >
+                              Detail
+                            </button>
+                            {featured.form_url ? (
+                              <a
+                                href={featured.form_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="rounded-xl bg-[var(--public-primary)] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_16px_32px_rgba(37,99,235,0.35)] transition hover:brightness-110"
+                              >
+                                Join
+                              </a>
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+                    {rest.map((r) => (
+                      <div
+                        key={r.id}
+                        className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)]"
                       >
-                        Daftar
-                      </a>
-                    ) : null}
+                        <div className="aspect-[4/5] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.2),rgba(255,255,255,0.04))]">
+                          <PublicCoverImage url={r.poster_image_url} alt={r.title} />
+                        </div>
+                        <div className="p-5">
+                          <div className="text-base font-semibold text-slate-900 dark:text-white">{r.title}</div>
+                          <div className="mt-2 text-xs font-medium text-slate-500 dark:text-slate-400">{r.date_range ?? '-'}</div>
+                          {r.description ? (
+                            <div className="mt-4 line-clamp-3 text-sm leading-relaxed text-slate-700 dark:text-slate-300">{r.description}</div>
+                          ) : null}
+                          <div className="mt-5 flex items-center justify-between">
+                            <button
+                              type="button"
+                              onClick={() => setOpenId(r.id)}
+                              className="rounded-lg border border-black/10 bg-white px-4 py-2 text-xs font-semibold text-slate-700 transition hover:border-[var(--public-primary)]/30 dark:border-white/10 dark:bg-zinc-950 dark:text-slate-200"
+                            >
+                              Detail
+                            </button>
+                            {r.form_url ? (
+                              <a
+                                href={r.form_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="rounded-lg bg-[var(--public-primary)] px-4 py-2 text-xs font-semibold text-white hover:brightness-110"
+                              >
+                                Join
+                              </a>
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              </div>
-            ))}
-            </div>
+              );
+            })()
           )}
         </PublicReveal>
       </PublicEnter>

@@ -108,24 +108,36 @@ export default function InformasiLomba() {
                     <PublicCoverImage url={l.cover_image_url} alt={l.title} />
                   </div>
                   <div className="p-5">
-                    <div className="text-sm font-semibold text-slate-800 dark:text-white">{l.title}</div>
-                    <div className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">{l.date_label ?? '-'}</div>
-                    <div className="mt-4 flex items-center justify-between">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-300">
+                        {l.date_label ? `Batas: ${l.date_label}` : 'Batas: -'}
+                      </div>
                       <span
                         className={`rounded-full px-3 py-1 text-xs font-semibold ${
                           (l.status ?? 'Buka') === 'Buka'
-                            ? 'bg-emerald-50 text-emerald-700'
+                            ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-200'
                             : 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-200'
                         }`}
                       >
                         {l.status ?? 'Buka'}
                       </span>
+                    </div>
+                    <div className="mt-3 text-base font-extrabold tracking-tight text-slate-900 line-clamp-2 dark:text-white">{l.title}</div>
+                    {l.excerpt ? <div className="mt-3 text-sm text-slate-700 line-clamp-2 dark:text-slate-300">{l.excerpt}</div> : null}
+                    <div className="mt-5 flex items-center justify-between gap-3">
                       <button
                         type="button"
                         onClick={() => setOpenId(l.id)}
-                        className="rounded-xl border border-black/10 bg-white px-4 py-2 text-xs font-semibold text-slate-900 transition hover:border-[var(--public-primary)]/30 dark:border-white/10 dark:bg-zinc-950 dark:text-white"
+                        className="inline-flex items-center gap-2 rounded-xl bg-[var(--public-primary)] px-4 py-2 text-xs font-semibold text-white shadow-[0_12px_22px_rgba(37,99,235,0.28)] transition hover:brightness-110"
                       >
-                        Lihat Detail
+                        Join
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setOpenId(l.id)}
+                        className="rounded-xl border border-black/10 bg-white px-4 py-2 text-xs font-semibold text-slate-700 transition hover:border-[var(--public-primary)]/30 dark:border-white/10 dark:bg-zinc-950 dark:text-slate-200"
+                      >
+                        Detail
                       </button>
                     </div>
                   </div>

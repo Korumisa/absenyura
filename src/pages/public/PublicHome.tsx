@@ -1,10 +1,10 @@
 import React from 'react';
 import PublicLayout from '@/components/PublicLayout';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Images, Megaphone, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import useSWR from 'swr';
 import api from '@/services/api';
-import type { PublicPost, PublicProfile, PublicProgram, PublicStructureGroup } from '@/types/publicSite';
+import type { PublicGalleryAlbum, PublicPost, PublicProfile, PublicProgram, PublicRecruitment, PublicStructureGroup } from '@/types/publicSite';
 import PublicEnter from '@/components/PublicEnter';
 import PublicReveal from '@/components/PublicReveal';
 import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
@@ -67,7 +67,24 @@ export default function PublicHome() {
     (url) => api.get(url).then((r) => r.data.data),
     { revalidateOnFocus: false }
   );
-  const isPageLoading = isLoadingProfile || isLoadingPrograms || isLoadingStructure || isLoadingLatest;
+  const { data: recruitments = [], isLoading: isLoadingRecruitments } = useSWR<PublicRecruitment[]>(
+    '/public-site/recruitments',
+    fetcher,
+    { revalidateOnFocus: false }
+  );
+  const { data: galleries = [], isLoading: isLoadingGalleries } = useSWR<PublicGalleryAlbum[]>(
+    '/public-site/galleries',
+    fetcher,
+    { revalidateOnFocus: false }
+  );
+  const { data: lombaPaged, isLoading: isLoadingLomba } = useSWR<{ items: PublicPost[] }>(
+    '/public-site/posts?type=LOMBA&page=1&pageSize=6',
+    (url) => api.get(url).then((r) => r.data.data),
+    { revalidateOnFocus: false }
+  );
+
+  const isPageLoading =
+    isLoadingProfile || isLoadingPrograms || isLoadingStructure || isLoadingLatest || isLoadingRecruitments || isLoadingGalleries || isLoadingLomba;
 
   const orgName = profile?.org_name ?? '';
   const campusName = profile?.campus_name ?? '';
@@ -82,7 +99,9 @@ export default function PublicHome() {
 
   const logoSrc = profile?.logo_light_url ?? '';
   const posts = latest?.items ?? [];
+  const lomba = lombaPaged?.items ?? [];
   const heroKabinetName = kabinetName || (!isLoadingProfile ? 'Kabinet belum diatur' : '');
+  const memberCount = structure.reduce((acc, g) => acc + (g.members?.length ?? 0), 0);
 
   return (
     <PublicLayout>
@@ -140,6 +159,84 @@ export default function PublicHome() {
                 </div>
               </div>
             </PublicEnter>
+          </section>
+
+          <section className="relative bg-white py-10 dark:bg-zinc-950">
+            <PublicReveal className="mx-auto max-w-7xl px-6">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <Link
+                  to="/struktur-organisasi"
+                  className="group relative overflow-hidden rounded-2xl border border-black/10 bg-white p-5 shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-[var(--public-primary)]/30 dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)]"
+                >
+                  <div className="pointer-events-none absolute -right-8 -top-10 h-32 w-32 rounded-[53%_47%_45%_55%/48%_56%_44%_52%] bg-[var(--public-primary)]/12 blur-3xl" />
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="grid h-10 w-10 place-items-center rounded-xl bg-[var(--public-primary)]/12 text-[var(--public-primary)] ring-1 ring-black/10 dark:ring-white/10">
+                      <Users size={18} />
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-300">Fungsionaris</div>
+                      <div className="mt-1 text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">{memberCount || '-'}</div>
+                    </div>
+                  </div>
+                  <div className="mt-4 text-sm font-semibold text-slate-900 dark:text-white">Struktur Organisasi</div>
+                  <div className="mt-1 text-sm text-slate-600 dark:text-slate-300">Lihat susunan per divisi.</div>
+                </Link>
+
+                <Link
+                  to="/program-kerja"
+                  className="group relative overflow-hidden rounded-2xl border border-black/10 bg-white p-5 shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-[var(--public-primary)]/30 dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)]"
+                >
+                  <div className="pointer-events-none absolute -left-10 -bottom-10 h-36 w-36 rounded-[48%_52%_58%_42%/44%_43%_57%_56%] bg-sky-400/10 blur-3xl" />
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="grid h-10 w-10 place-items-center rounded-xl bg-sky-400/12 text-sky-700 ring-1 ring-black/10 dark:text-sky-300 dark:ring-white/10">
+                      <Megaphone size={18} />
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-300">Program</div>
+                      <div className="mt-1 text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">{programs.length || '-'}</div>
+                    </div>
+                  </div>
+                  <div className="mt-4 text-sm font-semibold text-slate-900 dark:text-white">Program Kerja</div>
+                  <div className="mt-1 text-sm text-slate-600 dark:text-slate-300">Yang jalan & yang disiapin.</div>
+                </Link>
+
+                <Link
+                  to="/open-recruitment"
+                  className="group relative overflow-hidden rounded-2xl border border-black/10 bg-white p-5 shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-[var(--public-primary)]/30 dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)]"
+                >
+                  <div className="pointer-events-none absolute -right-10 -bottom-12 h-44 w-44 rounded-[42%_58%_52%_48%/54%_44%_56%_46%] bg-indigo-400/10 blur-3xl" />
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="grid h-10 w-10 place-items-center rounded-xl bg-indigo-400/12 text-indigo-700 ring-1 ring-black/10 dark:text-indigo-300 dark:ring-white/10">
+                      <ArrowRight size={18} />
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-300">Oprec</div>
+                      <div className="mt-1 text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">{recruitments.length || '-'}</div>
+                    </div>
+                  </div>
+                  <div className="mt-4 text-sm font-semibold text-slate-900 dark:text-white">Open Recruitment</div>
+                  <div className="mt-1 text-sm text-slate-600 dark:text-slate-300">Info, poster, & CP.</div>
+                </Link>
+
+                <Link
+                  to="/galeri"
+                  className="group relative overflow-hidden rounded-2xl border border-black/10 bg-white p-5 shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-[var(--public-primary)]/30 dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)]"
+                >
+                  <div className="pointer-events-none absolute -left-12 -top-10 h-44 w-44 rounded-[53%_47%_45%_55%/48%_56%_44%_52%] bg-emerald-400/10 blur-3xl" />
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-400/12 text-emerald-700 ring-1 ring-black/10 dark:text-emerald-300 dark:ring-white/10">
+                      <Images size={18} />
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-300">Album</div>
+                      <div className="mt-1 text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">{galleries.length || '-'}</div>
+                    </div>
+                  </div>
+                  <div className="mt-4 text-sm font-semibold text-slate-900 dark:text-white">Galeri</div>
+                  <div className="mt-1 text-sm text-slate-600 dark:text-slate-300">Dokumentasi kegiatan.</div>
+                </Link>
+              </div>
+            </PublicReveal>
           </section>
 
           <section className="relative overflow-hidden bg-white dark:bg-zinc-950">
@@ -247,6 +344,73 @@ export default function PublicHome() {
         </PublicReveal>
       </section>
 
+      <section className="relative bg-white pb-24 pt-8 dark:bg-zinc-950">
+        <PublicReveal className="mx-auto max-w-7xl px-6">
+          <div className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
+            <div>
+              <div className="font-display text-5xl italic tracking-tight text-slate-900 dark:text-white md:text-6xl">Open</div>
+              <div className="-mt-2 text-5xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] md:text-6xl">Recruitment</div>
+              <div className="mt-3 max-w-xl text-sm text-slate-700 dark:text-slate-300">
+                Info pendaftaran, poster, dan contact person. Langsung cek yang lagi buka.
+              </div>
+            </div>
+            <Link
+              to="/open-recruitment"
+              className="inline-flex items-center gap-2 rounded-xl border border-black/10 bg-white px-6 py-3 text-sm font-semibold text-slate-900 transition hover:border-[var(--public-primary)]/40 dark:border-white/10 dark:bg-zinc-950 dark:text-white"
+            >
+              Lihat Semua
+              <ArrowRight size={18} />
+            </Link>
+          </div>
+
+          {isLoadingRecruitments ? (
+            <div className="mt-10 h-40" />
+          ) : recruitments.length === 0 ? (
+            <div className="mt-10 rounded-2xl border border-dashed border-black/15 bg-white/60 p-8 text-sm text-slate-600 dark:border-white/15 dark:bg-white/5 dark:text-slate-300">
+              Belum ada open recruitment yang dipublikasikan.
+            </div>
+          ) : (
+            <div className="mt-10 grid gap-6 md:grid-cols-3">
+              {recruitments.slice(0, 3).map((r) => (
+                <div
+                  key={r.id}
+                  className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)]"
+                >
+                  <div className="aspect-[16/10] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.2),rgba(255,255,255,0.04))]">
+                    <PublicCoverImage url={r.poster_image_url} alt={r.title} />
+                  </div>
+                  <div className="p-5">
+                    <div className="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-300">{r.date_range ?? '-'}</div>
+                    <div className="mt-2 text-lg font-extrabold tracking-tight text-slate-900 line-clamp-2 dark:text-white">{r.title}</div>
+                    {r.description ? <div className="mt-3 text-sm text-slate-700 line-clamp-2 dark:text-slate-300">{r.description}</div> : null}
+                    <div className="mt-5 flex items-center justify-between gap-3">
+                      <Link
+                        to="/open-recruitment"
+                        className="inline-flex items-center gap-2 rounded-xl border border-black/10 bg-white px-4 py-2 text-xs font-semibold text-slate-700 transition hover:border-[var(--public-primary)]/30 dark:border-white/10 dark:bg-zinc-950 dark:text-slate-200"
+                      >
+                        Detail
+                        <ArrowRight size={16} />
+                      </Link>
+                      {r.form_url ? (
+                        <a
+                          href={r.form_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 rounded-xl bg-[var(--public-primary)] px-4 py-2 text-xs font-semibold text-white shadow-[0_12px_22px_rgba(37,99,235,0.28)] transition hover:brightness-110"
+                        >
+                          Join
+                          <ArrowRight size={16} />
+                        </a>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </PublicReveal>
+      </section>
+
       <section className="relative bg-white pb-24 pt-10 dark:bg-zinc-950">
         <PublicReveal className="mx-auto max-w-7xl px-6">
           <div className="text-center">
@@ -350,6 +514,114 @@ export default function PublicHome() {
               <ArrowRight size={18} />
             </Link>
           </div>
+        </PublicReveal>
+      </section>
+
+      <section className="relative bg-white pb-24 dark:bg-zinc-950">
+        <PublicReveal className="mx-auto max-w-7xl px-6">
+          <div className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
+            <div>
+              <div className="font-display text-5xl italic tracking-tight text-slate-900 dark:text-white md:text-6xl">Informasi</div>
+              <div className="-mt-2 text-5xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] md:text-6xl">Lomba</div>
+              <div className="mt-3 max-w-xl text-sm text-slate-700 dark:text-slate-300">
+                Referensi gaya “Join” seperti HMTI: cepat, ringkas, dan enak discan.
+              </div>
+            </div>
+            <Link
+              to="/informasi-lomba"
+              className="inline-flex items-center gap-2 rounded-xl border border-black/10 bg-white px-6 py-3 text-sm font-semibold text-slate-900 transition hover:border-[var(--public-primary)]/40 dark:border-white/10 dark:bg-zinc-950 dark:text-white"
+            >
+              Lihat Semua
+              <ArrowRight size={18} />
+            </Link>
+          </div>
+
+          {isLoadingLomba ? (
+            <div className="mt-10 h-40" />
+          ) : lomba.length === 0 ? (
+            <div className="mt-10 rounded-2xl border border-dashed border-black/15 bg-white/60 p-8 text-sm text-slate-600 dark:border-white/15 dark:bg-white/5 dark:text-slate-300">
+              Belum ada informasi lomba yang dipublikasikan.
+            </div>
+          ) : (
+            <div className="mt-10 grid gap-4 lg:grid-cols-2">
+              {lomba.slice(0, 6).map((l) => (
+                <Link
+                  key={l.id}
+                  to="/informasi-lomba"
+                  className="group relative overflow-hidden rounded-2xl border border-black/10 bg-white p-5 shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-[var(--public-primary)]/30 dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)]"
+                >
+                  <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[var(--public-primary)]/25 to-transparent" />
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className="text-sm font-extrabold tracking-tight text-slate-900 line-clamp-2 dark:text-white">{l.title}</div>
+                      <div className="mt-2 text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-300">
+                        {l.date_label ? `Batas: ${l.date_label}` : 'Batas: -'}
+                      </div>
+                      {l.excerpt ? <div className="mt-3 text-sm text-slate-700 line-clamp-2 dark:text-slate-300">{l.excerpt}</div> : null}
+                    </div>
+                    <div className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-[var(--public-primary)] px-4 py-2 text-xs font-semibold text-white shadow-[0_12px_22px_rgba(37,99,235,0.28)] transition group-hover:brightness-110">
+                      Join
+                      <ArrowRight size={16} />
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </PublicReveal>
+      </section>
+
+      <section className="relative bg-white pb-24 dark:bg-zinc-950">
+        <PublicReveal className="mx-auto max-w-7xl px-6">
+          <div className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
+            <div>
+              <div className="font-display text-5xl italic tracking-tight text-slate-900 dark:text-white md:text-6xl">Galeri</div>
+              <div className="-mt-2 text-5xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] md:text-6xl">Kegiatan</div>
+              <div className="mt-3 max-w-xl text-sm text-slate-700 dark:text-slate-300">
+                Dokumentasi yang bikin homepage terasa hidup: album highlight + grid.
+              </div>
+            </div>
+            <Link
+              to="/galeri"
+              className="inline-flex items-center gap-2 rounded-xl border border-black/10 bg-white px-6 py-3 text-sm font-semibold text-slate-900 transition hover:border-[var(--public-primary)]/40 dark:border-white/10 dark:bg-zinc-950 dark:text-white"
+            >
+              Lihat Semua
+              <ArrowRight size={18} />
+            </Link>
+          </div>
+
+          {isLoadingGalleries ? (
+            <div className="mt-10 h-40" />
+          ) : galleries.length === 0 ? (
+            <div className="mt-10 rounded-2xl border border-dashed border-black/15 bg-white/60 p-8 text-sm text-slate-600 dark:border-white/15 dark:bg-white/5 dark:text-slate-300">
+              Belum ada album galeri yang dipublikasikan.
+            </div>
+          ) : (
+            <div className="mt-10 grid gap-6 md:grid-cols-3">
+              {galleries.slice(0, 3).map((a) => (
+                <Link
+                  key={a.id}
+                  to="/galeri"
+                  className="group overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-[var(--public-primary)]/30 dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)]"
+                >
+                  <div className="aspect-[16/10] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.2),rgba(255,255,255,0.04))]">
+                    <PublicCoverImage url={a.items?.[0]?.image_url} alt={a.title} imgClassName="transition duration-500 group-hover:scale-[1.02]" />
+                  </div>
+                  <div className="p-5">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <div className="text-lg font-extrabold tracking-tight text-slate-900 line-clamp-1 dark:text-white">{a.title}</div>
+                        {a.description ? <div className="mt-2 text-sm text-slate-700 line-clamp-2 dark:text-slate-300">{a.description}</div> : null}
+                      </div>
+                      <div className="inline-flex shrink-0 items-center gap-2 rounded-full bg-[var(--public-primary)]/10 px-3 py-1 text-xs font-semibold text-[var(--public-primary)]">
+                        {a.items?.length ?? 0} foto
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
         </PublicReveal>
       </section>
 
