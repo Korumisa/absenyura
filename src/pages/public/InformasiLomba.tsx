@@ -49,7 +49,7 @@ export default function InformasiLomba() {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Cari nama lomba..."
-                className="h-11 w-full rounded-xl border border-black/10 bg-white pl-11 pr-4 text-sm text-slate-700 outline-none focus:border-[var(--public-primary)]/50 dark:border-white/10 dark:bg-zinc-950 dark:text-slate-100"
+              className="h-11 w-full rounded-xl border border-black/10 bg-white pl-11 pr-4 text-sm text-slate-700 outline-none focus:border-[var(--public-primary)]/50 focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/35 dark:border-white/10 dark:bg-zinc-950 dark:text-slate-100"
               />
             </div>
 
@@ -61,7 +61,7 @@ export default function InformasiLomba() {
                     key={t}
                     type="button"
                     onClick={() => setFilter(t)}
-                    className={`h-11 flex-none whitespace-nowrap rounded-lg px-4 text-sm font-semibold transition sm:px-6 ${
+                    className={`h-11 flex-none whitespace-nowrap rounded-lg px-4 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/45 sm:px-6 ${
                       isActive ? 'bg-[var(--public-primary)] text-white' : 'text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-white/5'
                     }`}
                   >
@@ -73,7 +73,7 @@ export default function InformasiLomba() {
           </div>
 
           {!paged ? (
-            <div className="mt-10 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-10 grid gap-6 md:grid-cols-2 lg:gap-8 lg:grid-cols-3">
               {Array.from({ length: 6 }).map((_, idx) => (
                 <div key={idx} className="overflow-hidden rounded-2xl border border-black/10 bg-white dark:border-white/10 dark:bg-zinc-950">
                   <Skeleton className="aspect-[16/10] w-full rounded-none" />
@@ -98,7 +98,7 @@ export default function InformasiLomba() {
               </div>
             </div>
           ) : (
-            <div className="mt-10 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-10 grid gap-6 md:grid-cols-2 lg:gap-8 lg:grid-cols-3">
               {items.map((l) => (
                 <div
                   key={l.id}
@@ -128,16 +128,16 @@ export default function InformasiLomba() {
                       <button
                         type="button"
                         onClick={() => setOpenId(l.id)}
-                        className="inline-flex items-center gap-2 rounded-xl bg-[var(--public-primary)] px-4 py-2 text-xs font-semibold text-white shadow-[0_12px_22px_rgba(37,99,235,0.28)] transition hover:brightness-110"
+                        className="inline-flex items-center gap-2 rounded-xl bg-[var(--public-primary)] px-4 py-2 text-xs font-semibold text-white shadow-[0_12px_22px_rgba(37,99,235,0.28)] transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/45"
                       >
-                        Join
+                        Lihat detail
                       </button>
                       <button
                         type="button"
                         onClick={() => setOpenId(l.id)}
-                        className="rounded-xl border border-black/10 bg-white px-4 py-2 text-xs font-semibold text-slate-700 transition hover:border-[var(--public-primary)]/30 dark:border-white/10 dark:bg-zinc-950 dark:text-slate-200"
+                        className="rounded-xl border border-black/10 bg-white px-4 py-2 text-xs font-semibold text-slate-700 transition hover:border-[var(--public-primary)]/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/45 dark:border-white/10 dark:bg-zinc-950 dark:text-slate-200"
                       >
-                        Detail
+                        Ringkasan
                       </button>
                     </div>
                   </div>
@@ -168,7 +168,7 @@ export default function InformasiLomba() {
                 </div>
                 <button
                   type="button"
-                  className="rounded-xl bg-[var(--public-primary)] px-4 py-2 text-sm font-semibold text-white hover:brightness-110"
+                  className="rounded-xl bg-[var(--public-primary)] px-4 py-2 text-sm font-semibold text-white hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/45"
                   onClick={() => setOpenId(null)}
                 >
                   Tutup

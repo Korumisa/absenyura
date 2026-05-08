@@ -81,7 +81,7 @@ export default function Berita() {
               value={q}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Cari berita..."
-              className="h-11 w-full rounded-xl border border-black/10 bg-white pl-11 pr-4 text-sm text-slate-700 outline-none focus:border-[var(--public-primary)]/50 dark:border-white/10 dark:bg-zinc-950 dark:text-slate-100"
+              className="h-11 w-full rounded-xl border border-black/10 bg-white pl-11 pr-4 text-sm text-slate-700 outline-none focus:border-[var(--public-primary)]/50 focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/35 dark:border-white/10 dark:bg-zinc-950 dark:text-slate-100"
             />
           </div>
         </PublicPageHero>
@@ -121,7 +121,7 @@ export default function Berita() {
           </div>
 
           {isLoading ? (
-            <div className="mt-10 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-10 grid gap-6 md:grid-cols-2 lg:gap-8 lg:grid-cols-3">
               {Array.from({ length: 6 }).map((_, idx) => (
                 <div key={idx} className="overflow-hidden rounded-2xl border border-black/10 bg-white dark:border-white/10 dark:bg-zinc-950">
                   <Skeleton className="aspect-[16/10] w-full rounded-none" />
@@ -145,13 +145,13 @@ export default function Berita() {
               </div>
             </div>
           ) : (
-            <div className="mt-10 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-10 grid gap-6 md:grid-cols-2 lg:gap-8 lg:grid-cols-3">
               {items.map((p) => {
                 return (
                 <Link
                   key={p.id}
                   to={`/berita/${p.slug}`}
-                  className="group overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-[var(--public-primary)]/30 dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)]"
+                  className="group overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-[var(--public-primary)]/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/45 focus-visible:ring-offset-2 dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)] dark:focus-visible:ring-offset-zinc-950"
                 >
                   <div className="aspect-[16/10] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.2),rgba(255,255,255,0.04))]">
                     <PublicCoverImage url={p.cover_image_url} alt={p.title} />
@@ -166,7 +166,9 @@ export default function Berita() {
                     {p.excerpt ? (
                       <div className="mt-3 text-sm leading-relaxed text-slate-700 dark:text-slate-300 line-clamp-3">{p.excerpt}</div>
                     ) : null}
-                    <div className="mt-5 text-sm font-semibold text-[var(--public-primary)]">Baca selengkapnya</div>
+                    <div className="mt-5 inline-flex items-center rounded-lg bg-[var(--public-primary)]/10 px-3 py-1.5 text-sm font-semibold text-[var(--public-primary)]">
+                      Baca selengkapnya
+                    </div>
                   </div>
                 </Link>
                 );
@@ -180,7 +182,7 @@ export default function Berita() {
                 type="button"
                 disabled={paged.page <= 1}
                 onClick={() => goPage(paged.page - 1)}
-                className="h-10 rounded-xl border border-black/10 bg-white px-4 text-sm font-semibold text-slate-700 disabled:opacity-40 dark:border-white/10 dark:bg-zinc-950 dark:text-slate-200"
+                className="h-10 rounded-xl border border-black/10 bg-white px-4 text-sm font-semibold text-slate-700 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/45 dark:border-white/10 dark:bg-zinc-950 dark:text-slate-200"
               >
                 Sebelumnya
               </button>
@@ -194,7 +196,7 @@ export default function Berita() {
                     <button
                       type="button"
                       onClick={() => goPage(p)}
-                      className={`h-10 w-10 rounded-xl text-sm font-semibold transition ${
+                      className={`h-10 w-10 rounded-xl text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/45 ${
                         active
                           ? 'bg-[var(--public-primary)] text-white'
                           : 'border border-black/10 bg-white text-slate-700 hover:border-[var(--public-primary)]/30 dark:border-white/10 dark:bg-zinc-950 dark:text-slate-200'
@@ -209,7 +211,7 @@ export default function Berita() {
                 type="button"
                 disabled={paged.page >= paged.totalPages}
                 onClick={() => goPage(paged.page + 1)}
-                className="h-10 rounded-xl border border-black/10 bg-white px-4 text-sm font-semibold text-slate-700 disabled:opacity-40 dark:border-white/10 dark:bg-zinc-950 dark:text-slate-200"
+                className="h-10 rounded-xl border border-black/10 bg-white px-4 text-sm font-semibold text-slate-700 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/45 dark:border-white/10 dark:bg-zinc-950 dark:text-slate-200"
               >
                 Selanjutnya
               </button>

@@ -60,7 +60,7 @@ export default function Kegiatan() {
                     key={t.label}
                     type="button"
                     onClick={() => setTab(t.label)}
-                    className={`h-11 flex-none whitespace-nowrap rounded-lg px-4 text-sm font-semibold transition sm:px-6 ${
+                    className={`h-11 flex-none whitespace-nowrap rounded-lg px-4 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/45 sm:px-6 ${
                       active ? 'bg-[var(--public-primary)] text-white' : 'text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-white/5'
                     }`}
                   >
@@ -72,7 +72,7 @@ export default function Kegiatan() {
           </div>
 
           {!paged ? (
-            <div className="mt-10 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-10 grid gap-6 md:grid-cols-2 lg:gap-8 lg:grid-cols-3">
               {Array.from({ length: 6 }).map((_, idx) => (
                 <div key={idx} className="overflow-hidden rounded-2xl border border-black/10 bg-white dark:border-white/10 dark:bg-zinc-950">
                   <Skeleton className="aspect-[16/10] w-full rounded-none" />
@@ -97,7 +97,7 @@ export default function Kegiatan() {
               </div>
             </div>
           ) : (
-            <div className="mt-10 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-10 grid gap-6 md:grid-cols-2 lg:gap-8 lg:grid-cols-3">
               {items.map((e) => (
                 <div
                   key={e.id}
@@ -115,7 +115,7 @@ export default function Kegiatan() {
                       <button
                         type="button"
                         onClick={() => setOpenId(e.id)}
-                        className="rounded-xl border border-black/10 bg-white px-4 py-2 text-xs font-semibold text-slate-900 transition hover:border-[var(--public-primary)]/30 dark:border-white/10 dark:bg-zinc-950 dark:text-white"
+                        className="rounded-xl border border-black/10 bg-white px-4 py-2 text-xs font-semibold text-slate-900 transition hover:border-[var(--public-primary)]/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/45 dark:border-white/10 dark:bg-zinc-950 dark:text-white"
                       >
                         Lihat Detail
                       </button>
@@ -143,7 +143,7 @@ export default function Kegiatan() {
                 </div>
                 <button
                   type="button"
-                  className="rounded-xl bg-[var(--public-primary)] px-4 py-2 text-sm font-semibold text-white hover:brightness-110"
+                  className="rounded-xl bg-[var(--public-primary)] px-4 py-2 text-sm font-semibold text-white hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/45"
                   onClick={() => setOpenId(null)}
                 >
                   Tutup

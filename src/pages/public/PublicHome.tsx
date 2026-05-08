@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import PublicLayout from '@/components/PublicLayout';
 import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -15,8 +15,8 @@ import PublicProgramCard from '@/components/PublicProgramCard';
 function BrandMark({ className, src, name }: { className?: string; src: string; name: string }) {
   if (src)
     return (
-      <div className={[className, 'overflow-hidden rounded-2xl shadow-sm'].join(' ')}>
-        <PublicCoverImage url={src} alt={name || 'Logo'} imgClassName="object-contain p-2" />
+      <div className={className}>
+        <PublicCoverImage url={src} alt={name || 'Logo'} imgClassName="object-contain" />
       </div>
     );
   const first = String(name || '').trim().slice(0, 1).toUpperCase() || 'H';
@@ -58,6 +58,10 @@ function normalizeYoutubeEmbedUrl(input: string) {
 }
 
 export default function PublicHome() {
+  const [hasLoadedOnce, setHasLoadedOnce] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return window.sessionStorage.getItem('public-home-ready') === '1';
+  });
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
   const { data: profile, isLoading: isLoadingProfile } = useSWR<PublicProfile | null>('/public-site/profile', fetcher, { revalidateOnFocus: false });
   const { data: programs = [], isLoading: isLoadingPrograms } = useSWR<PublicProgram[]>('/public-site/programs', fetcher, { revalidateOnFocus: false });
@@ -85,6 +89,14 @@ export default function PublicHome() {
 
   const isPageLoading =
     isLoadingProfile || isLoadingPrograms || isLoadingStructure || isLoadingLatest || isLoadingRecruitments || isLoadingGalleries || isLoadingLomba;
+  const showLoadingOverlay = !hasLoadedOnce && isPageLoading;
+
+  useEffect(() => {
+    if (!hasLoadedOnce && !isPageLoading) {
+      setHasLoadedOnce(true);
+      if (typeof window !== 'undefined') window.sessionStorage.setItem('public-home-ready', '1');
+    }
+  }, [hasLoadedOnce, isPageLoading]);
 
   const orgName = profile?.org_name ?? '';
   const campusName = profile?.campus_name ?? '';
@@ -101,15 +113,21 @@ export default function PublicHome() {
   const posts = latest?.items ?? [];
   const lomba = lombaPaged?.items ?? [];
   const heroKabinetName = kabinetName || (!isLoadingProfile ? 'Kabinet belum diatur' : '');
+  const quickStats = [
+    { label: 'Program Kerja', value: programs.length },
+    { label: 'Open Recruitment', value: recruitments.length },
+    { label: 'Album Galeri', value: galleries.length },
+    { label: 'Berita Terbaru', value: posts.length },
+  ];
 
   return (
     <PublicLayout>
       <div className="relative">
-        <div className={`transition-opacity duration-200 ${isPageLoading ? 'pointer-events-none select-none opacity-75' : ''}`}>
+        <div className={`transition-opacity duration-200 ${showLoadingOverlay ? 'pointer-events-none select-none opacity-75' : ''}`}>
           <section className="relative overflow-hidden bg-[radial-gradient(circle_at_20%_20%,rgba(37,99,235,0.18),transparent_50%),radial-gradient(circle_at_70%_10%,rgba(59,130,246,0.14),transparent_55%),linear-gradient(180deg,rgba(15,23,42,0.02),transparent)] dark:bg-[radial-gradient(circle_at_20%_20%,rgba(37,99,235,0.22),transparent_55%),radial-gradient(circle_at_70%_10%,rgba(59,130,246,0.16),transparent_55%),linear-gradient(180deg,rgba(15,23,42,0.7),rgba(15,23,42,0.85))]">
             <PublicEnter className="mx-auto grid max-w-7xl items-center gap-12 px-6 py-16 md:grid-cols-2 md:py-24">
               <div className="flex items-start gap-6">
-                <BrandMark className="hidden h-20 w-20 shrink-0 shadow-sm sm:block" src={logoSrc} name={orgName || campusName} />
+                <BrandMark className="hidden h-24 w-24 shrink-0 sm:block" src={logoSrc} name={orgName || campusName} />
                 <div>
                   <div className="font-display text-4xl italic tracking-tight text-slate-900 dark:text-white md:text-5xl">Kabinet</div>
                   <div className="mt-1 text-5xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] md:text-7xl">
@@ -125,14 +143,14 @@ export default function PublicHome() {
                   <div className="mt-10 flex flex-wrap items-center gap-4">
                     <Link
                       to="/struktur-organisasi"
-                      className="inline-flex items-center gap-2 rounded-xl bg-[var(--public-primary)] px-6 py-3 text-sm font-semibold text-white shadow-[0_16px_32px_rgba(37,99,235,0.35)] transition hover:brightness-110"
+                      className="inline-flex items-center gap-2 rounded-xl bg-[var(--public-primary)] px-6 py-3 text-sm font-semibold text-white shadow-[0_16px_32px_rgba(37,99,235,0.35)] transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/45"
                     >
                       Struktur Organisasi
                       <ArrowRight size={18} />
                     </Link>
                     <Link
                       to="/berita"
-                      className="inline-flex items-center gap-2 rounded-xl border border-black/10 bg-white/70 px-6 py-3 text-sm font-semibold text-slate-900 backdrop-blur transition hover:bg-white dark:border-white/10 dark:bg-white/10 dark:text-white dark:hover:bg-white/15"
+                      className="inline-flex items-center gap-2 rounded-xl border border-black/10 bg-white/70 px-6 py-3 text-sm font-semibold text-slate-900 backdrop-blur transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/45 dark:border-white/10 dark:bg-white/10 dark:text-white dark:hover:bg-white/15"
                     >
                       Berita Terbaru
                       <ArrowRight size={18} />
@@ -160,24 +178,25 @@ export default function PublicHome() {
             </PublicEnter>
           </section>
 
+          <section className="relative bg-white py-8 dark:bg-zinc-950">
+            <PublicReveal className="mx-auto max-w-7xl px-6">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {quickStats.map((s) => (
+                  <div
+                    key={s.label}
+                    className="rounded-2xl border border-black/10 bg-white/90 px-5 py-4 shadow-[0_14px_32px_-28px_rgba(15,23,42,0.45)] dark:border-white/10 dark:bg-zinc-900/80 dark:shadow-[0_14px_32px_-28px_rgba(0,0,0,0.7)]"
+                  >
+                    <div className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">{s.value}</div>
+                    <div className="mt-1 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-300">{s.label}</div>
+                  </div>
+                ))}
+              </div>
+            </PublicReveal>
+          </section>
+
           <section className="relative overflow-hidden bg-white dark:bg-zinc-950">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_10%,rgba(37,99,235,0.12),transparent_55%),radial-gradient(circle_at_75%_20%,rgba(59,130,246,0.10),transparent_60%)] opacity-70 dark:opacity-50" />
             <PublicReveal className="relative mx-auto grid max-w-7xl gap-10 px-6 py-16 md:grid-cols-2 md:py-20">
-              <div className="text-slate-800 dark:text-slate-100">
-                <div className="mb-4 font-display text-3xl italic tracking-tight md:text-4xl">{aboutTitle || 'Tentang'}</div>
-                {aboutParagraphs.length ? (
-                  <div className="space-y-5 text-[17px] leading-relaxed text-slate-700 dark:text-slate-300">
-                    {aboutParagraphs.map((p) => (
-                      <p key={p}>{p}</p>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="rounded-2xl border border-dashed border-black/15 bg-white/60 p-6 text-sm text-slate-600 dark:border-white/15 dark:bg-white/5 dark:text-slate-300">
-                    Konten “Tentang” belum diatur. Admin bisa isi dari menu Konten Website.
-                  </div>
-                )}
-              </div>
-
               <div className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_22px_56px_-48px_rgba(15,23,42,0.45)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_22px_56px_-48px_rgba(0,0,0,0.6)]">
                 <div className="aspect-video w-full">
                   {videoSrc ? (
@@ -197,6 +216,21 @@ export default function PublicHome() {
                     </div>
                   )}
                 </div>
+              </div>
+
+              <div className="text-slate-800 dark:text-slate-100">
+                <div className="mb-4 font-display text-3xl italic tracking-tight md:text-4xl">{aboutTitle || 'Tentang'}</div>
+                {aboutParagraphs.length ? (
+                  <div className="space-y-5 text-[17px] leading-relaxed text-slate-700 dark:text-slate-300">
+                    {aboutParagraphs.map((p) => (
+                      <p key={p}>{p}</p>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-black/15 bg-white/60 p-6 text-sm text-slate-600 dark:border-white/15 dark:bg-white/5 dark:text-slate-300">
+                    Konten “Tentang” belum diatur. Admin bisa isi dari menu Konten Website.
+                  </div>
+                )}
               </div>
             </PublicReveal>
 
@@ -606,8 +640,8 @@ export default function PublicHome() {
                         {p.excerpt}
                       </div>
                     ) : null}
-                    <div className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-[var(--public-primary)]">
-                      Baca
+                    <div className="mt-5 inline-flex items-center gap-2 rounded-xl border border-[var(--public-primary)]/25 bg-[var(--public-primary)]/10 px-3 py-2 text-sm font-semibold text-[var(--public-primary)] transition group-hover:bg-[var(--public-primary)] group-hover:text-white">
+                      Baca selengkapnya
                       <ArrowRight size={18} className="transition group-hover:translate-x-0.5" />
                     </div>
                   </div>
@@ -619,7 +653,7 @@ export default function PublicHome() {
           </section>
         </div>
 
-        <PublicLoadingOverlay show={isPageLoading} />
+        <PublicLoadingOverlay show={showLoadingOverlay} />
       </div>
     </PublicLayout>
   );

@@ -4,7 +4,7 @@ import useSWR from 'swr';
 import api from '@/services/api';
 import type { PublicPost } from '@/types/publicSite';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import PublicEnter from '@/components/PublicEnter';
 import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
@@ -19,16 +19,16 @@ export default function BeritaDetail() {
   return (
     <PublicLayout>
       <PublicLoadingOverlay show={showLoading} />
-      <PublicEnter className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-12">
-        <Link to="/berita" className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--public-primary)]">
+      <PublicEnter className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
+        <Link to="/berita" className="inline-flex items-center gap-2 rounded-xl border border-[var(--public-primary)]/20 bg-[var(--public-primary)]/10 px-4 py-2 text-sm font-semibold text-[var(--public-primary)] transition hover:bg-[var(--public-primary)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/45">
           <ArrowLeft size={18} />
           Kembali ke Berita
         </Link>
 
         {isLoading ? (
           <div className="mt-8">
-            <Skeleton className="h-[220px] w-full rounded-3xl sm:h-[360px] md:h-[480px]" />
-            <div className="mx-auto mt-8 max-w-3xl rounded-3xl border border-black/10 bg-white p-7 shadow-[0_28px_70px_-52px_rgba(15,23,42,0.45)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_28px_70px_-52px_rgba(0,0,0,0.7)] md:p-10">
+            <Skeleton className="h-[220px] w-full rounded-3xl sm:h-[320px] lg:h-[440px]" />
+            <div className="mx-auto mt-8 max-w-4xl rounded-3xl border border-black/10 bg-white p-7 shadow-[0_28px_70px_-52px_rgba(15,23,42,0.45)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_28px_70px_-52px_rgba(0,0,0,0.7)] md:p-10">
               <div className="flex flex-wrap items-center gap-2">
                 <Skeleton className="h-4 w-24" />
                 <Skeleton className="h-4 w-16" />
@@ -44,34 +44,52 @@ export default function BeritaDetail() {
             Konten tidak ditemukan atau belum dipublikasikan.
           </div>
         ) : (
-          <div className="mt-8">
+          <div className="mt-8 space-y-8">
             <div className="overflow-hidden rounded-3xl border border-black/10 bg-white shadow-[0_28px_70px_-52px_rgba(15,23,42,0.45)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_28px_70px_-52px_rgba(0,0,0,0.7)]">
-              <div className="h-[220px] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.2),rgba(255,255,255,0.04))] sm:h-[360px] md:h-[480px]">
+              <div className="h-[220px] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.2),rgba(255,255,255,0.04))] sm:h-[320px] lg:h-[440px]">
                 <PublicCoverImage url={post.cover_image_url} alt={post.title} />
               </div>
             </div>
 
-            <article className="mx-auto mt-8 max-w-3xl rounded-3xl border border-black/10 bg-white p-7 shadow-[0_28px_70px_-52px_rgba(15,23,42,0.45)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_28px_70px_-52px_rgba(0,0,0,0.7)] md:p-10">
-              <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-300">
-                <span>{post.category?.name ?? 'Berita'}</span>
-                {post.date_label ? <span className="text-slate-300 dark:text-slate-600">•</span> : null}
-                {post.date_label ? <span className="normal-case tracking-normal">{post.date_label}</span> : null}
+            <article className="mx-auto max-w-4xl rounded-3xl border border-black/10 bg-white p-6 shadow-[0_28px_70px_-52px_rgba(15,23,42,0.45)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_28px_70px_-52px_rgba(0,0,0,0.7)] sm:p-8 md:p-10">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full bg-[var(--public-primary)]/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-[var(--public-primary)]">
+                  {post.category?.name ?? 'Berita'}
+                </span>
+                {post.date_label ? (
+                  <span className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-semibold text-slate-600 dark:border-white/10 dark:bg-zinc-900 dark:text-slate-300">
+                    {post.date_label}
+                  </span>
+                ) : null}
               </div>
-              <h1 className="mt-4 text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white md:text-4xl">
+              <h1 className="mt-5 text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-3xl md:text-4xl">
                 {post.title}
               </h1>
 
               {post.excerpt ? (
-                <p className="mt-5 text-base leading-relaxed text-slate-700 dark:text-slate-300">{post.excerpt}</p>
+                <p className="mt-5 rounded-2xl border border-black/10 bg-slate-50/80 p-4 text-base leading-relaxed text-slate-700 dark:border-white/10 dark:bg-zinc-900/70 dark:text-slate-300">
+                  {post.excerpt}
+                </p>
               ) : null}
 
               {post.content ? (
-                <div className="mt-8 break-words whitespace-pre-wrap text-[15px] leading-relaxed text-slate-700 dark:text-slate-200">
+                <div className="mt-8 break-words whitespace-pre-wrap text-[15px] leading-8 text-slate-700 dark:text-slate-200">
                   {post.content}
                 </div>
               ) : (
                 <div className="mt-8 text-sm text-slate-500 dark:text-slate-400">Konten detail belum diisi.</div>
               )}
+
+              <div className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-black/10 pt-6 dark:border-white/10">
+                <div className="text-sm text-slate-500 dark:text-slate-300">Baca berita lainnya untuk update terbaru HM SDP.</div>
+                <Link
+                  to="/berita"
+                  className="inline-flex items-center gap-2 rounded-xl bg-[var(--public-primary)] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_12px_22px_rgba(37,99,235,0.28)] transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/45"
+                >
+                  Lihat daftar berita
+                  <ArrowRight size={16} />
+                </Link>
+              </div>
             </article>
           </div>
         )}

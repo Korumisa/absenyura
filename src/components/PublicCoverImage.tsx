@@ -23,6 +23,7 @@ export default function PublicCoverImage({ url, alt, className, imgClassName }: 
           alt={alt}
           className={cn('h-full w-full object-cover', imgClassName)}
           loading="lazy"
+          decoding="async"
           referrerPolicy="no-referrer"
           onError={() => setFailed(true)}
         />

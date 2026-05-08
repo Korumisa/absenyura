@@ -14,6 +14,11 @@ export default function ProgramKerja() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
   const { data: items = [], isLoading } = useSWR<PublicProgram[]>('/public-site/programs', fetcher, { revalidateOnFocus: false });
   const showLoading = isLoading && items.length === 0;
+  const recentCount = items.filter((x) => {
+    const t = Date.parse(x.updated_at);
+    if (!Number.isFinite(t)) return false;
+    return Date.now() - t < 1000 * 60 * 60 * 24 * 30;
+  }).length;
 
   return (
     <PublicLayout>
@@ -22,6 +27,21 @@ export default function ProgramKerja() {
         <PublicPageHero top="Program" bottom="Kerja" subtitle="Daftar program kerja yang dapat dipantau publik dan dikelola oleh admin." />
 
         <PublicReveal className="mx-auto max-w-7xl px-6 pb-16">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-2xl border border-black/10 bg-white/90 px-5 py-4 dark:border-white/10 dark:bg-zinc-900/80">
+              <div className="text-2xl font-extrabold text-slate-900 dark:text-white">{items.length}</div>
+              <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-300">Total Program</div>
+            </div>
+            <div className="rounded-2xl border border-black/10 bg-white/90 px-5 py-4 dark:border-white/10 dark:bg-zinc-900/80">
+              <div className="text-2xl font-extrabold text-slate-900 dark:text-white">{recentCount}</div>
+              <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-300">Update 30 Hari</div>
+            </div>
+            <div className="rounded-2xl border border-black/10 bg-white/90 px-5 py-4 dark:border-white/10 dark:bg-zinc-900/80">
+              <div className="text-2xl font-extrabold text-slate-900 dark:text-white">{Math.max(items.length - recentCount, 0)}</div>
+              <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-300">Arsip Program</div>
+            </div>
+          </div>
+
           {isLoading ? (
             <div className="mt-6 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 6 }).map((_, idx) => (
@@ -47,10 +67,17 @@ export default function ProgramKerja() {
               </div>
             </div>
           ) : (
-            <div className="mt-6 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {items.map((program, idx) => (
-                <PublicProgramCard key={program.id} program={program} index={idx} />
-              ))}
+            <div className="mt-8">
+              <div className="mb-5 text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-300">
+                Daftar Program
+              </div>
+              <div className="grid gap-5 md:grid-cols-2 lg:gap-6 lg:grid-cols-3">
+                {items.map((program, idx) => (
+                  <div key={program.id} className={idx === 0 ? 'md:col-span-2 lg:col-span-1' : ''}>
+                    <PublicProgramCard program={program} index={idx} />
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </PublicReveal>
