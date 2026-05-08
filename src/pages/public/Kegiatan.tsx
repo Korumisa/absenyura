@@ -3,6 +3,7 @@ import PublicLayout from '@/components/PublicLayout';
 import useSWR from 'swr';
 import api from '@/services/api';
 import type { PublicPost, PublicPostType } from '@/types/publicSite';
+import { Link } from 'react-router-dom';
 import { Skeleton } from '@/components/ui/skeleton';
 import PublicEnter from '@/components/PublicEnter';
 import PublicReveal from '@/components/PublicReveal';
@@ -112,13 +113,22 @@ export default function Kegiatan() {
                     <div className="mt-2 text-xs font-medium text-slate-500 dark:text-slate-400">{e.date_label ?? '-'}</div>
                     {e.excerpt ? <div className="mt-4 line-clamp-3 text-sm leading-relaxed text-slate-700 dark:text-slate-300">{e.excerpt}</div> : null}
                     <div className="mt-5">
-                      <button
-                        type="button"
-                        onClick={() => setOpenId(e.id)}
-                        className="rounded-xl border border-black/10 bg-white px-4 py-2 text-xs font-semibold text-slate-900 transition hover:border-[var(--public-primary)]/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/45 dark:border-white/10 dark:bg-zinc-950 dark:text-white"
-                      >
-                        Lihat Detail
-                      </button>
+                      {e.type === 'BERITA' ? (
+                        <Link
+                          to={`/berita/${e.slug}`}
+                          className="inline-flex rounded-xl border border-black/10 bg-white px-4 py-2 text-xs font-semibold text-slate-900 transition hover:border-[var(--public-primary)]/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/45 dark:border-white/10 dark:bg-zinc-950 dark:text-white"
+                        >
+                          Baca Selengkapnya
+                        </Link>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setOpenId(e.id)}
+                          className="rounded-xl border border-black/10 bg-white px-4 py-2 text-xs font-semibold text-slate-900 transition hover:border-[var(--public-primary)]/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/45 dark:border-white/10 dark:bg-zinc-950 dark:text-white"
+                        >
+                          Lihat Detail
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

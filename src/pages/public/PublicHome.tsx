@@ -113,12 +113,6 @@ export default function PublicHome() {
   const posts = latest?.items ?? [];
   const lomba = lombaPaged?.items ?? [];
   const heroKabinetName = kabinetName || (!isLoadingProfile ? 'Kabinet belum diatur' : '');
-  const quickStats = [
-    { label: 'Program Kerja', value: programs.length },
-    { label: 'Open Recruitment', value: recruitments.length },
-    { label: 'Album Galeri', value: galleries.length },
-    { label: 'Berita Terbaru', value: posts.length },
-  ];
 
   return (
     <PublicLayout>
@@ -176,22 +170,6 @@ export default function PublicHome() {
                 </div>
               </div>
             </PublicEnter>
-          </section>
-
-          <section className="relative bg-white py-8 dark:bg-zinc-950">
-            <PublicReveal className="mx-auto max-w-7xl px-6">
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                {quickStats.map((s) => (
-                  <div
-                    key={s.label}
-                    className="rounded-2xl border border-black/10 bg-white/90 px-5 py-4 shadow-[0_14px_32px_-28px_rgba(15,23,42,0.45)] dark:border-white/10 dark:bg-zinc-900/80 dark:shadow-[0_14px_32px_-28px_rgba(0,0,0,0.7)]"
-                  >
-                    <div className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">{s.value}</div>
-                    <div className="mt-1 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-300">{s.label}</div>
-                  </div>
-                ))}
-              </div>
-            </PublicReveal>
           </section>
 
           <section className="relative overflow-hidden bg-white dark:bg-zinc-950">
@@ -407,21 +385,19 @@ export default function PublicHome() {
                       );
                     }
 
-                    const shown = members.slice(0, 12);
-                    const single = shown.length === 1;
-                    const renderCard = (m: (typeof members)[number], variant: 'scroll' | 'grid') => {
+                    const shown = members.slice(0, 8);
+                    const renderCard = (m: (typeof members)[number], variant: 'hero' | 'tile') => {
                       const initial = String(m.name ?? '').trim().slice(0, 1).toUpperCase() || 'A';
-                      const cardBase =
-                        'group relative overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:border-[var(--public-primary)]/25 hover:shadow-[0_22px_56px_-48px_rgba(15,23,42,0.45)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)] dark:hover:shadow-[0_22px_56px_-48px_rgba(0,0,0,0.75)] active:scale-[0.99]';
-                      const size =
-                        variant === 'grid'
-                          ? 'w-full'
-                          : single
-                            ? 'w-[200px] sm:w-[220px]'
-                            : 'snap-start min-w-[180px] sm:min-w-[200px]';
+                      const frameClass =
+                        variant === 'hero'
+                          ? 'aspect-[4/5] sm:aspect-[5/6] lg:aspect-[4/5]'
+                          : 'aspect-[4/5]';
                       return (
-                        <div key={m.id} className={`${cardBase} ${size}`}>
-                          <PublicPhotoFrame className="aspect-[1/1] w-full" inset={10}>
+                        <div
+                          key={m.id}
+                          className="group relative overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-[var(--public-primary)]/25 hover:shadow-[0_22px_56px_-48px_rgba(15,23,42,0.45)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)] dark:hover:shadow-[0_22px_56px_-48px_rgba(0,0,0,0.75)]"
+                        >
+                          <PublicPhotoFrame className={`${frameClass} w-full`} inset={10}>
                             {m.photo_url ? (
                               <PublicCoverImage url={m.photo_url} alt={m.name} imgClassName="transition duration-300 group-hover:scale-[1.03]" />
                             ) : (
@@ -431,7 +407,7 @@ export default function PublicHome() {
                               </div>
                             )}
                           </PublicPhotoFrame>
-                          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/75 via-black/18 to-transparent sm:h-32" />
+                          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/80 via-black/20 to-transparent sm:h-32" />
                           <div className="absolute inset-x-0 bottom-0 p-4">
                             <div className="truncate text-sm font-extrabold tracking-tight text-white sm:text-base">{m.name}</div>
                             <div className="mt-1 inline-flex max-w-full rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white/90 ring-1 ring-white/10 backdrop-blur">
@@ -443,24 +419,19 @@ export default function PublicHome() {
                     };
 
                     return (
-                      <div className="relative mt-4">
-                        <div className="md:hidden">
-                          {!single ? (
-                            <>
-                              <div className="pointer-events-none absolute inset-y-0 left-0 w-10 bg-gradient-to-r from-white to-transparent dark:from-zinc-950" />
-                              <div className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-white to-transparent dark:from-zinc-950" />
-                            </>
-                          ) : null}
-
-                          <div
-                            className={`flex gap-4 pb-2 ${single ? 'justify-start overflow-x-hidden' : 'snap-x snap-mandatory overflow-x-auto'} pl-1 pr-1 scrollbar-hide`}
-                          >
-                            {shown.map((m) => renderCard(m, 'scroll'))}
-                          </div>
+                      <div className="relative mt-5 rounded-3xl border border-black/10 bg-white/70 p-3 shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] backdrop-blur dark:border-white/10 dark:bg-zinc-950/70 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)] sm:p-4">
+                        <div className="mb-3 flex items-center justify-between px-1">
+                          <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-300">Galeri Anggota</div>
+                          <div className="text-xs font-semibold text-slate-500 dark:text-slate-300">{members.length} anggota</div>
                         </div>
 
-                        <div className="hidden gap-4 md:grid md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-                          {shown.map((m) => renderCard(m, 'grid'))}
+                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                          <div className="sm:col-span-2 lg:row-span-2">
+                            {renderCard(shown[0], 'hero')}
+                          </div>
+                          {shown.slice(1).map((m) => (
+                            <div key={m.id}>{renderCard(m, 'tile')}</div>
+                          ))}
                         </div>
                       </div>
                     );
