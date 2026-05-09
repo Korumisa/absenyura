@@ -466,6 +466,7 @@ export const createAdminPost = async (req: PublicRoleRequest, res: Response): Pr
         slug,
         date_label: String(payload.dateLabel ?? '').trim() || null,
         status: String(payload.status ?? '').trim() || null,
+        ...(String(payload.formUrl ?? '').trim() ? ({ form_url: String(payload.formUrl ?? '').trim() } as any) : ({} as any)),
         excerpt: String(payload.excerpt ?? '').trim() || null,
         content: String(payload.content ?? '').trim() || null,
         cover_image_url: String(payload.coverImageUrl ?? '').trim() || null,
@@ -508,6 +509,7 @@ export const updateAdminPost = async (req: PublicRoleRequest, res: Response): Pr
       ? existing.published_at ?? new Date()
       : null;
 
+    const existingAny = existing as any;
     const row = await prisma.publicPost.update({
       where: { id },
       data: {
@@ -516,6 +518,9 @@ export const updateAdminPost = async (req: PublicRoleRequest, res: Response): Pr
         slug,
         date_label: typeof payload.dateLabel === 'string' ? payload.dateLabel.trim() || null : existing.date_label,
         status: typeof payload.status === 'string' ? payload.status.trim() || null : existing.status,
+        ...(typeof payload.formUrl === 'string'
+          ? ({ form_url: payload.formUrl.trim() || null } as any)
+          : ({ form_url: existingAny.form_url ?? null } as any)),
         excerpt: typeof payload.excerpt === 'string' ? payload.excerpt.trim() || null : existing.excerpt,
         content: typeof payload.content === 'string' ? payload.content.trim() || null : existing.content,
         cover_image_url: typeof payload.coverImageUrl === 'string' ? payload.coverImageUrl.trim() || null : existing.cover_image_url,

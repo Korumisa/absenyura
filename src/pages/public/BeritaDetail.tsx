@@ -2,7 +2,7 @@ import React from 'react';
 import PublicLayout from '@/components/PublicLayout';
 import useSWR from 'swr';
 import api from '@/services/api';
-import type { PublicPost } from '@/types/publicSite';
+import type { PublicPost, PublicProfile } from '@/types/publicSite';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -13,8 +13,10 @@ import PublicCoverImage from '@/components/PublicCoverImage';
 export default function BeritaDetail() {
   const { slug } = useParams();
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
+  const { data: profile } = useSWR<PublicProfile | null>('/public-site/profile', fetcher, { revalidateOnFocus: false });
   const { data: post, isLoading } = useSWR<PublicPost>(slug ? `/public-site/posts/${slug}` : null, fetcher, { revalidateOnFocus: false });
   const showLoading = isLoading && !post;
+  const orgName = profile?.org_name ?? '';
 
   return (
     <PublicLayout>
@@ -28,7 +30,7 @@ export default function BeritaDetail() {
         {isLoading ? (
           <div className="mt-8">
             <Skeleton className="h-[220px] w-full rounded-3xl sm:h-[320px] lg:h-[440px]" />
-            <div className="mx-auto mt-8 max-w-4xl rounded-3xl border border-black/10 bg-white p-7 shadow-[0_28px_70px_-52px_rgba(15,23,42,0.45)] dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_28px_70px_-52px_rgba(0,0,0,0.7)] md:p-10">
+            <div className="mx-auto mt-8 max-w-4xl rounded-3xl border border-black/10 bg-white p-7 shadow-[0_28px_70px_-52px_rgba(15,23,42,0.45)] md:p-10">
               <div className="flex flex-wrap items-center gap-2">
                 <Skeleton className="h-4 w-24" />
                 <Skeleton className="h-4 w-16" />
@@ -40,7 +42,7 @@ export default function BeritaDetail() {
             </div>
           </div>
         ) : !post ? (
-          <div className="mt-10 rounded-2xl border border-dashed border-black/15 bg-white/60 p-6 text-sm text-slate-600 dark:border-white/15 dark:bg-white/5 dark:text-slate-300 sm:p-8">
+          <div className="mt-10 rounded-2xl border border-dashed border-black/15 bg-white/60 p-6 text-sm text-slate-600 sm:p-8">
             Konten tidak ditemukan atau belum dipublikasikan.
           </div>
         ) : (
@@ -49,38 +51,40 @@ export default function BeritaDetail() {
               <h1 className="mx-auto max-w-4xl text-3xl font-extrabold leading-tight tracking-tight text-[var(--public-primary)] sm:text-4xl md:text-5xl">
                 {post.title}
               </h1>
-              <div className="mt-5 text-base font-semibold text-slate-700 dark:text-slate-200">
-                Tim Publikasi HM SDP
-                <span className="mx-2 text-slate-300 dark:text-slate-600">-</span>
+              <div className="mt-5 text-base font-semibold text-slate-700">
+                {orgName ? `Tim Publikasi ${orgName}` : 'Tim Publikasi'}
+                <span className="mx-2 text-slate-300">-</span>
                 <span className="text-[var(--public-primary)]">{post.category?.name ?? 'Berita'}</span>
               </div>
               {post.date_label ? (
-                <div className="mt-3 text-sm text-slate-500 dark:text-slate-300">{post.date_label}</div>
+                <div className="mt-3 text-sm text-slate-500">{post.date_label}</div>
               ) : null}
             </header>
 
-            <div className="mt-8 overflow-hidden rounded-2xl border border-black/10 bg-white dark:border-white/10 dark:bg-zinc-950">
-              <div className="aspect-[16/10] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.2),rgba(255,255,255,0.04))]">
-                <PublicCoverImage url={post.cover_image_url} alt={post.title} />
+            <div className="mt-8 overflow-hidden rounded-2xl border border-black/10 bg-white">
+              <div className="aspect-[16/10] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))]">
+                <PublicCoverImage url={post.cover_image_url} alt={post.title} imgClassName="object-cover" />
               </div>
             </div>
 
             {post.excerpt ? (
-              <div className="mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+              <div className="mt-3 text-sm leading-relaxed text-slate-600">
                 {post.excerpt}
               </div>
             ) : null}
 
             {post.content ? (
-              <div className="mt-8 break-words whitespace-pre-wrap text-[18px] leading-9 text-slate-900 dark:text-slate-100">
+              <div className="mt-8 break-words whitespace-pre-wrap text-[18px] leading-9 text-slate-900">
                 {post.content}
               </div>
             ) : (
-              <div className="mt-8 text-sm text-slate-500 dark:text-slate-400">Konten detail belum diisi.</div>
+              <div className="mt-8 text-sm text-slate-500">Konten detail belum diisi.</div>
             )}
 
-            <div className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-black/10 pt-6 dark:border-white/10">
-              <div className="text-sm text-slate-500 dark:text-slate-300">Baca berita lainnya untuk update terbaru HM SDP.</div>
+            <div className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-black/10 pt-6">
+              <div className="text-sm text-slate-500">
+                Baca berita lainnya untuk update terbaru {orgName || 'organisasi'}.
+              </div>
               <Link
                 to="/berita"
                 className="inline-flex items-center gap-2 rounded-xl bg-[var(--public-primary)] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_12px_22px_rgba(37,99,235,0.28)] transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/45"

@@ -21,36 +21,37 @@ export default function PublicFooter() {
   const youtubeUrl = profile?.youtube_url ?? '';
 
   return (
-    <footer className="relative border-t border-black/10 bg-white pb-10 pt-14 text-slate-700 dark:border-white/10 dark:bg-zinc-950 dark:text-slate-200">
-      <div className="pointer-events-none absolute inset-0 opacity-70 [background:radial-gradient(circle_at_15%_25%,rgba(37,99,235,0.12),transparent_55%),radial-gradient(circle_at_85%_10%,rgba(56,189,248,0.10),transparent_60%)] dark:opacity-50" />
+    <footer className="relative border-t border-black/10 bg-slate-50 pb-10 pt-14 text-slate-700">
+      <div className="pointer-events-none absolute inset-0 opacity-70 [background:radial-gradient(circle_at_15%_25%,rgba(37,99,235,0.14),transparent_55%),radial-gradient(circle_at_85%_10%,rgba(56,189,248,0.10),transparent_60%),linear-gradient(180deg,rgba(255,255,255,0.75),transparent)]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-transparent via-[var(--public-primary)]/45 to-transparent" />
       <div className="pointer-events-none absolute left-6 top-0 -translate-y-1/2 -rotate-6">
         <div className="relative">
           <div className="absolute -inset-6 rounded-full bg-[var(--public-primary)]/14 blur-2xl" />
-          <div className="relative h-14 w-14 overflow-hidden rounded-2xl bg-white/80 ring-1 ring-black/10 shadow-[0_20px_55px_-45px_rgba(15,23,42,0.55)] backdrop-blur dark:bg-white/10 dark:ring-white/10 dark:shadow-[0_20px_55px_-45px_rgba(0,0,0,0.8)]">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_25%,rgba(37,99,235,0.24),transparent_60%),radial-gradient(circle_at_75%_35%,rgba(56,189,248,0.18),transparent_60%),linear-gradient(135deg,rgba(15,23,42,0.08),transparent)] dark:bg-[radial-gradient(circle_at_25%_25%,rgba(37,99,235,0.24),transparent_60%),radial-gradient(circle_at_75%_35%,rgba(56,189,248,0.18),transparent_60%),linear-gradient(135deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02))]" />
+          <div className="relative h-14 w-14 overflow-hidden rounded-2xl bg-white/80 ring-1 ring-black/10 shadow-[0_20px_55px_-45px_rgba(15,23,42,0.55)] backdrop-blur">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_25%,rgba(37,99,235,0.24),transparent_60%),radial-gradient(circle_at_75%_35%,rgba(56,189,248,0.18),transparent_60%),linear-gradient(135deg,rgba(15,23,42,0.08),transparent)]" />
           </div>
         </div>
       </div>
       <div className="pointer-events-none absolute right-6 top-0 -translate-y-1/2 rotate-6">
         <div className="relative">
           <div className="absolute -inset-6 rounded-full bg-sky-400/12 blur-2xl" />
-          <div className="relative h-14 w-14 overflow-hidden rounded-2xl bg-white/80 ring-1 ring-black/10 shadow-[0_20px_55px_-45px_rgba(15,23,42,0.55)] backdrop-blur dark:bg-white/10 dark:ring-white/10 dark:shadow-[0_20px_55px_-45px_rgba(0,0,0,0.8)]">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(56,189,248,0.20),transparent_60%),radial-gradient(circle_at_70%_70%,rgba(37,99,235,0.20),transparent_60%),linear-gradient(135deg,rgba(15,23,42,0.08),transparent)] dark:bg-[radial-gradient(circle_at_30%_20%,rgba(56,189,248,0.20),transparent_60%),radial-gradient(circle_at_70%_70%,rgba(37,99,235,0.20),transparent_60%),linear-gradient(135deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02))]" />
+          <div className="relative h-14 w-14 overflow-hidden rounded-2xl bg-white/80 ring-1 ring-black/10 shadow-[0_20px_55px_-45px_rgba(15,23,42,0.55)] backdrop-blur">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(56,189,248,0.20),transparent_60%),radial-gradient(circle_at_70%_70%,rgba(37,99,235,0.20),transparent_60%),linear-gradient(135deg,rgba(15,23,42,0.08),transparent)]" />
           </div>
         </div>
       </div>
 
-      <div className="mx-auto max-w-7xl px-6">
-        <div className="grid gap-10 md:grid-cols-4">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6">
+        <div className="grid gap-10 md:grid-cols-3">
           <div className="md:col-span-1">
-            <div className="text-sm font-semibold text-slate-900 dark:text-white">
+            <div className="text-sm font-extrabold tracking-tight text-slate-900">
               {orgName || 'Profil belum diatur'}
-              <div className="text-slate-500 dark:text-slate-300">{campusName || 'Silakan atur melalui Konten Website'}</div>
+              <div className="mt-1 font-medium text-slate-600">{campusName || 'Silakan atur melalui Konten Website'}</div>
             </div>
             {footerTagline ? (
-              <div className="mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-300">{footerTagline}</div>
+              <div className="mt-4 text-sm leading-relaxed text-slate-600">{footerTagline}</div>
             ) : (
-              <div className="mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+              <div className="mt-4 text-sm leading-relaxed text-slate-600">
                 Deskripsi singkat belum diatur.
               </div>
             )}
@@ -62,7 +63,7 @@ export default function PublicFooter() {
                     href={instagramUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-black/10 bg-white text-slate-700 shadow-sm transition hover:border-[var(--public-primary)]/30 hover:text-[var(--public-primary)] dark:border-white/10 dark:bg-zinc-950 dark:text-slate-200"
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-black/10 bg-white text-slate-700 shadow-sm transition hover:border-[var(--public-primary)]/35 hover:text-[var(--public-primary)]"
                     aria-label="Instagram"
                   >
                     <Instagram size={18} />
@@ -73,7 +74,7 @@ export default function PublicFooter() {
                     href={tiktokUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-black/10 bg-white text-slate-700 shadow-sm transition hover:border-[var(--public-primary)]/30 hover:text-[var(--public-primary)] dark:border-white/10 dark:bg-zinc-950 dark:text-slate-200"
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-black/10 bg-white text-slate-700 shadow-sm transition hover:border-[var(--public-primary)]/35 hover:text-[var(--public-primary)]"
                     aria-label="TikTok"
                   >
                     <Music2 size={18} />
@@ -84,13 +85,13 @@ export default function PublicFooter() {
                     href={youtubeUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-black/10 bg-white text-slate-700 shadow-sm transition hover:border-[var(--public-primary)]/30 hover:text-[var(--public-primary)] dark:border-white/10 dark:bg-zinc-950 dark:text-slate-200"
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-black/10 bg-white text-slate-700 shadow-sm transition hover:border-[var(--public-primary)]/35 hover:text-[var(--public-primary)]"
                     aria-label="YouTube"
                   >
                     <Youtube size={18} />
                   </a>
                 ) : null}
-                <div className="relative ml-1 hidden h-2 w-20 overflow-hidden rounded-full bg-black/5 dark:bg-white/10 sm:block">
+                <div className="relative ml-1 hidden h-2 w-20 overflow-hidden rounded-full bg-black/5 sm:block">
                   <div className="absolute inset-0 w-1/2 animate-pulse rounded-full bg-[var(--public-primary)]/30" />
                 </div>
               </div>
@@ -98,11 +99,10 @@ export default function PublicFooter() {
           </div>
 
           <div>
-            <div className="mb-4 text-sm font-semibold text-slate-900 dark:text-white">Quick Links</div>
+            <div className="mb-4 text-sm font-extrabold tracking-tight text-slate-900">Quick Links</div>
             <ul className="space-y-2 text-sm">
               <li><Link to="/" className="hover:text-[var(--public-primary)]">Home</Link></li>
-              <li><Link to="/berita" className="hover:text-[var(--public-primary)]">Berita</Link></li>
-              <li><Link to="/kegiatan" className="hover:text-[var(--public-primary)]">Kegiatan</Link></li>
+              <li><Link to="/informasi" className="hover:text-[var(--public-primary)]">Informasi</Link></li>
               <li><Link to="/struktur-organisasi" className="hover:text-[var(--public-primary)]">Struktur Organisasi</Link></li>
               <li><Link to="/program-kerja" className="hover:text-[var(--public-primary)]">Program Kerja</Link></li>
               <li><Link to="/informasi-lomba" className="hover:text-[var(--public-primary)]">Informasi Lomba</Link></li>
@@ -111,39 +111,31 @@ export default function PublicFooter() {
             </ul>
           </div>
 
-          <div>
-            <div className="mb-4 text-sm font-semibold text-slate-900 dark:text-white">Terkait</div>
-            <ul className="space-y-2 text-sm">
-              <li><a href="https://undiksha.ac.id/" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--public-primary)]">UNDIKSHA</a></li>
-              <li><a href="https://sdp.undiksha.ac.id/" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--public-primary)]">SDP Undiksha</a></li>
-            </ul>
-          </div>
-
           <div className="space-y-5">
             <div>
-              <div className="mb-2 text-sm font-semibold text-slate-900 dark:text-white">Contact Person</div>
+              <div className="mb-2 text-sm font-extrabold tracking-tight text-slate-900">Contact Person</div>
               {phone ? (
-                <a href={`tel:${phone}`} className="text-sm text-slate-700 hover:text-[var(--public-primary)] dark:text-slate-200">{phone}</a>
+                <a href={`tel:${phone}`} className="text-sm text-slate-700 hover:text-[var(--public-primary)]">{phone}</a>
               ) : (
-                <div className="text-sm text-slate-500 dark:text-slate-400">Belum diatur</div>
+                <div className="text-sm text-slate-600">Belum diatur</div>
               )}
             </div>
             <div>
-              <div className="mb-2 text-sm font-semibold text-slate-900 dark:text-white">Alamat</div>
-              <div className="text-sm text-slate-600 dark:text-slate-300">{address ?? 'Belum diatur'}</div>
+              <div className="mb-2 text-sm font-extrabold tracking-tight text-slate-900">Alamat</div>
+              <div className="text-sm text-slate-600">{address ?? 'Belum diatur'}</div>
             </div>
             <div>
-              <div className="mb-2 text-sm font-semibold text-slate-900 dark:text-white">Email</div>
+              <div className="mb-2 text-sm font-extrabold tracking-tight text-slate-900">Email</div>
               {email ? (
-                <a href={`mailto:${email}`} className="text-sm text-slate-700 hover:text-[var(--public-primary)] dark:text-slate-200">{email}</a>
+                <a href={`mailto:${email}`} className="text-sm text-slate-700 hover:text-[var(--public-primary)]">{email}</a>
               ) : (
-                <div className="text-sm text-slate-500 dark:text-slate-400">Belum diatur</div>
+                <div className="text-sm text-slate-600">Belum diatur</div>
               )}
             </div>
           </div>
         </div>
 
-        <div className="mt-10 border-t border-black/10 pt-6 text-center text-sm text-slate-500 dark:border-white/10 dark:text-slate-400">
+        <div className="mt-10 border-t border-black/10 pt-6 text-center text-sm text-slate-600">
           © {new Date().getFullYear()} {kabinetName ? kabinetName : orgName}
         </div>
       </div>

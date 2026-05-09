@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import api from '@/services/api';
 import { toast } from 'sonner';
@@ -16,9 +16,9 @@ import { prepareImageForUpload } from '@/lib/imageUpload';
 export default function PublicSitePosts() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
   const { data: categories = [], mutate: mutateCategories } = useSWR<PublicCategory[]>('/public-site/admin/categories', fetcher, { revalidateOnFocus: false });
-  const { data: posts = [], mutate: mutatePosts } = useSWR<PublicPost[]>('/public-site/admin/posts', fetcher, { revalidateOnFocus: false });
+  const [postType, setPostType] = useState<PublicPostType>('BERITA');
+  const { data: posts = [], mutate: mutatePosts } = useSWR<PublicPost[]>(`/public-site/admin/posts?type=${postType}`, fetcher, { revalidateOnFocus: false });
 
-  const postType: PublicPostType = 'BERITA';
   const [categoryForm, setCategoryForm] = useState<{ id?: string; name?: string; slug?: string }>({});
   const [postForm, setPostForm] = useState<{
     id?: string;
@@ -27,6 +27,7 @@ export default function PublicSitePosts() {
     slug?: string;
     dateLabel?: string;
     status?: string;
+    formUrl?: string;
     excerpt?: string;
     content?: string;
     coverImageUrl?: string;
@@ -36,6 +37,10 @@ export default function PublicSitePosts() {
 
   const resetCategoryForm = () => setCategoryForm({});
   const resetPostForm = () => setPostForm({ type: postType });
+
+  useEffect(() => {
+    resetPostForm();
+  }, [postType]);
 
   const uploadImage = async (file: File) => {
     const prepared = await prepareImageForUpload(file, { maxBytes: 4 * 1024 * 1024, maxWidth: 1920, quality: 0.82 });
@@ -101,6 +106,7 @@ export default function PublicSitePosts() {
         slug: postForm.slug,
         dateLabel: postForm.dateLabel,
         status: postForm.status,
+        formUrl: postForm.formUrl,
         excerpt: postForm.excerpt,
         content: postForm.content,
         coverImageUrl: postForm.coverImageUrl,
@@ -121,69 +127,115 @@ export default function PublicSitePosts() {
     }
   };
 
+  const typeLabel = useMemo(() => {
+    return (
+      {
+        BERITA: 'Berita',
+        KEGIATAN: 'Kegiatan',
+        LOMBA: 'Informasi Lomba',
+        PENGUMUMAN: 'Pengumuman',
+      } as const
+    )[postType];
+  }, [postType]);
+
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="space-y-1">
-          <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Berita</h1>
-          <p className="text-slate-500 dark:text-zinc-400">Kelola kategori dan konten berita.</p>
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Konten Publik</h1>
+          <p className="text-slate-500 dark:text-zinc-400">Kelola konten untuk halaman publik.</p>
+        </div>
+        <div className="w-full sm:w-[260px]">
+          <Label>Jenis Konten</Label>
+          <Select value={postType} onValueChange={(v) => setPostType(v as PublicPostType)}>
+            <SelectTrigger className="mt-2">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="BERITA">Berita</SelectItem>
+              <SelectItem value="KEGIATAN">Kegiatan</SelectItem>
+              <SelectItem value="LOMBA">Informasi Lomba</SelectItem>
+              <SelectItem value="PENGUMUMAN">Pengumuman</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-700 p-6 space-y-5">
-          <div className="text-sm font-semibold text-slate-900 dark:text-white">Kategori</div>
-          <form onSubmit={upsertCategory} className="grid gap-4">
-            <div className="space-y-2">
-              <Label>Nama</Label>
-              <Input value={categoryForm.name ?? ''} onChange={(e) => setCategoryForm((p) => ({ ...p, name: e.target.value }))} />
-            </div>
-            <div className="space-y-2">
-              <Label>Slug (opsional)</Label>
-              <Input value={categoryForm.slug ?? ''} onChange={(e) => setCategoryForm((p) => ({ ...p, slug: e.target.value }))} placeholder="contoh: prestasi-mahasiswa" />
-            </div>
-            <div className="flex justify-end gap-3">
-              {categoryForm.id ? (
-                <Button variant="outline" type="button" onClick={resetCategoryForm}>
-                  Batal
-                </Button>
-              ) : null}
-              <Button type="submit">{categoryForm.id ? 'Update' : 'Tambah'}</Button>
-            </div>
-          </form>
+        {postType === 'BERITA' || postType === 'KEGIATAN' ? (
+          <div className="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-700 p-6 space-y-5">
+            <div className="text-sm font-semibold text-slate-900 dark:text-white">Kategori</div>
+            <form onSubmit={upsertCategory} className="grid gap-4">
+              <div className="space-y-2">
+                <Label>Nama</Label>
+                <Input value={categoryForm.name ?? ''} onChange={(e) => setCategoryForm((p) => ({ ...p, name: e.target.value }))} />
+              </div>
+              <div className="space-y-2">
+                <Label>Slug (opsional)</Label>
+                <Input value={categoryForm.slug ?? ''} onChange={(e) => setCategoryForm((p) => ({ ...p, slug: e.target.value }))} placeholder="contoh: prestasi-mahasiswa" />
+              </div>
+              <div className="flex justify-end gap-3">
+                {categoryForm.id ? (
+                  <Button variant="outline" type="button" onClick={resetCategoryForm}>
+                    Batal
+                  </Button>
+                ) : null}
+                <Button type="submit">{categoryForm.id ? 'Update' : 'Tambah'}</Button>
+              </div>
+            </form>
 
-          <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-zinc-700">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nama</TableHead>
-                  <TableHead>Slug</TableHead>
-                  <TableHead className="text-right">Aksi</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {categories.map((c) => (
-                  <TableRow key={c.id}>
-                    <TableCell className="font-medium">{c.name}</TableCell>
-                    <TableCell>{c.slug}</TableCell>
-                    <TableCell className="text-right space-x-2">
-                      <Button variant="outline" size="sm" type="button" onClick={() => setCategoryForm({ id: c.id, name: c.name, slug: c.slug })}>
-                        Edit
-                      </Button>
-                      <Button variant="destructive" size="sm" type="button" onClick={() => openDelete('categories', c.id)}>
-                        Hapus
-                      </Button>
-                    </TableCell>
+            <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-zinc-700">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nama</TableHead>
+                    <TableHead>Slug</TableHead>
+                    <TableHead className="text-right">Aksi</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {categories.map((c) => (
+                    <TableRow key={c.id}>
+                      <TableCell className="font-medium">{c.name}</TableCell>
+                      <TableCell>{c.slug}</TableCell>
+                      <TableCell className="text-right space-x-2">
+                        <Button variant="outline" size="sm" type="button" onClick={() => setCategoryForm({ id: c.id, name: c.name, slug: c.slug })}>
+                          Edit
+                        </Button>
+                        <Button variant="destructive" size="sm" type="button" onClick={() => openDelete('categories', c.id)}>
+                          Hapus
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-700 p-6">
+            <div className="text-sm font-semibold text-slate-900 dark:text-white">{typeLabel}</div>
+            <div className="mt-2 text-sm text-slate-600 dark:text-zinc-300">Kategori tidak digunakan untuk jenis konten ini.</div>
+          </div>
+        )}
 
         <div className="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-700 p-6 space-y-5">
           <div className="text-sm font-semibold text-slate-900 dark:text-white">Konten</div>
           <form onSubmit={upsertPost} className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label>Tipe</Label>
+              <Select value={postForm.type ?? postType} onValueChange={(v) => setPostForm((p) => ({ ...p, type: v as PublicPostType }))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="BERITA">Berita</SelectItem>
+                  <SelectItem value="KEGIATAN">Kegiatan</SelectItem>
+                  <SelectItem value="LOMBA">Informasi Lomba</SelectItem>
+                  <SelectItem value="PENGUMUMAN">Pengumuman</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-2 md:col-span-2">
               <Label>Judul</Label>
               <Input value={postForm.title ?? ''} onChange={(e) => setPostForm((p) => ({ ...p, title: e.target.value }))} />
@@ -221,6 +273,16 @@ export default function PublicSitePosts() {
               <Label>Status (opsional)</Label>
               <Input value={postForm.status ?? ''} onChange={(e) => setPostForm((p) => ({ ...p, status: e.target.value }))} placeholder="contoh: Buka / Tutup" />
             </div>
+            {postForm.type === 'LOMBA' ? (
+              <div className="space-y-2 md:col-span-2">
+                <Label>Link Pendaftaran (opsional)</Label>
+                <Input
+                  value={postForm.formUrl ?? ''}
+                  onChange={(e) => setPostForm((p) => ({ ...p, formUrl: e.target.value }))}
+                  placeholder="https://..."
+                />
+              </div>
+            ) : null}
             <div className="space-y-2">
               <Label>Publik</Label>
               <Select value={(postForm.isPublished ?? false) ? 'true' : 'false'} onValueChange={(v) => setPostForm((p) => ({ ...p, isPublished: v === 'true' }))}>
@@ -285,6 +347,7 @@ export default function PublicSitePosts() {
           <TableHeader>
             <TableRow>
               <TableHead>Judul</TableHead>
+              <TableHead>Tipe</TableHead>
               <TableHead>Kategori</TableHead>
               <TableHead>Tanggal</TableHead>
               <TableHead>Status</TableHead>
@@ -292,43 +355,43 @@ export default function PublicSitePosts() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {posts
-              .filter((p) => p.type === postType)
-              .map((p) => (
-                <TableRow key={p.id}>
-                  <TableCell className="font-medium">{p.title}</TableCell>
-                  <TableCell>{p.category?.name ?? '-'}</TableCell>
-                  <TableCell>{p.date_label ?? '-'}</TableCell>
-                  <TableCell>{p.is_published ? 'Publish' : 'Draft'}</TableCell>
-                  <TableCell className="text-right space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      type="button"
-                      onClick={() => {
-                        setPostForm({
-                          id: p.id,
-                          type: p.type,
-                          title: p.title,
-                          slug: p.slug,
-                          dateLabel: p.date_label ?? '',
-                          status: p.status ?? '',
-                          excerpt: p.excerpt ?? '',
-                          content: p.content ?? '',
-                          coverImageUrl: p.cover_image_url ?? '',
-                          categoryId: p.category_id ?? undefined,
-                          isPublished: p.is_published,
-                        });
-                      }}
-                    >
-                      Edit
-                    </Button>
-                    <Button variant="destructive" size="sm" type="button" onClick={() => openDelete('posts', p.id)}>
-                      Hapus
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
+            {posts.map((p) => (
+              <TableRow key={p.id}>
+                <TableCell className="font-medium">{p.title}</TableCell>
+                <TableCell>{p.type}</TableCell>
+                <TableCell>{p.category?.name ?? '-'}</TableCell>
+                <TableCell>{p.date_label ?? '-'}</TableCell>
+                <TableCell>{p.is_published ? 'Publish' : 'Draft'}</TableCell>
+                <TableCell className="text-right space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    type="button"
+                    onClick={() => {
+                      setPostForm({
+                        id: p.id,
+                        type: p.type,
+                        title: p.title,
+                        slug: p.slug,
+                        dateLabel: p.date_label ?? '',
+                        status: p.status ?? '',
+                        formUrl: p.form_url ?? '',
+                        excerpt: p.excerpt ?? '',
+                        content: p.content ?? '',
+                        coverImageUrl: p.cover_image_url ?? '',
+                        categoryId: p.category_id ?? undefined,
+                        isPublished: p.is_published,
+                      });
+                    }}
+                  >
+                    Edit
+                  </Button>
+                  <Button variant="destructive" size="sm" type="button" onClick={() => openDelete('posts', p.id)}>
+                    Hapus
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
           </TableBody>
         </Table>
       </div>

@@ -5,16 +5,18 @@ export default function PublicReveal({
   children,
   className,
   delay = 0,
+  shiftY = 18,
 }: {
   children: React.ReactNode;
   className?: string;
   delay?: number;
+  shiftY?: number;
 }) {
   return (
     <motion.div
       className={className}
-      initial={{ opacity: 0, y: 18 }}
-      whileInView={{ opacity: 1, y: 0 }}
+      initial={shiftY ? { opacity: 0, y: shiftY } : { opacity: 0 }}
+      whileInView={shiftY ? { opacity: 1, y: 0 } : { opacity: 1 }}
       viewport={{ once: false, amount: 0.2 }}
       transition={{ duration: 0.45, ease: 'easeOut', delay }}
     >

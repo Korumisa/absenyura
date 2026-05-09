@@ -34,6 +34,14 @@ export default function PublicSiteProfile() {
     logoLightUrl: string;
     logoDarkUrl: string;
     homeImageUrl: string;
+    primaryColor: string;
+  };
+
+  const normalizeHexColor = (input: string) => {
+    const raw = String(input ?? '').trim();
+    if (!raw) return '#2563eb';
+    const hex = raw.startsWith('#') ? raw : `#${raw}`;
+    return /^#[0-9a-f]{6}$/i.test(hex) ? hex.toLowerCase() : '#2563eb';
   };
 
   const [draft, setDraft] = useState<Draft>({
@@ -55,6 +63,7 @@ export default function PublicSiteProfile() {
     logoLightUrl: '',
     logoDarkUrl: '',
     homeImageUrl: '',
+    primaryColor: '#2563eb',
   });
 
   useEffect(() => {
@@ -78,6 +87,7 @@ export default function PublicSiteProfile() {
       logoLightUrl: profile.logo_light_url ?? '',
       logoDarkUrl: profile.logo_dark_url ?? '',
       homeImageUrl: profile.home_image_url ?? '',
+      primaryColor: normalizeHexColor(profile.primary_color ?? ''),
     });
   }, [profile]);
 
@@ -127,6 +137,7 @@ export default function PublicSiteProfile() {
       logoLightUrl: profile.logo_light_url ?? '',
       logoDarkUrl: profile.logo_dark_url ?? '',
       homeImageUrl: profile.home_image_url ?? '',
+      primaryColor: normalizeHexColor(profile.primary_color ?? ''),
     });
   };
 
@@ -167,6 +178,22 @@ export default function PublicSiteProfile() {
           <div className="space-y-2">
             <Label>Periode Kabinet</Label>
             <Input value={draft.kabinetPeriod} onChange={(e) => setDraft((p) => ({ ...p, kabinetPeriod: e.target.value }))} placeholder="Contoh: 2026/2027" />
+          </div>
+          <div className="space-y-2">
+            <Label>Warna Utama</Label>
+            <div className="flex items-center gap-3">
+              <Input
+                type="color"
+                value={normalizeHexColor(draft.primaryColor)}
+                onChange={(e) => setDraft((p) => ({ ...p, primaryColor: e.target.value }))}
+                className="h-10 w-14 p-1"
+              />
+              <Input
+                value={draft.primaryColor}
+                onChange={(e) => setDraft((p) => ({ ...p, primaryColor: e.target.value }))}
+                placeholder="#2563eb"
+              />
+            </div>
           </div>
           <div className="space-y-2 md:col-span-2">
             <Label>Hero Subtitle</Label>

@@ -6,15 +6,17 @@ export default function PublicPageHero({
   bottom,
   subtitle,
   children,
+  compact = false,
 }: {
   top: string;
   bottom: string;
   subtitle?: string;
   children?: React.ReactNode;
+  compact?: boolean;
 }) {
   return (
-    <section className="relative overflow-hidden bg-white py-12 sm:py-14 dark:bg-zinc-950">
-      <div className="pointer-events-none absolute inset-0 opacity-70 [background:radial-gradient(circle_at_18%_15%,rgba(37,99,235,0.14),transparent_56%),radial-gradient(circle_at_78%_10%,rgba(56,189,248,0.10),transparent_60%)] dark:opacity-55" />
+    <section className={`relative overflow-hidden bg-white ${compact ? 'py-7 sm:py-8' : 'py-12 sm:py-14'}`}>
+      <div className="pointer-events-none absolute inset-0 opacity-70 [background:radial-gradient(circle_at_18%_15%,rgba(37,99,235,0.14),transparent_56%),radial-gradient(circle_at_78%_10%,rgba(56,189,248,0.10),transparent_60%)]" />
       <motion.div
         className="pointer-events-none absolute -left-24 top-10 h-72 w-72 rounded-[48%_52%_58%_42%/44%_43%_57%_56%] bg-[var(--public-primary)]/14 blur-3xl"
         animate={{ y: [0, -10, 0] }}
@@ -26,16 +28,39 @@ export default function PublicPageHero({
         transition={{ duration: 7.5, ease: 'easeInOut', repeat: Infinity }}
       />
 
-      <div className="mx-auto max-w-7xl px-6">
-        <div className="mx-auto max-w-3xl rounded-3xl border border-black/10 bg-white/75 px-5 py-8 text-center shadow-[0_24px_60px_-48px_rgba(15,23,42,0.45)] backdrop-blur dark:border-white/10 dark:bg-zinc-950/65 dark:shadow-[0_24px_60px_-48px_rgba(0,0,0,0.7)] sm:px-8 sm:py-10">
-          <div className="font-display text-4xl italic tracking-tight text-slate-900 dark:text-white sm:text-5xl md:text-6xl">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6">
+        <div
+          className={`mx-auto max-w-3xl rounded-3xl border border-black/10 bg-white/75 text-center shadow-[0_24px_60px_-48px_rgba(15,23,42,0.45)] backdrop-blur ${
+            compact ? 'px-5 py-6 sm:px-7 sm:py-7' : 'px-5 py-8 sm:px-8 sm:py-10'
+          }`}
+        >
+          <div
+            className={`font-display italic tracking-tight text-slate-900 ${
+              compact ? 'text-3xl sm:text-4xl md:text-5xl' : 'text-4xl sm:text-5xl md:text-6xl'
+            }`}
+          >
             {top}
           </div>
-          <div className="-mt-1 text-4xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] sm:-mt-2 sm:text-5xl md:text-6xl">
+          <div
+            className={`font-extrabold uppercase tracking-tight text-[var(--public-primary)] ${
+              compact ? '-mt-1 text-3xl sm:-mt-1.5 sm:text-4xl md:text-5xl' : '-mt-1 text-4xl sm:-mt-2 sm:text-5xl md:text-6xl'
+            }`}
+          >
             {bottom}
           </div>
-          {subtitle ? <div className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-slate-700 dark:text-slate-300">{subtitle}</div> : null}
-          {children ? <div className="mx-auto mt-7 flex flex-wrap justify-center gap-3">{children}</div> : null}
+          {subtitle ? (
+            <div className={`mx-auto max-w-2xl text-sm leading-relaxed text-slate-700 ${compact ? 'mt-3' : 'mt-4'}`}>{subtitle}</div>
+          ) : null}
+          {children ? <div className={`mx-auto flex flex-wrap justify-center gap-3 ${compact ? 'mt-5' : 'mt-7'}`}>{children}</div> : null}
+        </div>
+        <div className={`relative mx-auto max-w-3xl ${compact ? 'mt-5 h-7' : 'mt-8 h-10'}`}>
+          <div
+            className={`pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--public-primary)]/14 blur-2xl ${
+              compact ? 'h-8 w-44' : 'h-10 w-56'
+            }`}
+          />
+          <div className="pointer-events-none absolute left-1/2 top-1/2 h-px w-full -translate-x-1/2 -translate-y-1/2 bg-gradient-to-r from-transparent via-[var(--public-primary)]/35 to-transparent" />
+          <div className="pointer-events-none absolute left-1/2 top-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--public-primary)]/70" />
         </div>
       </div>
     </section>

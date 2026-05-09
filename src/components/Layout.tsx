@@ -7,7 +7,6 @@ import api from '@/services/api';
 import { NotificationMenu } from './NotificationMenu';
 import { UserDropdown } from './UserDropdown';
 import { Button } from '@/components/ui/button';
-import { ModeToggle } from '@/components/ThemeToggle';
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -193,7 +192,6 @@ export default function Layout() {
           </div>
           
           <div className="flex items-center gap-4 ml-auto">
-            <ModeToggle />
             <NotificationMenu />
             <UserDropdown />
           </div>

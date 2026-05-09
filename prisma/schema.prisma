@@ -263,6 +263,7 @@ model PublicPost {
   slug            String         @unique
   date_label      String?
   status          String?
+  form_url        String?
   excerpt         String?
   content         String?
   cover_image_url String?

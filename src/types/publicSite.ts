@@ -48,6 +48,7 @@ export type PublicPost = {
   slug: string;
   date_label: string | null;
   status: string | null;
+  form_url?: string | null;
   excerpt: string | null;
   content: string | null;
   cover_image_url: string | null;

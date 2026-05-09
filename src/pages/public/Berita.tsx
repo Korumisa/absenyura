@@ -11,6 +11,7 @@ import PublicReveal from '@/components/PublicReveal';
 import PublicPageHero from '@/components/PublicPageHero';
 import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 import PublicCoverImage from '@/components/PublicCoverImage';
+import useFirstLoadOverlay from '@/lib/useFirstLoadOverlay';
 
 type Paged<T> = { items: T[]; total: number; page: number; pageSize: number; totalPages: number };
 
@@ -36,7 +37,7 @@ export default function Berita() {
 
   const { data: paged, isLoading } = useSWR<Paged<PublicPost>>(queryUrl, fetcher, { revalidateOnFocus: false });
   const items = paged?.items ?? [];
-  const showLoading = (isLoading && items.length === 0) || (isLoadingCategories && categories.length === 0);
+  const showLoading = useFirstLoadOverlay(isLoading || isLoadingCategories);
 
   const setCategory = (slug: string) => {
     const next = new URLSearchParams(params);
@@ -81,12 +82,12 @@ export default function Berita() {
               value={q}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Cari berita..."
-              className="h-11 w-full rounded-xl border border-black/10 bg-white pl-11 pr-4 text-sm text-slate-700 outline-none focus:border-[var(--public-primary)]/50 focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/35 dark:border-white/10 dark:bg-zinc-950 dark:text-slate-100"
+              className="h-11 w-full rounded-xl border border-black/10 bg-white pl-11 pr-4 text-sm text-slate-700 outline-none focus:border-[var(--public-primary)]/60 focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/40"
             />
           </div>
         </PublicPageHero>
 
-        <PublicReveal className="mx-auto max-w-7xl px-6 pb-16">
+        <PublicReveal className="mx-auto max-w-7xl px-4 pb-16 sm:px-6">
           <div className="mt-8 flex flex-wrap items-center gap-2">
             <button
               type="button"
@@ -94,7 +95,7 @@ export default function Berita() {
               className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
                 !categorySlug
                   ? 'bg-[var(--public-primary)] text-white shadow-[0_12px_22px_rgba(37,99,235,0.32)]'
-                  : 'border border-black/10 bg-white text-slate-700 hover:border-[var(--public-primary)]/30 dark:border-white/10 dark:bg-zinc-950 dark:text-slate-200'
+                  : 'border border-black/10 bg-white text-slate-700 hover:border-[var(--public-primary)]/30'
               }`}
             >
               Semua
@@ -111,7 +112,7 @@ export default function Berita() {
                       className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
                         active
                           ? 'bg-[var(--public-primary)] text-white shadow-[0_12px_22px_rgba(37,99,235,0.32)]'
-                          : 'border border-black/10 bg-white text-slate-700 hover:border-[var(--public-primary)]/30 dark:border-white/10 dark:bg-zinc-950 dark:text-slate-200'
+                          : 'border border-black/10 bg-white text-slate-700 hover:border-[var(--public-primary)]/30'
                       }`}
                     >
                       {c.name}
@@ -123,7 +124,7 @@ export default function Berita() {
           {isLoading ? (
             <div className="mt-10 grid gap-6 md:grid-cols-2 lg:gap-8 lg:grid-cols-3">
               {Array.from({ length: 6 }).map((_, idx) => (
-                <div key={idx} className="overflow-hidden rounded-2xl border border-black/10 bg-white dark:border-white/10 dark:bg-zinc-950">
+                <div key={idx} className="overflow-hidden rounded-2xl border border-black/10 bg-white">
                   <Skeleton className="aspect-[16/10] w-full rounded-none" />
                   <div className="p-5">
                     <Skeleton className="h-4 w-36" />
@@ -136,11 +137,11 @@ export default function Berita() {
               ))}
             </div>
           ) : items.length === 0 ? (
-            <div className="relative mt-10 overflow-hidden rounded-2xl border border-dashed border-black/15 bg-white/60 p-6 text-left text-sm text-slate-600 dark:border-white/15 dark:bg-white/5 dark:text-slate-300 sm:p-10">
+            <div className="relative mt-10 overflow-hidden rounded-2xl border border-dashed border-black/15 bg-white/60 p-6 text-left text-sm text-slate-600 sm:p-10">
               <div className="pointer-events-none absolute -left-16 -top-16 h-52 w-52 rounded-[48%_52%_58%_42%/44%_43%_57%_56%] bg-[var(--public-primary)]/12 blur-3xl" />
               <div className="pointer-events-none absolute -right-16 -bottom-16 h-56 w-56 rounded-[53%_47%_45%_55%/48%_56%_44%_52%] bg-sky-400/10 blur-3xl" />
               <div className="relative">
-                <div className="text-base font-extrabold tracking-tight text-slate-900 dark:text-white">Belum ada berita</div>
+                <div className="text-base font-extrabold tracking-tight text-slate-900">Belum ada berita</div>
                 <div className="mt-2 max-w-2xl">Admin bisa menambahkan berita dari menu Konten Website.</div>
               </div>
             </div>
@@ -151,20 +152,20 @@ export default function Berita() {
                 <Link
                   key={p.id}
                   to={`/berita/${p.slug}`}
-                  className="group overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-[var(--public-primary)]/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/45 focus-visible:ring-offset-2 dark:border-white/10 dark:bg-zinc-950 dark:shadow-[0_18px_45px_-42px_rgba(0,0,0,0.6)] dark:focus-visible:ring-offset-zinc-950"
+                  className="group overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-[var(--public-primary)]/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/45 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
                 >
-                  <div className="aspect-[16/10] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.2),rgba(255,255,255,0.04))]">
-                    <PublicCoverImage url={p.cover_image_url} alt={p.title} />
+                  <div className="aspect-[16/10] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))]">
+                    <PublicCoverImage url={p.cover_image_url} alt={p.title} imgClassName="transition duration-700 group-hover:scale-[1.01]" />
                   </div>
                   <div className="p-5">
-                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-300">
+                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-slate-500">
                       <span>{p.category?.name ?? 'Berita'}</span>
-                      {p.date_label ? <span className="text-slate-300 dark:text-slate-600">•</span> : null}
+                      {p.date_label ? <span className="text-slate-300">•</span> : null}
                       {p.date_label ? <span className="normal-case tracking-normal">{p.date_label}</span> : null}
                     </div>
-                    <div className="mt-3 text-lg font-extrabold tracking-tight text-slate-900 dark:text-white line-clamp-2">{p.title}</div>
+                    <div className="mt-3 text-lg font-extrabold tracking-tight text-slate-900 line-clamp-2">{p.title}</div>
                     {p.excerpt ? (
-                      <div className="mt-3 text-sm leading-relaxed text-slate-700 dark:text-slate-300 line-clamp-3">{p.excerpt}</div>
+                      <div className="mt-3 text-sm leading-relaxed text-slate-700 line-clamp-3">{p.excerpt}</div>
                     ) : null}
                     <div className="mt-5 inline-flex items-center rounded-lg bg-[var(--public-primary)]/10 px-3 py-1.5 text-sm font-semibold text-[var(--public-primary)]">
                       Baca selengkapnya
@@ -182,7 +183,7 @@ export default function Berita() {
                 type="button"
                 disabled={paged.page <= 1}
                 onClick={() => goPage(paged.page - 1)}
-                className="h-10 rounded-xl border border-black/10 bg-white px-4 text-sm font-semibold text-slate-700 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/45 dark:border-white/10 dark:bg-zinc-950 dark:text-slate-200"
+                className="h-10 rounded-xl border border-black/10 bg-white px-4 text-sm font-semibold text-slate-700 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/45"
               >
                 Sebelumnya
               </button>
@@ -199,7 +200,7 @@ export default function Berita() {
                       className={`h-10 w-10 rounded-xl text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/45 ${
                         active
                           ? 'bg-[var(--public-primary)] text-white'
-                          : 'border border-black/10 bg-white text-slate-700 hover:border-[var(--public-primary)]/30 dark:border-white/10 dark:bg-zinc-950 dark:text-slate-200'
+                          : 'border border-black/10 bg-white text-slate-700 hover:border-[var(--public-primary)]/30'
                       }`}
                     >
                       {p}
@@ -211,7 +212,7 @@ export default function Berita() {
                 type="button"
                 disabled={paged.page >= paged.totalPages}
                 onClick={() => goPage(paged.page + 1)}
-                className="h-10 rounded-xl border border-black/10 bg-white px-4 text-sm font-semibold text-slate-700 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/45 dark:border-white/10 dark:bg-zinc-950 dark:text-slate-200"
+                className="h-10 rounded-xl border border-black/10 bg-white px-4 text-sm font-semibold text-slate-700 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/45"
               >
                 Selanjutnya
               </button>

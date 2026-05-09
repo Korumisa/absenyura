@@ -33,6 +33,7 @@ import Berita from "@/pages/public/Berita";
 import BeritaDetail from "@/pages/public/BeritaDetail";
 import Fungsionaris from "@/pages/public/Fungsionaris";
 import ProgramKerja from "@/pages/public/ProgramKerja";
+import ProgramKerjaDetail from "@/pages/public/ProgramKerjaDetail";
 import InformasiLomba from "@/pages/public/InformasiLomba";
 import Kegiatan from "@/pages/public/Kegiatan";
 import Galeri from "@/pages/public/Galeri";
@@ -106,7 +107,7 @@ export default function App() {
   };
 
   return (
-    <ThemeProvider defaultTheme="system" storageKey="absensyura-theme">
+    <ThemeProvider defaultTheme="light" storageKey="absensyura-theme">
       <ErrorBoundary>
         <Toaster position="top-right" richColors />
         <Router>
@@ -119,8 +120,10 @@ export default function App() {
           <Route path="/berita" element={<Berita />} />
           <Route path="/berita/:slug" element={<BeritaDetail />} />
           <Route path="/kegiatan" element={<Kegiatan />} />
+          <Route path="/informasi" element={<Kegiatan />} />
           <Route path="/struktur-organisasi" element={<Fungsionaris />} />
           <Route path="/program-kerja" element={<ProgramKerja />} />
+          <Route path="/program-kerja/:id" element={<ProgramKerjaDetail />} />
           <Route path="/informasi-lomba" element={<InformasiLomba />} />
           <Route path="/galeri" element={<Galeri />} />
           <Route path="/open-recruitment" element={<OpenRecruitment />} />
