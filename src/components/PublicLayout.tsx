@@ -11,15 +11,35 @@ import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
   const { mutate } = useSWRConfig();
-  const { data: profile } = useSWR<PublicProfile | null>('/public-site/profile', fetcher, { revalidateOnFocus: false });
+  const { data: profile, isLoading: isLoadingProfile } = useSWR<PublicProfile | null>('/public-site/profile', fetcher, { revalidateOnFocus: false });
   const primary = profile?.primary_color || '#2563eb';
   const location = useLocation();
   const showChat = location.pathname !== '/login';
   const [prefetching, setPrefetching] = React.useState(false);
+  const [showBootOverlay, setShowBootOverlay] = React.useState(false);
+  const bootShownAt = React.useRef<number | null>(null);
   const rawPhone = String(profile?.phone ?? '').trim();
   const digits = rawPhone.replace(/\D/g, '');
   const waNumber = digits ? (digits.startsWith('0') ? `62${digits.slice(1)}` : digits) : '';
   const waUrl = waNumber ? `https://wa.me/${waNumber}` : '';
+
+  React.useEffect(() => {
+    const raw = Boolean(prefetching || isLoadingProfile);
+    const minMs = 550;
+    if (raw) {
+      if (!showBootOverlay) {
+        bootShownAt.current = Date.now();
+        setShowBootOverlay(true);
+      }
+      return;
+    }
+    if (!showBootOverlay) return;
+    const startedAt = bootShownAt.current ?? Date.now();
+    const elapsed = Date.now() - startedAt;
+    const wait = Math.max(0, minMs - elapsed);
+    const t = window.setTimeout(() => setShowBootOverlay(false), wait);
+    return () => window.clearTimeout(t);
+  }, [prefetching, isLoadingProfile, showBootOverlay]);
 
   React.useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -56,7 +76,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
         {children}
       </main>
       <PublicFooter />
-      <PublicLoadingOverlay show={prefetching} label="Menyiapkan halaman..." />
+      <PublicLoadingOverlay show={showBootOverlay} label="Memuat..." className="z-[95] bg-white/35 backdrop-blur-xl" />
       {showChat && waUrl ? (
         <a
           href={waUrl}

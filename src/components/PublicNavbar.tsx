@@ -77,10 +77,7 @@ export default function PublicNavbar() {
     return group?.label ?? '';
   }, [activePath]);
 
-  const loginCta = useMemo(() => {
-    if (location.pathname === '/login') return { to: '/', label: 'Beranda' };
-    return { to: '/login', label: 'Login' };
-  }, [location.pathname]);
+  const loginCta = useMemo(() => ({ to: '/login', label: 'Login' }), []);
 
   return (
     <nav
