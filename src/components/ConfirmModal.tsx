@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { ConfirmModalProps } from '@/types/confirmodal'
+import { createPortal } from 'react-dom';
 
 export function ConfirmModal({
   isOpen,
@@ -19,8 +20,8 @@ export function ConfirmModal({
     primary: 'bg-indigo-600 hover:bg-indigo-700 text-white'
   }[variant];
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm px-4">
+  return createPortal(
+    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-900/60 backdrop-blur-lg px-4">
       <div className="bg-white dark:bg-zinc-950 rounded-xl shadow-xl w-full max-w-md overflow-hidden flex flex-col border border-slate-200 dark:border-zinc-800">
         <div className="p-6">
           <h2 className="text-lg font-bold text-slate-800 dark:text-white mb-2">{title}</h2>
@@ -37,6 +38,7 @@ export function ConfirmModal({
           </Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

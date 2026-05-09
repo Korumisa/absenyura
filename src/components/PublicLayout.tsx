@@ -6,6 +6,7 @@ import { useSWRConfig } from 'swr';
 import api from '@/services/api';
 import type { PublicProfile } from '@/types/publicSite';
 import { useLocation } from 'react-router-dom';
+import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
@@ -14,6 +15,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
   const primary = profile?.primary_color || '#2563eb';
   const location = useLocation();
   const showChat = location.pathname !== '/login';
+  const [prefetching, setPrefetching] = React.useState(false);
   const rawPhone = String(profile?.phone ?? '').trim();
   const digits = rawPhone.replace(/\D/g, '');
   const waNumber = digits ? (digits.startsWith('0') ? `62${digits.slice(1)}` : digits) : '';
@@ -24,6 +26,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
     const key = 'public-prefetch-v1';
     if (window.sessionStorage.getItem(key) === '1') return;
     window.sessionStorage.setItem(key, '1');
+    setPrefetching(true);
 
     const urls = [
       '/public-site/profile',
@@ -37,7 +40,10 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
       '/public-site/posts?type=KEGIATAN&page=1&pageSize=9',
     ];
 
-    Promise.allSettled(urls.map((url) => mutate(url, fetcher(url), { revalidate: false })));
+    const minDelay = new Promise((r) => setTimeout(r, 450));
+    Promise.allSettled(urls.map((url) => mutate(url, fetcher(url), { revalidate: false })))
+      .then(() => minDelay)
+      .finally(() => setPrefetching(false));
   }, [mutate]);
 
   return (
@@ -50,6 +56,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
         {children}
       </main>
       <PublicFooter />
+      <PublicLoadingOverlay show={prefetching} label="Menyiapkan halaman..." />
       {showChat && waUrl ? (
         <a
           href={waUrl}
