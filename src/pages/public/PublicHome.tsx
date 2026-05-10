@@ -345,7 +345,7 @@ export default function PublicHome() {
             <div className="pointer-events-none absolute inset-0 opacity-70 [background:radial-gradient(circle_at_18%_15%,rgba(37,99,235,0.10),transparent_56%),radial-gradient(circle_at_78%_10%,rgba(56,189,248,0.08),transparent_60%)]" />
             <PublicEnter className="mx-auto grid max-w-7xl items-center gap-12 px-4 py-16 sm:px-6 md:grid-cols-2 md:py-24">
               <div className="flex items-start gap-6">
-                <BrandMark className="hidden h-24 w-24 shrink-0 sm:block" src={logoSrc} name={orgName || campusName} />
+                <BrandMark className="hidden h-28 w-28 shrink-0 sm:block" src={logoSrc} name={orgName || campusName} />
                 <div>
                   <div className="font-display text-4xl italic tracking-tight text-slate-900 md:text-5xl">Kabinet</div>
                   <div className="mt-1 text-5xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] md:text-7xl">
