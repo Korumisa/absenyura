@@ -12,6 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import type { PublicRecruitment } from '@/types/publicSite';
 import { getErrorMessage } from '@/lib/errorMessage';
 import { prepareImageForUpload } from '@/lib/imageUpload';
+import AdminPageShell from '@/components/AdminPageShell';
+import AdminCard from '@/components/AdminCard';
+import { FileText } from 'lucide-react';
 
 export default function PublicSiteRecruitments() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
@@ -121,13 +124,13 @@ export default function PublicSiteRecruitments() {
   };
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Open Recruitment</h1>
-        <p className="text-slate-500 dark:text-zinc-400">Kelola informasi open recruitment yang tampil di halaman publik.</p>
-      </div>
-
-      <div className="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-700 p-6 space-y-6">
+    <AdminPageShell
+      title="Open Recruitment"
+      description="Kelola informasi open recruitment yang tampil di halaman publik."
+      variant="plain"
+      icon={<FileText size={22} />}
+    >
+      <AdminCard title="Form Recruitment" description="Tambah atau ubah informasi dan panitia.">
         <form onSubmit={upsert} className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2 md:col-span-2">
             <Label>Judul</Label>
@@ -314,8 +317,10 @@ export default function PublicSiteRecruitments() {
             <Button type="submit">{form.id ? 'Update' : 'Tambah'}</Button>
           </div>
         </form>
+      </AdminCard>
 
-        <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-zinc-700">
+      <AdminCard title="Daftar Recruitment" description="Data yang tersimpan di CMS.">
+        <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-zinc-800">
           <Table>
             <TableHeader>
               <TableRow>
@@ -361,7 +366,7 @@ export default function PublicSiteRecruitments() {
             </TableBody>
           </Table>
         </div>
-      </div>
+      </AdminCard>
 
       <ConfirmModal
         isOpen={isDeleteOpen}
@@ -373,7 +378,7 @@ export default function PublicSiteRecruitments() {
         cancelText="Batal"
         variant="danger"
       />
-    </div>
+    </AdminPageShell>
   );
 }
 

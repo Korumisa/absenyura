@@ -62,7 +62,7 @@ export default function Kegiatan() {
 
         <PublicReveal className="mx-auto max-w-7xl px-4 pb-16 sm:px-6">
           <div className="mt-8 flex justify-center">
-            <div className="flex w-full items-center gap-1 overflow-x-auto rounded-xl border border-black/10 bg-white p-1 scrollbar-hide md:w-fit md:overflow-visible">
+            <div className="flex w-full flex-wrap items-center justify-center gap-2 rounded-xl border border-black/10 bg-white p-2 md:w-fit">
               {TABS.map((t) => {
                 const active = tab === t.label;
                 return (
@@ -70,7 +70,7 @@ export default function Kegiatan() {
                     key={t.label}
                     type="button"
                     onClick={() => setTab(t.label)}
-                    className={`relative h-11 flex-none whitespace-nowrap rounded-lg px-4 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/45 sm:px-6 ${
+                    className={`relative h-10 rounded-lg px-3 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/45 sm:h-11 sm:px-6 sm:text-sm ${
                       active ? 'text-white' : 'text-slate-700 hover:text-slate-900'
                     }`}
                   >

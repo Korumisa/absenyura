@@ -19,6 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import type { Report } from '@/types/report';
 import type { PaginationMeta } from '@/types/common';
+import AdminPageShell from '@/components/AdminPageShell';
 
 const fetcher = (url: string) => api.get(url).then(res => res.data);
 
@@ -191,25 +192,22 @@ export default function Reports() {
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-        <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Rekap Kehadiran</h1>
+    <AdminPageShell
+      title="Rekap Kehadiran"
+      description="Filter data lalu export ke Excel atau PDF."
+      variant="plain"
+      icon={<FileText className="h-5 w-5" />}
+      actions={
         <div className="flex gap-2">
-          <Button 
-            onClick={handleExportExcel}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white"
-          >
+          <Button onClick={handleExportExcel} className="bg-emerald-600 hover:bg-emerald-700 text-white">
             <Download className="w-4 h-4 mr-2" /> Excel
           </Button>
-          <Button 
-            onClick={handleExportPDF}
-            variant="destructive"
-          >
+          <Button onClick={handleExportPDF} variant="destructive">
             <FileText className="w-4 h-4 mr-2" /> PDF
           </Button>
         </div>
-      </div>
-
+      }
+    >
       <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-800 overflow-hidden flex flex-col h-[calc(100vh-12rem)]">
         <div className="p-4 border-b border-slate-200 dark:border-zinc-800 flex flex-col sm:flex-row gap-4 shrink-0">
           <div className="relative flex-1">
@@ -444,6 +442,6 @@ export default function Reports() {
           </div>
         </div>
       )}
-    </div>
+    </AdminPageShell>
   );
 }

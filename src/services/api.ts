@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { useAuthStore } from '../stores/authStore';
+import { useAppStatusStore } from '../stores/appStatusStore';
 
 const apiBaseUrl = (import.meta as any)?.env?.VITE_API_BASE_URL || '/api';
 
@@ -7,6 +8,14 @@ const api = axios.create({
   baseURL: apiBaseUrl,
   withCredentials: true,
 });
+
+function getCookie(name: string): string | undefined {
+  if (typeof document === 'undefined') return undefined;
+  const parts = document.cookie.split(';').map((v) => v.trim());
+  const hit = parts.find((v) => v.startsWith(`${name}=`));
+  if (!hit) return undefined;
+  return decodeURIComponent(hit.slice(name.length + 1));
+}
 
 let isRefreshing = false;
 let failedQueue: any[] = [];
@@ -19,9 +28,29 @@ const processQueue = (error: any) => {
   failedQueue = [];
 };
 
+api.interceptors.request.use((config) => {
+  const method = String(config.method || 'get').toUpperCase();
+  const isSafe = method === 'GET' || method === 'HEAD' || method === 'OPTIONS';
+
+  if (!isSafe) {
+    const token = getCookie('csrfToken');
+    if (token) {
+      const headers = (config.headers ?? {}) as any;
+      headers['X-CSRF-Token'] = token;
+      config.headers = headers;
+    }
+  }
+
+  return config;
+});
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
+    if (!error?.response) {
+      useAppStatusStore.getState().setMaintenance('Server tidak dapat dihubungi. Silakan coba lagi.');
+    }
+
     const originalRequest = error.config;
 
     const url = String(originalRequest?.url || '');

@@ -1,10 +1,9 @@
 import { Router } from 'express';
-import multer from 'multer';
 import { getUsers, createUser, updateUser, deleteUser, importUsers, resetDeviceFingerprint } from '../controllers/user.controller.js';
 import { authenticate, authorize } from '../middlewares/auth.middleware.js';
+import { uploadExcel } from '../utils/upload.js';
 
 const router = Router();
-const uploadExcel = multer({ storage: multer.memoryStorage() });
 
 router.use(authenticate);
 

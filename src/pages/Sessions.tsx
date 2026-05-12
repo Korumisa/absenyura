@@ -15,6 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
+import AdminPageShell from '@/components/AdminPageShell';
 
 import type { Location, Session } from '@/types/session';
 
@@ -176,17 +177,20 @@ export default function Sessions() {
   });
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-        <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Sesi Kehadiran</h1>
-        {currentUser?.role !== 'USER' && (
+    <AdminPageShell
+      title="Sesi Kehadiran"
+      description="Kelola sesi, jadwal, lokasi, dan QR."
+      variant="plain"
+      icon={<Calendar className="h-5 w-5" />}
+      actions={
+        currentUser?.role !== 'USER' ? (
           <Button onClick={() => handleOpenModal()}>
             <Plus className="w-4 h-4 mr-2" />
             Buat Sesi Baru
           </Button>
-        )}
-      </div>
-
+        ) : null
+      }
+    >
       <div className="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-700 overflow-hidden mb-6">
         <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 border-b border-slate-200 dark:border-zinc-700">
           <div className="relative">
@@ -567,6 +571,6 @@ export default function Sessions() {
         confirmText="Ya, Hapus Sesi"
         variant="danger"
       />
-    </div>
+    </AdminPageShell>
   );
 }

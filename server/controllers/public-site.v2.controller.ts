@@ -189,18 +189,23 @@ export const replaceAdminStructure = async (req: PublicRoleRequest, res: Respons
         const g = data[gi] ?? {};
         const title = String(g.title ?? '').trim();
         if (!title) continue;
+        const is_core = Boolean((g as any).isCore ?? (g as any).is_core ?? false);
         const group = await tx.publicStructureGroup.create({
-          data: { title, sort_order: toInt(g.sortOrder, gi) },
+          data: { title, sort_order: toInt(g.sortOrder, gi), is_core } as any,
         });
         const people = Array.isArray(g.people) ? g.people : [];
+        let usedSpotlight = false;
         for (let pi = 0; pi < people.length; pi += 1) {
           const p = people[pi] ?? {};
           const name = String(p.name ?? '').trim();
           const role = String(p.role ?? '').trim();
           if (!name || !role) continue;
           const photo_url = String(p.photoUrl ?? '').trim() || null;
+          const wantsSpotlight = Boolean((p as any).isSpotlight ?? (p as any).is_spotlight ?? false);
+          const is_spotlight = wantsSpotlight && !usedSpotlight;
+          if (is_spotlight) usedSpotlight = true;
           await tx.publicStructureMember.create({
-            data: { group_id: group.id, name, role, photo_url, sort_order: toInt(p.sortOrder, pi) } as any,
+            data: { group_id: group.id, name, role, photo_url, is_spotlight, sort_order: toInt(p.sortOrder, pi) } as any,
           });
         }
       }

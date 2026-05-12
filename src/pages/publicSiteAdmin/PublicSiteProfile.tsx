@@ -10,6 +10,9 @@ import type { PublicProfile } from '@/types/publicSite';
 import { getErrorMessage } from '@/lib/errorMessage';
 import { prepareImageForUpload } from '@/lib/imageUpload';
 import { ConfirmModal } from '@/components/ConfirmModal';
+import AdminPageShell from '@/components/AdminPageShell';
+import AdminCard from '@/components/AdminCard';
+import { Globe } from 'lucide-react';
 
 export default function PublicSiteProfile() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
@@ -142,7 +145,7 @@ export default function PublicSiteProfile() {
   };
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
+    <AdminPageShell title="Profil Publik" description="Atur identitas, deskripsi, logo, dan tautan sosial media." variant="plain" icon={<Globe size={22} />}>
       <ConfirmModal
         isOpen={isResetOpen}
         onClose={() => setIsResetOpen(false)}
@@ -156,12 +159,8 @@ export default function PublicSiteProfile() {
         cancelText="Batal"
         variant="primary"
       />
-      <div className="space-y-1">
-        <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Profil Publik</h1>
-        <p className="text-slate-500 dark:text-zinc-400">Atur identitas, deskripsi, logo, dan tautan sosial media.</p>
-      </div>
 
-      <div className="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-700 p-6 space-y-6">
+      <AdminCard title="Pengaturan Profil" description="Data ini dipakai untuk halaman public, termasuk tombol WhatsApp." className="">
         <div className="grid gap-5 md:grid-cols-2">
           <div className="space-y-2">
             <Label>Nama Organisasi</Label>
@@ -331,8 +330,8 @@ export default function PublicSiteProfile() {
             Simpan
           </Button>
         </div>
-      </div>
-    </div>
+      </AdminCard>
+    </AdminPageShell>
   );
 }
 

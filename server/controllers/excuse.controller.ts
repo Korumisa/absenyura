@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import prisma from '../utils/prisma.js';
+import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { v2 as cloudinary } from 'cloudinary';
@@ -89,12 +90,21 @@ export const createExcuse = async (req: Request, res: Response): Promise<void> =
           return;
         }
       } else {
+        const extFromMime: Record<string, string> = {
+          'image/jpeg': '.jpg',
+          'image/jpg': '.jpg',
+          'image/png': '.png',
+          'image/webp': '.webp',
+          'application/pdf': '.pdf',
+        };
+        const rawExt = path.extname(path.basename(String(file.originalname || ''))).toLowerCase();
+        const ext = (rawExt && rawExt.length <= 10 ? rawExt : '') || extFromMime[String(file.mimetype || '').toLowerCase()] || '';
+
         const uploadDir = path.join(process.cwd(), 'uploads', 'excuses');
         if (!fs.existsSync(uploadDir)) {
           fs.mkdirSync(uploadDir, { recursive: true });
         }
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-        const filename = file.fieldname + '-' + uniqueSuffix + '-' + file.originalname;
+        const filename = `${file.fieldname}-${crypto.randomBytes(16).toString('hex')}${ext}`;
         const filePath = path.join(uploadDir, filename);
         fs.writeFileSync(filePath, file.buffer);
         proof_url = `/uploads/excuses/${filename}`;

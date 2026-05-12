@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ConfirmModal } from '@/components/ConfirmModal';
+import AdminPageShell from '@/components/AdminPageShell';
 import type { Location } from '@/types/location';
 
 // Fix leaflet icon issue in react-leaflet
@@ -219,15 +220,18 @@ export default function Locations() {
   });
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-        <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Manajemen Lokasi Geofencing</h1>
+    <AdminPageShell
+      title="Manajemen Lokasi"
+      description="Atur geofencing dan batasan WiFi untuk absensi."
+      variant="plain"
+      icon={<MapPin className="h-5 w-5" />}
+      actions={
         <Button onClick={() => handleOpenModal()}>
           <Plus className="w-4 h-4 mr-2" />
           Tambah Lokasi
         </Button>
-      </div>
-
+      }
+    >
       <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-800 overflow-hidden">
         <div className="p-4 border-b border-slate-200 dark:border-zinc-800 flex flex-col sm:flex-row gap-4">
           <div className="relative max-w-md flex-1">
@@ -476,6 +480,6 @@ export default function Locations() {
         confirmText="Ya, Hapus Lokasi"
         variant="danger"
       />
-    </div>
+    </AdminPageShell>
   );
 }

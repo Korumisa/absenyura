@@ -14,6 +14,8 @@ import { fileURLToPath } from 'url'
 import cookieParser from 'cookie-parser'
 import helmet from 'helmet'
 import rateLimit from 'express-rate-limit'
+import { csrfProtect } from './middlewares/csrf.middleware.js'
+import prisma from './utils/prisma.js'
 
 import authRoutes from './routes/auth.js'
 import userRoutes from './routes/users.js'
@@ -29,6 +31,7 @@ import classRoutes from './routes/classes.js'
 import excuseRoutes from './routes/excuses.js'
 import publicSiteRoutes from './routes/public-site.js'
 import { runCronJob } from './jobs/cron.js'
+import { authenticate } from './middlewares/auth.middleware.js'
 
 dotenv.config()// for esm mode
 const __filename = fileURLToPath(import.meta.url)
@@ -43,24 +46,41 @@ if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
   app.set('trust proxy', 1)
 }
 
+app.disable('x-powered-by')
 app.use(helmet())
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin) return callback(null, true);
-      if (process.env.NODE_ENV !== 'production') {
-        return callback(null, origin === 'http://localhost:5173');
+      const isProd = process.env.NODE_ENV === 'production'
+      if (!origin) return callback(null, true)
+
+      if (!isProd) {
+        return callback(null, origin === 'http://localhost:5173')
       }
-      const allowed = process.env.FRONTEND_URL;
-      if (!allowed) return callback(null, true);
-      return callback(null, origin === allowed);
+
+      const allowedOrigins = new Set(
+        String(process.env.CORS_ORIGINS || process.env.FRONTEND_URL || '')
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean),
+      )
+
+      if (allowedOrigins.size === 0) {
+        return callback(new Error('CORS not configured'), false)
+      }
+
+      return callback(null, allowedOrigins.has(origin))
     },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'X-Seed-Secret'],
+    optionsSuccessStatus: 204,
   })
 )
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 app.use(cookieParser())
+app.use(csrfProtect)
 
 // Fallback Cron execution on every request (max once per minute)
 app.use((req, res, next) => {
@@ -69,11 +89,23 @@ app.use((req, res, next) => {
 });
 
 // Rate limiting
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+})
+
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 500, // Increased limit from 100 to 500 to avoid blocking API calls
   message: 'Too many requests from this IP, please try again after 15 minutes',
+  standardHeaders: true,
+  legacyHeaders: false,
 });
+
+app.use('/api/auth/login', authLimiter)
+app.use('/api/auth/refresh', authLimiter)
 app.use('/api/', apiLimiter);
 
 /**
@@ -92,18 +124,27 @@ app.use('/api/notifications', notificationRoutes)
 app.use('/api/audit-logs', auditRoutes)
 app.use('/api/classes', classRoutes)
 app.use('/api/excuses', excuseRoutes)
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+app.use('/uploads/public-site', express.static(path.join(__dirname, '../uploads/public-site')))
+app.use('/uploads', authenticate, express.static(path.join(__dirname, '../uploads')))
 
 /**
  * health
  */
 app.use(
   '/api/health',
-  (req: Request, res: Response, next: NextFunction): void => {
-    res.status(200).json({
-      success: true,
-      message: 'ok',
-    })
+  async (_req: Request, res: Response): Promise<void> => {
+    try {
+      await prisma.$queryRaw`SELECT 1`
+      res.status(200).json({
+        success: true,
+        message: 'ok',
+      })
+    } catch {
+      res.status(503).json({
+        success: false,
+        error: 'db_unavailable',
+      })
+    }
   },
 )
 

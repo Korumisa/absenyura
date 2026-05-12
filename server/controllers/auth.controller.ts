@@ -3,6 +3,18 @@ import bcrypt from 'bcryptjs';
 import prisma from '../utils/prisma.js';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../utils/jwt.js';
 import { sendInternalServerError } from '../utils/errorResponse.js';
+import crypto from 'crypto';
+
+function setCsrfCookie(res: Response, isProduction: boolean): void {
+  const token = crypto.randomBytes(32).toString('hex');
+  res.cookie('csrfToken', token, {
+    httpOnly: false,
+    secure: isProduction,
+    sameSite: (isProduction ? 'none' : 'lax') as 'none' | 'lax',
+    path: '/',
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+}
 
 export const login = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -77,6 +89,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       httpOnly: true,
       secure: isProduction,
       sameSite: (isProduction ? 'none' : 'lax') as 'none' | 'lax',
+      path: '/',
     };
 
     // Send access token as HttpOnly cookie
@@ -90,6 +103,8 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       ...cookieOptions,
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
+
+    setCsrfCookie(res, isProduction);
 
     res.status(200).json({
       success: true,
@@ -129,10 +144,12 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
     const newAccessToken = generateAccessToken(user.id, user.role);
     const newRefreshToken = generateRefreshToken(user.id, user.role);
 
+    const isProduction = process.env.NODE_ENV === 'production';
     const cookieOptions = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: (process.env.NODE_ENV === 'production' ? 'none' : 'lax') as 'none' | 'lax',
+      secure: isProduction,
+      sameSite: (isProduction ? 'none' : 'lax') as 'none' | 'lax',
+      path: '/',
     };
 
     res.cookie('accessToken', newAccessToken, {
@@ -144,6 +161,8 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
       ...cookieOptions,
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
+
+    setCsrfCookie(res, isProduction);
 
     res.status(200).json({
       success: true,
@@ -157,21 +176,40 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
 };
 
 export const logout = async (req: Request, res: Response): Promise<void> => {
+  const isProduction = process.env.NODE_ENV === 'production';
   const cookieOptions = {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: (process.env.NODE_ENV === 'production' ? 'none' : 'lax') as 'none' | 'lax',
+    secure: isProduction,
+    sameSite: (isProduction ? 'none' : 'lax') as 'none' | 'lax',
+    path: '/',
   };
   res.clearCookie('accessToken', cookieOptions);
   res.clearCookie('refreshToken', cookieOptions);
+  res.clearCookie('csrfToken', {
+    httpOnly: false,
+    secure: isProduction,
+    sameSite: (isProduction ? 'none' : 'lax') as 'none' | 'lax',
+    path: '/',
+  });
   res.status(200).json({ success: true, message: 'Logged out successfully' });
 };
+
+function isValidSeedSecret(req: Request): boolean {
+  const incoming = String(req.headers['x-seed-secret'] || '');
+  const expected = String(process.env.SEED_SECRET || '');
+  if (!expected || expected.length < 32) return false;
+  if (incoming.length !== expected.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(incoming), Buffer.from(expected));
+}
 
 // Seed endpoint for initial SUPER_ADMIN
 export const seedAdmin = async (req: Request, res: Response): Promise<void> => {
   try {
-    const seedSecret = req.headers['x-seed-secret'];
-    if (!seedSecret || seedSecret !== process.env.SEED_SECRET) {
+    if (process.env.NODE_ENV === 'production') {
+      res.status(404).json({ success: false, error: 'Not found' });
+      return;
+    }
+    if (!isValidSeedSecret(req)) {
       res.status(403).json({ success: false, error: 'Unauthorized to seed database' });
       return;
     }
@@ -208,8 +246,11 @@ export const seedAdmin = async (req: Request, res: Response): Promise<void> => {
 
 export const flushDb = async (req: Request, res: Response): Promise<void> => {
   try {
-    const seedSecret = req.headers['x-seed-secret'];
-    if (!seedSecret || seedSecret !== process.env.SEED_SECRET) {
+    if (process.env.NODE_ENV === 'production') {
+      res.status(404).json({ success: false, error: 'Not found' });
+      return;
+    }
+    if (!isValidSeedSecret(req)) {
       res.status(403).json({ success: false, error: 'Unauthorized to flush database' });
       return;
     }

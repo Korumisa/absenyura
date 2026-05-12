@@ -11,6 +11,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { PublicProgram } from '@/types/publicSite';
 import { getErrorMessage } from '@/lib/errorMessage';
+import AdminPageShell from '@/components/AdminPageShell';
+import AdminCard from '@/components/AdminCard';
+import { ClipboardList } from 'lucide-react';
 
 export default function PublicSitePrograms() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
@@ -91,13 +94,13 @@ export default function PublicSitePrograms() {
   };
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Program Kerja</h1>
-        <p className="text-slate-500 dark:text-zinc-400">Kelola daftar program kerja yang akan tampil di halaman publik.</p>
-      </div>
-
-      <div className="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-700 p-6 space-y-6">
+    <AdminPageShell
+      title="Program Kerja"
+      description="Kelola daftar program kerja yang akan tampil di halaman publik."
+      variant="plain"
+      icon={<ClipboardList size={22} />}
+    >
+      <AdminCard title="Form Program" description="Tambah atau ubah program kerja.">
         <form onSubmit={upsert} className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2 md:col-span-2">
             <Label>Judul</Label>
@@ -139,8 +142,10 @@ export default function PublicSitePrograms() {
             <Button type="submit">{form.id ? 'Update' : 'Tambah'}</Button>
           </div>
         </form>
+      </AdminCard>
 
-        <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-zinc-700">
+      <AdminCard title="Daftar Program" description="Program kerja yang tersimpan di CMS.">
+        <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-zinc-800">
           <Table>
             <TableHeader>
               <TableRow>
@@ -182,7 +187,7 @@ export default function PublicSitePrograms() {
             </TableBody>
           </Table>
         </div>
-      </div>
+      </AdminCard>
 
       <ConfirmModal
         isOpen={isDeleteOpen}
@@ -194,7 +199,7 @@ export default function PublicSitePrograms() {
         cancelText="Batal"
         variant="danger"
       />
-    </div>
+    </AdminPageShell>
   );
 }
 

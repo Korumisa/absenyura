@@ -3,13 +3,18 @@ import react from '@vitejs/plugin-react'
 import tsconfigPaths from "vite-tsconfig-paths";
 import { VitePWA } from 'vite-plugin-pwa';
 import { getPublicSiteMock } from './src/dev/publicSiteMock';
+import { getApiMock } from './src/dev/apiMock';
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const apiTarget = env.VITE_API_PROXY_TARGET || 'http://localhost:3001';
+  const proxyLogs =
+    mode === 'development' &&
+    (String(env.VITE_PROXY_LOG || '0') === '1' ||
+      String(env.VITE_PROXY_LOG || '').toLowerCase() === 'true');
   const useDummyPublicSite =
-    mode !== 'production' &&
+    mode === 'development' &&
     String(env.VITE_USE_DUMMY_PUBLIC_SITE || '0') !== '0' &&
     String(env.VITE_USE_DUMMY_PUBLIC_SITE || '').toLowerCase() !== 'false';
 
@@ -22,6 +27,13 @@ export default defineConfig(({ mode }) => {
           server.middlewares.use((req, res, next) => {
             if (!useDummyPublicSite) return next();
             const url = req.url || '';
+            const mockedApi = getApiMock(url, String(req.method || 'GET'));
+            if (mockedApi) {
+              res.statusCode = mockedApi.status;
+              res.setHeader('Content-Type', 'application/json; charset=utf-8');
+              res.end(JSON.stringify(mockedApi.body));
+              return;
+            }
             const mocked = getPublicSiteMock(url);
             if (!mocked) return next();
             res.statusCode = mocked.status;
@@ -92,15 +104,17 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           secure: false,
           configure: (proxy) => {
-            proxy.on('error', (err) => {
-              console.log('proxy error', err);
-            });
-            proxy.on('proxyReq', (proxyReq, req) => {
-              console.log('Sending Request to the Target:', req.method, req.url);
-            });
-            proxy.on('proxyRes', (proxyRes, req) => {
-              console.log('Received Response from the Target:', proxyRes.statusCode, req.url);
-            });
+            if (proxyLogs) {
+              proxy.on('error', (err) => {
+                console.log('proxy error', err);
+              });
+              proxy.on('proxyReq', (proxyReq, req) => {
+                console.log('Sending Request to the Target:', req.method, req.url);
+              });
+              proxy.on('proxyRes', (proxyRes, req) => {
+                console.log('Received Response from the Target:', proxyRes.statusCode, req.url);
+              });
+            }
           },
         }
       }

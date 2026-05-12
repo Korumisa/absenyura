@@ -9,18 +9,27 @@ import type { PublicStructureGroup } from '@/types/publicSite';
 import { getErrorMessage } from '@/lib/errorMessage';
 import { prepareImageForUpload } from '@/lib/imageUpload';
 import { ConfirmModal } from '@/components/ConfirmModal';
+import AdminPageShell from '@/components/AdminPageShell';
+import AdminCard from '@/components/AdminCard';
+import { Layers } from 'lucide-react';
 
 export default function PublicSiteStructure() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
   const { data: structure = [], mutate } = useSWR<PublicStructureGroup[]>('/public-site/admin/structure', fetcher, { revalidateOnFocus: false });
 
-  type MemberDraft = { name: string; role: string; photoUrl: string };
-  type GroupDraft = { title: string; people: MemberDraft[] };
+  type MemberDraft = { name: string; role: string; photoUrl: string; isSpotlight: boolean };
+  type GroupDraft = { title: string; isCore: boolean; people: MemberDraft[] };
   const [groups, setGroups] = useState<GroupDraft[]>([]);
   useEffect(() => {
     const mapped: GroupDraft[] = (structure ?? []).map((g) => ({
       title: g.title ?? '',
-      people: (g.members ?? []).map((m) => ({ name: m.name ?? '', role: m.role ?? '', photoUrl: m.photo_url ?? '' })),
+      isCore: Boolean((g as any).is_core ?? false),
+      people: (g.members ?? []).map((m) => ({
+        name: m.name ?? '',
+        role: m.role ?? '',
+        photoUrl: m.photo_url ?? '',
+        isSpotlight: Boolean((m as any).is_spotlight ?? false),
+      })),
     }));
     setGroups(mapped);
   }, [structure]);
@@ -67,8 +76,15 @@ export default function PublicSiteStructure() {
     try {
       const payload = groups.map((g, gi) => ({
         title: g.title,
+        isCore: g.isCore,
         sortOrder: gi,
-        people: (g.people ?? []).map((p, pi) => ({ name: p.name, role: p.role, photoUrl: p.photoUrl, sortOrder: pi })),
+        people: (g.people ?? []).map((p, pi) => ({
+          name: p.name,
+          role: p.role,
+          photoUrl: p.photoUrl,
+          isSpotlight: p.isSpotlight,
+          sortOrder: pi,
+        })),
       }));
       await api.put('/public-site/admin/structure', { data: payload });
       toast.success('Struktur organisasi tersimpan');
@@ -83,13 +99,19 @@ export default function PublicSiteStructure() {
   const handleReset = () => {
     const mapped: GroupDraft[] = (structure ?? []).map((g) => ({
       title: g.title ?? '',
-      people: (g.members ?? []).map((m) => ({ name: m.name ?? '', role: m.role ?? '', photoUrl: m.photo_url ?? '' })),
+      isCore: Boolean((g as any).is_core ?? false),
+      people: (g.members ?? []).map((m) => ({
+        name: m.name ?? '',
+        role: m.role ?? '',
+        photoUrl: m.photo_url ?? '',
+        isSpotlight: Boolean((m as any).is_spotlight ?? false),
+      })),
     }));
     setGroups(mapped);
   };
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
+    <AdminPageShell title="Struktur Organisasi" description="Tambahkan grup dan anggota tanpa perlu JSON." variant="plain" icon={<Layers size={22} />}>
       <ConfirmModal
         isOpen={confirm.open}
         onClose={() => setConfirm((prev) => ({ ...prev, open: false }))}
@@ -103,31 +125,31 @@ export default function PublicSiteStructure() {
         cancelText="Batal"
         variant={confirm.variant}
       />
-      <div className="space-y-1">
-        <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Struktur Organisasi</h1>
-        <p className="text-slate-500 dark:text-zinc-400">Tambahkan grup dan anggota tanpa perlu JSON.</p>
-      </div>
 
-      <div className="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-700 p-6 space-y-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="text-sm font-semibold text-slate-900 dark:text-white">Grup Struktur</div>
+      <AdminCard
+        title="Grup Struktur"
+        description="Atur grup, tandai divisi inti, lalu tentukan spotlight per grup."
+        actions={
           <Button
             type="button"
             variant="outline"
-            onClick={() => setGroups((prev) => [...prev, { title: '', people: [{ name: '', role: '', photoUrl: '' }] }])}
+            onClick={() =>
+              setGroups((prev) => [...prev, { title: '', isCore: false, people: [{ name: '', role: '', photoUrl: '', isSpotlight: false }] }])
+            }
           >
             Tambah Grup
           </Button>
-        </div>
+        }
+      >
 
         {groups.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm text-slate-600 dark:border-zinc-700 dark:bg-zinc-900/40 dark:text-zinc-300">
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm text-slate-600 dark:border-zinc-800 dark:bg-zinc-900/40 dark:text-zinc-300">
             Belum ada struktur. Klik “Tambah Grup” untuk mulai.
           </div>
         ) : (
           <div className="space-y-4">
             {groups.map((g, gi) => (
-              <div key={gi} className="rounded-xl border border-slate-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-950/40">
+              <div key={gi} className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950/40">
                 <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                   <div className="w-full space-y-2">
                     <Label>Nama Grup</Label>
@@ -140,6 +162,17 @@ export default function PublicSiteStructure() {
                       }
                       placeholder="Contoh: INTI"
                     />
+                    <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-zinc-300">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(g.isCore)}
+                        onChange={(e) =>
+                          setGroups((prev) => prev.map((x, idx) => (idx === gi ? { ...x, isCore: e.target.checked } : x)))
+                        }
+                        className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 dark:border-zinc-600 dark:text-indigo-400 dark:focus:ring-indigo-400"
+                      />
+                      Divisi inti
+                    </label>
                   </div>
                   <div className="flex items-center gap-2">
                     <Button
@@ -147,7 +180,9 @@ export default function PublicSiteStructure() {
                       variant="outline"
                       onClick={() =>
                         setGroups((prev) =>
-                          prev.map((x, idx) => (idx === gi ? { ...x, people: [...x.people, { name: '', role: '', photoUrl: '' }] } : x))
+                          prev.map((x, idx) =>
+                            idx === gi ? { ...x, people: [...x.people, { name: '', role: '', photoUrl: '', isSpotlight: false }] } : x
+                          )
                         )
                       }
                     >
@@ -173,13 +208,14 @@ export default function PublicSiteStructure() {
                 </div>
 
                 <div className="mt-4 space-y-3">
-                  <div className="grid gap-3 md:grid-cols-3">
+                  <div className="grid gap-3 md:grid-cols-4">
                     <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-zinc-400">Foto</div>
                     <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-zinc-400">Nama</div>
                     <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-zinc-400">Jabatan</div>
+                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-zinc-400">Spotlight</div>
                   </div>
                   {g.people.map((p, pi) => (
-                    <div key={pi} className="grid gap-3 md:grid-cols-3">
+                    <div key={pi} className="grid gap-3 md:grid-cols-4">
                       <div className="flex items-center gap-3">
                         <div className="h-12 w-12 overflow-hidden rounded-full border border-slate-200 bg-slate-100 dark:border-zinc-700 dark:bg-zinc-900">
                           {p.photoUrl ? <img src={p.photoUrl} alt="Foto" className="h-full w-full object-cover" /> : null}
@@ -245,6 +281,28 @@ export default function PublicSiteStructure() {
                           Hapus
                         </Button>
                       </div>
+                      <div className="flex items-center justify-start md:justify-center">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(p.isSpotlight)}
+                          onChange={(e) => {
+                            const next = e.target.checked;
+                            setGroups((prev) =>
+                              prev.map((x, idx) =>
+                                idx === gi
+                                  ? {
+                                      ...x,
+                                      people: x.people.map((pp, pidx) =>
+                                        pidx === pi ? { ...pp, isSpotlight: next } : { ...pp, isSpotlight: next ? false : pp.isSpotlight }
+                                      ),
+                                    }
+                                  : x
+                              )
+                            );
+                          }}
+                          className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 dark:border-zinc-600 dark:text-indigo-400 dark:focus:ring-indigo-400"
+                        />
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -275,8 +333,8 @@ export default function PublicSiteStructure() {
             Simpan
           </Button>
         </div>
-      </div>
-    </div>
+      </AdminCard>
+    </AdminPageShell>
   );
 }
 

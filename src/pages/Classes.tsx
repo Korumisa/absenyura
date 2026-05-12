@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ConfirmModal } from '@/components/ConfirmModal';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
+import AdminPageShell from '@/components/AdminPageShell';
 import type { ClassItem } from '@/types/class';
 import type { User } from '@/types/user';
 
@@ -173,17 +174,20 @@ export default function Classes() {
   );
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-        <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Manajemen Kelas</h1>
-        {currentUser?.role !== 'USER' && (
+    <AdminPageShell
+      title="Manajemen Kelas"
+      description="Atur kelas, dosen pengampu, dan daftar mahasiswa."
+      variant="plain"
+      icon={<BookOpen className="h-5 w-5" />}
+      actions={
+        currentUser?.role !== 'USER' ? (
           <Button onClick={() => handleOpenModal()} className="w-full sm:w-auto">
             <Plus className="w-4 h-4 mr-2" />
             Buat Kelas Baru
           </Button>
-        )}
-      </div>
-
+        ) : null
+      }
+    >
       <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-800 overflow-hidden">
         <div className="p-4 border-b border-slate-200 dark:border-zinc-800">
           <div className="relative max-w-md">
@@ -480,6 +484,6 @@ export default function Classes() {
         confirmText="Ya, Hapus Kelas"
         variant="danger"
       />
-    </div>
+    </AdminPageShell>
   );
 }

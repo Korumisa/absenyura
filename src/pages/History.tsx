@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
+import AdminPageShell from '@/components/AdminPageShell';
 import type { AttendanceHistory } from '@/types/report';
 
 const fetcher = (url: string) => api.get(url).then(res => res.data.data);
@@ -26,20 +27,12 @@ export default function HistoryPage() {
   });
 
   return (
-    <div className="p-6 sm:p-8 max-w-5xl mx-auto space-y-8">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-gradient-to-r from-indigo-600 to-violet-600 rounded-3xl p-8 text-white shadow-xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 blur-[80px] rounded-full pointer-events-none"></div>
-        <div className="relative z-10">
-          <h1 className="text-3xl font-extrabold mb-2 flex items-center gap-3">
-            <HistoryIcon className="w-8 h-8" />
-            Riwayat Kehadiran
-          </h1>
-          <p className="text-indigo-100 text-lg">
-            Pantau semua catatan absensimu sepanjang semester di sini.
-          </p>
-        </div>
-      </div>
-
+    <AdminPageShell
+      title="Riwayat Kehadiran"
+      description="Pantau semua catatan absensimu sepanjang semester di sini."
+      variant="plain"
+      icon={<HistoryIcon className="h-5 w-5" />}
+    >
       <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
         {['ALL', 'PRESENT', 'LATE', 'EXCUSED', 'ABSENT'].map((statusOption) => (
           <Button
@@ -174,6 +167,6 @@ export default function HistoryPage() {
           </div>
         </div>
       )}
-    </div>
+    </AdminPageShell>
   );
 }

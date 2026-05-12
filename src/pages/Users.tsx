@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '@/services/api';
 import useSWR from 'swr';
 import { useAuthStore } from '@/stores/authStore';
-import { Plus, Search, Edit2, Trash2, X, Download, Upload, Smartphone } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, X, Download, Upload, Smartphone, Users as UsersIcon } from 'lucide-react';
 import * as ExcelJS from 'exceljs';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import AdminPageShell from '@/components/AdminPageShell';
 import type { User } from '@/types/user';
 
 export default function Users() {
@@ -216,27 +217,30 @@ export default function Users() {
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-          <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Manajemen Pengguna</h1>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto">
-            <button 
-              onClick={() => setIsImportModalOpen(true)}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg transition-colors font-medium shadow-sm"
-            >
-              <Upload size={18} />
-              <span>Import Excel</span>
-            </button>
-            <button 
-              onClick={() => handleOpenModal()}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors font-medium shadow-sm"
-            >
-              <Plus size={18} />
-              <span>Tambah Pengguna</span>
-            </button>
-          </div>
+    <AdminPageShell
+      title="Manajemen Pengguna"
+      description="Kelola user, import Excel, dan reset perangkat."
+      variant="plain"
+      icon={<UsersIcon className="h-5 w-5" />}
+      actions={
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto">
+          <button
+            onClick={() => setIsImportModalOpen(true)}
+            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg transition-colors font-medium shadow-sm"
+          >
+            <Upload size={18} />
+            <span>Import Excel</span>
+          </button>
+          <button
+            onClick={() => handleOpenModal()}
+            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors font-medium shadow-sm"
+          >
+            <Plus size={18} />
+            <span>Tambah Pengguna</span>
+          </button>
         </div>
-
+      }
+    >
       <div className="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-700 overflow-hidden">
         <div className="p-4 border-b border-slate-200 dark:border-zinc-700 flex flex-col md:flex-row gap-3 items-center justify-between">
           <div className="relative w-full md:max-w-md flex-1">
@@ -607,6 +611,6 @@ export default function Users() {
         confirmText="Ya, Hapus Pengguna"
         variant="danger"
       />
-    </div>
+    </AdminPageShell>
   );
 }

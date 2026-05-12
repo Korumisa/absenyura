@@ -7,6 +7,7 @@ import { User, LogOut, Building2, Plus, Trash2, X, BookOpen } from 'lucide-react
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import AdminPageShell from '@/components/AdminPageShell';
 
 export default function Settings() {
   const { user, setAuth } = useAuthStore();
@@ -78,12 +79,12 @@ export default function Settings() {
   };
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Pengaturan</h1>
-        <p className="text-slate-500 dark:text-zinc-400">Kelola profil, kata sandi, dan preferensi akun Anda.</p>
-      </div>
-
+    <AdminPageShell
+      title="Pengaturan"
+      description="Kelola profil, kata sandi, dan preferensi akun Anda."
+      variant="plain"
+      icon={<User className="h-5 w-5" />}
+    >
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Sidebar Nav */}
         <div className="md:col-span-1 space-y-2">
@@ -180,6 +181,6 @@ export default function Settings() {
 
         </div>
       </div>
-    </div>
+    </AdminPageShell>
   );
 }

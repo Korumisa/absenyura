@@ -143,10 +143,14 @@ export default function Fungsionaris() {
                         );
                       }
                       const key = (v: unknown) => String(v ?? '').toLowerCase();
-                      const leaderIndex = members.findIndex((m) => {
-                        const r = key((m as any).role);
-                        return r.includes('kabid') || r.includes('ketua') || r.includes('koordinator');
-                      });
+                      const spotlightIndex = members.findIndex((m) => Boolean((m as any).is_spotlight));
+                      const leaderIndex =
+                        spotlightIndex !== -1
+                          ? spotlightIndex
+                          : members.findIndex((m) => {
+                              const r = key((m as any).role);
+                              return r.includes('kabid') || r.includes('ketua') || r.includes('koordinator');
+                            });
                       const leader = members[Math.max(0, leaderIndex)] ?? members[0];
                       const rest = members.filter((m) => m.id !== leader.id);
                       const right = rest.slice(0, 4);

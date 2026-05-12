@@ -49,7 +49,7 @@ export default function Layout() {
   }, [canPublicSite, location.pathname]);
 
   return (
-    <div className="flex min-h-dvh bg-slate-50 dark:bg-zinc-900 overflow-hidden font-sans">
+    <div className="admin-theme flex min-h-dvh overflow-hidden bg-[#f5f7fb] font-sans dark:bg-zinc-900">
       {sidebarOpen && (
         <button
           type="button"
@@ -61,18 +61,18 @@ export default function Layout() {
 
       {/* Sidebar */}
       <div
-        className={`fixed inset-y-0 left-0 z-30 w-64 bg-white dark:bg-zinc-950 border-r border-slate-200 dark:border-zinc-800 transform transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-30 w-64 transform border-r border-[#e6edf5] bg-white transition-transform duration-300 ease-in-out dark:border-zinc-800 dark:bg-zinc-950 lg:static lg:translate-x-0 ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="flex items-center justify-between h-16 px-6 bg-white dark:bg-zinc-950 border-b border-slate-200 dark:border-zinc-800">
+        <div className="flex h-16 items-center justify-between border-b border-[#e6edf5] bg-white px-6 dark:border-zinc-800 dark:bg-zinc-950">
           <div className="flex items-center gap-3">
             <img
               src="/3.%20HM%20SDP.png"
               alt="Logo HM"
               className="h-9 w-9 rounded-xl bg-white/70 p-1.5 ring-1 ring-black/10 dark:bg-white/10 dark:ring-white/10"
             />
-            <span className="text-lg font-semibold text-indigo-600 dark:text-indigo-400">E-Absensi</span>
+            <span className="text-lg font-semibold text-[#2f80ed] dark:text-indigo-400">E-Absensi</span>
           </div>
           <Button 
             variant="ghost" 
@@ -86,7 +86,7 @@ export default function Layout() {
         </div>
 
         <div className="flex flex-col h-[calc(100vh-4rem)] justify-between pb-6">
-          <nav className="scrollbar-hide p-4 space-y-1 overflow-y-auto">
+          <nav className="scrollbar-hide space-y-1 overflow-y-auto p-4">
             {allowedNavItems.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname.startsWith(item.path);
@@ -98,13 +98,13 @@ export default function Layout() {
                     <button
                       type="button"
                       onClick={() => setPublicSiteOpen((v) => !v)}
-                      className={`w-full flex items-center px-4 py-3 rounded-lg transition-colors ${
+                      className={`w-full flex items-center rounded-xl px-4 py-3 transition-colors ${
                         isActive
-                          ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400'
-                          : 'text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800/50'
+                          ? 'bg-[#eef5ff] text-[#2f80ed] dark:bg-indigo-900/20 dark:text-indigo-400'
+                          : 'text-slate-600 hover:bg-slate-100 dark:text-zinc-400 dark:hover:bg-zinc-800/50'
                       }`}
                     >
-                      <Icon size={20} className="mr-3" />
+                      <Icon size={20} className={`mr-3 ${isActive ? 'text-[#2f80ed] dark:text-indigo-400' : 'text-slate-500 dark:text-zinc-400'}`} />
                       <span className="font-medium flex-1 text-left">{item.name}</span>
                       <ChevronDown size={18} className={`transition-transform duration-200 ${publicSiteOpen ? 'rotate-0' : '-rotate-90'}`} />
                     </button>
@@ -130,10 +130,10 @@ export default function Layout() {
                               key={sub.path}
                               to={sub.path}
                               onClick={() => setSidebarOpen(false)}
-                              className={`flex items-center px-4 py-2 rounded-lg transition-colors text-sm ${
+                              className={`flex items-center rounded-xl px-4 py-2 text-sm transition-colors ${
                                 subActive
-                                  ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400'
-                                  : 'text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800/50'
+                                  ? 'bg-[#eef5ff] text-[#2f80ed] dark:bg-indigo-900/20 dark:text-indigo-400'
+                                  : 'text-slate-600 hover:bg-slate-100 dark:text-zinc-400 dark:hover:bg-zinc-800/50'
                               }`}
                             >
                               <SubIcon size={18} className="mr-3 opacity-80" />
@@ -152,13 +152,13 @@ export default function Layout() {
                   key={item.name}
                   to={item.path}
                   onClick={() => setSidebarOpen(false)}
-                  className={`flex items-center px-4 py-3 rounded-lg transition-colors ${
+                  className={`flex items-center rounded-xl px-4 py-3 transition-colors ${
                     isActive
-                      ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400'
-                      : 'text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800/50'
+                      ? 'bg-[#eef5ff] text-[#2f80ed] dark:bg-indigo-900/20 dark:text-indigo-400'
+                      : 'text-slate-600 hover:bg-slate-100 dark:text-zinc-400 dark:hover:bg-zinc-800/50'
                   }`}
                 >
-                  <Icon size={20} className="mr-3" />
+                  <Icon size={20} className={`mr-3 ${isActive ? 'text-[#2f80ed] dark:text-indigo-400' : 'text-slate-500 dark:text-zinc-400'}`} />
                   <span className="font-medium">{item.name}</span>
                 </Link>
               );
@@ -170,7 +170,7 @@ export default function Layout() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Top Navbar */}
-        <header className="flex items-center justify-between h-16 px-6 bg-white dark:bg-zinc-950 border-b border-slate-200 dark:border-zinc-800">
+        <header className="flex h-16 items-center justify-between border-b border-[#e6edf5] bg-white px-6 dark:border-zinc-800 dark:bg-zinc-950">
           <div className="flex items-center">
             <Button 
               variant="ghost" 
@@ -187,7 +187,7 @@ export default function Layout() {
                 alt="Logo HM"
                 className="h-8 w-8 rounded-lg bg-white/70 p-1 ring-1 ring-black/10 dark:bg-white/10 dark:ring-white/10"
               />
-              <span className="text-lg font-semibold text-indigo-600 dark:text-indigo-400">E-Absensi</span>
+              <span className="text-lg font-semibold text-[#2f80ed] dark:text-indigo-400">E-Absensi</span>
             </div>
           </div>
           
@@ -198,7 +198,7 @@ export default function Layout() {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-y-auto bg-slate-50 dark:bg-zinc-900">
+        <main className="flex-1 overflow-y-auto bg-[#f5f7fb] dark:bg-zinc-900">
           <Outlet />
         </main>
       </div>

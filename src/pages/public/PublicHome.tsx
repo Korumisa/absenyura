@@ -648,7 +648,7 @@ export default function PublicHome() {
                 const t = String(title ?? '').toLowerCase();
                 return t.includes('badan pengurus harian') || t === 'bph' || t.includes('inti');
               };
-              const core = ordered.filter((g) => isCore(g.title) || (Number(g.sort_order ?? 999) || 999) === 0);
+              const core = ordered.filter((g) => Boolean((g as any).is_core) || isCore(g.title) || (Number(g.sort_order ?? 999) || 999) === 0);
               const coreIds = new Set(core.map((g) => g.id));
               const support = ordered.filter((g) => !coreIds.has(g.id));
               return (

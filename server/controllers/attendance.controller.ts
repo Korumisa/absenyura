@@ -107,12 +107,20 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
         }
       } else {
         // Save to local disk
+        const extFromMime: Record<string, string> = {
+          'image/jpeg': '.jpg',
+          'image/jpg': '.jpg',
+          'image/png': '.png',
+          'image/webp': '.webp',
+        };
+        const rawExt = path.extname(path.basename(String(req.file.originalname || ''))).toLowerCase();
+        const ext = (rawExt && rawExt.length <= 10 ? rawExt : '') || extFromMime[String(req.file.mimetype || '').toLowerCase()] || '';
+
         const uploadDir = path.join(process.cwd(), 'uploads', 'attendance');
         if (!fs.existsSync(uploadDir)) {
           fs.mkdirSync(uploadDir, { recursive: true });
         }
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-        const filename = req.file.fieldname + '-' + uniqueSuffix + '-' + req.file.originalname;
+        const filename = `${req.file.fieldname}-${crypto.randomBytes(16).toString('hex')}${ext}`;
         const filePath = path.join(uploadDir, filename);
         fs.writeFileSync(filePath, (req.file as any).buffer);
         photoUrl = `/uploads/attendance/${filename}`;

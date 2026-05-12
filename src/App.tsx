@@ -43,10 +43,16 @@ import { ThemeProvider } from "@/providers/theme-provider";
 import { useEffect } from "react";
 import { getOfflineAttendances, deleteOfflineAttendance } from "@/lib/idb";
 import api from "@/services/api";
+import MaintenancePage from "@/pages/Maintenance";
+import { useAppStatusStore } from "@/stores/appStatusStore";
 
 export default function App() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const user = useAuthStore((state) => state.user);
+  const isMaintenance = useAppStatusStore((s) => s.isMaintenance);
+  const maintenanceReason = useAppStatusStore((s) => s.reason);
+  const clearMaintenance = useAppStatusStore((s) => s.clearMaintenance);
+  const setMaintenance = useAppStatusStore((s) => s.setMaintenance);
 
   useAutoLogout();
 
@@ -98,6 +104,45 @@ export default function App() {
     };
   }, [isAuthenticated]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const checkHealth = async () => {
+      try {
+        const res = await api.get('/health');
+        if (cancelled) return;
+        if (res?.status === 200 && res?.data?.success === true) {
+          clearMaintenance();
+          return;
+        }
+        setMaintenance('Layanan sedang mengalami gangguan. Silakan coba lagi.');
+      } catch {
+        if (cancelled) return;
+        setMaintenance('Server tidak dapat dihubungi. Silakan coba lagi.');
+      }
+    };
+
+    const onOnline = () => {
+      checkHealth();
+    };
+    const onOffline = () => {
+      setMaintenance('Koneksi internet terputus. Silakan sambungkan kembali.');
+    };
+
+    window.addEventListener('online', onOnline);
+    window.addEventListener('offline', onOffline);
+
+    checkHealth();
+    const t = window.setInterval(checkHealth, 30000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(t);
+      window.removeEventListener('online', onOnline);
+      window.removeEventListener('offline', onOffline);
+    };
+  }, [clearMaintenance, setMaintenance]);
+
   const getDefaultRoute = () => {
     if (user?.role === 'SUPER_ADMIN') return '/dashboard';
     if (user?.role === 'ADMIN') return '/dashboard';
@@ -110,11 +155,21 @@ export default function App() {
     <ThemeProvider defaultTheme="light" storageKey="absensyura-theme">
       <ErrorBoundary>
         <Toaster position="top-right" richColors />
+        {isMaintenance ? (
+          <MaintenancePage
+            reason={maintenanceReason}
+            onRetry={() => {
+              clearMaintenance();
+              window.location.reload();
+            }}
+          />
+        ) : (
         <Router>
         <ScrollToTop />
         <Routes>
           <Route path="/" element={isAuthenticated ? <Navigate to={getDefaultRoute()} replace /> : <PublicHome />} />
           <Route path="/login" element={isAuthenticated ? <Navigate to={getDefaultRoute()} replace /> : <Login />} />
+          <Route path="/maintenance" element={<MaintenancePage />} />
           
           {/* Public Static Pages */}
           <Route path="/berita" element={<Berita />} />
@@ -156,6 +211,7 @@ export default function App() {
           </Route>
         </Routes>
       </Router>
+        )}
       </ErrorBoundary>
     </ThemeProvider>
   );

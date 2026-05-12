@@ -7,9 +7,26 @@ import { ProtectedRouteProps } from '../types/protectedroute';
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles, children }) => {
   const { isAuthenticated, user, setAuth, logout } = useAuthStore();
   const location = useLocation();
+  const bypass =
+    import.meta.env.MODE === 'development' &&
+    (import.meta.env.VITE_DEV_BYPASS_AUTH === 'true' || import.meta.env.VITE_DEV_BYPASS_AUTH === '1');
 
   useEffect(() => {
     let cancelled = false;
+
+    if (bypass) {
+      if (!isAuthenticated || !user) {
+        setAuth({
+          id: 'dev-preview',
+          name: 'Dev Preview',
+          email: 'dev@local',
+          role: 'SUPER_ADMIN',
+        });
+      }
+      return () => {
+        cancelled = true;
+      };
+    }
 
     const verify = async () => {
       if (!isAuthenticated || !user) return;
@@ -26,6 +43,10 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles, ch
       cancelled = true;
     };
   }, [isAuthenticated, user, setAuth, logout]);
+
+  if (bypass) {
+    return children ? <>{children}</> : <Outlet />;
+  }
 
   if (!isAuthenticated || !user) {
     return <Navigate to="/login" state={{ from: location }} replace />;

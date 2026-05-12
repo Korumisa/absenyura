@@ -12,6 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import type { PublicCategory, PublicPost, PublicPostType } from '@/types/publicSite';
 import { getErrorMessage } from '@/lib/errorMessage';
 import { prepareImageForUpload } from '@/lib/imageUpload';
+import AdminPageShell from '@/components/AdminPageShell';
+import AdminCard from '@/components/AdminCard';
+import { Newspaper } from 'lucide-react';
 
 export default function PublicSitePosts() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
@@ -139,12 +142,12 @@ export default function PublicSitePosts() {
   }, [postType]);
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Konten Publik</h1>
-          <p className="text-slate-500 dark:text-zinc-400">Kelola konten untuk halaman publik.</p>
-        </div>
+    <AdminPageShell
+      title="Konten Publik"
+      description="Kelola konten untuk halaman publik."
+      variant="plain"
+      icon={<Newspaper size={22} />}
+      actions={
         <div className="w-full sm:w-[260px]">
           <Label>Jenis Konten</Label>
           <Select value={postType} onValueChange={(v) => setPostType(v as PublicPostType)}>
@@ -159,12 +162,12 @@ export default function PublicSitePosts() {
             </SelectContent>
           </Select>
         </div>
-      </div>
+      }
+    >
 
       <div className="grid gap-6 lg:grid-cols-2">
         {postType === 'BERITA' || postType === 'KEGIATAN' ? (
-          <div className="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-700 p-6 space-y-5">
-            <div className="text-sm font-semibold text-slate-900 dark:text-white">Kategori</div>
+          <AdminCard title="Kategori" description="Dipakai untuk Berita dan Kegiatan.">
             <form onSubmit={upsertCategory} className="grid gap-4">
               <div className="space-y-2">
                 <Label>Nama</Label>
@@ -211,16 +214,14 @@ export default function PublicSitePosts() {
                 </TableBody>
               </Table>
             </div>
-          </div>
+          </AdminCard>
         ) : (
-          <div className="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-700 p-6">
-            <div className="text-sm font-semibold text-slate-900 dark:text-white">{typeLabel}</div>
-            <div className="mt-2 text-sm text-slate-600 dark:text-zinc-300">Kategori tidak digunakan untuk jenis konten ini.</div>
-          </div>
+          <AdminCard title={typeLabel} description="Kategori tidak digunakan untuk jenis konten ini.">
+            <div className="text-sm text-slate-600 dark:text-zinc-300">Kategori tidak digunakan untuk jenis konten ini.</div>
+          </AdminCard>
         )}
 
-        <div className="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-700 p-6 space-y-5">
-          <div className="text-sm font-semibold text-slate-900 dark:text-white">Konten</div>
+        <AdminCard title="Konten" description="Tambah atau ubah data konten.">
           <form onSubmit={upsertPost} className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label>Tipe</Label>
@@ -336,13 +337,10 @@ export default function PublicSitePosts() {
               <Button type="submit">{postForm.id ? 'Update' : 'Tambah'}</Button>
             </div>
           </form>
-        </div>
+        </AdminCard>
       </div>
 
-      <div className="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-700 overflow-hidden">
-        <div className="p-4 border-b border-slate-200 dark:border-zinc-700">
-          <div className="text-sm font-semibold text-slate-900 dark:text-white">Daftar Konten</div>
-        </div>
+      <AdminCard title="Daftar Konten" description="Klik Edit untuk mengisi form dari data yang sudah ada.">
         <Table>
           <TableHeader>
             <TableRow>
@@ -394,7 +392,7 @@ export default function PublicSitePosts() {
             ))}
           </TableBody>
         </Table>
-      </div>
+      </AdminCard>
 
       <ConfirmModal
         isOpen={isDeleteOpen}
@@ -406,7 +404,7 @@ export default function PublicSitePosts() {
         cancelText="Batal"
         variant="danger"
       />
-    </div>
+    </AdminPageShell>
   );
 }
 

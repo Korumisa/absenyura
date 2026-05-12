@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
+import AdminPageShell from '@/components/AdminPageShell';
 import type { AuditLog } from '@/types/audit';
 import type { PaginationMeta } from '@/types/common';
 
@@ -54,12 +55,12 @@ export default function AuditLogs() {
   );
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Audit Log Sistem</h1>
-        <p className="text-slate-500 dark:text-zinc-400">Jejak rekaman aktivitas pengguna dan perubahan data dalam sistem.</p>
-      </div>
-
+    <AdminPageShell
+      title="Audit Log Sistem"
+      description="Jejak rekaman aktivitas pengguna dan perubahan data dalam sistem."
+      variant="plain"
+      icon={<Shield className="h-5 w-5" />}
+    >
       <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-800 overflow-hidden">
         <div className="p-4 border-b border-slate-200 dark:border-zinc-800">
           <div className="relative max-w-md">
@@ -147,6 +148,6 @@ export default function AuditLogs() {
           </div>
         )}
       </div>
-    </div>
+    </AdminPageShell>
   );
 }
