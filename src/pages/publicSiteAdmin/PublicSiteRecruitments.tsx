@@ -171,29 +171,57 @@ export default function PublicSiteRecruitments() {
           <div className="space-y-2 md:col-span-2">
             <Label>Upload Poster</Label>
             <div className="grid gap-3 md:grid-cols-[1fr_220px]">
-              <Input
-                type="file"
-                accept="image/*"
-                disabled={uploadingPoster}
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  setUploadingPoster(true);
-                  try {
-                    const url = await uploadImage(file);
-                    setForm((p) => ({ ...p, posterImageUrl: url }));
-                    toast.success('Upload poster berhasil');
-                  } catch (err: any) {
-                    toast.error(getErrorMessage(err, 'Gagal upload poster'));
-                  } finally {
-                    setUploadingPoster(false);
-                    e.target.value = '';
-                  }
-                }}
-              />
+              <div className="space-y-2">
+                <input
+                  id="recruitment-poster"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  disabled={uploadingPoster}
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    setUploadingPoster(true);
+                    try {
+                      const url = await uploadImage(file);
+                      setForm((p) => ({ ...p, posterImageUrl: url }));
+                      toast.success('Upload poster berhasil');
+                    } catch (err: any) {
+                      toast.error(getErrorMessage(err, 'Gagal upload poster'));
+                    } finally {
+                      setUploadingPoster(false);
+                      e.currentTarget.value = '';
+                    }
+                  }}
+                />
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button asChild variant="outline" disabled={uploadingPoster}>
+                    <Label htmlFor="recruitment-poster" className="cursor-pointer">
+                      {uploadingPoster ? 'Uploading...' : form.posterImageUrl ? 'Ganti Poster' : 'Upload Poster'}
+                    </Label>
+                  </Button>
+                  {form.posterImageUrl ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => setForm((p) => ({ ...p, posterImageUrl: '' }))}
+                      disabled={uploadingPoster}
+                    >
+                      Hapus
+                    </Button>
+                  ) : null}
+                </div>
+                <div className="text-xs text-slate-500 dark:text-zinc-400">PNG/JPG. Maks 4MB.</div>
+              </div>
               <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50 dark:border-zinc-700 dark:bg-zinc-900/40">
                 <div className="aspect-[4/5] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.2),rgba(255,255,255,0.04))]">
-                  {form.posterImageUrl ? <img src={form.posterImageUrl} alt="Poster" className="h-full w-full object-cover" /> : null}
+                  {form.posterImageUrl ? (
+                    <img src={form.posterImageUrl} alt="Poster" className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center px-4 text-center text-xs text-slate-500 dark:text-zinc-300">
+                      Belum ada poster
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

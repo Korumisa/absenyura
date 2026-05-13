@@ -177,13 +177,13 @@ export default function PublicSitePosts() {
                 <Label>Slug (opsional)</Label>
                 <Input value={categoryForm.slug ?? ''} onChange={(e) => setCategoryForm((p) => ({ ...p, slug: e.target.value }))} placeholder="contoh: prestasi-mahasiswa" />
               </div>
-              <div className="flex justify-end gap-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
                 {categoryForm.id ? (
-                  <Button variant="outline" type="button" onClick={resetCategoryForm}>
+                  <Button className="w-full sm:w-auto" variant="outline" type="button" onClick={resetCategoryForm}>
                     Batal
                   </Button>
                 ) : null}
-                <Button type="submit">{categoryForm.id ? 'Update' : 'Tambah'}</Button>
+                <Button className="w-full sm:w-auto" type="submit">{categoryForm.id ? 'Update' : 'Tambah'}</Button>
               </div>
             </form>
 
@@ -328,13 +328,13 @@ export default function PublicSitePosts() {
                 }}
               />
             </div>
-            <div className="md:col-span-2 flex justify-end gap-3">
+            <div className="md:col-span-2 flex flex-col gap-3 sm:flex-row sm:justify-end">
               {postForm.id ? (
-                <Button variant="outline" type="button" onClick={resetPostForm}>
+                <Button className="w-full sm:w-auto" variant="outline" type="button" onClick={resetPostForm}>
                   Batal
                 </Button>
               ) : null}
-              <Button type="submit">{postForm.id ? 'Update' : 'Tambah'}</Button>
+              <Button className="w-full sm:w-auto" type="submit">{postForm.id ? 'Update' : 'Tambah'}</Button>
             </div>
           </form>
         </AdminCard>

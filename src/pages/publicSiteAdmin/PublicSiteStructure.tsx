@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import useSWR from 'swr';
 import api from '@/services/api';
 import { toast } from 'sonner';
@@ -20,7 +20,20 @@ export default function PublicSiteStructure() {
   type MemberDraft = { name: string; role: string; photoUrl: string; isSpotlight: boolean };
   type GroupDraft = { title: string; isCore: boolean; people: MemberDraft[] };
   const [groups, setGroups] = useState<GroupDraft[]>([]);
+  const [dirty, setDirty] = useState(false);
+  const dirtyRef = useRef(false);
+  const markDirty = () => {
+    if (dirtyRef.current) return;
+    dirtyRef.current = true;
+    setDirty(true);
+  };
+  const setGroupsDirty = (updater: (prev: GroupDraft[]) => GroupDraft[]) => {
+    markDirty();
+    setGroups(updater);
+  };
+
   useEffect(() => {
+    if (dirtyRef.current) return;
     const mapped: GroupDraft[] = (structure ?? []).map((g) => ({
       title: g.title ?? '',
       isCore: Boolean((g as any).is_core ?? false),
@@ -58,7 +71,7 @@ export default function PublicSiteStructure() {
     setUploadingKey(key);
     try {
       const url = await uploadImage(file);
-      setGroups((prev) =>
+      setGroupsDirty((prev) =>
         prev.map((g, gidx) =>
           gidx === gi ? { ...g, people: g.people.map((p, pidx) => (pidx === pi ? { ...p, photoUrl: url } : p)) } : g
         )
@@ -88,6 +101,8 @@ export default function PublicSiteStructure() {
       }));
       await api.put('/public-site/admin/structure', { data: payload });
       toast.success('Struktur organisasi tersimpan');
+      dirtyRef.current = false;
+      setDirty(false);
       mutate();
     } catch (e: any) {
       toast.error(getErrorMessage(e, 'Gagal menyimpan'));
@@ -107,6 +122,8 @@ export default function PublicSiteStructure() {
         isSpotlight: Boolean((m as any).is_spotlight ?? false),
       })),
     }));
+    dirtyRef.current = false;
+    setDirty(false);
     setGroups(mapped);
   };
 
@@ -134,7 +151,7 @@ export default function PublicSiteStructure() {
             type="button"
             variant="outline"
             onClick={() =>
-              setGroups((prev) => [...prev, { title: '', isCore: false, people: [{ name: '', role: '', photoUrl: '', isSpotlight: false }] }])
+              setGroupsDirty((prev) => [...prev, { title: '', isCore: false, people: [{ name: '', role: '', photoUrl: '', isSpotlight: false }] }])
             }
           >
             Tambah Grup
@@ -156,7 +173,7 @@ export default function PublicSiteStructure() {
                     <Input
                       value={g.title}
                       onChange={(e) =>
-                        setGroups((prev) =>
+                        setGroupsDirty((prev) =>
                           prev.map((x, idx) => (idx === gi ? { ...x, title: e.target.value } : x))
                         )
                       }
@@ -167,7 +184,7 @@ export default function PublicSiteStructure() {
                         type="checkbox"
                         checked={Boolean(g.isCore)}
                         onChange={(e) =>
-                          setGroups((prev) => prev.map((x, idx) => (idx === gi ? { ...x, isCore: e.target.checked } : x)))
+                          setGroupsDirty((prev) => prev.map((x, idx) => (idx === gi ? { ...x, isCore: e.target.checked } : x)))
                         }
                         className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 dark:border-zinc-600 dark:text-indigo-400 dark:focus:ring-indigo-400"
                       />
@@ -179,7 +196,7 @@ export default function PublicSiteStructure() {
                       type="button"
                       variant="outline"
                       onClick={() =>
-                        setGroups((prev) =>
+                        setGroupsDirty((prev) =>
                           prev.map((x, idx) =>
                             idx === gi ? { ...x, people: [...x.people, { name: '', role: '', photoUrl: '', isSpotlight: false }] } : x
                           )
@@ -198,7 +215,7 @@ export default function PublicSiteStructure() {
                           description: 'Semua anggota di dalam grup ini juga akan ikut terhapus.',
                           confirmText: 'Hapus Grup',
                           variant: 'danger',
-                          onConfirm: () => setGroups((prev) => prev.filter((_, idx) => idx !== gi)),
+                          onConfirm: () => setGroupsDirty((prev) => prev.filter((_, idx) => idx !== gi)),
                         })
                       }
                     >
@@ -235,7 +252,7 @@ export default function PublicSiteStructure() {
                       <Input
                         value={p.name}
                         onChange={(e) =>
-                          setGroups((prev) =>
+                          setGroupsDirty((prev) =>
                             prev.map((x, idx) =>
                               idx === gi
                                 ? { ...x, people: x.people.map((pp, pidx) => (pidx === pi ? { ...pp, name: e.target.value } : pp)) }
@@ -249,7 +266,7 @@ export default function PublicSiteStructure() {
                         <Input
                           value={p.role}
                           onChange={(e) =>
-                            setGroups((prev) =>
+                            setGroupsDirty((prev) =>
                               prev.map((x, idx) =>
                                 idx === gi
                                   ? { ...x, people: x.people.map((pp, pidx) => (pidx === pi ? { ...pp, role: e.target.value } : pp)) }
@@ -270,7 +287,7 @@ export default function PublicSiteStructure() {
                               confirmText: 'Hapus',
                               variant: 'danger',
                               onConfirm: () =>
-                                setGroups((prev) =>
+                                setGroupsDirty((prev) =>
                                   prev.map((x, idx) =>
                                     idx === gi ? { ...x, people: x.people.filter((_, pidx) => pidx !== pi) } : x
                                   )
@@ -287,7 +304,7 @@ export default function PublicSiteStructure() {
                           checked={Boolean(p.isSpotlight)}
                           onChange={(e) => {
                             const next = e.target.checked;
-                            setGroups((prev) =>
+                            setGroupsDirty((prev) =>
                               prev.map((x, idx) =>
                                 idx === gi
                                   ? {
@@ -325,11 +342,11 @@ export default function PublicSiteStructure() {
                 onConfirm: handleReset,
               })
             }
-            disabled={saving}
+            disabled={saving || !dirty}
           >
             Reset
           </Button>
-          <Button type="button" onClick={handleSave} disabled={saving}>
+          <Button type="button" onClick={handleSave} disabled={saving || !dirty}>
             Simpan
           </Button>
         </div>
