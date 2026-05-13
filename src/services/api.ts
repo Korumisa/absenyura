@@ -35,9 +35,14 @@ api.interceptors.request.use((config) => {
   if (!isSafe) {
     const token = getCookie('csrfToken');
     if (token) {
-      const headers = (config.headers ?? {}) as any;
-      headers['X-CSRF-Token'] = token;
-      config.headers = headers;
+      const headers: any = config.headers ?? {};
+      if (typeof headers.set === 'function') {
+        headers.set('X-CSRF-Token', token);
+        config.headers = headers;
+      } else {
+        headers['X-CSRF-Token'] = token;
+        config.headers = headers;
+      }
     }
   }
 

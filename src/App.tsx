@@ -220,6 +220,7 @@ export default function App() {
               <Route path="/other" element={<div className="p-8 text-xl font-medium text-slate-700 dark:text-zinc-300">Other Page - Coming Soon</div>} />
             </Route>
           </Route>
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>
         )}

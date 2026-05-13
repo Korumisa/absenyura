@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import prisma from '../utils/prisma.js';
 import ExcelJS from 'exceljs';
+import { Prisma } from '@prisma/client';
 
 const ALLOWED_ROLES = new Set(['USER', 'ADMIN', 'SUPER_ADMIN', 'CONTENT_ADMIN']);
 
@@ -35,34 +36,59 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
   try {
     const { name, email, password, role, nim_nip, department, phone, semester } = req.body;
 
-    const existingUser = await prisma.user.findUnique({ where: { email } });
-    if (existingUser) {
-      res.status(400).json({ success: false, error: 'Email already in use' });
+    const nameValue = typeof name === 'string' ? name.trim() : '';
+    const emailValue = typeof email === 'string' ? email.trim().toLowerCase() : '';
+    const passwordValue = typeof password === 'string' ? password : '';
+    const roleValue = typeof role === 'string' ? role : 'USER';
+    const nimValueRaw = typeof nim_nip === 'string' ? nim_nip.trim() : '';
+    const departmentValueRaw = typeof department === 'string' ? department.trim() : '';
+    const phoneValueRaw = typeof phone === 'string' ? phone.trim() : '';
+
+    if (!nameValue) {
+      res.status(400).json({ success: false, error: 'Nama wajib diisi' });
+      return;
+    }
+    if (!emailValue) {
+      res.status(400).json({ success: false, error: 'Email wajib diisi' });
+      return;
+    }
+    if (!passwordValue) {
+      res.status(400).json({ success: false, error: 'Kata sandi wajib diisi' });
       return;
     }
 
-    if (role && typeof role === 'string' && !ALLOWED_ROLES.has(role)) {
+    const existingUser = await prisma.user.findUnique({ where: { email: emailValue } });
+    if (existingUser) {
+      res.status(400).json({ success: false, error: 'Email sudah digunakan' });
+      return;
+    }
+
+    if (roleValue && typeof roleValue === 'string' && !ALLOWED_ROLES.has(roleValue)) {
       res.status(400).json({ success: false, error: 'Role tidak valid' });
       return;
     }
 
-    if (role === 'USER' && !semester) {
+    const semesterRaw =
+      typeof semester === 'string' ? parseInt(semester, 10) : typeof semester === 'number' ? semester : NaN;
+    const semesterValue = Number.isFinite(semesterRaw) ? Math.trunc(semesterRaw) : 1;
+
+    if (roleValue === 'USER' && (!Number.isFinite(semesterRaw) || semesterValue <= 0)) {
       res.status(400).json({ success: false, error: 'Semester wajib diisi untuk mahasiswa' });
       return;
     }
 
-    const hashedPassword = await bcrypt.hash(password, 12);
+    const hashedPassword = await bcrypt.hash(passwordValue, 12);
 
     const user = await prisma.user.create({
       data: {
-        name,
-        email,
+        name: nameValue,
+        email: emailValue,
         password: hashedPassword,
-        role: role || 'USER',
-        nim_nip,
-        department,
-        phone,
-        semester: role === 'USER' ? semester : null,
+        role: roleValue || 'USER',
+        nim_nip: nimValueRaw ? nimValueRaw : null,
+        department: departmentValueRaw ? departmentValueRaw : null,
+        phone: phoneValueRaw ? phoneValueRaw : null,
+        semester: roleValue === 'USER' ? semesterValue : 1,
       },
       select: {
         id: true,
@@ -86,6 +112,22 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
 
     res.status(201).json({ success: true, data: user });
   } catch (error: unknown) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === 'P2002') {
+        const target = (error.meta as any)?.target;
+        const targets = Array.isArray(target) ? target : typeof target === 'string' ? [target] : [];
+        if (targets.includes('email')) {
+          res.status(400).json({ success: false, error: 'Email sudah digunakan' });
+          return;
+        }
+        if (targets.includes('nim_nip')) {
+          res.status(400).json({ success: false, error: 'NIM/NIP sudah digunakan' });
+          return;
+        }
+        res.status(400).json({ success: false, error: 'Data unik sudah digunakan' });
+        return;
+      }
+    }
     console.error('Error creating user:', error);
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
@@ -101,21 +143,37 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
-    if (role === 'USER' && !semester) {
-      res.status(400).json({ success: false, error: 'Semester wajib diisi untuk mahasiswa' });
-      return;
+    const oldUser = await prisma.user.findUnique({ where: { id }, select: { name: true, role: true, is_active: true, semester: true } });
+    const nextRole = (typeof role === 'string' ? role : oldUser?.role) || 'USER';
+    const semesterRaw =
+      typeof semester === 'string' ? parseInt(semester, 10) : typeof semester === 'number' ? semester : NaN;
+    const semesterValue = Number.isFinite(semesterRaw) ? Math.trunc(semesterRaw) : undefined;
+    if (nextRole === 'USER' && semester !== undefined) {
+      if (!Number.isFinite(semesterRaw) || (semesterValue ?? 0) <= 0) {
+        res.status(400).json({ success: false, error: 'Semester wajib diisi untuk mahasiswa' });
+        return;
+      }
     }
 
-    const updateData: any = { 
-      name, email, role, nim_nip, department, phone, is_active,
-      semester: role === 'USER' ? semester : null 
+    const updateData: any = {
+      name: typeof name === 'string' ? name.trim() : name,
+      email: typeof email === 'string' ? email.trim().toLowerCase() : email,
+      role,
+      nim_nip: typeof nim_nip === 'string' ? (nim_nip.trim() ? nim_nip.trim() : null) : nim_nip,
+      department: typeof department === 'string' ? (department.trim() ? department.trim() : null) : department,
+      phone: typeof phone === 'string' ? (phone.trim() ? phone.trim() : null) : phone,
+      is_active,
     };
+
+    if (role && role !== 'USER') {
+      updateData.semester = 1;
+    } else if (nextRole === 'USER' && semester !== undefined) {
+      updateData.semester = semesterValue;
+    }
 
     if (password) {
       updateData.password = await bcrypt.hash(password, 12);
     }
-
-    const oldUser = await prisma.user.findUnique({ where: { id }, select: { name: true, role: true, is_active: true } });
 
     const user = await prisma.user.update({
       where: { id },
@@ -143,6 +201,22 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
 
     res.status(200).json({ success: true, data: user });
   } catch (error: unknown) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === 'P2002') {
+        const target = (error.meta as any)?.target;
+        const targets = Array.isArray(target) ? target : typeof target === 'string' ? [target] : [];
+        if (targets.includes('email')) {
+          res.status(400).json({ success: false, error: 'Email sudah digunakan' });
+          return;
+        }
+        if (targets.includes('nim_nip')) {
+          res.status(400).json({ success: false, error: 'NIM/NIP sudah digunakan' });
+          return;
+        }
+        res.status(400).json({ success: false, error: 'Data unik sudah digunakan' });
+        return;
+      }
+    }
     console.error('Error updating user:', error);
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
