@@ -8,23 +8,35 @@ export const getSessions = async (req: Request, res: Response): Promise<void> =>
     let sessions;
 
     if (user.role === 'USER') {
-      // User sees upcoming/active sessions for classes they are enrolled in, or classes without class_id
+      const userId = user.id as string;
       sessions = await prisma.session.findMany({
         where: {
           status: { in: ['UPCOMING', 'ACTIVE'] },
           OR: [
-            { class_id: null },
-            { class: { enrollments: { some: { student_id: user.id } } } }
+            { class_id: null, session_classes: { none: {} } },
+            { class: { enrollments: { some: { student_id: userId } } } },
+            { session_classes: { some: { class: { enrollments: { some: { student_id: userId } } } } } },
           ]
         },
-        include: { location: true, creator: { select: { name: true } }, class: { select: { name: true } }, attendances: { where: { user_id: user.id } } },
+        include: {
+          location: true,
+          creator: { select: { name: true } },
+          class: { select: { id: true, name: true } },
+          session_classes: { include: { class: { select: { id: true, name: true } } } },
+          attendances: { where: { user_id: userId } },
+        },
         orderBy: { session_start: 'asc' },
       });
     } else {
       // Admin/Super Admin sees all sessions they created (or all if super admin)
       sessions = await prisma.session.findMany({
         where: user.role === 'ADMIN' ? { created_by_id: user.id } : {},
-        include: { location: true, creator: { select: { name: true } }, class: { select: { name: true } } },
+        include: {
+          location: true,
+          creator: { select: { name: true } },
+          class: { select: { id: true, name: true } },
+          session_classes: { include: { class: { select: { id: true, name: true } } } },
+        },
         orderBy: { created_at: 'desc' },
       });
     }
@@ -38,8 +50,11 @@ export const getSessions = async (req: Request, res: Response): Promise<void> =>
 
 export const createSession = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { title, description, class_id, location_id, qr_mode, session_start, session_end, check_in_open_at, check_in_close_at, late_threshold_minutes, require_checkout } = req.body;
+    const { title, description, class_id, class_ids, location_id, qr_mode, session_start, session_end, check_in_open_at, check_in_close_at, late_threshold_minutes, require_checkout } = req.body;
     const user_id = (req as any).user.id;
+    const incomingClassIds = Array.isArray(class_ids) ? class_ids.map((x: any) => String(x || '').trim()).filter(Boolean) : [];
+    const uniqueClassIds = Array.from(new Set(incomingClassIds));
+    const useMultiClass = uniqueClassIds.length > 0;
 
     // Generate static token if qr_mode is STATIC
     let qr_token = null;
@@ -55,7 +70,7 @@ export const createSession = async (req: Request, res: Response): Promise<void> 
       data: {
         title,
         description,
-        class_id: class_id || null,
+        class_id: useMultiClass ? null : (class_id || null),
         location_id,
         created_by_id: user_id,
         qr_mode,
@@ -70,9 +85,22 @@ export const createSession = async (req: Request, res: Response): Promise<void> 
       },
     });
 
+    if (useMultiClass) {
+      await prisma.sessionClass.createMany({
+        data: uniqueClassIds.map((cid) => ({ session_id: session.id, class_id: cid })),
+        skipDuplicates: true,
+      });
+    }
+
     // Notify students about the new session
     let expectedUserIds: string[] = [];
-    if (class_id) {
+    if (useMultiClass) {
+      const enrollments = await prisma.classEnrollment.findMany({
+        where: { class_id: { in: uniqueClassIds } },
+        select: { student_id: true }
+      });
+      expectedUserIds = Array.from(new Set(enrollments.map(e => e.student_id)));
+    } else if (class_id) {
       const enrollments = await prisma.classEnrollment.findMany({
         where: { class_id },
         select: { student_id: true }
@@ -104,14 +132,17 @@ export const createSession = async (req: Request, res: Response): Promise<void> 
 export const updateSession = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { title, description, class_id, location_id, qr_mode, session_start, session_end, check_in_open_at, check_in_close_at, late_threshold_minutes, require_checkout, status } = req.body;
+    const { title, description, class_id, class_ids, location_id, qr_mode, session_start, session_end, check_in_open_at, check_in_close_at, late_threshold_minutes, require_checkout, status } = req.body;
+    const hasClassIds = Array.isArray(class_ids);
+    const incomingClassIds = hasClassIds ? class_ids.map((x: any) => String(x || '').trim()).filter(Boolean) : [];
+    const uniqueClassIds = Array.from(new Set(incomingClassIds));
 
     const session = await prisma.session.update({
       where: { id },
       data: {
         title,
         description,
-        class_id: class_id || null,
+        class_id: uniqueClassIds.length > 0 ? null : (class_id || null),
         location_id,
         session_start: new Date(session_start),
         session_end: new Date(session_end),
@@ -122,6 +153,16 @@ export const updateSession = async (req: Request, res: Response): Promise<void> 
         status,
       },
     });
+
+    if (hasClassIds) {
+      await prisma.sessionClass.deleteMany({ where: { session_id: id } });
+      if (uniqueClassIds.length > 0) {
+        await prisma.sessionClass.createMany({
+          data: uniqueClassIds.map((cid) => ({ session_id: id, class_id: cid })),
+          skipDuplicates: true,
+        });
+      }
+    }
 
     res.status(200).json({ success: true, data: session });
   } catch (error) {
@@ -138,6 +179,7 @@ export const deleteSession = async (req: Request, res: Response): Promise<void> 
     // (Karena pada schema.prisma tidak menggunakan onDelete: Cascade pada tabel terkait)
     await prisma.attendance.deleteMany({ where: { session_id: id } });
     await prisma.excuseRequest.deleteMany({ where: { session_id: id } });
+    await prisma.sessionClass.deleteMany({ where: { session_id: id } });
 
     // Setelah tabel anak dihapus, barulah hapus sesi utamanya
     await prisma.session.delete({ where: { id } });

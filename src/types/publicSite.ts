@@ -9,6 +9,8 @@ export type PublicProfile = {
   youtube_embed_url: string | null;
   about_title: string | null;
   about_content: string | null;
+  vision: string | null;
+  mission: string | null;
   footer_tagline: string | null;
   instagram_url: string | null;
   tiktok_url: string | null;

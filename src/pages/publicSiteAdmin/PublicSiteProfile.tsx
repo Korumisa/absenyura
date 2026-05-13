@@ -27,6 +27,8 @@ export default function PublicSiteProfile() {
     youtubeEmbedUrl: string;
     aboutTitle: string;
     aboutContent: string;
+    vision: string;
+    mission: string;
     footerTagline: string;
     instagramUrl: string;
     tiktokUrl: string;
@@ -56,6 +58,8 @@ export default function PublicSiteProfile() {
     youtubeEmbedUrl: '',
     aboutTitle: '',
     aboutContent: '',
+    vision: '',
+    mission: '',
     footerTagline: '',
     instagramUrl: '',
     tiktokUrl: '',
@@ -80,6 +84,8 @@ export default function PublicSiteProfile() {
       youtubeEmbedUrl: profile.youtube_embed_url ?? '',
       aboutTitle: profile.about_title ?? '',
       aboutContent: profile.about_content ?? '',
+      vision: profile.vision ?? '',
+      mission: profile.mission ?? '',
       footerTagline: profile.footer_tagline ?? '',
       instagramUrl: profile.instagram_url ?? '',
       tiktokUrl: profile.tiktok_url ?? '',
@@ -95,7 +101,7 @@ export default function PublicSiteProfile() {
   }, [profile]);
 
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState<{ light: boolean; dark: boolean }>({ light: false, dark: false });
+  const [uploading, setUploading] = useState<{ light: boolean; dark: boolean; home: boolean }>({ light: false, dark: false, home: false });
   const [isResetOpen, setIsResetOpen] = useState(false);
 
   const uploadImage = async (file: File) => {
@@ -130,6 +136,8 @@ export default function PublicSiteProfile() {
       youtubeEmbedUrl: profile.youtube_embed_url ?? '',
       aboutTitle: profile.about_title ?? '',
       aboutContent: profile.about_content ?? '',
+      vision: profile.vision ?? '',
+      mission: profile.mission ?? '',
       footerTagline: profile.footer_tagline ?? '',
       instagramUrl: profile.instagram_url ?? '',
       tiktokUrl: profile.tiktok_url ?? '',
@@ -211,6 +219,14 @@ export default function PublicSiteProfile() {
             <Textarea value={draft.aboutContent} onChange={(e) => setDraft((p) => ({ ...p, aboutContent: e.target.value }))} />
           </div>
           <div className="space-y-2 md:col-span-2">
+            <Label>Visi</Label>
+            <Textarea value={draft.vision} onChange={(e) => setDraft((p) => ({ ...p, vision: e.target.value }))} />
+          </div>
+          <div className="space-y-2 md:col-span-2">
+            <Label>Misi</Label>
+            <Textarea value={draft.mission} onChange={(e) => setDraft((p) => ({ ...p, mission: e.target.value }))} />
+          </div>
+          <div className="space-y-2 md:col-span-2">
             <Label>Footer Tagline</Label>
             <Input value={draft.footerTagline} onChange={(e) => setDraft((p) => ({ ...p, footerTagline: e.target.value }))} />
           </div>
@@ -255,70 +271,149 @@ export default function PublicSiteProfile() {
           </div>
           <div className="space-y-2 md:col-span-2">
             <Label>Upload Foto Anggota</Label>
-            <Input
-              type="file"
-              accept="image/*"
-              disabled={uploading.light || uploading.dark}
-              onChange={async (e) => {
-                const file = e.target.files?.[0];
-                if (!file) return;
-                try {
-                  const url = await uploadImage(file);
-                  setDraft((p) => ({ ...p, homeImageUrl: url }));
-                  toast.success('Upload foto anggota berhasil');
-                } catch (err: any) {
-                  toast.error(String(getErrorMessage(err, 'Gagal upload')));
-                } finally {
-                  e.target.value = '';
-                }
-              }}
-            />
+            <div className="grid gap-3 md:grid-cols-[1fr_220px]">
+              <div className="space-y-2">
+                <input
+                  id="profile-home-image"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  disabled={uploading.home || uploading.light || uploading.dark}
+                  onChange={async (e) => {
+                    const file = e.currentTarget.files?.[0];
+                    if (!file) return;
+                    setUploading((x) => ({ ...x, home: true }));
+                    try {
+                      const url = await uploadImage(file);
+                      setDraft((p) => ({ ...p, homeImageUrl: url }));
+                      toast.success('Upload foto anggota berhasil');
+                    } catch (err: any) {
+                      toast.error(String(getErrorMessage(err, 'Gagal upload')));
+                    } finally {
+                      setUploading((x) => ({ ...x, home: false }));
+                      e.currentTarget.value = '';
+                    }
+                  }}
+                />
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button asChild variant="outline" disabled={uploading.home || uploading.light || uploading.dark}>
+                    <Label htmlFor="profile-home-image" className="cursor-pointer">
+                      {uploading.home ? 'Uploading...' : draft.homeImageUrl ? 'Ganti Foto' : 'Upload Foto'}
+                    </Label>
+                  </Button>
+                  {draft.homeImageUrl ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => setDraft((p) => ({ ...p, homeImageUrl: '' }))}
+                      disabled={uploading.home || uploading.light || uploading.dark}
+                    >
+                      Hapus
+                    </Button>
+                  ) : null}
+                </div>
+                <div className="text-xs text-slate-500 dark:text-zinc-400">PNG/JPG. Maks 4MB.</div>
+              </div>
+              <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50 dark:border-zinc-700 dark:bg-zinc-900/40">
+                <div className="aspect-[4/3] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.2),rgba(255,255,255,0.04))]">
+                  {draft.homeImageUrl ? (
+                    <img src={draft.homeImageUrl} alt="Foto Anggota" className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center px-4 text-center text-xs text-slate-500 dark:text-zinc-300">
+                      Belum ada foto
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
           <div className="space-y-2">
             <Label>Upload Logo Light</Label>
-            <Input
-              type="file"
-              accept="image/*"
-              disabled={uploading.light}
-              onChange={async (e) => {
-                const file = e.target.files?.[0];
-                if (!file) return;
-                setUploading((x) => ({ ...x, light: true }));
-                try {
-                  const url = await uploadImage(file);
-                  setDraft((p) => ({ ...p, logoLightUrl: url }));
-                  toast.success('Upload logo light berhasil');
-                } catch (err: any) {
-                  toast.error(String(getErrorMessage(err, 'Gagal upload')));
-                } finally {
-                  setUploading((x) => ({ ...x, light: false }));
-                  e.target.value = '';
-                }
-              }}
-            />
+            <div className="space-y-2">
+              <input
+                id="profile-logo-light"
+                type="file"
+                accept="image/*"
+                className="hidden"
+                disabled={uploading.light || uploading.home || uploading.dark}
+                onChange={async (e) => {
+                  const file = e.currentTarget.files?.[0];
+                  if (!file) return;
+                  setUploading((x) => ({ ...x, light: true }));
+                  try {
+                    const url = await uploadImage(file);
+                    setDraft((p) => ({ ...p, logoLightUrl: url }));
+                    toast.success('Upload logo light berhasil');
+                  } catch (err: any) {
+                    toast.error(String(getErrorMessage(err, 'Gagal upload')));
+                  } finally {
+                    setUploading((x) => ({ ...x, light: false }));
+                    e.currentTarget.value = '';
+                  }
+                }}
+              />
+              <div className="flex flex-wrap items-center gap-2">
+                <Button asChild variant="outline" disabled={uploading.light || uploading.home || uploading.dark}>
+                  <Label htmlFor="profile-logo-light" className="cursor-pointer">
+                    {uploading.light ? 'Uploading...' : draft.logoLightUrl ? 'Ganti Logo' : 'Upload Logo'}
+                  </Label>
+                </Button>
+                {draft.logoLightUrl ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setDraft((p) => ({ ...p, logoLightUrl: '' }))}
+                    disabled={uploading.light || uploading.home || uploading.dark}
+                  >
+                    Hapus
+                  </Button>
+                ) : null}
+              </div>
+            </div>
           </div>
           <div className="space-y-2">
             <Label>Upload Logo Dark</Label>
-            <Input
-              type="file"
-              accept="image/*"
-              disabled={uploading.dark}
-              onChange={async (e) => {
-                const file = e.target.files?.[0];
-                if (!file) return;
-                setUploading((x) => ({ ...x, dark: true }));
-                try {
-                  const url = await uploadImage(file);
-                  setDraft((p) => ({ ...p, logoDarkUrl: url }));
-                  toast.success('Upload logo dark berhasil');
-                } catch (err: any) {
-                  toast.error(String(getErrorMessage(err, 'Gagal upload')));
-                } finally {
-                  setUploading((x) => ({ ...x, dark: false }));
-                  e.target.value = '';
-                }
-              }}
-            />
+            <div className="space-y-2">
+              <input
+                id="profile-logo-dark"
+                type="file"
+                accept="image/*"
+                className="hidden"
+                disabled={uploading.dark || uploading.home || uploading.light}
+                onChange={async (e) => {
+                  const file = e.currentTarget.files?.[0];
+                  if (!file) return;
+                  setUploading((x) => ({ ...x, dark: true }));
+                  try {
+                    const url = await uploadImage(file);
+                    setDraft((p) => ({ ...p, logoDarkUrl: url }));
+                    toast.success('Upload logo dark berhasil');
+                  } catch (err: any) {
+                    toast.error(String(getErrorMessage(err, 'Gagal upload')));
+                  } finally {
+                    setUploading((x) => ({ ...x, dark: false }));
+                    e.currentTarget.value = '';
+                  }
+                }}
+              />
+              <div className="flex flex-wrap items-center gap-2">
+                <Button asChild variant="outline" disabled={uploading.dark || uploading.home || uploading.light}>
+                  <Label htmlFor="profile-logo-dark" className="cursor-pointer">
+                    {uploading.dark ? 'Uploading...' : draft.logoDarkUrl ? 'Ganti Logo' : 'Upload Logo'}
+                  </Label>
+                </Button>
+                {draft.logoDarkUrl ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setDraft((p) => ({ ...p, logoDarkUrl: '' }))}
+                    disabled={uploading.dark || uploading.home || uploading.light}
+                  >
+                    Hapus
+                  </Button>
+                ) : null}
+              </div>
+            </div>
           </div>
         </div>
 

@@ -116,6 +116,8 @@ export const upsertAdminProfile = async (req: PublicRoleRequest, res: Response):
           : (existing?.youtube_embed_url ?? null),
       about_title: String((data as any).aboutTitle ?? '').trim() || null,
       about_content: String((data as any).aboutContent ?? '').trim() || null,
+      vision: String((data as any).vision ?? '').trim() || null,
+      mission: String((data as any).mission ?? '').trim() || null,
       footer_tagline: String((data as any).footerTagline ?? '').trim() || null,
       instagram_url: String((data as any).instagramUrl ?? '').trim() || null,
       tiktok_url: String((data as any).tiktokUrl ?? '').trim() || null,

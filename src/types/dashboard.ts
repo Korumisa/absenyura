@@ -10,6 +10,7 @@ export interface Session {
   creator: { name: string };
   class_id?: string | null;
   class?: { id: string; name: string } | null;
+  session_classes?: { class: { id: string; name: string } }[];
   qr_mode: 'DYNAMIC' | 'STATIC' | 'NONE';
   session_start: string;
   session_end: string;

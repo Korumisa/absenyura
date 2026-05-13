@@ -21,7 +21,11 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     const { email, password, device_fingerprint } = req.body;
 
     if (!email || !password) {
-      res.status(400).json({ success: false, error: 'Email and password are required' });
+      res.status(400).json({
+        success: false,
+        error_code: 'MISSING_CREDENTIALS',
+        message: 'Email/NIM dan kata sandi wajib diisi.',
+      });
       return;
     }
 
@@ -34,18 +38,30 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       } 
     });
     if (!user) {
-      res.status(401).json({ success: false, error: 'Invalid credentials' });
+      res.status(401).json({
+        success: false,
+        error_code: 'INVALID_CREDENTIALS',
+        message: 'Email/NIM atau kata sandi salah.',
+      });
       return;
     }
 
     if (!user.is_active) {
-      res.status(403).json({ success: false, error: 'Account is inactive' });
+      res.status(403).json({
+        success: false,
+        error_code: 'ACCOUNT_INACTIVE',
+        message: 'Akun Anda nonaktif. Hubungi admin.',
+      });
       return;
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
-      res.status(401).json({ success: false, error: 'Invalid credentials' });
+      res.status(401).json({
+        success: false,
+        error_code: 'INVALID_CREDENTIALS',
+        message: 'Email/NIM atau kata sandi salah.',
+      });
       return;
     }
 
@@ -60,7 +76,8 @@ export const login = async (req: Request, res: Response): Promise<void> => {
           if (user.role === 'USER') {
             res.status(403).json({ 
               success: false, 
-              error: 'Login ditolak: Akun ini sudah terikat dengan perangkat lain. Hubungi Admin jika Anda mengganti perangkat.' 
+              error_code: 'DEVICE_BOUND',
+              message: 'Login ditolak: akun ini sudah terikat dengan perangkat lain. Hubungi admin untuk reset perangkat.'
             });
             return;
           } else {
@@ -129,7 +146,11 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
   try {
     const refreshToken = req.cookies.refreshToken;
     if (!refreshToken) {
-      res.status(401).json({ success: false, error: 'No refresh token provided' });
+      res.status(401).json({
+        success: false,
+        error_code: 'NO_REFRESH_TOKEN',
+        message: 'Sesi login habis. Silakan login ulang.',
+      });
       return;
     }
 
@@ -137,7 +158,11 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
     const user = await prisma.user.findUnique({ where: { id: decoded.id } });
 
     if (!user || !user.is_active) {
-      res.status(401).json({ success: false, error: 'Invalid user or inactive account' });
+      res.status(401).json({
+        success: false,
+        error_code: 'INVALID_USER',
+        message: 'Sesi tidak valid. Silakan login ulang.',
+      });
       return;
     }
 
@@ -167,11 +192,15 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
     res.status(200).json({
       success: true,
       data: {
-        message: 'Tokens refreshed successfully',
+        message: 'Sesi diperbarui.',
       },
     });
   } catch (error) {
-    res.status(401).json({ success: false, error: 'Invalid or expired refresh token' });
+    res.status(401).json({
+      success: false,
+      error_code: 'INVALID_REFRESH_TOKEN',
+      message: 'Sesi login habis. Silakan login ulang.',
+    });
   }
 };
 

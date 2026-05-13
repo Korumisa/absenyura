@@ -19,7 +19,7 @@ export const getExcuses = async (req: Request, res: Response): Promise<void> => 
       excuses = await prisma.excuseRequest.findMany({
         where: { user_id: user.id },
         include: {
-          session: { select: { title: true, session_start: true, class: { select: { name: true } } } },
+          session: { select: { title: true, session_start: true, class: { select: { name: true } }, session_classes: { select: { class: { select: { id: true, name: true } } } } } },
           reviewer: { select: { name: true } }
         },
         orderBy: { created_at: 'desc' }
@@ -29,7 +29,7 @@ export const getExcuses = async (req: Request, res: Response): Promise<void> => 
         where: { session: { created_by_id: user.id } },
         include: {
           user: { select: { name: true, nim_nip: true } },
-          session: { select: { title: true, session_start: true, class: { select: { name: true } } } },
+          session: { select: { title: true, session_start: true, class: { select: { name: true } }, session_classes: { select: { class: { select: { id: true, name: true } } } } } },
           reviewer: { select: { name: true } }
         },
         orderBy: { created_at: 'desc' }
@@ -39,7 +39,7 @@ export const getExcuses = async (req: Request, res: Response): Promise<void> => 
       excuses = await prisma.excuseRequest.findMany({
         include: {
           user: { select: { name: true, nim_nip: true } },
-          session: { select: { title: true, session_start: true, class: { select: { name: true } } } },
+          session: { select: { title: true, session_start: true, class: { select: { name: true } }, session_classes: { select: { class: { select: { id: true, name: true } } } } } },
           reviewer: { select: { name: true } }
         },
         orderBy: { created_at: 'desc' }
@@ -120,7 +120,7 @@ export const createExcuse = async (req: Request, res: Response): Promise<void> =
         proof_url
       },
       include: {
-        session: { select: { title: true, session_start: true, class: { select: { name: true } }, created_by_id: true } }
+        session: { select: { title: true, session_start: true, class: { select: { name: true } }, session_classes: { select: { class: { select: { id: true, name: true } } } }, created_by_id: true } }
       }
     });
 

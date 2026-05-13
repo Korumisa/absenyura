@@ -159,11 +159,18 @@ export default function Dashboard() {
                             <div className="font-bold text-slate-900 dark:text-white text-base">
                               {typeof session.title === 'object' && session.title !== null ? ((session.title as any).name || (session.title as any).id) : session.title}
                             </div>
-                            {session.class && (
-                                <p className="text-sm font-semibold text-indigo-600 dark:text-indigo-400 mt-0.5">
-                                  {typeof session.class === 'object' && session.class !== null ? ((session.class as any).name || (session.class as any).id) : (session.class?.name || session.class || '-')}
-                                </p>
-                              )}
+                            <p className="text-sm font-semibold text-indigo-600 dark:text-indigo-400 mt-0.5">
+                              {(() => {
+                                const names = (session.session_classes ?? []).map((x: any) => x?.class?.name).filter(Boolean);
+                                if (names.length) return names.join(', ');
+                                if (session.class) {
+                                  return typeof session.class === 'object' && session.class !== null
+                                    ? ((session.class as any).name || (session.class as any).id)
+                                    : (session.class?.name || session.class || '-');
+                                }
+                                return 'Semua Mahasiswa';
+                              })()}
+                            </p>
                           </TableCell>
                           <TableCell>
                             <div className="flex flex-col gap-1.5 text-slate-700 dark:text-zinc-300">

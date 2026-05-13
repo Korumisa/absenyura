@@ -192,7 +192,14 @@ export default function App() {
           <Route path="/program-kerja/:id" element={<ProgramKerjaDetail />} />
           <Route path="/informasi-lomba" element={<InformasiLomba />} />
           <Route path="/galeri" element={<Galeri />} />
-          <Route path="/open-recruitment" element={<OpenRecruitment />} />
+          <Route
+            path="/open-recruitment"
+            element={
+              <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'CONTENT_ADMIN', 'USER']}>
+                <OpenRecruitment />
+              </ProtectedRoute>
+            }
+          />
           
           <Route element={<ProtectedRoute />}>
             <Route element={<Layout />}>

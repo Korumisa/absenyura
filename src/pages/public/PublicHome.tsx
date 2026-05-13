@@ -331,6 +331,12 @@ export default function PublicHome() {
   const aboutTitle = profile?.about_title ?? '';
   const aboutContent = profile?.about_content ?? '';
   const aboutParagraphs = aboutContent.split('\n').map((x) => x.trim()).filter(Boolean);
+  const vision = profile?.vision ?? '';
+  const mission = profile?.mission ?? '';
+  const missionItems = mission
+    .split('\n')
+    .map((x) => x.trim())
+    .filter(Boolean);
 
   const logoSrc = profile?.logo_light_url ?? '';
   const posts = latest?.items ?? [];
@@ -450,6 +456,62 @@ export default function PublicHome() {
                 <div className="absolute left-1/2 top-1/2 h-1 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--public-primary)]/70" />
               </div>
             </div>
+          </section>
+
+          <section className="relative bg-slate-50/55 py-20">
+            <div className="pointer-events-none absolute inset-0 opacity-70 [background:radial-gradient(circle_at_18%_18%,rgba(37,99,235,0.10),transparent_56%),radial-gradient(circle_at_82%_12%,rgba(56,189,248,0.10),transparent_60%)]" />
+            <PublicReveal className="relative mx-auto max-w-7xl px-4 sm:px-6">
+              <div className="text-center">
+                <div className="font-display text-5xl italic tracking-tight text-slate-900 sm:text-6xl md:text-7xl">Visi</div>
+                <div className="-mt-2 text-5xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] sm:-mt-3 sm:text-6xl md:text-7xl">
+                  &amp; Misi
+                </div>
+                <div className="mx-auto mt-3 max-w-2xl text-sm text-slate-700">
+                  Arah, tujuan, dan komitmen organisasi dalam menjalankan program kerja.
+                </div>
+              </div>
+
+              <div className="mt-12 grid gap-6 md:grid-cols-2">
+                <div className="relative overflow-hidden rounded-3xl border border-black/10 bg-white p-8 shadow-[0_22px_56px_-48px_rgba(15,23,42,0.45)]">
+                  <div className="pointer-events-none absolute -left-14 -top-14 h-40 w-40 rounded-full bg-[var(--public-primary)]/14 blur-3xl" />
+                  <div className="relative">
+                    <div className="inline-flex items-center rounded-full bg-[var(--public-primary)]/10 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-[var(--public-primary)]">
+                      Visi
+                    </div>
+                    {vision ? (
+                      <div className="mt-4 text-[17px] leading-relaxed text-slate-700 whitespace-pre-wrap">{vision}</div>
+                    ) : (
+                      <div className="mt-4 rounded-2xl border border-dashed border-black/15 bg-white/60 p-6 text-sm text-slate-600">
+                        Visi belum diatur. Admin bisa isi dari menu Konten Website → Profil.
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="relative overflow-hidden rounded-3xl border border-black/10 bg-white p-8 shadow-[0_22px_56px_-48px_rgba(15,23,42,0.45)]">
+                  <div className="pointer-events-none absolute -right-14 -bottom-14 h-40 w-40 rounded-full bg-sky-400/12 blur-3xl" />
+                  <div className="relative">
+                    <div className="inline-flex items-center rounded-full bg-[var(--public-primary)]/10 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-[var(--public-primary)]">
+                      Misi
+                    </div>
+                    {missionItems.length ? (
+                      <ul className="mt-5 space-y-3 text-[17px] leading-relaxed text-slate-700">
+                        {missionItems.map((item) => (
+                          <li key={item} className="flex gap-3">
+                            <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-[var(--public-primary)]" />
+                            <span className="min-w-0">{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <div className="mt-4 rounded-2xl border border-dashed border-black/15 bg-white/60 p-6 text-sm text-slate-600">
+                        Misi belum diatur. Admin bisa isi dari menu Konten Website → Profil.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </PublicReveal>
           </section>
 
           <section className="relative bg-slate-50/55 py-20">

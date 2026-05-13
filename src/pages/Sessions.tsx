@@ -34,7 +34,7 @@ export default function Sessions() {
   
   // Form state
   const [formData, setFormData] = useState({
-    title: '', description: '', location_id: '', class_id: '', qr_mode: 'NONE', 
+    title: '', description: '', location_id: '', class_ids: [] as string[], qr_mode: 'NONE', 
     session_start: '', session_end: '', 
     check_in_open_at: '', check_in_close_at: '', 
     late_threshold_minutes: 15, require_checkout: false, status: 'UPCOMING'
@@ -77,10 +77,14 @@ export default function Sessions() {
   const handleOpenModal = (session: any = null) => {
     if (session) {
       setEditingSession(session);
+      const linkedIds = Array.isArray(session.session_classes)
+        ? session.session_classes.map((x: any) => x?.class?.id).filter(Boolean)
+        : [];
+      const classIds = linkedIds.length ? linkedIds : (session.class_id ? [session.class_id] : []);
       setFormData({
         title: session.title,
         description: session.description || '',
-        class_id: session.class_id || 'ALL_STUDENTS',
+        class_ids: classIds,
         location_id: session.location_id,
         qr_mode: session.qr_mode,
         session_start: formatForDateTimeLocal(session.session_start),
@@ -103,7 +107,7 @@ export default function Sessions() {
       const laterStr = later.toISOString().slice(0, 16);
 
       setFormData({
-        title: '', description: '', location_id: locations.length > 0 ? locations[0].id : '', class_id: 'ALL_STUDENTS', qr_mode: 'NONE', 
+        title: '', description: '', location_id: locations.length > 0 ? locations[0].id : '', class_ids: [] as string[], qr_mode: 'NONE', 
         session_start: nowStr, session_end: laterStr, 
         check_in_open_at: nowStr, check_in_close_at: laterStr, 
         late_threshold_minutes: 15, require_checkout: false, status: 'UPCOMING'
@@ -124,7 +128,7 @@ export default function Sessions() {
         session_end: new Date(formData.session_end).toISOString(),
         check_in_open_at: new Date(formData.check_in_open_at).toISOString(),
         check_in_close_at: new Date(formData.check_in_close_at).toISOString(),
-        class_id: formData.class_id === 'ALL_STUDENTS' ? null : formData.class_id
+        class_ids: formData.class_ids
       };
       
       if (editingSession) {
@@ -164,8 +168,14 @@ export default function Sessions() {
   const filteredSessions = sessions.filter(s => {
     const matchSearch = s.title.toLowerCase().includes(searchTerm.toLowerCase());
     const matchLocation = filterLocation === 'ALL' || s.location?.id === filterLocation;
-    const classId = s.class_id ?? null;
-    const matchClass = filterClass === 'ALL' || classId === filterClass || (!classId && filterClass === 'ALL_STUDENTS');
+    const linkedIds = (s.session_classes ?? []).map((x) => x?.class?.id).filter(Boolean) as string[];
+    const legacyClassId = s.class_id ?? null;
+    const isAllStudents = !legacyClassId && linkedIds.length === 0;
+    const matchClass =
+      filterClass === 'ALL' ||
+      (filterClass === 'ALL_STUDENTS'
+        ? isAllStudents
+        : legacyClassId === filterClass || linkedIds.includes(filterClass));
     
     let matchDate = true;
     if (filterDate) {
@@ -307,7 +317,11 @@ export default function Sessions() {
                   </TableCell>
                   <TableCell>
                     <div className="font-medium text-slate-700 dark:text-zinc-300">
-                      {(session as any).class ? (session as any).class.name : 'Semua Mahasiswa'}
+                      {(() => {
+                        const names = (session.session_classes ?? []).map((x: any) => x?.class?.name).filter(Boolean);
+                        if (names.length) return names.join(', ');
+                        return session.class?.name ?? 'Semua Mahasiswa';
+                      })()}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -439,18 +453,43 @@ export default function Sessions() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Pilih Kelas <span className="text-red-500">*</span></Label>
-                    <Select required value={formData.class_id} onValueChange={val => setFormData({...formData, class_id: val})}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Semua Mahasiswa" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="ALL_STUDENTS">Semua Mahasiswa</SelectItem>
-                        {classes.map(c => (
-                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Label>Target Kelas</Label>
+                    <div className="max-h-56 space-y-2 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50/60 p-3 dark:border-zinc-700 dark:bg-zinc-900/30">
+                      <label className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2 hover:bg-white dark:hover:bg-zinc-950">
+                        <input
+                          type="checkbox"
+                          checked={formData.class_ids.length === 0}
+                          onChange={(e) => {
+                            if (e.target.checked) setFormData((p) => ({ ...p, class_ids: [] }));
+                          }}
+                          className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 bg-white dark:bg-zinc-950 dark:border-zinc-700"
+                        />
+                        <span className="text-sm font-medium text-slate-700 dark:text-zinc-300">Semua Mahasiswa (Umum)</span>
+                      </label>
+                      <div className="h-px bg-slate-200/70 dark:bg-zinc-700/70" />
+                      {classes.map((c) => (
+                        <label
+                          key={c.id}
+                          className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2 hover:bg-white dark:hover:bg-zinc-950"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={formData.class_ids.includes(c.id)}
+                            onChange={(e) => {
+                              setFormData((p) => {
+                                const set = new Set(p.class_ids);
+                                if (e.target.checked) set.add(c.id);
+                                else set.delete(c.id);
+                                return { ...p, class_ids: Array.from(set) };
+                              });
+                            }}
+                            className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 bg-white dark:bg-zinc-950 dark:border-zinc-700"
+                          />
+                          <span className="text-sm font-medium text-slate-700 dark:text-zinc-300">{c.name}</span>
+                        </label>
+                      ))}
+                    </div>
+                    <div className="text-xs text-slate-500 dark:text-zinc-400">Kosong = semua mahasiswa.</div>
                   </div>
                   <div className="space-y-2">
                     <Label>Lokasi Ruangan <span className="text-red-500">*</span></Label>

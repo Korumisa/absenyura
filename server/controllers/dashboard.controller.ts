@@ -29,20 +29,23 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
       const percentage = total > 0 ? Math.round(((present + late) / total) * 100) : 0;
 
       // Upcoming sessions for enrolled classes
+      const userId = user.id as string;
       const upcomingSessions = await prisma.session.findMany({
         where: {
           status: { in: ['UPCOMING', 'ACTIVE'] },
           OR: [
-            { class_id: null },
-            { class: { enrollments: { some: { student_id: user.id } } } }
+            { class_id: null, session_classes: { none: {} } },
+            { class: { enrollments: { some: { student_id: userId } } } },
+            { session_classes: { some: { class: { enrollments: { some: { student_id: userId } } } } } },
           ]
         },
         orderBy: { session_start: 'asc' },
         take: 5,
         include: { 
           location: { select: { name: true } }, 
-          class: { select: { name: true } },
-          attendances: { where: { user_id: user.id } }
+          class: { select: { id: true, name: true } },
+          session_classes: { include: { class: { select: { id: true, name: true } } } },
+          attendances: { where: { user_id: userId } }
         }
       });
 

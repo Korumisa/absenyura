@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '@/services/api';
 import useSWR from 'swr';
 import { useAuthStore } from '@/stores/authStore';
-import { Plus, Search, FileText, CheckCircle2, XCircle, Clock } from 'lucide-react';
+import { Plus, Search, FileText, CheckCircle2, XCircle, Clock, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -22,7 +22,9 @@ export default function Excuses() {
   
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [sessions, setSessions] = useState<{id: string, title: string, session_start: string, class: {name: string}}[]>([]);
+  const [sessions, setSessions] = useState<
+    { id: string; title: string; session_start: string; class?: { name: string } | null; session_classes?: { class: { name: string } }[] }[]
+  >([]);
   
   const [formData, setFormData] = useState({
     session_id: '',
@@ -100,16 +102,84 @@ export default function Excuses() {
     return true;
   });
 
+  const exportCsv = () => {
+    const escapeCsv = (value: unknown) => {
+      const raw = String(value ?? '');
+      const normalized = raw.replace(/\r?\n/g, ' ').trim();
+      if (/[",]/.test(normalized)) return `"${normalized.replace(/"/g, '""')}"`;
+      return normalized;
+    };
+
+    const rows = filteredExcuses.map((ex) => {
+      const proof =
+        ex.proof_url && (ex.proof_url.startsWith('http') || ex.proof_url.startsWith('data:'))
+          ? ex.proof_url
+          : ex.proof_url
+            ? `${import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, '')}${ex.proof_url}`
+            : '';
+      return [
+        ex.id,
+        ex.user?.name ?? '',
+        ex.user?.nim_nip ?? '',
+        ex.session?.title ?? '',
+        ex.session?.class?.name ?? '',
+        ex.reason ?? '',
+        ex.status ?? '',
+        ex.description ?? '',
+        ex.reviewer?.name ?? '',
+        ex.created_at ?? '',
+        ex.session?.session_start ?? '',
+        proof,
+      ].map(escapeCsv).join(',');
+    });
+
+    const header = [
+      'id',
+      'nama',
+      'nim',
+      'sesi',
+      'kelas',
+      'alasan',
+      'status',
+      'keterangan',
+      'reviewer',
+      'dibuat_pada',
+      'jadwal_sesi',
+      'bukti_url',
+    ].join(',');
+
+    const content = `\uFEFF${header}\n${rows.join('\n')}\n`;
+    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const date = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `pengajuan-izin-${date}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    toast.success('Export CSV berhasil');
+  };
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
         <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Pengajuan Izin & Sakit</h1>
-        {currentUser?.role === 'USER' && (
-          <Button onClick={() => setIsModalOpen(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            Buat Pengajuan Baru
-          </Button>
-        )}
+        <div className="flex flex-wrap items-center gap-3">
+          {currentUser?.role !== 'USER' ? (
+            <Button variant="outline" onClick={exportCsv} disabled={loading || filteredExcuses.length === 0}>
+              <Download className="w-4 h-4 mr-2" />
+              Export CSV
+            </Button>
+          ) : null}
+          {currentUser?.role === 'USER' ? (
+            <Button onClick={() => setIsModalOpen(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Buat Pengajuan Baru
+            </Button>
+          ) : null}
+        </div>
       </div>
 
       <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-800 overflow-hidden">
@@ -179,7 +249,13 @@ export default function Excuses() {
                     )}
                     <TableCell>
                       <div className="font-medium text-slate-800 dark:text-zinc-200">{excuse.session.title}</div>
-                      <div className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 mt-0.5">{excuse.session.class?.name}</div>
+                      <div className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 mt-0.5">
+                        {(() => {
+                          const names = (excuse.session.session_classes ?? []).map((x: any) => x?.class?.name).filter(Boolean);
+                          if (names.length) return names.join(', ');
+                          return excuse.session.class?.name ?? 'Umum';
+                        })()}
+                      </div>
                       <div className="text-xs text-slate-500 mt-1">
                         {format(new Date(excuse.session.session_start), 'dd MMM yyyy HH:mm', { locale: id })}
                       </div>
@@ -253,7 +329,13 @@ export default function Excuses() {
                   <SelectContent>
                     {sessions.map(s => (
                       <SelectItem key={s.id} value={s.id}>
-                        {s.title} ({s.class ? s.class.name : 'Umum'}) - {format(new Date(s.session_start), 'dd MMM', { locale: id })}
+                        {s.title}{' '}
+                        ({(() => {
+                          const names = (s.session_classes ?? []).map((x: any) => x?.class?.name).filter(Boolean);
+                          if (names.length) return names.join(', ');
+                          return s.class ? s.class.name : 'Umum';
+                        })()}){' '}
+                        - {format(new Date(s.session_start), 'dd MMM', { locale: id })}
                       </SelectItem>
                     ))}
                   </SelectContent>
