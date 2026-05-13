@@ -9,6 +9,7 @@
   "scripts": {
     "client:dev": "vite",
     "build": "npx prisma@6.4.1 generate && tsc -b && vite build",
+    "vercel-build": "npx prisma@6.4.1 migrate deploy && npx prisma@6.4.1 generate && tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "check": "tsc --noEmit",
