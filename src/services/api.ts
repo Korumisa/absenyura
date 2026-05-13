@@ -65,6 +65,21 @@ api.interceptors.response.use(
     const isPublicRequest = isPublicSiteRequest && !isAdminPublicSiteRequest;
     const { isAuthenticated } = useAuthStore.getState();
 
+    if (error.response?.status === 403 && !originalRequest._csrfRetry) {
+      const apiError = error.response?.data?.error;
+      if (apiError === 'CSRF validation failed') {
+        originalRequest._csrfRetry = true;
+        try {
+          await api.post('/auth/refresh', {});
+          return api.request(originalRequest);
+        } catch (refreshError) {
+          useAuthStore.getState().logout();
+          window.location.href = '/login';
+          return Promise.reject(refreshError);
+        }
+      }
+    }
+
     if (error.response?.status === 401 && (!isAuthenticated || isPublicRequest)) {
       return Promise.reject(error);
     }

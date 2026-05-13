@@ -130,23 +130,27 @@ app.use('/uploads', authenticate, express.static(path.join(__dirname, '../upload
 /**
  * health
  */
-app.use(
-  '/api/health',
-  async (_req: Request, res: Response): Promise<void> => {
-    try {
-      await prisma.$queryRaw`SELECT 1`
-      res.status(200).json({
-        success: true,
-        message: 'ok',
-      })
-    } catch {
-      res.status(503).json({
-        success: false,
-        error: 'db_unavailable',
-      })
-    }
-  },
-)
+app.get('/api/health', (_req: Request, res: Response): void => {
+  res.status(200).json({
+    success: true,
+    message: 'ok',
+  })
+})
+
+app.get('/api/health/db', async (_req: Request, res: Response): Promise<void> => {
+  try {
+    await prisma.$queryRaw`SELECT 1`
+    res.status(200).json({
+      success: true,
+      message: 'ok',
+    })
+  } catch {
+    res.status(503).json({
+      success: false,
+      error: 'db_unavailable',
+    })
+  }
+})
 
 /**
  * error handler middleware

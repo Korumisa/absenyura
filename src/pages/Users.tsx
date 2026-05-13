@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { Plus, Search, Edit2, Trash2, X, Download, Upload, Smartphone, Users as UsersIcon } from 'lucide-react';
 import * as ExcelJS from 'exceljs';
 import { toast } from 'sonner';
+import { createPortal } from 'react-dom';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -394,8 +395,9 @@ export default function Users() {
       </div>
 
       {/* Modal Form */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm px-4">
+      {isModalOpen
+        ? createPortal(
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm px-4">
           <div className="bg-white dark:bg-zinc-950 rounded-xl shadow-xl w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col border border-slate-200 dark:border-zinc-800">
             <div className="px-6 py-4 border-b border-slate-200 dark:border-zinc-800 flex justify-between items-center">
               <h2 className="text-xl font-bold text-slate-800 dark:text-white">
@@ -533,11 +535,14 @@ export default function Users() {
               </div>
             </form>
           </div>
-        </div>
-      )}
+        </div>,
+        document.body
+        )
+        : null}
       {/* Import Modal */}
-      {isImportModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm px-4">
+      {isImportModalOpen
+        ? createPortal(
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm px-4">
           <div className="bg-white dark:bg-zinc-800 rounded-xl shadow-xl w-full max-w-md overflow-hidden flex flex-col">
             <div className="px-6 py-4 border-b border-slate-200 dark:border-zinc-700 flex justify-between items-center">
               <h2 className="text-xl font-bold text-slate-800 dark:text-white">Import Mahasiswa</h2>
@@ -587,8 +592,10 @@ export default function Users() {
               </form>
             </div>
           </div>
-        </div>
-      )}
+        </div>,
+        document.body
+        )
+        : null}
 
       {/* Reset Device Confirmation Modal */}
       <ConfirmModal 

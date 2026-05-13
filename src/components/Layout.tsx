@@ -48,6 +48,10 @@ export default function Layout() {
     if (location.pathname.startsWith('/public-site')) setPublicSiteOpen(true);
   }, [canPublicSite, location.pathname]);
 
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [location.pathname]);
+
   return (
     <div className="admin-theme flex min-h-dvh overflow-hidden bg-[#f5f7fb] font-sans dark:bg-zinc-900">
       {sidebarOpen && (

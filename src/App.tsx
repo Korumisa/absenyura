@@ -133,11 +133,9 @@ export default function App() {
     window.addEventListener('offline', onOffline);
 
     checkHealth();
-    const t = window.setInterval(checkHealth, 30000);
 
     return () => {
       cancelled = true;
-      window.clearInterval(t);
       window.removeEventListener('online', onOnline);
       window.removeEventListener('offline', onOffline);
     };
@@ -158,9 +156,22 @@ export default function App() {
         {isMaintenance ? (
           <MaintenancePage
             reason={maintenanceReason}
-            onRetry={() => {
-              clearMaintenance();
-              window.location.reload();
+            onRetry={async () => {
+              try {
+                const res = await api.get('/health');
+                if (res?.status !== 200 || res?.data?.success !== true) {
+                  setMaintenance('Layanan sedang mengalami gangguan. Silakan coba lagi.');
+                  return;
+                }
+                const db = await api.get('/health/db');
+                if (db?.status === 200 && db?.data?.success === true) {
+                  clearMaintenance();
+                  return;
+                }
+                setMaintenance('Database sedang tidak tersedia. Silakan coba lagi.');
+              } catch {
+                setMaintenance('Server tidak dapat dihubungi. Silakan coba lagi.');
+              }
             }}
           />
         ) : (
