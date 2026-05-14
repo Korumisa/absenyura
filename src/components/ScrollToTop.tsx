@@ -5,8 +5,9 @@ export default function ScrollToTop() {
   const { pathname } = useLocation();
 
   useEffect(() => {
-    // Reset scroll ke paling atas (0, 0) setiap kali URL path berubah
-    window.scrollTo(0, 0);
+    const el = document.getElementById('app-main-scroll');
+    if (el) el.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    else window.scrollTo(0, 0);
   }, [pathname]);
 
   return null; // Komponen ini tidak merender UI apapun

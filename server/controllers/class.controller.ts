@@ -1,28 +1,84 @@
 import { Request, Response } from 'express';
 import prisma from '../utils/prisma.js';
 
+const isMissingSemesterColumn = (err: any) =>
+  Boolean(err && err.code === 'P2022' && String(err?.meta?.column || '').includes('Class.semester'));
+
 export const getClasses = async (req: Request, res: Response): Promise<void> => {
   try {
     const user = (req as any).user;
     let classes;
 
     if (user.role === 'USER') {
-      classes = await prisma.class.findMany({
-        where: { enrollments: { some: { student_id: user.id } } },
-        include: { lecturer: { select: { name: true } }, _count: { select: { enrollments: true, sessions: true } } },
-        orderBy: { created_at: 'desc' },
-      });
+      try {
+        classes = await prisma.class.findMany({
+          where: { enrollments: { some: { student_id: user.id } } },
+          include: { lecturer: { select: { name: true } }, _count: { select: { enrollments: true, sessions: true } } },
+          orderBy: { created_at: 'desc' },
+        });
+      } catch (err: any) {
+        if (!isMissingSemesterColumn(err)) throw err;
+        const rows = await prisma.class.findMany({
+          where: { enrollments: { some: { student_id: user.id } } },
+          select: {
+            id: true,
+            name: true,
+            course_code: true,
+            description: true,
+            lecturer_id: true,
+            lecturer: { select: { name: true } },
+            _count: { select: { enrollments: true, sessions: true } },
+          },
+          orderBy: { created_at: 'desc' },
+        });
+        classes = rows.map((r: any) => ({ ...r, semester: 1 }));
+      }
     } else if (user.role === 'ADMIN') {
-      classes = await prisma.class.findMany({
-        where: { lecturer_id: user.id },
-        include: { lecturer: { select: { name: true } }, _count: { select: { enrollments: true, sessions: true } } },
-        orderBy: { created_at: 'desc' },
-      });
+      try {
+        classes = await prisma.class.findMany({
+          where: { lecturer_id: user.id },
+          include: { lecturer: { select: { name: true } }, _count: { select: { enrollments: true, sessions: true } } },
+          orderBy: { created_at: 'desc' },
+        });
+      } catch (err: any) {
+        if (!isMissingSemesterColumn(err)) throw err;
+        const rows = await prisma.class.findMany({
+          where: { lecturer_id: user.id },
+          select: {
+            id: true,
+            name: true,
+            course_code: true,
+            description: true,
+            lecturer_id: true,
+            lecturer: { select: { name: true } },
+            _count: { select: { enrollments: true, sessions: true } },
+          },
+          orderBy: { created_at: 'desc' },
+        });
+        classes = rows.map((r: any) => ({ ...r, semester: 1 }));
+      }
     } else {
-      classes = await prisma.class.findMany({
-        include: { lecturer: { select: { name: true } }, _count: { select: { enrollments: true, sessions: true } } },
-        orderBy: { created_at: 'desc' },
-      });
+      try {
+        classes = await prisma.class.findMany({
+          include: { lecturer: { select: { name: true } }, _count: { select: { enrollments: true, sessions: true } } },
+          orderBy: { created_at: 'desc' },
+        });
+      } catch (err: any) {
+        if (!isMissingSemesterColumn(err)) throw err;
+        const rows = await prisma.class.findMany({
+          select: {
+            id: true,
+            name: true,
+            course_code: true,
+            description: true,
+            lecturer_id: true,
+            lecturer: { select: { name: true } },
+            _count: { select: { enrollments: true, sessions: true } },
+          },
+          orderBy: { created_at: 'desc' },
+        });
+        classes = rows.map((r: any) => ({ ...r, semester: 1 }));
+      }
     }
 
     res.status(200).json({ success: true, data: classes });
@@ -37,16 +93,26 @@ export const createClass = async (req: Request, res: Response): Promise<void> =>
     const { name, course_code, description, lecturer_id, semester } = req.body;
     const sem = Math.max(1, Math.min(14, Number.parseInt(String(semester ?? '1'), 10) || 1));
     
-    const newClass = await prisma.class.create({
-      data: {
-        name,
-        semester: sem,
-        course_code,
-        description,
-        lecturer_id,
-      },
-      include: { lecturer: { select: { name: true } }, _count: { select: { enrollments: true, sessions: true } } }
-    });
+    let newClass;
+    try {
+      newClass = await prisma.class.create({
+        data: {
+          name,
+          semester: sem,
+          course_code,
+          description,
+          lecturer_id,
+        },
+        include: { lecturer: { select: { name: true } }, _count: { select: { enrollments: true, sessions: true } } }
+      });
+    } catch (err: any) {
+      if (!isMissingSemesterColumn(err)) throw err;
+      const created = await prisma.class.create({
+        data: { name, course_code, description, lecturer_id },
+        include: { lecturer: { select: { name: true } }, _count: { select: { enrollments: true, sessions: true } } }
+      });
+      newClass = { ...(created as any), semester: 1 };
+    }
 
     res.status(201).json({ success: true, data: newClass });
   } catch (error) {
@@ -61,11 +127,22 @@ export const updateClass = async (req: Request, res: Response): Promise<void> =>
     const { name, course_code, description, lecturer_id, semester } = req.body;
     const sem = Math.max(1, Math.min(14, Number.parseInt(String(semester ?? '1'), 10) || 1));
 
-    const updatedClass = await prisma.class.update({
-      where: { id },
-      data: { name, semester: sem, course_code, description, lecturer_id },
-      include: { lecturer: { select: { name: true } }, _count: { select: { enrollments: true, sessions: true } } }
-    });
+    let updatedClass;
+    try {
+      updatedClass = await prisma.class.update({
+        where: { id },
+        data: { name, semester: sem, course_code, description, lecturer_id },
+        include: { lecturer: { select: { name: true } }, _count: { select: { enrollments: true, sessions: true } } }
+      });
+    } catch (err: any) {
+      if (!isMissingSemesterColumn(err)) throw err;
+      const updated = await prisma.class.update({
+        where: { id },
+        data: { name, course_code, description, lecturer_id },
+        include: { lecturer: { select: { name: true } }, _count: { select: { enrollments: true, sessions: true } } }
+      });
+      updatedClass = { ...(updated as any), semester: 1 };
+    }
 
     res.status(200).json({ success: true, data: updatedClass });
   } catch (error) {

@@ -2,6 +2,9 @@ import { Request, Response } from 'express';
 import prisma from '../utils/prisma.js';
 import crypto from 'crypto';
 
+const isMissingSemesterColumn = (err: any) =>
+  Boolean(err && err.code === 'P2022' && String(err?.meta?.column || '').includes('Class.semester'));
+
 export const getSessions = async (req: Request, res: Response): Promise<void> => {
   try {
     const user = (req as any).user;
@@ -9,36 +12,72 @@ export const getSessions = async (req: Request, res: Response): Promise<void> =>
 
     if (user.role === 'USER') {
       const userId = user.id as string;
-      sessions = await prisma.session.findMany({
-        where: {
-          status: { in: ['UPCOMING', 'ACTIVE'] },
-          OR: [
-            { class_id: null, session_classes: { none: {} } },
-            { class: { enrollments: { some: { student_id: userId } } } },
-            { session_classes: { some: { class: { enrollments: { some: { student_id: userId } } } } } },
-          ]
-        },
-        include: {
-          location: true,
-          creator: { select: { name: true } },
-          class: { select: { id: true, name: true, semester: true } },
-          session_classes: { include: { class: { select: { id: true, name: true, semester: true } } } },
-          attendances: { where: { user_id: userId } },
-        },
-        orderBy: { session_start: 'asc' },
-      });
+      try {
+        sessions = await prisma.session.findMany({
+          where: {
+            status: { in: ['UPCOMING', 'ACTIVE'] },
+            OR: [
+              { class_id: null, session_classes: { none: {} } },
+              { class: { enrollments: { some: { student_id: userId } } } },
+              { session_classes: { some: { class: { enrollments: { some: { student_id: userId } } } } } },
+            ]
+          },
+          include: {
+            location: true,
+            creator: { select: { name: true } },
+            class: { select: { id: true, name: true, semester: true } },
+            session_classes: { include: { class: { select: { id: true, name: true, semester: true } } } },
+            attendances: { where: { user_id: userId } },
+          },
+          orderBy: { session_start: 'asc' },
+        });
+      } catch (err: any) {
+        if (!isMissingSemesterColumn(err)) throw err;
+        sessions = await prisma.session.findMany({
+          where: {
+            status: { in: ['UPCOMING', 'ACTIVE'] },
+            OR: [
+              { class_id: null, session_classes: { none: {} } },
+              { class: { enrollments: { some: { student_id: userId } } } },
+              { session_classes: { some: { class: { enrollments: { some: { student_id: userId } } } } } },
+            ]
+          },
+          include: {
+            location: true,
+            creator: { select: { name: true } },
+            class: { select: { id: true, name: true } },
+            session_classes: { include: { class: { select: { id: true, name: true } } } },
+            attendances: { where: { user_id: userId } },
+          },
+          orderBy: { session_start: 'asc' },
+        });
+      }
     } else {
       // Admin/Super Admin sees all sessions they created (or all if super admin)
-      sessions = await prisma.session.findMany({
-        where: user.role === 'ADMIN' ? { created_by_id: user.id } : {},
-        include: {
-          location: true,
-          creator: { select: { name: true } },
-          class: { select: { id: true, name: true, semester: true } },
-          session_classes: { include: { class: { select: { id: true, name: true, semester: true } } } },
-        },
-        orderBy: { created_at: 'desc' },
-      });
+      try {
+        sessions = await prisma.session.findMany({
+          where: user.role === 'ADMIN' ? { created_by_id: user.id } : {},
+          include: {
+            location: true,
+            creator: { select: { name: true } },
+            class: { select: { id: true, name: true, semester: true } },
+            session_classes: { include: { class: { select: { id: true, name: true, semester: true } } } },
+          },
+          orderBy: { created_at: 'desc' },
+        });
+      } catch (err: any) {
+        if (!isMissingSemesterColumn(err)) throw err;
+        sessions = await prisma.session.findMany({
+          where: user.role === 'ADMIN' ? { created_by_id: user.id } : {},
+          include: {
+            location: true,
+            creator: { select: { name: true } },
+            class: { select: { id: true, name: true } },
+            session_classes: { include: { class: { select: { id: true, name: true } } } },
+          },
+          orderBy: { created_at: 'desc' },
+        });
+      }
     }
 
     res.status(200).json({ success: true, data: sessions });

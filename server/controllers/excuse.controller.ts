@@ -10,40 +10,80 @@ if (process.env.CLOUDINARY_URL) {
   // Automatically uses CLOUDINARY_URL
 }
 
+const isMissingSemesterColumn = (err: any) =>
+  Boolean(err && err.code === 'P2022' && String(err?.meta?.column || '').includes('Class.semester'));
+
 export const getExcuses = async (req: Request, res: Response): Promise<void> => {
   try {
     const user = (req as any).user;
     let excuses;
 
     if (user.role === 'USER') {
-      excuses = await prisma.excuseRequest.findMany({
-        where: { user_id: user.id },
-        include: {
-          session: { select: { title: true, session_start: true, class: { select: { name: true, semester: true } }, session_classes: { select: { class: { select: { id: true, name: true, semester: true } } } } } },
-          reviewer: { select: { name: true } }
-        },
-        orderBy: { created_at: 'desc' }
-      });
+      try {
+        excuses = await prisma.excuseRequest.findMany({
+          where: { user_id: user.id },
+          include: {
+            session: { select: { title: true, session_start: true, class: { select: { name: true, semester: true } }, session_classes: { select: { class: { select: { id: true, name: true, semester: true } } } } } },
+            reviewer: { select: { name: true } }
+          },
+          orderBy: { created_at: 'desc' }
+        });
+      } catch (err: any) {
+        if (!isMissingSemesterColumn(err)) throw err;
+        excuses = await prisma.excuseRequest.findMany({
+          where: { user_id: user.id },
+          include: {
+            session: { select: { title: true, session_start: true, class: { select: { name: true } }, session_classes: { select: { class: { select: { id: true, name: true } } } } } },
+            reviewer: { select: { name: true } }
+          },
+          orderBy: { created_at: 'desc' }
+        });
+      }
     } else if (user.role === 'ADMIN') {
-      excuses = await prisma.excuseRequest.findMany({
-        where: { session: { created_by_id: user.id } },
-        include: {
-          user: { select: { name: true, nim_nip: true } },
-          session: { select: { title: true, session_start: true, class: { select: { name: true, semester: true } }, session_classes: { select: { class: { select: { id: true, name: true, semester: true } } } } } },
-          reviewer: { select: { name: true } }
-        },
-        orderBy: { created_at: 'desc' }
-      });
+      try {
+        excuses = await prisma.excuseRequest.findMany({
+          where: { session: { created_by_id: user.id } },
+          include: {
+            user: { select: { name: true, nim_nip: true } },
+            session: { select: { title: true, session_start: true, class: { select: { name: true, semester: true } }, session_classes: { select: { class: { select: { id: true, name: true, semester: true } } } } } },
+            reviewer: { select: { name: true } }
+          },
+          orderBy: { created_at: 'desc' }
+        });
+      } catch (err: any) {
+        if (!isMissingSemesterColumn(err)) throw err;
+        excuses = await prisma.excuseRequest.findMany({
+          where: { session: { created_by_id: user.id } },
+          include: {
+            user: { select: { name: true, nim_nip: true } },
+            session: { select: { title: true, session_start: true, class: { select: { name: true } }, session_classes: { select: { class: { select: { id: true, name: true } } } } } },
+            reviewer: { select: { name: true } }
+          },
+          orderBy: { created_at: 'desc' }
+        });
+      }
     } else {
       // Super Admin
-      excuses = await prisma.excuseRequest.findMany({
-        include: {
-          user: { select: { name: true, nim_nip: true } },
-          session: { select: { title: true, session_start: true, class: { select: { name: true, semester: true } }, session_classes: { select: { class: { select: { id: true, name: true, semester: true } } } } } },
-          reviewer: { select: { name: true } }
-        },
-        orderBy: { created_at: 'desc' }
-      });
+      try {
+        excuses = await prisma.excuseRequest.findMany({
+          include: {
+            user: { select: { name: true, nim_nip: true } },
+            session: { select: { title: true, session_start: true, class: { select: { name: true, semester: true } }, session_classes: { select: { class: { select: { id: true, name: true, semester: true } } } } } },
+            reviewer: { select: { name: true } }
+          },
+          orderBy: { created_at: 'desc' }
+        });
+      } catch (err: any) {
+        if (!isMissingSemesterColumn(err)) throw err;
+        excuses = await prisma.excuseRequest.findMany({
+          include: {
+            user: { select: { name: true, nim_nip: true } },
+            session: { select: { title: true, session_start: true, class: { select: { name: true } }, session_classes: { select: { class: { select: { id: true, name: true } } } } } },
+            reviewer: { select: { name: true } }
+          },
+          orderBy: { created_at: 'desc' }
+        });
+      }
     }
 
     res.status(200).json({ success: true, data: excuses });
@@ -111,18 +151,35 @@ export const createExcuse = async (req: Request, res: Response): Promise<void> =
       }
     }
 
-    const newExcuse = await prisma.excuseRequest.create({
-      data: {
-        user_id,
-        session_id,
-        reason,
-        description,
-        proof_url
-      },
-      include: {
-        session: { select: { title: true, session_start: true, class: { select: { name: true, semester: true } }, session_classes: { select: { class: { select: { id: true, name: true, semester: true } } } }, created_by_id: true } }
-      }
-    });
+    let newExcuse: any;
+    try {
+      newExcuse = await prisma.excuseRequest.create({
+        data: {
+          user_id,
+          session_id,
+          reason,
+          description,
+          proof_url
+        },
+        include: {
+          session: { select: { title: true, session_start: true, class: { select: { name: true, semester: true } }, session_classes: { select: { class: { select: { id: true, name: true, semester: true } } } }, created_by_id: true } }
+        }
+      });
+    } catch (err: any) {
+      if (!isMissingSemesterColumn(err)) throw err;
+      newExcuse = await prisma.excuseRequest.create({
+        data: {
+          user_id,
+          session_id,
+          reason,
+          description,
+          proof_url
+        },
+        include: {
+          session: { select: { title: true, session_start: true, class: { select: { name: true } }, session_classes: { select: { class: { select: { id: true, name: true } } } }, created_by_id: true } }
+        }
+      });
+    }
 
     // Notify creator
     const userDetails = await prisma.user.findUnique({ where: { id: user_id }, select: { name: true } });

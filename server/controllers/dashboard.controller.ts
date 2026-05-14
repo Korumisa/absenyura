@@ -3,6 +3,9 @@ import { Prisma } from '@prisma/client';
 import prisma from '../utils/prisma.js';
 import { fillChartData, getWibRangeUtc, type ChartRow } from '../utils/dashboardChart.js';
 
+const isMissingSemesterColumn = (err: any) =>
+  Boolean(err && err.code === 'P2022' && String(err?.meta?.column || '').includes('Class.semester'));
+
 export const getDashboardStats = async (req: Request, res: Response): Promise<void> => {
   try {
     const user = (req as any).user;
@@ -30,24 +33,47 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
 
       // Upcoming sessions for enrolled classes
       const userId = user.id as string;
-      const upcomingSessions = await prisma.session.findMany({
-        where: {
-          status: { in: ['UPCOMING', 'ACTIVE'] },
-          OR: [
-            { class_id: null, session_classes: { none: {} } },
-            { class: { enrollments: { some: { student_id: userId } } } },
-            { session_classes: { some: { class: { enrollments: { some: { student_id: userId } } } } } },
-          ]
-        },
-        orderBy: { session_start: 'asc' },
-        take: 5,
-        include: { 
-          location: { select: { name: true } }, 
-          class: { select: { id: true, name: true, semester: true } },
-          session_classes: { include: { class: { select: { id: true, name: true, semester: true } } } },
-          attendances: { where: { user_id: userId } }
-        }
-      });
+      let upcomingSessions;
+      try {
+        upcomingSessions = await prisma.session.findMany({
+          where: {
+            status: { in: ['UPCOMING', 'ACTIVE'] },
+            OR: [
+              { class_id: null, session_classes: { none: {} } },
+              { class: { enrollments: { some: { student_id: userId } } } },
+              { session_classes: { some: { class: { enrollments: { some: { student_id: userId } } } } } },
+            ]
+          },
+          orderBy: { session_start: 'asc' },
+          take: 5,
+          include: { 
+            location: { select: { name: true } }, 
+            class: { select: { id: true, name: true, semester: true } },
+            session_classes: { include: { class: { select: { id: true, name: true, semester: true } } } },
+            attendances: { where: { user_id: userId } }
+          }
+        });
+      } catch (err: any) {
+        if (!isMissingSemesterColumn(err)) throw err;
+        upcomingSessions = await prisma.session.findMany({
+          where: {
+            status: { in: ['UPCOMING', 'ACTIVE'] },
+            OR: [
+              { class_id: null, session_classes: { none: {} } },
+              { class: { enrollments: { some: { student_id: userId } } } },
+              { session_classes: { some: { class: { enrollments: { some: { student_id: userId } } } } } },
+            ]
+          },
+          orderBy: { session_start: 'asc' },
+          take: 5,
+          include: { 
+            location: { select: { name: true } }, 
+            class: { select: { id: true, name: true } },
+            session_classes: { include: { class: { select: { id: true, name: true } } } },
+            attendances: { where: { user_id: userId } }
+          }
+        });
+      }
 
       const { startUtc, endUtc } = getWibRangeUtc({ rangeDays: rangeDays, now: new Date() });
       const rows = await prisma.$queryRaw<ChartRow[]>(Prisma.sql`

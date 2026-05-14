@@ -53,7 +53,7 @@ export default function Layout() {
   }, [location.pathname]);
 
   return (
-    <div className="admin-theme flex min-h-dvh overflow-hidden bg-[#f5f7fb] font-sans dark:bg-zinc-900">
+    <div className="admin-theme flex h-dvh overflow-hidden bg-[#f5f7fb] font-sans dark:bg-zinc-900">
       {sidebarOpen && (
         <button
           type="button"
@@ -65,7 +65,7 @@ export default function Layout() {
 
       {/* Sidebar */}
       <div
-        className={`fixed inset-y-0 left-0 z-30 w-64 transform border-r border-[#e6edf5] bg-white transition-transform duration-300 ease-in-out dark:border-zinc-800 dark:bg-zinc-950 lg:static lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-30 w-64 transform border-r border-[#e6edf5] bg-white transition-transform duration-300 ease-in-out dark:border-zinc-800 dark:bg-zinc-950 lg:translate-x-0 ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -89,7 +89,7 @@ export default function Layout() {
           </Button>
         </div>
 
-        <div className="flex flex-col h-[calc(100vh-4rem)] justify-between pb-6">
+        <div className="flex h-[calc(100dvh-4rem)] flex-col justify-between pb-6">
           <nav className="scrollbar-hide space-y-1 overflow-y-auto p-4">
             {allowedNavItems.map((item) => {
               const Icon = item.icon;
@@ -172,7 +172,7 @@ export default function Layout() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:ml-64">
         {/* Top Navbar */}
         <header className="flex h-16 items-center justify-between border-b border-[#e6edf5] bg-white px-6 dark:border-zinc-800 dark:bg-zinc-950">
           <div className="flex items-center">
@@ -202,7 +202,7 @@ export default function Layout() {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-y-auto bg-[#f5f7fb] dark:bg-zinc-900">
+        <main id="app-main-scroll" className="min-h-0 flex-1 overflow-y-auto bg-[#f5f7fb] dark:bg-zinc-900">
           <Outlet />
         </main>
       </div>

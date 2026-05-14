@@ -1,6 +1,9 @@
 import { Request, Response } from 'express';
 import prisma from '../utils/prisma.js';
 
+const isMissingSemesterColumn = (err: any) =>
+  Boolean(err && err.code === 'P2022' && String(err?.meta?.column || '').includes('Class.semester'));
+
 export const getReports = async (req: Request, res: Response): Promise<void> => {
   try {
     const user = (req as any).user;
@@ -34,9 +37,10 @@ export const getReports = async (req: Request, res: Response): Promise<void> => 
       };
     }
 
-
-    const [attendances, total] = await Promise.all([
-      prisma.attendance.findMany({
+    let attendances: any[] = [];
+    const total = await prisma.attendance.count({ where: whereClause });
+    try {
+      attendances = await prisma.attendance.findMany({
         where: whereClause,
         include: {
           session: {
@@ -52,9 +56,27 @@ export const getReports = async (req: Request, res: Response): Promise<void> => 
         orderBy: { check_in_time: 'desc' },
         skip,
         take: limit
-      }),
-      prisma.attendance.count({ where: whereClause })
-    ]);
+      });
+    } catch (err: any) {
+      if (!isMissingSemesterColumn(err)) throw err;
+      attendances = await prisma.attendance.findMany({
+        where: whereClause,
+        include: {
+          session: {
+            select: {
+              title: true,
+              session_start: true,
+              class: { select: { name: true } },
+              session_classes: { select: { class: { select: { name: true } } } },
+            },
+          },
+          user: { select: { name: true, nim_nip: true } }
+        },
+        orderBy: { check_in_time: 'desc' },
+        skip,
+        take: limit
+      });
+    }
 
     const formatClassLabel = (cls: any): string => {
       const name = String(cls?.name ?? '').trim();
