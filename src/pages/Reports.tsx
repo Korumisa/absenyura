@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import api from '@/services/api';
 import useSWR from 'swr';
@@ -30,6 +30,8 @@ export default function Reports() {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [sessionId, setSessionId] = useState('ALL');
+  const [exporting, setExporting] = useState<'none' | 'excel' | 'pdf'>('none');
   
   const [page, setPage] = useState(1);
 
@@ -37,6 +39,9 @@ export default function Reports() {
     page: page.toString(),
     limit: '50'
   });
+  if (sessionId && sessionId !== 'ALL') {
+    queryParams.append('sessionId', sessionId);
+  }
   if (startDate && endDate) {
     queryParams.append('startDate', startDate);
     queryParams.append('endDate', endDate);
@@ -48,6 +53,15 @@ export default function Reports() {
 
   const reports: Report[] = data?.data || [];
   const meta: PaginationMeta | null = data?.meta || null;
+
+  const sessionsFetcher = (url: string) => api.get(url).then((res) => res.data.data);
+  const { data: sessions = [] } = useSWR<
+    { id: string; title: string; session_start: string; class?: { name: string } | null; session_classes?: { class: { name: string } }[] }[]
+  >('/sessions', sessionsFetcher, { revalidateOnFocus: false });
+
+  useEffect(() => {
+    setPage(1);
+  }, [startDate, endDate, sessionId]);
 
   const filteredReports = useMemo(() => {
     return reports.filter(r => {
@@ -65,12 +79,12 @@ export default function Reports() {
   const [overrideStatus, setOverrideStatus] = useState('PRESENT');
   const [overrideNotes, setOverrideNotes] = useState('');
 
-  const handleExportExcel = useCallback(async () => {
+  const exportExcelMatrix = useCallback(async (rows: Report[], fileSuffix: string) => {
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Rekap Matriks Kehadiran');
 
     // Dapatkan daftar sesi unik dari laporan yang difilter
-    const uniqueSessions = Array.from(new Set(filteredReports.map(r => r.session_title)));
+    const uniqueSessions = Array.from(new Set(rows.map(r => r.session_title)));
     
     // Siapkan kolom: Nama, NIM, lalu diikuti nama-nama sesi
     const columns = [
@@ -94,7 +108,7 @@ export default function Reports() {
     // Kelompokkan data per mahasiswa
     const studentData: Record<string, Record<string, string | number>> = {};
     
-    filteredReports.forEach((r) => {
+    rows.forEach((r) => {
       const studentId = r.user_id;
       if (!studentData[studentId]) {
         studentData[studentId] = {
@@ -126,13 +140,13 @@ export default function Reports() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `Matriks_Kehadiran_${format(new Date(), 'yyyyMMdd_HHmm')}.xlsx`;
+    link.download = `Matriks_Kehadiran_${fileSuffix}_${format(new Date(), 'yyyyMMdd_HHmm')}.xlsx`;
     link.click();
     URL.revokeObjectURL(url);
     toast.success('Matriks Laporan Excel berhasil diunduh');
-  }, [filteredReports]);
+  }, []);
 
-  const handleExportPDF = useCallback(() => {
+  const exportPdfList = useCallback((rows: Report[], fileSuffix: string) => {
     const doc = new jsPDF();
     
     doc.setFontSize(16);
@@ -140,7 +154,7 @@ export default function Reports() {
     doc.setFontSize(10);
     doc.text(`Dicetak pada: ${format(new Date(), 'dd MMMM yyyy HH:mm', { locale: id })}`, 14, 28);
 
-    const tableData = filteredReports.map(r => [
+    const tableData = rows.map(r => [
       r.user_name,
       r.nim_nip || '-',
       r.session_title,
@@ -158,9 +172,63 @@ export default function Reports() {
       headStyles: { fillColor: [79, 70, 229] }
     });
 
-    doc.save(`Rekap_Kehadiran_${format(new Date(), 'yyyyMMdd_HHmm')}.pdf`);
+    doc.save(`Rekap_Kehadiran_${fileSuffix}_${format(new Date(), 'yyyyMMdd_HHmm')}.pdf`);
     toast.success('Laporan PDF berhasil diunduh');
-  }, [filteredReports]);
+  }, []);
+
+  const fetchAllReportsForSession = useCallback(async (sid: string) => {
+    const limit = 500;
+    let p = 1;
+    const all: Report[] = [];
+    while (true) {
+      const params = new URLSearchParams({ page: String(p), limit: String(limit), sessionId: sid });
+      const res = await api.get(`/reports?${params.toString()}`);
+      const chunk: Report[] = res.data?.data || [];
+      const m: PaginationMeta | undefined = res.data?.meta;
+      all.push(...chunk);
+      if (!m || p >= m.totalPages) break;
+      p += 1;
+    }
+    return all;
+  }, []);
+
+  const handleExportExcel = useCallback(async () => {
+    const sanitize = (s: string) => s.replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '').slice(0, 40) || 'Sesi';
+    try {
+      setExporting('excel');
+      if (sessionId !== 'ALL') {
+        const all = await fetchAllReportsForSession(sessionId);
+        const rows = all.filter((r) => statusFilter === 'ALL' || r.status === statusFilter);
+        const title = sessions.find((s) => s.id === sessionId)?.title || 'Sesi';
+        await exportExcelMatrix(rows, sanitize(title));
+        return;
+      }
+      await exportExcelMatrix(filteredReports, 'Semua');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Gagal export Excel');
+    } finally {
+      setExporting('none');
+    }
+  }, [exportExcelMatrix, fetchAllReportsForSession, filteredReports, sessionId, sessions, statusFilter]);
+
+  const handleExportPDF = useCallback(async () => {
+    const sanitize = (s: string) => s.replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '').slice(0, 40) || 'Sesi';
+    try {
+      setExporting('pdf');
+      if (sessionId !== 'ALL') {
+        const all = await fetchAllReportsForSession(sessionId);
+        const rows = all.filter((r) => statusFilter === 'ALL' || r.status === statusFilter);
+        const title = sessions.find((s) => s.id === sessionId)?.title || 'Sesi';
+        exportPdfList(rows, sanitize(title));
+        return;
+      }
+      exportPdfList(filteredReports, 'Semua');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Gagal export PDF');
+    } finally {
+      setExporting('none');
+    }
+  }, [exportPdfList, fetchAllReportsForSession, filteredReports, sessionId, sessions, statusFilter]);
 
   const handleOpenOverride = (report: Report) => {
     setSelectedReport(report);
@@ -200,11 +268,11 @@ export default function Reports() {
       icon={<FileText className="h-5 w-5" />}
       actions={
         <div className="flex gap-2">
-          <Button onClick={handleExportExcel} className="bg-emerald-600 hover:bg-emerald-700 text-white">
-            <Download className="w-4 h-4 mr-2" /> Excel
+          <Button onClick={handleExportExcel} disabled={exporting !== 'none'} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+            <Download className="w-4 h-4 mr-2" /> {exporting === 'excel' ? 'Exporting...' : 'Excel'}
           </Button>
-          <Button onClick={handleExportPDF} variant="destructive">
-            <FileText className="w-4 h-4 mr-2" /> PDF
+          <Button onClick={handleExportPDF} disabled={exporting !== 'none'} variant="destructive">
+            <FileText className="w-4 h-4 mr-2" /> {exporting === 'pdf' ? 'Exporting...' : 'PDF'}
           </Button>
         </div>
       }
@@ -247,6 +315,23 @@ export default function Reports() {
               <SelectItem value="SICK">Sakit</SelectItem>
               <SelectItem value="EXCUSED">Izin</SelectItem>
               <SelectItem value="ABSENT">Tidak Hadir</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={sessionId} onValueChange={setSessionId}>
+            <SelectTrigger className="w-full sm:w-[260px]">
+              <SelectValue placeholder="Semua Sesi" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">Semua Sesi</SelectItem>
+              {sessions.map((s) => {
+                const names = (s.session_classes ?? []).map((x: any) => x?.class?.name).filter(Boolean);
+                const classesLabel = names.length ? names.join(', ') : s.class ? s.class.name : 'Umum';
+                return (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.title} ({classesLabel}) - {format(new Date(s.session_start), 'dd MMM', { locale: id })}
+                  </SelectItem>
+                );
+              })}
             </SelectContent>
           </Select>
         </div>

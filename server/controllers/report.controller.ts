@@ -11,12 +11,17 @@ export const getReports = async (req: Request, res: Response): Promise<void> => 
     
     const startDate = req.query.startDate as string;
     const endDate = req.query.endDate as string;
+    const sessionId = (req.query.sessionId || req.query.session_id) as string | undefined;
 
     let whereClause: any = {};
     if (user.role === 'USER') {
       whereClause = { user_id: user.id };
     } else if (user.role === 'ADMIN') {
       whereClause = { session: { created_by_id: user.id } };
+    }
+
+    if (sessionId) {
+      whereClause.session_id = sessionId;
     }
 
     if (startDate && endDate) {
@@ -34,7 +39,14 @@ export const getReports = async (req: Request, res: Response): Promise<void> => 
       prisma.attendance.findMany({
         where: whereClause,
         include: {
-          session: { select: { title: true, session_start: true, class: { select: { name: true } } } },
+          session: {
+            select: {
+              title: true,
+              session_start: true,
+              class: { select: { name: true } },
+              session_classes: { select: { class: { select: { name: true } } } },
+            },
+          },
           user: { select: { name: true, nim_nip: true } }
         },
         orderBy: { check_in_time: 'desc' },
@@ -51,13 +63,17 @@ export const getReports = async (req: Request, res: Response): Promise<void> => 
       user_name: a.user.name,
       nim_nip: a.user.nim_nip,
       session_title: a.session.title,
-      class_name: a.session.class?.name || null,
+      class_name:
+        (a.session as any).session_classes?.length
+          ? (a.session as any).session_classes.map((x: any) => x?.class?.name).filter(Boolean).join(', ')
+          : a.session.class?.name || null,
       session_date: a.session.session_start,
       check_in_time: a.check_in_time,
       status: a.status,
       ip: a.check_in_ip,
       device: a.check_in_device,
-      photo_url: a.photo_url
+      photo_url: a.photo_url,
+      session_classes: (a.session as any).session_classes?.map((x: any) => x?.class?.name).filter(Boolean) ?? [],
     }));
 
     res.status(200).json({ 

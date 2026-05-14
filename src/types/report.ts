@@ -4,6 +4,7 @@ export interface Report {
   nim_nip: string;
   session_title: string;
   class_name: string | null;
+  session_classes?: string[];
   session_id: string;
   user_id: string;
   session_date: string;

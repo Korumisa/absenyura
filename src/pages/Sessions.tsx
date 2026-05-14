@@ -465,7 +465,7 @@ export default function Sessions() {
                       />
                     </div>
 
-                    <div className="max-h-56 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 dark:border-zinc-800 dark:bg-zinc-950">
+                    <div className="scrollbar-hide max-h-56 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 dark:border-zinc-800 dark:bg-zinc-950">
                       <Button
                         type="button"
                         variant="ghost"
