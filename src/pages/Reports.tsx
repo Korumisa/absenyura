@@ -502,11 +502,13 @@ export default function Reports() {
           </div>
 
           <form onSubmit={handleOverrideSubmit} className="p-6">
-              <div className="mb-4 text-sm text-slate-600 dark:text-zinc-400 bg-slate-50 dark:bg-zinc-900/50 p-4 rounded-lg border border-slate-100 dark:border-zinc-800">
-                <p><strong>Nama:</strong> {selectedReport.user_name}</p>
-                <p><strong>Sesi:</strong> {selectedReport.session_title}</p>
-                <p><strong>Waktu:</strong> {safeFormat(selectedReport.check_in_time, 'dd MMM yyyy HH:mm:ss')}</p>
-              </div>
+                {selectedReport && (
+                  <div className="mb-4 ...">
+                    <p><strong>Nama:</strong> {selectedReport.user_name}</p>
+                    <p><strong>Sesi:</strong> {selectedReport.session_title}</p>
+                    <p><strong>Waktu:</strong> {safeFormat(selectedReport.check_in_time, 'dd MMM yyyy HH:mm:ss')}</p>
+                  </div>
+                )}
 
               <div className="space-y-4">
                 <div className="space-y-2">
