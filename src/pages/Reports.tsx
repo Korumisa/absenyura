@@ -392,15 +392,17 @@ export default function Reports() {
                   <TableCell colSpan={7} className="h-24 text-center text-slate-500">Tidak ada data ditemukan.</TableCell>
                 </TableRow>
               ) : (
-                filteredReports.map((report) => (
-                  <TableRow key={report.id}>
+                (filteredReports ?? [])
+                  .filter((r): r is Report => Boolean(r && (r as any).id))
+                  .map((report: any, idx: number) => (
+                  <TableRow key={String(report?.id ?? idx)}>
                     <TableCell>
-                      <div className="font-medium text-slate-900 dark:text-white">{report.user_name}</div>
-                      <div className="text-sm text-slate-500 dark:text-zinc-400">{report.nim_nip || '-'}</div>
+                      <div className="font-medium text-slate-900 dark:text-white">{String(report?.user_name ?? '-')}</div>
+                      <div className="text-sm text-slate-500 dark:text-zinc-400">{String(report?.nim_nip ?? '-') || '-'}</div>
                     </TableCell>
                     <TableCell>
-                      <div className="font-medium text-slate-800 dark:text-zinc-200">{report.session_title}</div>
-                      {report.class_name && <div className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 mt-0.5">{typeof report.class_name === 'object' && report.class_name !== null ? ((report.class_name as any).name || (report.class_name as any).id) : report.class_name}</div>}
+                      <div className="font-medium text-slate-800 dark:text-zinc-200">{String(report?.session_title ?? '-')}</div>
+                      {report?.class_name && <div className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 mt-0.5">{typeof report.class_name === 'object' && report.class_name !== null ? ((report.class_name as any).name || (report.class_name as any).id) : report.class_name}</div>}
                       <div className="text-xs text-slate-500 dark:text-zinc-400 mt-1">
                         {format(new Date(report.session_date), 'dd MMMM yyyy', { locale: id })}
                       </div>
@@ -441,7 +443,7 @@ export default function Reports() {
                         <Button 
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleOpenOverride(report)}
+                          onClick={() => report?.id && handleOpenOverride(report)}
                           className="text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:text-slate-400 dark:hover:bg-indigo-900/30"
                           title="Override Status"
                         >
