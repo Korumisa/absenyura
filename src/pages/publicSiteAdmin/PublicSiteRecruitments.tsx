@@ -172,7 +172,7 @@ export default function PublicSiteRecruitments() {
             <Label>Upload Poster</Label>
             <div className="grid gap-3 md:grid-cols-[1fr_220px]">
               <div className="space-y-2">
-                <input
+                <Input
                   id="recruitment-poster"
                   type="file"
                   accept="image/*"
@@ -409,4 +409,3 @@ export default function PublicSiteRecruitments() {
     </AdminPageShell>
   );
 }
-

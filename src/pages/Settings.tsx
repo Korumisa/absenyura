@@ -166,15 +166,17 @@ export default function Settings() {
           <div className="bg-white dark:bg-zinc-800 rounded-xl border border-red-200 dark:border-red-900/50 shadow-sm p-6 mt-6">
             <h2 className="text-lg font-bold text-red-600 dark:text-red-500 mb-2">Manajemen Perangkat</h2>
             <p className="text-sm text-slate-500 dark:text-zinc-400 mb-4">Logout paksa dari perangkat ini (akan menghapus sesi token).</p>
-            <button 
+            <Button
+              type="button"
+              variant="outline"
               onClick={() => {
                 localStorage.removeItem('device_fingerprint');
                 toast.success('Perangkat dilupakan. Anda akan diminta login kembali pada percobaan berikutnya.');
               }}
-              className="px-4 py-2 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg font-medium transition-colors flex items-center gap-2"
+              className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-900 dark:text-red-500 dark:hover:bg-red-900/20"
             >
               <LogOut size={16} /> Lupakan Perangkat Ini
-            </button>
+            </Button>
           </div>
           </>
         )}

@@ -314,7 +314,7 @@ export default function PublicSiteProfile() {
                 <Input value={draft.visiRole} onChange={(e) => setDraft((p) => ({ ...p, visiRole: e.target.value }))} placeholder="Jabatan (contoh: Ketua Umum)" />
                 <Input value={draft.visiName} onChange={(e) => setDraft((p) => ({ ...p, visiName: e.target.value }))} placeholder="Nama" />
                 <Input value={draft.visiPhotoUrl} onChange={(e) => setDraft((p) => ({ ...p, visiPhotoUrl: e.target.value }))} placeholder="URL Foto" />
-                <input
+                <Input
                   id="profile-visi-photo"
                   type="file"
                   accept="image/*"
@@ -375,7 +375,7 @@ export default function PublicSiteProfile() {
                 <Input value={draft.misiRole} onChange={(e) => setDraft((p) => ({ ...p, misiRole: e.target.value }))} placeholder="Jabatan (contoh: Wakil Ketua)" />
                 <Input value={draft.misiName} onChange={(e) => setDraft((p) => ({ ...p, misiName: e.target.value }))} placeholder="Nama" />
                 <Input value={draft.misiPhotoUrl} onChange={(e) => setDraft((p) => ({ ...p, misiPhotoUrl: e.target.value }))} placeholder="URL Foto" />
-                <input
+                <Input
                   id="profile-misi-photo"
                   type="file"
                   accept="image/*"
@@ -476,7 +476,7 @@ export default function PublicSiteProfile() {
             <Label>Upload Foto Anggota</Label>
             <div className="grid gap-3 md:grid-cols-[1fr_220px]">
               <div className="space-y-2">
-                <input
+                <Input
                   id="profile-home-image"
                   type="file"
                   accept="image/*"
@@ -533,7 +533,7 @@ export default function PublicSiteProfile() {
           <div className="space-y-2">
             <Label>Upload Logo Light</Label>
             <div className="space-y-2">
-              <input
+              <Input
                 id="profile-logo-light"
                 type="file"
                 accept="image/*"
@@ -577,7 +577,7 @@ export default function PublicSiteProfile() {
           <div className="space-y-2">
             <Label>Upload Logo Dark</Label>
             <div className="space-y-2">
-              <input
+              <Input
                 id="profile-logo-dark"
                 type="file"
                 accept="image/*"

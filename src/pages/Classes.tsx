@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ConfirmModal } from '@/components/ConfirmModal';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import AdminPageShell from '@/components/AdminPageShell';
 import type { ClassItem } from '@/types/class';
 import type { User } from '@/types/user';
@@ -306,19 +307,18 @@ export default function Classes() {
       </div>
 
       {/* Modal Form */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm px-4">
-          <div className="bg-white dark:bg-zinc-950 rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col border border-slate-200 dark:border-zinc-800">
-            <div className="px-6 py-4 border-b border-slate-200 dark:border-zinc-800 flex justify-between items-center">
-              <h2 className="text-xl font-bold text-slate-800 dark:text-white">
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent className="max-w-lg p-0">
+          <div className="border-b border-slate-200 px-6 py-4 dark:border-zinc-800">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-bold text-slate-800 dark:text-white">
                 {editingClass ? 'Edit Kelas' : 'Tambah Kelas Baru'}
-              </h2>
-              <Button type="button" variant="ghost" size="icon" onClick={() => setIsModalOpen(false)}>
-                <X className="w-4 h-4" />
-              </Button>
-            </div>
-            
-            <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
+              </DialogTitle>
+              <DialogDescription className="sr-only">Form kelas</DialogDescription>
+            </DialogHeader>
+          </div>
+
+          <form onSubmit={handleSubmit} className="max-h-[70vh] space-y-4 overflow-y-auto p-6">
               <div className="space-y-2">
                 <Label>Pilih Mata Kuliah <span className="text-red-500">*</span></Label>
                 {subjectsData.length > 0 ? (
@@ -384,31 +384,35 @@ export default function Classes() {
                 </Select>
               </div>
               
-              <div className="mt-8 pt-4 border-t border-slate-200 dark:border-zinc-800 flex justify-end gap-3">
+              <DialogFooter className="mt-8 border-t border-slate-200 pt-4 dark:border-zinc-800">
                 <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
                   Batal
                 </Button>
                 <Button type="submit">
                   Simpan
                 </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+              </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Enroll Modal */}
-      {isEnrollModalOpen && selectedClassId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm px-4">
-          <div className="bg-white dark:bg-zinc-950 rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col border border-slate-200 dark:border-zinc-800">
-            <div className="px-6 py-4 border-b border-slate-200 dark:border-zinc-800 flex justify-between items-center shrink-0">
-              <h2 className="text-xl font-bold text-slate-800 dark:text-white">Daftar Mahasiswa</h2>
-              <Button type="button" variant="ghost" size="icon" onClick={() => setIsEnrollModalOpen(false)}>
-                <X className="w-4 h-4" />
-              </Button>
-            </div>
-            
-            <div className="p-6 flex flex-col gap-4 overflow-y-auto">
+      <Dialog
+        open={Boolean(isEnrollModalOpen && selectedClassId)}
+        onOpenChange={(open) => {
+          setIsEnrollModalOpen(open);
+          if (!open) setSelectedClassId(null);
+        }}
+      >
+        <DialogContent className="max-w-2xl p-0">
+          <div className="border-b border-slate-200 px-6 py-4 dark:border-zinc-800">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-bold text-slate-800 dark:text-white">Daftar Mahasiswa</DialogTitle>
+              <DialogDescription className="sr-only">Kelola enrollment mahasiswa</DialogDescription>
+            </DialogHeader>
+          </div>
+
+          <div className="flex max-h-[70vh] flex-col gap-4 overflow-y-auto p-6">
               {currentUser?.role !== 'USER' && (
                 <div className="flex items-end gap-3">
                   <div className="space-y-2 flex-1">
@@ -470,9 +474,8 @@ export default function Classes() {
                 </Table>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Class Confirmation Modal */}
       <ConfirmModal 

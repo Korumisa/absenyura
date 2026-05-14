@@ -5,7 +5,6 @@ import { useAuthStore } from '@/stores/authStore';
 import { Plus, Search, Edit2, Trash2, X, Download, Upload, Smartphone, Users as UsersIcon } from 'lucide-react';
 import * as ExcelJS from 'exceljs';
 import { toast } from 'sonner';
-import { createPortal } from 'react-dom';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -13,6 +12,8 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import AdminPageShell from '@/components/AdminPageShell';
 import type { User } from '@/types/user';
 
@@ -225,20 +226,18 @@ export default function Users() {
       icon={<UsersIcon className="h-5 w-5" />}
       actions={
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto">
-          <button
+          <Button
+            type="button"
             onClick={() => setIsImportModalOpen(true)}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg transition-colors font-medium shadow-sm"
+            className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700"
           >
-            <Upload size={18} />
-            <span>Import Excel</span>
-          </button>
-          <button
-            onClick={() => handleOpenModal()}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors font-medium shadow-sm"
-          >
-            <Plus size={18} />
-            <span>Tambah Pengguna</span>
-          </button>
+            <Upload size={18} className="mr-2" />
+            Import Excel
+          </Button>
+          <Button type="button" onClick={() => handleOpenModal()} className="w-full sm:w-auto">
+            <Plus size={18} className="mr-2" />
+            Tambah Pengguna
+          </Button>
         </div>
       }
     >
@@ -246,12 +245,12 @@ export default function Users() {
         <div className="p-4 border-b border-slate-200 dark:border-zinc-700 flex flex-col md:flex-row gap-3 items-center justify-between">
           <div className="relative w-full md:max-w-md flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
-            <input 
-              type="text" 
-              placeholder="Cari nama, email, atau NIM/NIP..." 
+            <Input
+              type="text"
+              placeholder="Cari nama, email, atau NIM/NIP..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-300 dark:border-zinc-600 bg-slate-50 dark:bg-zinc-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+              className="pl-10"
             />
           </div>
           
@@ -282,197 +281,189 @@ export default function Users() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-50 dark:bg-zinc-900/50 text-slate-500 dark:text-zinc-400 text-sm border-b border-slate-200 dark:border-zinc-700">
-                <th className="px-6 py-4 font-medium">Nama & Email</th>
-                <th className="px-6 py-4 font-medium">NIM/NIP</th>
-                <th className="px-6 py-4 font-medium">Peran</th>
-                <th className="px-6 py-4 font-medium">Departemen / Smt</th>
-                <th className="px-6 py-4 font-medium">Status</th>
-                <th className="px-6 py-4 font-medium">Perangkat</th>
-                <th className="px-6 py-4 font-medium text-right">Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200 dark:divide-zinc-700">
+        <div className="p-4">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nama &amp; Email</TableHead>
+                <TableHead>NIM/NIP</TableHead>
+                <TableHead>Peran</TableHead>
+                <TableHead>Departemen / Smt</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Perangkat</TableHead>
+                <TableHead className="text-right">Aksi</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {loading ? (
-                <tr>
-                  <td colSpan={7} className="px-6 py-8 text-center text-slate-500 dark:text-zinc-400">
+                <TableRow>
+                  <TableCell colSpan={7} className="py-10 text-center text-slate-500 dark:text-zinc-400">
                     Memuat data...
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ) : filteredUsers.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-6 py-8 text-center text-slate-500 dark:text-zinc-400">
+                <TableRow>
+                  <TableCell colSpan={7} className="py-10 text-center text-slate-500 dark:text-zinc-400">
                     Tidak ada data pengguna ditemukan.
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ) : (
                 filteredUsers.map((user) => (
-                  <tr key={user.id} className="hover:bg-slate-50 dark:hover:bg-zinc-700/50 transition-colors">
-                    <td className="px-6 py-4">
+                  <TableRow key={user.id}>
+                    <TableCell>
                       <div className="font-medium text-slate-900 dark:text-white">{user.name}</div>
                       <div className="text-sm text-slate-500 dark:text-zinc-400">{user.email}</div>
-                    </td>
-                    <td className="px-6 py-4 text-slate-600 dark:text-zinc-300">{user.nim_nip || '-'}</td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex px-2 py-1 text-xs rounded-full font-medium
-                        ${user.role === 'SUPER_ADMIN' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' : 
-                          user.role === 'ADMIN' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : 
-                          'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'}`}
+                    </TableCell>
+                    <TableCell className="text-slate-600 dark:text-zinc-300">{user.nim_nip || '-'}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          user.role === 'SUPER_ADMIN'
+                            ? 'default'
+                            : user.role === 'ADMIN'
+                              ? 'secondary'
+                              : user.role === 'CONTENT_ADMIN'
+                                ? 'warning'
+                                : 'outline'
+                        }
+                        className={
+                          user.role === 'SUPER_ADMIN'
+                            ? 'bg-purple-600 hover:bg-purple-700'
+                            : user.role === 'ADMIN'
+                              ? 'bg-sky-600 text-white hover:bg-sky-700 dark:bg-sky-600'
+                              : user.role === 'CONTENT_ADMIN'
+                                ? 'bg-amber-500 hover:bg-amber-600'
+                                : ''
+                        }
                       >
                         {typeof user.role === 'object' && user.role !== null ? ((user.role as any).name || (user.role as any).id) : user.role}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-slate-600 dark:text-zinc-300">{typeof user.department === 'object' && user.department !== null ? ((user.department as any).name || (user.department as any).id) : (user.department || '-')}</div>
-                      {user.role === 'USER' && (
-                        <div className="text-xs text-slate-500 mt-1">Semester {user.semester || 1}</div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex px-2 py-1 text-xs rounded-full font-medium
-                        ${user.is_active ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}
-                      >
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-slate-600 dark:text-zinc-300">
+                        {typeof user.department === 'object' && user.department !== null ? ((user.department as any).name || (user.department as any).id) : (user.department || '-')}
+                      </div>
+                      {user.role === 'USER' ? <div className="mt-1 text-xs text-slate-500">Semester {user.semester || 1}</div> : null}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={user.is_active ? 'success' : 'destructive'}>
                         {user.is_active ? 'Aktif' : 'Nonaktif'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
                       {user.device_fingerprint ? (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-full font-medium bg-emerald-100 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800">
+                        <Badge variant="success" className="gap-1.5">
                           <Smartphone size={12} />
                           Terikat
-                        </span>
+                        </Badge>
                       ) : (
-                        <span className="inline-flex px-2.5 py-1 text-xs rounded-full font-medium bg-slate-100 text-slate-600 border border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700">
-                          Bebas
-                        </span>
+                        <Badge variant="secondary">Bebas</Badge>
                       )}
-                    </td>
-                    <td className="px-6 py-4 text-right">
+                    </TableCell>
+                    <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        {user.device_fingerprint && (
+                        {user.device_fingerprint ? (
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => openResetConfirm(user.id)}
-                            className="text-orange-600 hover:text-orange-700 hover:bg-orange-50 border-orange-200 dark:text-orange-500 dark:hover:bg-orange-900/30 dark:border-orange-900"
+                            className="border-orange-200 text-orange-600 hover:bg-orange-50 hover:text-orange-700 dark:border-orange-900 dark:text-orange-500 dark:hover:bg-orange-900/30"
                             title="Reset Perangkat (Mahasiswa akan diminta login ulang di perangkat baru)"
                           >
                             <Smartphone size={14} className="mr-1.5" />
                             Reset Device
                           </Button>
-                        )}
-                        <Button 
+                        ) : null}
+                        <Button
                           variant="ghost"
                           size="icon"
                           onClick={() => handleOpenModal(user)}
-                          className="text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30"
+                          className="text-slate-500 hover:bg-indigo-50 hover:text-indigo-600 dark:text-zinc-400 dark:hover:bg-indigo-900/30"
                           title="Edit"
                         >
                           <Edit2 size={16} />
                         </Button>
-                        {currentUser?.role === 'SUPER_ADMIN' && currentUser?.id !== user.id && (
-                          <Button 
+                        {currentUser?.role === 'SUPER_ADMIN' && currentUser?.id !== user.id ? (
+                          <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => openDeleteConfirm(user.id)}
-                            className="text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
+                            className="text-slate-500 hover:bg-red-50 hover:text-red-600 dark:text-zinc-400 dark:hover:bg-red-900/30"
                             title="Hapus"
                           >
                             <Trash2 size={16} />
                           </Button>
-                        )}
+                        ) : null}
                       </div>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))
               )}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       </div>
 
-      {/* Modal Form */}
-      {isModalOpen
-        ? createPortal(
-        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm px-4">
-          <div className="bg-white dark:bg-zinc-950 rounded-xl shadow-xl w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col border border-slate-200 dark:border-zinc-800">
-            <div className="px-6 py-4 border-b border-slate-200 dark:border-zinc-800 flex justify-between items-center">
-              <h2 className="text-xl font-bold text-slate-800 dark:text-white">
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent className="max-w-2xl p-0">
+          <div className="border-b border-slate-200 px-6 py-4 dark:border-zinc-800">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-bold text-slate-800 dark:text-white">
                 {editingUser ? 'Edit Pengguna' : 'Tambah Pengguna Baru'}
-              </h2>
-              <Button variant="ghost" size="icon" onClick={() => setIsModalOpen(false)}>
-                <X className="w-4 h-4" />
-              </Button>
-            </div>
-            
-            <form onSubmit={handleSubmit} className="p-6 overflow-y-auto flex-1">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label>Nama Lengkap <span className="text-red-500">*</span></Label>
-                  <Input 
-                    type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Email <span className="text-red-500">*</span></Label>
-                  <Input
-                    type="email"
-                    value={formData.email}
-                    onChange={e => setFormData({ ...formData, email: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>
-                    Kata Sandi {editingUser ? <span className="text-xs text-slate-400 font-normal">(Kosongkan jika tidak diubah)</span> : <span className="text-red-500">*</span>}
-                  </Label>
-                  <Input
-                    type="password"
-                    value={formData.password}
-                    onChange={e => setFormData({ ...formData, password: e.target.value })}
-                    required={!editingUser}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Peran (Role) <span className="text-red-500">*</span></Label>
-                  <Select 
-                    value={formData.role} onValueChange={val => setFormData({...formData, role: val, semester: val === 'USER' ? 1 : 0})}
-                    disabled={currentUser?.role !== 'SUPER_ADMIN'}
-                  >
+              </DialogTitle>
+              <DialogDescription className="sr-only">Form pengguna</DialogDescription>
+            </DialogHeader>
+          </div>
+
+          <form onSubmit={handleSubmit} className="max-h-[70vh] overflow-y-auto p-6">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Nama Lengkap <span className="text-red-500">*</span></Label>
+                <Input type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+              </div>
+              <div className="space-y-2">
+                <Label>Email <span className="text-red-500">*</span></Label>
+                <Input type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} required />
+              </div>
+              <div className="space-y-2">
+                <Label>
+                  Kata Sandi {editingUser ? <span className="text-xs font-normal text-slate-400">(Kosongkan jika tidak diubah)</span> : <span className="text-red-500">*</span>}
+                </Label>
+                <Input type="password" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} required={!editingUser} />
+              </div>
+              <div className="space-y-2">
+                <Label>Peran (Role) <span className="text-red-500">*</span></Label>
+                <Select
+                  value={formData.role}
+                  onValueChange={val => setFormData({...formData, role: val, semester: val === 'USER' ? 1 : 0})}
+                  disabled={currentUser?.role !== 'SUPER_ADMIN'}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih Peran" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="USER">User / Mahasiswa</SelectItem>
+                    <SelectItem value="ADMIN">Admin / Dosen</SelectItem>
+                    {currentUser?.role === 'SUPER_ADMIN' ? <SelectItem value="CONTENT_ADMIN">Admin Konten</SelectItem> : null}
+                    {currentUser?.role === 'SUPER_ADMIN' ? <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem> : null}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>NIM / NIP <span className="text-red-500">*</span></Label>
+                <Input type="text" required value={formData.nim_nip} onChange={e => setFormData({ ...formData, nim_nip: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Departemen / Prodi <span className="text-red-500">*</span></Label>
+                {facultiesData.length > 0 ? (
+                  <Select required value={formData.department} onValueChange={val => setFormData({...formData, department: val})}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Pilih Peran" />
+                      <SelectValue placeholder="Pilih Prodi" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="USER">User / Mahasiswa</SelectItem>
-                      <SelectItem value="ADMIN">Admin / Dosen</SelectItem>
-                      {currentUser?.role === 'SUPER_ADMIN' && <SelectItem value="CONTENT_ADMIN">Admin Konten</SelectItem>}
-                      {currentUser?.role === 'SUPER_ADMIN' && <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>NIM / NIP <span className="text-red-500">*</span></Label>
-                  <Input
-                    type="text"
-                    required
-                    value={formData.nim_nip}
-                    onChange={e => setFormData({ ...formData, nim_nip: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Departemen / Prodi <span className="text-red-500">*</span></Label>
-                  {facultiesData.length > 0 ? (
-                    <Select required value={formData.department} onValueChange={val => setFormData({...formData, department: val})}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pilih Prodi" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {facultiesData.map(f => {
-                          if (!f) return null;
-                          return (
+                      {facultiesData.map(f => {
+                        if (!f) return null;
+                        return (
                           <SelectGroup key={f.name}>
                             <SelectLabel>{f.name}</SelectLabel>
                             {f.departments?.map(d => {
@@ -480,122 +471,78 @@ export default function Users() {
                               return <SelectItem key={deptName} value={deptName}>{deptName}</SelectItem>;
                             })}
                           </SelectGroup>
-                        )})}
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <Input 
-                      type="text" required value={formData.department} onChange={e => setFormData({...formData, department: e.target.value})}
-                      placeholder="Masukkan Prodi"
-                    />
-                  )}
-                </div>
-                {formData.role === 'USER' && (
-                  <div className="space-y-2">
-                    <Label>Semester <span className="text-red-500">*</span></Label>
-                    <Input
-                      type="number"
-                      required
-                      min={1}
-                      max={14}
-                      value={formData.semester}
-                      onChange={e => setFormData({ ...formData, semester: parseInt(e.target.value) || 1 })}
-                    />
-                  </div>
-                )}
-                <div className="space-y-2">
-                  <Label>No. HP <span className="text-red-500">*</span></Label>
-                  <Input
-                    type="tel"
-                    required
-                    value={formData.phone}
-                    onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                  />
-                </div>
-                {editingUser && (
-                  <div className="flex items-center h-full pt-6">
-                    <label className="flex items-center cursor-pointer">
-                      <input 
-                        type="checkbox" checked={formData.is_active} onChange={e => setFormData({...formData, is_active: e.target.checked})}
-                        className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 bg-white dark:bg-zinc-700 dark:border-zinc-600"
-                      />
-                      <span className="ml-2 text-sm font-medium text-slate-700 dark:text-zinc-300">Akun Aktif</span>
-                    </label>
-                  </div>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input type="text" required value={formData.department} onChange={e => setFormData({...formData, department: e.target.value})} placeholder="Masukkan Prodi" />
                 )}
               </div>
-              
-              <div className="mt-8 pt-4 border-t border-slate-200 dark:border-zinc-800 flex justify-end gap-3">
-                <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
+              {formData.role === 'USER' ? (
+                <div className="space-y-2">
+                  <Label>Semester <span className="text-red-500">*</span></Label>
+                  <Input type="number" required min={1} max={14} value={formData.semester} onChange={e => setFormData({ ...formData, semester: parseInt(e.target.value) || 1 })} />
+                </div>
+              ) : null}
+              <div className="space-y-2">
+                <Label>No. HP <span className="text-red-500">*</span></Label>
+                <Input type="tel" required value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} />
+              </div>
+              {editingUser ? (
+                <div className="flex items-center gap-3 pt-6">
+                  <Checkbox checked={Boolean(formData.is_active)} onCheckedChange={(checked) => setFormData((p) => ({ ...p, is_active: Boolean(checked) }))} />
+                  <span className="text-sm font-medium text-slate-700 dark:text-zinc-300">Akun Aktif</span>
+                </div>
+              ) : null}
+            </div>
+
+            <DialogFooter className="mt-8 border-t border-slate-200 pt-4 dark:border-zinc-800">
+              <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
+                Batal
+              </Button>
+              <Button type="submit">{editingUser ? 'Simpan' : 'Tambah'}</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isImportModalOpen} onOpenChange={setIsImportModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Import Mahasiswa</DialogTitle>
+            <DialogDescription>Unduh template Excel, isi data mahasiswa, lalu unggah kembali.</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <Button type="button" variant="outline" onClick={handleDownloadTemplate} className="w-full justify-center">
+              <Download size={18} className="mr-2" />
+              Unduh Template Excel
+            </Button>
+
+            <div className="h-px bg-slate-200 dark:bg-zinc-800" />
+
+            <form onSubmit={handleImportSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label>Upload File Excel (.xlsx)</Label>
+                <Input type="file" accept=".xlsx, .xls" onChange={(e) => setImportFile(e.target.files ? e.target.files[0] : null)} />
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsImportModalOpen(false)}>
                   Batal
                 </Button>
-                <Button type="submit">
-                  {editingUser ? 'Simpan' : 'Tambah'}
+                <Button type="submit" disabled={importing || !importFile} className="bg-emerald-600 hover:bg-emerald-700">
+                  {importing ? 'Memproses...' : (
+                    <>
+                      <Upload size={18} className="mr-2" /> Import Data
+                    </>
+                  )}
                 </Button>
-              </div>
+              </DialogFooter>
             </form>
           </div>
-        </div>,
-        document.body
-        )
-        : null}
-      {/* Import Modal */}
-      {isImportModalOpen
-        ? createPortal(
-        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm px-4">
-          <div className="bg-white dark:bg-zinc-800 rounded-xl shadow-xl w-full max-w-md overflow-hidden flex flex-col">
-            <div className="px-6 py-4 border-b border-slate-200 dark:border-zinc-700 flex justify-between items-center">
-              <h2 className="text-xl font-bold text-slate-800 dark:text-white">Import Mahasiswa</h2>
-              <button onClick={() => setIsImportModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-white">
-                <X size={24} />
-              </button>
-            </div>
-            
-            <div className="p-6 text-center">
-              <p className="text-sm text-slate-600 dark:text-zinc-400 mb-4">
-                Unduh template Excel terlebih dahulu, isi data mahasiswa, lalu unggah kembali ke sistem.
-              </p>
-              
-              <button 
-                onClick={handleDownloadTemplate}
-                className="w-full mb-6 py-2 px-4 bg-slate-100 hover:bg-slate-200 dark:bg-zinc-700 dark:hover:bg-zinc-600 text-indigo-600 dark:text-indigo-400 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
-              >
-                <Download size={18} />
-                Unduh Template Excel
-              </button>
-
-              <hr className="border-slate-200 dark:border-zinc-700 mb-6" />
-
-              <form onSubmit={handleImportSubmit}>
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-slate-700 dark:text-zinc-300 mb-2 text-left">Upload File Excel (.xlsx)</label>
-                  <Input 
-                    type="file" 
-                    accept=".xlsx, .xls"
-                    onChange={(e) => setImportFile(e.target.files ? e.target.files[0] : null)}
-                    className="mt-1"
-                  />
-                </div>
-
-                <div className="flex justify-end gap-3">
-                  <Button type="button" variant="outline" onClick={() => setIsImportModalOpen(false)}>
-                    Batal
-                  </Button>
-                  <Button 
-                    type="submit" 
-                    disabled={importing || !importFile}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                  >
-                    {importing ? 'Memproses...' : <><Upload size={18} className="mr-2" /> Import Data</>}
-                  </Button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>,
-        document.body
-        )
-        : null}
+        </DialogContent>
+      </Dialog>
 
       {/* Reset Device Confirmation Modal */}
       <ConfirmModal 

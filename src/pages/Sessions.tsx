@@ -15,6 +15,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import AdminPageShell from '@/components/AdminPageShell';
 
 import type { Location, Session } from '@/types/session';
@@ -424,20 +426,18 @@ export default function Sessions() {
         </div>
       </div>
 
-      {/* Modal Form (Admin Only) */}
-      {isModalOpen && currentUser?.role !== 'USER' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm px-4 py-8">
-          <div className="bg-white dark:bg-zinc-950 rounded-xl shadow-xl w-full max-w-4xl flex flex-col max-h-full border border-slate-200 dark:border-zinc-800">
-            <div className="px-6 py-4 border-b border-slate-200 dark:border-zinc-800 flex justify-between items-center shrink-0">
-              <h2 className="text-xl font-bold text-slate-800 dark:text-white">
+      <Dialog open={Boolean(isModalOpen && currentUser?.role !== 'USER')} onOpenChange={setIsModalOpen}>
+        <DialogContent className="max-w-4xl p-0">
+          <div className="border-b border-slate-200 px-6 py-4 dark:border-zinc-800">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-bold text-slate-800 dark:text-white">
                 {editingSession ? 'Edit Sesi Kehadiran' : 'Buat Sesi Baru'}
-              </h2>
-              <Button variant="ghost" size="icon" onClick={() => setIsModalOpen(false)}>
-                <X className="w-4 h-4" />
-              </Button>
-            </div>
-            
-            <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-6">
+              </DialogTitle>
+              <DialogDescription className="sr-only">Form sesi kehadiran</DialogDescription>
+            </DialogHeader>
+          </div>
+
+          <form onSubmit={handleSubmit} className="max-h-[75vh] space-y-6 overflow-y-auto p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <div className="space-y-2">
@@ -455,82 +455,100 @@ export default function Sessions() {
                   </div>
                   <div className="space-y-2">
                     <Label>Target Kelas</Label>
-                    <div className="flex flex-wrap items-center gap-2">
-                      {formData.class_ids.length === 0 ? (
-                        <Badge variant="secondary" className="gap-1">
-                          Semua Mahasiswa
-                        </Badge>
-                      ) : (
-                        formData.class_ids
-                          .map((id) => classes.find((c) => c.id === id))
-                          .filter(Boolean)
-                          .map((c: any) => (
-                            <Badge key={c.id} variant="secondary" className="gap-1">
-                              <span className="max-w-[220px] truncate">{c.name}</span>
-                              <button
-                                type="button"
-                                className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded hover:bg-black/5 dark:hover:bg-white/10"
-                                onClick={() =>
-                                  setFormData((p) => ({ ...p, class_ids: p.class_ids.filter((x) => x !== c.id) }))
-                                }
-                                aria-label="Hapus kelas"
-                              >
-                                <X className="h-3 w-3" />
-                              </button>
-                            </Badge>
-                          ))
-                      )}
-                    </div>
                     <div className="relative">
                       <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                       <Input
                         value={classSearch}
                         onChange={(e) => setClassSearch(e.target.value)}
-                        placeholder="Cari kelas lalu klik untuk menambahkan..."
+                        placeholder="Cari kelas..."
                         className="pl-9"
                       />
-                      {classSearch.trim() ? (
-                        <div className="absolute z-20 mt-2 w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-950">
-                          <button
-                            type="button"
-                            className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-zinc-900"
-                            onClick={() => {
-                              setFormData((p) => ({ ...p, class_ids: [] }));
-                              setClassSearch('');
-                            }}
-                          >
-                            <span className="font-medium text-slate-800 dark:text-zinc-200">Semua Mahasiswa (Umum)</span>
-                            <span className="text-xs text-slate-500 dark:text-zinc-400">Reset</span>
-                          </button>
-                          <div className="h-px bg-slate-200/70 dark:bg-zinc-800/70" />
-                          <div className="max-h-56 overflow-y-auto py-1">
-                            {classes
-                              .filter((c) => c.name.toLowerCase().includes(classSearch.trim().toLowerCase()))
-                              .filter((c) => !formData.class_ids.includes(c.id))
-                              .slice(0, 50)
-                              .map((c) => (
-                                <button
-                                  key={c.id}
-                                  type="button"
-                                  className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-zinc-900"
-                                  onClick={() => {
-                                    setFormData((p) => ({ ...p, class_ids: Array.from(new Set([...p.class_ids, c.id])) }));
-                                    setClassSearch('');
-                                  }}
-                                >
-                                  <span className="font-medium text-slate-800 dark:text-zinc-200">{c.name}</span>
-                                  <span className="text-xs text-slate-500 dark:text-zinc-400">Tambah</span>
-                                </button>
-                              ))}
-                            {classes
-                              .filter((c) => c.name.toLowerCase().includes(classSearch.trim().toLowerCase()))
-                              .filter((c) => !formData.class_ids.includes(c.id)).length === 0 ? (
-                              <div className="px-3 py-2 text-sm text-slate-500 dark:text-zinc-400">Tidak ada kelas.</div>
-                            ) : null}
-                          </div>
-                        </div>
+                    </div>
+
+                    <div className="max-h-56 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 dark:border-zinc-800 dark:bg-zinc-950">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className={[
+                          'h-auto w-full justify-between rounded-lg px-3 py-2 text-left',
+                          formData.class_ids.length === 0
+                            ? 'bg-emerald-50 text-emerald-900 hover:bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-100 dark:hover:bg-emerald-950/30'
+                            : 'hover:bg-slate-50 dark:hover:bg-zinc-900',
+                        ].join(' ')}
+                        onClick={() => setFormData((p) => ({ ...p, class_ids: [] }))}
+                      >
+                        <span className="font-medium">Semua Mahasiswa (Umum)</span>
+                        {formData.class_ids.length === 0 ? <span className="text-xs font-semibold">Terpilih</span> : null}
+                      </Button>
+                      <div className="my-2 h-px bg-slate-200/70 dark:bg-zinc-800/70" />
+                      {classes
+                        .filter((c) => c.name.toLowerCase().includes(classSearch.trim().toLowerCase()))
+                        .map((c) => {
+                          const selected = formData.class_ids.includes(c.id);
+                          return (
+                            <Button
+                              key={c.id}
+                              type="button"
+                              variant="ghost"
+                              className={[
+                                'h-auto w-full justify-between rounded-lg px-3 py-2 text-left',
+                                selected
+                                  ? 'bg-emerald-50 text-emerald-900 hover:bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-100 dark:hover:bg-emerald-950/30'
+                                  : 'hover:bg-slate-50 dark:hover:bg-zinc-900',
+                              ].join(' ')}
+                              onClick={() => {
+                                setFormData((p) => {
+                                  const set = new Set(p.class_ids);
+                                  if (selected) set.delete(c.id);
+                                  else set.add(c.id);
+                                  return { ...p, class_ids: Array.from(set) };
+                                });
+                              }}
+                            >
+                              <span className="font-medium">{c.name}</span>
+                              {selected ? (
+                                <span className="text-xs font-semibold">Terpilih</span>
+                              ) : (
+                                <span className="text-xs text-slate-500 dark:text-zinc-400">Tambah</span>
+                              )}
+                            </Button>
+                          );
+                        })}
+                      {classes.filter((c) => c.name.toLowerCase().includes(classSearch.trim().toLowerCase())).length === 0 ? (
+                        <div className="px-3 py-2 text-sm text-slate-500 dark:text-zinc-400">Tidak ada kelas.</div>
                       ) : null}
                     </div>
+
+                    <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3 dark:border-zinc-800 dark:bg-zinc-900/30">
+                      <div className="text-sm font-semibold text-slate-800 dark:text-zinc-200">Kelas Terpilih:</div>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {formData.class_ids.length === 0 ? (
+                          <Badge variant="secondary">Semua Mahasiswa</Badge>
+                        ) : (
+                          formData.class_ids
+                            .map((id) => classes.find((c) => c.id === id))
+                            .filter(Boolean)
+                            .map((c: any) => (
+                              <Badge key={c.id} variant="secondary" className="gap-1">
+                                <span className="max-w-[220px] truncate">{c.name}</span>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="ml-1 h-5 w-5"
+                                  onClick={() =>
+                                    setFormData((p) => ({ ...p, class_ids: p.class_ids.filter((x) => x !== c.id) }))
+                                  }
+                                  aria-label="Hapus kelas"
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </Badge>
+                            ))
+                        )}
+                      </div>
+                    </div>
+
                     <div className="text-xs text-slate-500 dark:text-zinc-400">Kosong = semua mahasiswa.</div>
                   </div>
                   <div className="space-y-2">
@@ -600,13 +618,10 @@ export default function Sessions() {
                       />
                     </div>
                     <div className="pb-2">
-                      <label className="flex items-center cursor-pointer">
-                        <input 
-                          type="checkbox" checked={formData.require_checkout} onChange={e => setFormData({...formData, require_checkout: e.target.checked})}
-                          className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 bg-white dark:bg-zinc-950 dark:border-zinc-700"
-                        />
-                        <span className="ml-2 text-sm font-medium text-slate-700 dark:text-zinc-300">Wajib Check-out</span>
-                      </label>
+                      <div className="flex items-center gap-2">
+                        <Checkbox checked={Boolean(formData.require_checkout)} onCheckedChange={(checked) => setFormData((p) => ({ ...p, require_checkout: Boolean(checked) }))} />
+                        <span className="text-sm font-medium text-slate-700 dark:text-zinc-300">Wajib Check-out</span>
+                      </div>
                     </div>
                   </div>
 
@@ -629,18 +644,17 @@ export default function Sessions() {
                 </div>
               </div>
               
-              <div className="pt-6 border-t border-slate-200 dark:border-zinc-800 flex justify-end gap-3">
+              <DialogFooter className="border-t border-slate-200 pt-6 dark:border-zinc-800">
                 <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)} disabled={isSubmitting}>
                   Batal
                 </Button>
                 <Button type="submit" disabled={isSubmitting}>
                   {isSubmitting ? 'Menyimpan...' : (editingSession ? 'Simpan Perubahan' : 'Buat Sesi')}
                 </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+              </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Session Confirmation Modal */}
       <ConfirmModal 

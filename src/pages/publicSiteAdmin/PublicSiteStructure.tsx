@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import type { PublicStructureGroup } from '@/types/publicSite';
 import { getErrorMessage } from '@/lib/errorMessage';
 import { prepareImageForUpload } from '@/lib/imageUpload';
@@ -180,17 +181,15 @@ export default function PublicSiteStructure() {
                       }
                       placeholder="Contoh: INTI"
                     />
-                    <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-zinc-300">
-                      <input
-                        type="checkbox"
+                    <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-zinc-300">
+                      <Checkbox
                         checked={Boolean(g.isCore)}
-                        onChange={(e) =>
-                          setGroupsDirty((prev) => prev.map((x, idx) => (idx === gi ? { ...x, isCore: e.target.checked } : x)))
+                        onCheckedChange={(checked) =>
+                          setGroupsDirty((prev) => prev.map((x, idx) => (idx === gi ? { ...x, isCore: Boolean(checked) } : x)))
                         }
-                        className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 dark:border-zinc-600 dark:text-indigo-400 dark:focus:ring-indigo-400"
                       />
-                      Divisi inti
-                    </label>
+                      <span>Divisi inti</span>
+                    </div>
                   </div>
                   <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-end md:w-auto">
                     <Button
@@ -243,7 +242,7 @@ export default function PublicSiteStructure() {
                         <div className="h-12 w-12 overflow-hidden rounded-full border border-slate-200 bg-slate-100 dark:border-zinc-700 dark:bg-zinc-900">
                           {p.photoUrl ? <img src={p.photoUrl} alt="Foto" className="h-full w-full object-cover" /> : null}
                         </div>
-                        <input
+                        <Input
                           id={`structure-photo-${gi}-${pi}`}
                           type="file"
                           accept="image/*"
@@ -333,11 +332,10 @@ export default function PublicSiteStructure() {
                       </div>
                       <div className="flex items-center justify-start gap-2 md:justify-center">
                         <span className="text-sm font-medium text-slate-700 dark:text-zinc-300 md:hidden">Spotlight</span>
-                        <input
-                          type="checkbox"
+                        <Checkbox
                           checked={Boolean(p.isSpotlight)}
-                          onChange={(e) => {
-                            const next = e.target.checked;
+                          onCheckedChange={(checked) => {
+                            const next = Boolean(checked);
                             setGroupsDirty((prev) =>
                               prev.map((x, idx) =>
                                 idx === gi
@@ -351,7 +349,6 @@ export default function PublicSiteStructure() {
                               )
                             );
                           }}
-                          className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 dark:border-zinc-600 dark:text-indigo-400 dark:focus:ring-indigo-400"
                         />
                       </div>
                     </div>

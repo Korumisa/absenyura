@@ -17,6 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import type { Report } from '@/types/report';
 import type { PaginationMeta } from '@/types/common';
 import AdminPageShell from '@/components/AdminPageShell';
@@ -386,17 +387,16 @@ export default function Reports() {
       </div>
 
       {/* Override Modal */}
-      {isOverrideModalOpen && selectedReport && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm px-4">
-          <div className="bg-white dark:bg-zinc-950 rounded-xl shadow-xl w-full max-w-md overflow-hidden flex flex-col border border-slate-200 dark:border-zinc-800">
-            <div className="px-6 py-4 border-b border-slate-200 dark:border-zinc-800 flex justify-between items-center">
-              <h2 className="text-xl font-bold text-slate-800 dark:text-white">Ubah Status Manual</h2>
-              <Button variant="ghost" size="icon" onClick={() => setIsOverrideModalOpen(false)}>
-                <X className="w-4 h-4" />
-              </Button>
-            </div>
-            
-            <form onSubmit={handleOverrideSubmit} className="p-6">
+      <Dialog open={Boolean(isOverrideModalOpen && selectedReport)} onOpenChange={setIsOverrideModalOpen}>
+        <DialogContent className="max-w-md p-0">
+          <div className="border-b border-slate-200 px-6 py-4 dark:border-zinc-800">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-bold text-slate-800 dark:text-white">Ubah Status Manual</DialogTitle>
+              <DialogDescription className="sr-only">Override status kehadiran</DialogDescription>
+            </DialogHeader>
+          </div>
+
+          <form onSubmit={handleOverrideSubmit} className="p-6">
               <div className="mb-4 text-sm text-slate-600 dark:text-zinc-400 bg-slate-50 dark:bg-zinc-900/50 p-4 rounded-lg border border-slate-100 dark:border-zinc-800">
                 <p><strong>Nama:</strong> {selectedReport.user_name}</p>
                 <p><strong>Sesi:</strong> {selectedReport.session_title}</p>
@@ -430,18 +430,17 @@ export default function Reports() {
                 </div>
               </div>
               
-              <div className="mt-8 flex justify-end gap-3">
+              <DialogFooter className="mt-8">
                 <Button type="button" variant="outline" onClick={() => setIsOverrideModalOpen(false)}>
                   Batal
                 </Button>
                 <Button type="submit">
                   Simpan Status
                 </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+              </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </AdminPageShell>
   );
 }

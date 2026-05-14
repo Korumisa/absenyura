@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import api from '@/services/api';
 import useSWR from 'swr';
 import { useAuthStore } from '@/stores/authStore';
-import { Plus, Search, FileText, CheckCircle2, XCircle, Clock, Download } from 'lucide-react';
+import { Plus, Search, FileText, CheckCircle2, XCircle, Clock, Download, UploadCloud, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -13,6 +13,8 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { Excuse } from '@/types/excuse';
+import { cn } from '@/lib/utils';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 export default function Excuses() {
   const { user: currentUser } = useAuthStore();
@@ -32,6 +34,23 @@ export default function Excuses() {
     description: '',
   });
   const [file, setFile] = useState<File | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const acceptFile = (f: File | null | undefined) => {
+    if (!f) return;
+    const ok = f.type === 'application/pdf' || f.type.startsWith('image/');
+    if (!ok) {
+      toast.error('File harus berupa gambar atau PDF');
+      return;
+    }
+    setFile(f);
+  };
+
+  const clearFile = () => {
+    setFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
 
   const fetcher = (url: string) => api.get(url).then(res => res.data.data);
   const { data: excuses = [], error, isLoading: loading, mutate } = useSWR<Excuse[]>('/excuses', fetcher, { revalidateOnFocus: false });
@@ -58,15 +77,17 @@ export default function Excuses() {
       toast.error('Pilih sesi kelas terlebih dahulu');
       return;
     }
+    if (!file) {
+      toast.error('Unggah bukti dokumen/foto terlebih dahulu');
+      return;
+    }
     
     try {
       const form = new FormData();
       form.append('session_id', formData.session_id);
       form.append('reason', formData.reason);
       form.append('description', formData.description);
-      if (file) {
-        form.append('proof', file);
-      }
+      form.append('proof', file);
 
       await api.post('/excuses', form, {
         headers: { 'Content-Type': 'multipart/form-data' }
@@ -74,7 +95,7 @@ export default function Excuses() {
       toast.success('Pengajuan izin berhasil dikirim');
       setIsModalOpen(false);
       setFormData({ session_id: '', reason: 'SICK', description: '' });
-      setFile(null);
+      clearFile();
       mutate();
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Terjadi kesalahan saat mengajukan izin');
@@ -309,17 +330,16 @@ export default function Excuses() {
       </div>
 
       {/* Modal Form */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm px-4">
-          <div className="bg-white dark:bg-zinc-950 rounded-xl shadow-xl w-full max-w-lg flex flex-col border border-slate-200 dark:border-zinc-800">
-            <div className="px-6 py-4 border-b border-slate-200 dark:border-zinc-800 flex justify-between items-center">
-              <h2 className="text-xl font-bold text-slate-800 dark:text-white">Buat Pengajuan Izin Baru</h2>
-              <Button variant="ghost" size="icon" onClick={() => setIsModalOpen(false)}>
-                <XCircle className="w-5 h-5" />
-              </Button>
-            </div>
-            
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent className="max-w-lg p-0">
+          <div className="border-b border-slate-200 px-6 py-4 dark:border-zinc-800">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-bold text-slate-800 dark:text-white">Buat Pengajuan Izin Baru</DialogTitle>
+              <DialogDescription className="sr-only">Form pengajuan izin</DialogDescription>
+            </DialogHeader>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4 p-6">
               <div className="space-y-2">
                 <Label>Pilih Sesi / Kelas <span className="text-red-500">*</span></Label>
                 <Select required value={formData.session_id} onValueChange={val => setFormData({...formData, session_id: val})}>
@@ -365,24 +385,91 @@ export default function Excuses() {
 
               <div className="space-y-2">
                 <Label>Bukti Dokumen/Foto (Surat Dokter/Kegiatan) <span className="text-red-500">*</span></Label>
-                <Input 
-                  type="file" required onChange={e => setFile(e.target.files ? e.target.files[0] : null)}
+                <Input
+                  ref={fileInputRef as any}
+                  type="file"
+                  className="hidden"
                   accept="image/*,.pdf"
+                  onChange={(e) => acceptFile(e.target.files?.[0])}
                 />
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => fileInputRef.current?.click()}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') fileInputRef.current?.click();
+                  }}
+                  onDragEnter={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsDragging(true);
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsDragging(true);
+                  }}
+                  onDragLeave={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsDragging(false);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsDragging(false);
+                    acceptFile(e.dataTransfer.files?.[0]);
+                  }}
+                  className={cn(
+                    'flex flex-col items-center justify-center gap-2 rounded-md border border-dashed px-4 py-6 text-center transition-colors',
+                    'border-slate-300 hover:bg-slate-50 dark:border-zinc-700 dark:hover:bg-zinc-900/40',
+                    isDragging && 'border-indigo-500 bg-indigo-50/60 dark:bg-indigo-950/20',
+                    file && 'py-4',
+                  )}
+                >
+                  {!file ? (
+                    <>
+                      <UploadCloud className="h-5 w-5 text-slate-500" />
+                      <div className="text-sm font-medium text-slate-800 dark:text-zinc-200">
+                        Drag & drop file di sini, atau klik untuk upload
+                      </div>
+                      <div className="text-xs text-slate-500 dark:text-zinc-400">Gambar atau PDF</div>
+                    </>
+                  ) : (
+                    <div className="flex w-full items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-medium text-slate-800 dark:text-zinc-200">{file.name}</div>
+                        <div className="text-xs text-slate-500 dark:text-zinc-400">{(file.size / 1024 / 1024).toFixed(2)} MB</div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          clearFile();
+                        }}
+                        aria-label="Hapus file"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
               
-              <div className="mt-8 pt-4 border-t border-slate-200 dark:border-zinc-800 flex justify-end gap-3">
+              <DialogFooter className="mt-8 border-t border-slate-200 pt-4 dark:border-zinc-800">
                 <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
                   Batal
                 </Button>
                 <Button type="submit">
                   Kirim Pengajuan
                 </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+              </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

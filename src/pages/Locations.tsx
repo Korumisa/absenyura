@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ConfirmModal } from '@/components/ConfirmModal';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import AdminPageShell from '@/components/AdminPageShell';
 import type { Location } from '@/types/location';
 
@@ -341,19 +342,18 @@ export default function Locations() {
       </div>
 
       {/* Modal Form */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm px-4 py-8">
-          <div className="bg-white dark:bg-zinc-950 rounded-xl shadow-xl w-full max-w-4xl flex flex-col max-h-full border border-slate-200 dark:border-zinc-800">
-            <div className="px-6 py-4 border-b border-slate-200 dark:border-zinc-800 flex justify-between items-center shrink-0">
-              <h2 className="text-xl font-bold text-slate-800 dark:text-white">
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent className="max-w-4xl p-0">
+          <div className="border-b border-slate-200 px-6 py-4 dark:border-zinc-800">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-bold text-slate-800 dark:text-white">
                 {editingLocation ? 'Edit Lokasi' : 'Tambah Lokasi Baru'}
-              </h2>
-              <Button variant="ghost" size="icon" onClick={() => setIsModalOpen(false)}>
-                <X className="w-4 h-4" />
-              </Button>
-            </div>
-            
-            <form onSubmit={handleSubmit} className="flex flex-col md:flex-row overflow-hidden">
+              </DialogTitle>
+              <DialogDescription className="sr-only">Form lokasi geofencing</DialogDescription>
+            </DialogHeader>
+          </div>
+
+          <form onSubmit={handleSubmit} className="flex flex-col overflow-hidden md:flex-row">
               <div className="p-6 md:w-1/2 overflow-y-auto space-y-4 border-r border-slate-200 dark:border-zinc-800">
                 <div className="space-y-2">
                   <Label>Nama Lokasi <span className="text-red-500">*</span></Label>
@@ -467,9 +467,8 @@ export default function Locations() {
                 </div>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
       {/* Delete Confirmation Modal */}
       <ConfirmModal 
         isOpen={isDeleteModalOpen}
