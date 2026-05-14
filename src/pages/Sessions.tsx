@@ -20,11 +20,12 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import AdminPageShell from '@/components/AdminPageShell';
 
 import type { Location, Session } from '@/types/session';
+import { formatClassLabel } from '@/lib/classLabel';
 
 export default function Sessions() {
   const { user: currentUser } = useAuthStore();
   const [locations, setLocations] = useState<Location[]>([]);
-  const [classes, setClasses] = useState<{ id: string, name: string }[]>([]);
+  const [classes, setClasses] = useState<{ id: string; name: string; semester: number }[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDate, setFilterDate] = useState('');
   const [filterLocation, setFilterLocation] = useState('ALL');
@@ -247,7 +248,7 @@ export default function Sessions() {
                 <SelectItem value="ALL">Semua Kelas</SelectItem>
                 <SelectItem value="ALL_STUDENTS">Semua Mahasiswa (Umum)</SelectItem>
                 {classes.map(c => (
-                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  <SelectItem key={c.id} value={c.id}>{formatClassLabel(c)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -321,9 +322,9 @@ export default function Sessions() {
                   <TableCell>
                     <div className="font-medium text-slate-700 dark:text-zinc-300">
                       {(() => {
-                        const names = (session.session_classes ?? []).map((x: any) => x?.class?.name).filter(Boolean);
+                        const names = (session.session_classes ?? []).map((x: any) => formatClassLabel(x?.class)).filter(Boolean);
                         if (names.length) return names.join(', ');
-                        return session.class?.name ?? 'Semua Mahasiswa';
+                        return session.class ? formatClassLabel(session.class) : 'Semua Mahasiswa';
                       })()}
                     </div>
                   </TableCell>
@@ -505,7 +506,7 @@ export default function Sessions() {
                                 });
                               }}
                             >
-                              <span className="font-medium">{c.name}</span>
+                              <span className="font-medium">{formatClassLabel(c)}</span>
                               {selected ? (
                                 <span className="text-xs font-semibold">Terpilih</span>
                               ) : (
@@ -530,7 +531,7 @@ export default function Sessions() {
                             .filter(Boolean)
                             .map((c: any) => (
                               <Badge key={c.id} variant="secondary" className="gap-1">
-                                <span className="max-w-[220px] truncate">{c.name}</span>
+                                <span className="max-w-[260px] truncate">{formatClassLabel(c)}</span>
                                 <Button
                                   type="button"
                                   variant="ghost"

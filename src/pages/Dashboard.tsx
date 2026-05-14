@@ -4,19 +4,21 @@ import { useAuthStore } from '@/stores/authStore';
 import api from '@/services/api';
 import { Users, Calendar, CheckCircle2, Clock, MapPin, FileText, BarChart3 } from 'lucide-react';
 import {
-  LineChart,
-  Line,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer
+  ResponsiveContainer,
+  Legend
 } from 'recharts';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import { formatClassLabel } from '@/lib/classLabel';
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -161,12 +163,13 @@ export default function Dashboard() {
                             </div>
                             <p className="text-sm font-semibold text-indigo-600 dark:text-indigo-400 mt-0.5">
                               {(() => {
-                                const names = (session.session_classes ?? []).map((x: any) => x?.class?.name).filter(Boolean);
-                                if (names.length) return names.join(', ');
+                                const labels = (session.session_classes ?? []).map((x: any) => formatClassLabel(x?.class)).filter(Boolean);
+                                if (labels.length) return labels.join(', ');
                                 if (session.class) {
-                                  return typeof session.class === 'object' && session.class !== null
-                                    ? ((session.class as any).name || (session.class as any).id)
-                                    : (session.class?.name || session.class || '-');
+                                  if (typeof session.class === 'object' && session.class !== null) {
+                                    return formatClassLabel(session.class as any) || ((session.class as any).name || (session.class as any).id || '-');
+                                  }
+                                  return String((session.class as any)?.name || session.class || '-');
                                 }
                                 return 'Semua Mahasiswa';
                               })()}
@@ -319,7 +322,7 @@ export default function Dashboard() {
               
               <div className="h-80 w-full min-h-[320px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={data?.chart_data} margin={{ top: 5, right: 12, left: 0, bottom: 0 }}>
+                  <BarChart data={data?.chart_data} margin={{ top: 5, right: 12, left: 0, bottom: 8 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" opacity={0.5} />
                     <XAxis 
                       dataKey="date" 
@@ -339,55 +342,23 @@ export default function Dashboard() {
                       labelFormatter={(val) => val ? format(new Date(val as string), 'dd MMMM yyyy', { locale: id }) : ''}
                       labelStyle={{ fontWeight: 'bold', color: '#1e293b', marginBottom: '4px' }}
                     />
+                    <Legend verticalAlign="bottom" height={24} />
                     {(chartFilter === 'ALL' || chartFilter === 'PRESENT') && (
-                      <Line 
-                        type="monotone" 
-                        dataKey="present" 
-                        name="Hadir" 
-                        stroke="#10b981" 
-                        strokeWidth={4} 
-                        dot={{ r: 4, strokeWidth: 2, fill: '#fff', stroke: '#10b981' }} 
-                        activeDot={{ r: 8, strokeWidth: 0, fill: '#10b981' }}
-                        animationDuration={1500}
-                      />
+                      <Bar dataKey="present" name="Hadir" fill="#16a34a" radius={[6, 6, 0, 0]} />
                     )}
                     {(chartFilter === 'ALL' || chartFilter === 'LATE') && (
-                      <Line 
-                        type="monotone" 
-                        dataKey="late" 
-                        name="Terlambat" 
-                        stroke="#f59e0b" 
-                        strokeWidth={4} 
-                        dot={{ r: 4, strokeWidth: 2, fill: '#fff', stroke: '#f59e0b' }} 
-                        activeDot={{ r: 8, strokeWidth: 0, fill: '#f59e0b' }}
-                        animationDuration={1500}
-                      />
+                      <Bar dataKey="late" name="Terlambat" fill="#f59e0b" radius={[6, 6, 0, 0]} />
                     )}
                     {(chartFilter === 'ALL' || chartFilter === 'SICK_EXCUSED') && (
-                      <Line 
-                        type="monotone" 
-                        dataKey="sick" 
-                        name="Sakit/Izin" 
-                        stroke="#64748b" 
-                        strokeWidth={4} 
-                        dot={{ r: 4, strokeWidth: 2, fill: '#fff', stroke: '#64748b' }} 
-                        activeDot={{ r: 8, strokeWidth: 0, fill: '#64748b' }}
-                        animationDuration={1500}
-                      />
+                      <Bar dataKey="sick" name="Sakit" fill="#64748b" radius={[6, 6, 0, 0]} />
+                    )}
+                    {(chartFilter === 'ALL' || chartFilter === 'SICK_EXCUSED') && (
+                      <Bar dataKey="excused" name="Izin" fill="#6366f1" radius={[6, 6, 0, 0]} />
                     )}
                     {(chartFilter === 'ALL' || chartFilter === 'ABSENT') && (
-                      <Line 
-                        type="monotone" 
-                        dataKey="absent" 
-                        name="Alfa" 
-                        stroke="#ef4444" 
-                        strokeWidth={4} 
-                        dot={{ r: 4, strokeWidth: 2, fill: '#fff', stroke: '#ef4444' }} 
-                        activeDot={{ r: 8, strokeWidth: 0, fill: '#ef4444' }}
-                        animationDuration={1500}
-                      />
+                      <Bar dataKey="absent" name="Alfa" fill="#ef4444" radius={[6, 6, 0, 0]} />
                     )}
-                  </LineChart>
+                  </BarChart>
                 </ResponsiveContainer>
               </div>
             </div>

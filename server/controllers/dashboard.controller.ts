@@ -43,8 +43,8 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
         take: 5,
         include: { 
           location: { select: { name: true } }, 
-          class: { select: { id: true, name: true } },
-          session_classes: { include: { class: { select: { id: true, name: true } } } },
+          class: { select: { id: true, name: true, semester: true } },
+          session_classes: { include: { class: { select: { id: true, name: true, semester: true } } } },
           attendances: { where: { user_id: userId } }
         }
       });

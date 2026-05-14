@@ -8,6 +8,6 @@ export interface Excuse {
   status: string;
   created_at: string;
   user: { name: string, nim_nip: string };
-  session: { title: string, session_start: string, class: { name: string } | null, session_classes?: { class: { id: string; name: string } }[] };
+  session: { title: string, session_start: string, class: { name: string; semester: number } | null, session_classes?: { class: { id: string; name: string; semester: number } }[] };
   reviewer: { name: string } | null;
 }

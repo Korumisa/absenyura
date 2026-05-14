@@ -37,7 +37,7 @@ export default function Classes() {
 
   // Form state
   const [formData, setFormData] = useState({
-    name: '', course_code: '', description: '', lecturer_id: ''
+    name: '', semester: 1, course_code: '', description: '', lecturer_id: ''
   });
 
   // Delete Confirmation Modal state
@@ -80,6 +80,7 @@ export default function Classes() {
       setEditingClass(cls);
       setFormData({
         name: cls.name,
+        semester: cls.semester || 1,
         course_code: cls.course_code || '',
         description: cls.description || '',
         lecturer_id: cls.lecturer_id
@@ -87,7 +88,7 @@ export default function Classes() {
     } else {
       setEditingClass(null);
       setFormData({
-        name: '', course_code: '', description: '', lecturer_id: currentUser?.role === 'ADMIN' ? currentUser.id : ''
+        name: '', semester: 1, course_code: '', description: '', lecturer_id: currentUser?.role === 'ADMIN' ? currentUser.id : ''
       });
     }
     setIsModalOpen(true);
@@ -242,7 +243,10 @@ export default function Classes() {
                     <TableCell>
                       <div className="flex items-center gap-2 font-medium text-slate-900 dark:text-white">
                         <BookOpen size={16} className="text-indigo-500" />
-                        {c.name}
+                        <span className="truncate">{c.name}</span>
+                        <Badge variant="outline" className="h-6 rounded-full px-2 text-[11px] font-semibold">
+                          Sem {c.semester}
+                        </Badge>
                       </div>
                       <div className="text-sm text-slate-500 dark:text-zinc-400 mt-1">
                         {c.course_code || '-'}
@@ -360,6 +364,20 @@ export default function Classes() {
                   placeholder="Contoh: Pemrograman Web (A)"
                 />
                 <p className="text-xs text-slate-500">Bisa diisi nama mata kuliah beserta grup/kelasnya (misal: Algoritma Kelas B).</p>
+              </div>
+              <div className="space-y-2">
+                <Label>Semester <span className="text-red-500">*</span></Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={14}
+                  required
+                  value={formData.semester}
+                  onChange={(e) =>
+                    setFormData((p) => ({ ...p, semester: Math.max(1, Math.min(14, Number.parseInt(e.target.value || '1', 10) || 1)) }))
+                  }
+                />
+                <p className="text-xs text-slate-500">Digunakan sebagai label “Sem X” di semua pilihan kelas.</p>
               </div>
               <div className="space-y-2">
                 <Label>Deskripsi (Opsional)</Label>

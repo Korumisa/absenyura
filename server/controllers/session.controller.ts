@@ -21,8 +21,8 @@ export const getSessions = async (req: Request, res: Response): Promise<void> =>
         include: {
           location: true,
           creator: { select: { name: true } },
-          class: { select: { id: true, name: true } },
-          session_classes: { include: { class: { select: { id: true, name: true } } } },
+          class: { select: { id: true, name: true, semester: true } },
+          session_classes: { include: { class: { select: { id: true, name: true, semester: true } } } },
           attendances: { where: { user_id: userId } },
         },
         orderBy: { session_start: 'asc' },
@@ -34,8 +34,8 @@ export const getSessions = async (req: Request, res: Response): Promise<void> =>
         include: {
           location: true,
           creator: { select: { name: true } },
-          class: { select: { id: true, name: true } },
-          session_classes: { include: { class: { select: { id: true, name: true } } } },
+          class: { select: { id: true, name: true, semester: true } },
+          session_classes: { include: { class: { select: { id: true, name: true, semester: true } } } },
         },
         orderBy: { created_at: 'desc' },
       });

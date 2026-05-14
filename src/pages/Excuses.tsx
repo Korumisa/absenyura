@@ -15,6 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import type { Excuse } from '@/types/excuse';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { formatClassLabel } from '@/lib/classLabel';
 
 export default function Excuses() {
   const { user: currentUser } = useAuthStore();
@@ -25,7 +26,7 @@ export default function Excuses() {
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [sessions, setSessions] = useState<
-    { id: string; title: string; session_start: string; class?: { name: string } | null; session_classes?: { class: { name: string } }[] }[]
+    { id: string; title: string; session_start: string; class?: { name: string; semester: number } | null; session_classes?: { class: { name: string; semester: number } }[] }[]
   >([]);
   
   const [formData, setFormData] = useState({
@@ -143,7 +144,11 @@ export default function Excuses() {
         ex.user?.name ?? '',
         ex.user?.nim_nip ?? '',
         ex.session?.title ?? '',
-        ex.session?.class?.name ?? '',
+        (() => {
+          const labels = (ex.session as any)?.session_classes?.map((x: any) => formatClassLabel(x?.class)).filter(Boolean) ?? [];
+          if (labels.length) return labels.join(', ');
+          return ex.session?.class ? formatClassLabel(ex.session.class) : '';
+        })(),
         ex.reason ?? '',
         ex.status ?? '',
         ex.description ?? '',
@@ -272,9 +277,9 @@ export default function Excuses() {
                       <div className="font-medium text-slate-800 dark:text-zinc-200">{excuse.session.title}</div>
                       <div className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 mt-0.5">
                         {(() => {
-                          const names = (excuse.session.session_classes ?? []).map((x: any) => x?.class?.name).filter(Boolean);
-                          if (names.length) return names.join(', ');
-                          return excuse.session.class?.name ?? 'Umum';
+                          const labels = (excuse.session.session_classes ?? []).map((x: any) => formatClassLabel(x?.class)).filter(Boolean);
+                          if (labels.length) return labels.join(', ');
+                          return excuse.session.class ? formatClassLabel(excuse.session.class) : 'Umum';
                         })()}
                       </div>
                       <div className="text-xs text-slate-500 mt-1">
@@ -351,9 +356,9 @@ export default function Excuses() {
                       <SelectItem key={s.id} value={s.id}>
                         {s.title}{' '}
                         ({(() => {
-                          const names = (s.session_classes ?? []).map((x: any) => x?.class?.name).filter(Boolean);
-                          if (names.length) return names.join(', ');
-                          return s.class ? s.class.name : 'Umum';
+                          const labels = (s.session_classes ?? []).map((x: any) => formatClassLabel(x?.class)).filter(Boolean);
+                          if (labels.length) return labels.join(', ');
+                          return s.class ? formatClassLabel(s.class) : 'Umum';
                         })()}){' '}
                         - {format(new Date(s.session_start), 'dd MMM', { locale: id })}
                       </SelectItem>

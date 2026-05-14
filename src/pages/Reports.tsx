@@ -21,6 +21,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import type { Report } from '@/types/report';
 import type { PaginationMeta } from '@/types/common';
 import AdminPageShell from '@/components/AdminPageShell';
+import { formatClassLabel } from '@/lib/classLabel';
 
 const fetcher = (url: string) => api.get(url).then(res => res.data);
 
@@ -51,12 +52,12 @@ export default function Reports() {
     revalidateOnFocus: false
   });
 
-  const reports: Report[] = data?.data || [];
+  const reports: Report[] = Array.isArray(data?.data) ? (data.data.filter(Boolean) as Report[]) : [];
   const meta: PaginationMeta | null = data?.meta || null;
 
   const sessionsFetcher = (url: string) => api.get(url).then((res) => res.data.data);
   const { data: sessions = [] } = useSWR<
-    { id: string; title: string; session_start: string; class?: { name: string } | null; session_classes?: { class: { name: string } }[] }[]
+    { id: string; title: string; session_start: string; class?: { name: string; semester: number } | null; session_classes?: { class: { name: string; semester: number } }[] }[]
   >('/sessions', sessionsFetcher, { revalidateOnFocus: false });
 
   useEffect(() => {
@@ -64,13 +65,20 @@ export default function Reports() {
   }, [startDate, endDate, sessionId]);
 
   const filteredReports = useMemo(() => {
-    return reports.filter(r => {
-      const matchStatus = statusFilter === 'ALL' || r.status === statusFilter;
-      const matchSearch = r.user_name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          r.session_title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          (r.nim_nip && r.nim_nip.toLowerCase().includes(searchTerm.toLowerCase()));
-      return matchStatus && matchSearch;
-    });
+    const q = String(searchTerm ?? '').toLowerCase();
+    return reports
+      .filter((r): r is Report => Boolean(r && (r as any).id))
+      .filter((r) => {
+        const matchStatus = statusFilter === 'ALL' || r.status === statusFilter;
+        const userName = String((r as any).user_name ?? '');
+        const sessionTitle = String((r as any).session_title ?? '');
+        const nim = String((r as any).nim_nip ?? '');
+        const matchSearch =
+          userName.toLowerCase().includes(q) ||
+          sessionTitle.toLowerCase().includes(q) ||
+          nim.toLowerCase().includes(q);
+        return matchStatus && matchSearch;
+      });
   }, [reports, statusFilter, searchTerm]);
 
   // Override Modal State
@@ -80,11 +88,12 @@ export default function Reports() {
   const [overrideNotes, setOverrideNotes] = useState('');
 
   const exportExcelMatrix = useCallback(async (rows: Report[], fileSuffix: string) => {
+    const safeRows = (Array.isArray(rows) ? rows : []).filter((r): r is Report => Boolean(r && (r as any).id));
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Rekap Matriks Kehadiran');
 
     // Dapatkan daftar sesi unik dari laporan yang difilter
-    const uniqueSessions = Array.from(new Set(rows.map(r => r.session_title)));
+    const uniqueSessions = Array.from(new Set(safeRows.map(r => String((r as any).session_title ?? '')))).filter(Boolean);
     
     // Siapkan kolom: Nama, NIM, lalu diikuti nama-nama sesi
     const columns = [
@@ -108,11 +117,12 @@ export default function Reports() {
     // Kelompokkan data per mahasiswa
     const studentData: Record<string, Record<string, string | number>> = {};
     
-    rows.forEach((r) => {
+    safeRows.forEach((r) => {
       const studentId = r.user_id;
+      if (!studentId) return;
       if (!studentData[studentId]) {
         studentData[studentId] = {
-          user_name: r.user_name,
+          user_name: String((r as any).user_name ?? '-'),
           nim_nip: r.nim_nip || '-',
           total_present: 0,
           total_sick: 0,
@@ -122,7 +132,8 @@ export default function Reports() {
       }
       
       // Isi status sesi
-      studentData[studentId][r.session_title] = r.status;
+      const sessionTitle = String((r as any).session_title ?? '-');
+      studentData[studentId][sessionTitle] = r.status;
       
       // Hitung total
       if (r.status === 'PRESENT' || r.status === 'LATE') (studentData[studentId].total_present as number) += 1;
@@ -147,6 +158,7 @@ export default function Reports() {
   }, []);
 
   const exportPdfList = useCallback((rows: Report[], fileSuffix: string) => {
+    const safeRows = (Array.isArray(rows) ? rows : []).filter((r): r is Report => Boolean(r && (r as any).id));
     const doc = new jsPDF();
     
     doc.setFontSize(16);
@@ -154,13 +166,13 @@ export default function Reports() {
     doc.setFontSize(10);
     doc.text(`Dicetak pada: ${format(new Date(), 'dd MMMM yyyy HH:mm', { locale: id })}`, 14, 28);
 
-    const tableData = rows.map(r => [
-      r.user_name,
+    const tableData = safeRows.map(r => [
+      String((r as any).user_name ?? '-'),
       r.nim_nip || '-',
-      r.session_title,
-      format(new Date(r.session_date), 'dd/MM/yyyy'),
-      format(new Date(r.check_in_time), 'HH:mm:ss'),
-      r.status
+      String((r as any).session_title ?? '-'),
+      format(new Date((r as any).session_date), 'dd/MM/yyyy'),
+      format(new Date((r as any).check_in_time), 'HH:mm:ss'),
+      (r as any).status ?? '-'
     ]);
 
     autoTable(doc, {
@@ -324,8 +336,8 @@ export default function Reports() {
             <SelectContent>
               <SelectItem value="ALL">Semua Sesi</SelectItem>
               {sessions.map((s) => {
-                const names = (s.session_classes ?? []).map((x: any) => x?.class?.name).filter(Boolean);
-                const classesLabel = names.length ? names.join(', ') : s.class ? s.class.name : 'Umum';
+                const labels = (s.session_classes ?? []).map((x: any) => formatClassLabel(x?.class)).filter(Boolean);
+                const classesLabel = labels.length ? labels.join(', ') : s.class ? formatClassLabel(s.class) : 'Umum';
                 return (
                   <SelectItem key={s.id} value={s.id}>
                     {s.title} ({classesLabel}) - {format(new Date(s.session_start), 'dd MMM', { locale: id })}

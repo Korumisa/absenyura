@@ -34,11 +34,13 @@ export const getClasses = async (req: Request, res: Response): Promise<void> => 
 
 export const createClass = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, course_code, description, lecturer_id } = req.body;
+    const { name, course_code, description, lecturer_id, semester } = req.body;
+    const sem = Math.max(1, Math.min(14, Number.parseInt(String(semester ?? '1'), 10) || 1));
     
     const newClass = await prisma.class.create({
       data: {
         name,
+        semester: sem,
         course_code,
         description,
         lecturer_id,
@@ -56,11 +58,12 @@ export const createClass = async (req: Request, res: Response): Promise<void> =>
 export const updateClass = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { name, course_code, description, lecturer_id } = req.body;
+    const { name, course_code, description, lecturer_id, semester } = req.body;
+    const sem = Math.max(1, Math.min(14, Number.parseInt(String(semester ?? '1'), 10) || 1));
 
     const updatedClass = await prisma.class.update({
       where: { id },
-      data: { name, course_code, description, lecturer_id },
+      data: { name, semester: sem, course_code, description, lecturer_id },
       include: { lecturer: { select: { name: true } }, _count: { select: { enrollments: true, sessions: true } } }
     });
 

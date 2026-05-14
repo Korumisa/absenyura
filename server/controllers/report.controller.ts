@@ -43,8 +43,8 @@ export const getReports = async (req: Request, res: Response): Promise<void> => 
             select: {
               title: true,
               session_start: true,
-              class: { select: { name: true } },
-              session_classes: { select: { class: { select: { name: true } } } },
+              class: { select: { name: true, semester: true } },
+              session_classes: { select: { class: { select: { name: true, semester: true } } } },
             },
           },
           user: { select: { name: true, nim_nip: true } }
@@ -56,6 +56,16 @@ export const getReports = async (req: Request, res: Response): Promise<void> => 
       prisma.attendance.count({ where: whereClause })
     ]);
 
+    const formatClassLabel = (cls: any): string => {
+      const name = String(cls?.name ?? '').trim();
+      const semRaw = cls?.semester;
+      const sem = semRaw == null ? null : Number.isFinite(Number(semRaw)) ? Number(semRaw) : null;
+      if (name && sem != null) return `Sem ${sem} - ${name}`;
+      if (name) return name;
+      if (sem != null) return `Sem ${sem}`;
+      return '';
+    };
+
     const formattedData = attendances.map(a => ({
       id: a.id,
       user_id: a.user_id,
@@ -65,15 +75,15 @@ export const getReports = async (req: Request, res: Response): Promise<void> => 
       session_title: a.session.title,
       class_name:
         (a.session as any).session_classes?.length
-          ? (a.session as any).session_classes.map((x: any) => x?.class?.name).filter(Boolean).join(', ')
-          : a.session.class?.name || null,
+          ? (a.session as any).session_classes.map((x: any) => formatClassLabel(x?.class)).filter(Boolean).join(', ')
+          : (a.session.class ? formatClassLabel(a.session.class) : '') || null,
       session_date: a.session.session_start,
       check_in_time: a.check_in_time,
       status: a.status,
       ip: a.check_in_ip,
       device: a.check_in_device,
       photo_url: a.photo_url,
-      session_classes: (a.session as any).session_classes?.map((x: any) => x?.class?.name).filter(Boolean) ?? [],
+      session_classes: (a.session as any).session_classes?.map((x: any) => formatClassLabel(x?.class)).filter(Boolean) ?? [],
     }));
 
     res.status(200).json({ 

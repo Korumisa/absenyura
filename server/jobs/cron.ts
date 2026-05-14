@@ -281,37 +281,23 @@ export const startCronJobs = () => {
       });
 
       let updatedCount = 0;
-      let deactivatedCount = 0;
       const now = new Date();
 
       for (const user of users) {
-        // Use type assertion since TS doesn't know about enrollment_date on User type yet in this environment
-        const userData = user as any;
-        if (!userData.enrollment_date) continue;
-        
-        // Calculate months difference
-        const enrollmentDate = new Date(userData.enrollment_date);
+        const enrollmentDate = new Date((user as any).enrollment_date);
         const monthsDiff = (now.getFullYear() - enrollmentDate.getFullYear()) * 12 + (now.getMonth() - enrollmentDate.getMonth());
-        const newSemester = Math.floor(monthsDiff / 6) + 1;
+        const newSemester = Math.max(1, Math.min(14, Math.floor(monthsDiff / 6) + 1));
 
-        if (newSemester !== userData.semester) {
-          if (newSemester > 8) {
-            await prisma.user.update({
-              where: { id: user.id },
-              data: { semester: newSemester, is_active: false }
-            });
-            deactivatedCount++;
-          } else {
-            await prisma.user.update({
-              where: { id: user.id },
-              data: { semester: newSemester }
-            });
-            updatedCount++;
-          }
+        if (newSemester !== (user as any).semester) {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { semester: newSemester }
+          });
+          updatedCount++;
         }
       }
 
-      console.log(`[Cron] Semester update complete. Updated ${updatedCount} users, deactivated ${deactivatedCount} users.`);
+      console.log(`[Cron] Semester update complete. Updated ${updatedCount} users.`);
     } catch (error) {
       console.error('[Cron] Error updating semesters:', error);
     }

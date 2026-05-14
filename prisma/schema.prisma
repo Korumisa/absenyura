@@ -46,6 +46,7 @@ model Organization {
 model Class {
   id          String   @id @default(uuid())
   name        String
+  semester    Int      @default(1)
   course_code String?
   description String?
   lecturer_id String

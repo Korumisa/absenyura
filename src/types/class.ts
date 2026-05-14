@@ -1,6 +1,7 @@
 export interface ClassItem {
   id: string;
   name: string;
+  semester: number;
   course_code: string | null;
   description: string | null;
   lecturer_id: string;

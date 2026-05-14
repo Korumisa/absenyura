@@ -9,8 +9,8 @@ export interface Session {
   location: Location;
   creator: { name: string };
   class_id?: string | null;
-  class?: { id: string; name: string } | null;
-  session_classes?: { class: { id: string; name: string } }[];
+  class?: { id: string; name: string; semester: number } | null;
+  session_classes?: { class: { id: string; name: string; semester: number } }[];
   qr_mode: 'DYNAMIC' | 'STATIC' | 'NONE';
   session_start: string;
   session_end: string;
