@@ -146,34 +146,49 @@ export default function Berita() {
               </div>
             </div>
           ) : (
-            <div className="mt-10 grid gap-6 md:grid-cols-2 lg:gap-8 lg:grid-cols-3">
-              {items.map((p) => {
-                return (
-                <Link
-                  key={p.id}
-                  to={`/berita/${p.slug}`}
-                  className="group overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-[var(--public-primary)]/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/45 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-                >
-                  <div className="aspect-[16/10] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))]">
-                    <PublicCoverImage url={p.cover_image_url} alt={p.title} imgClassName="transition duration-700 group-hover:scale-[1.01]" />
-                  </div>
-                  <div className="p-5">
-                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-slate-500">
-                      <span>{p.category?.name ?? 'Berita'}</span>
-                      {p.date_label ? <span className="text-slate-300">•</span> : null}
-                      {p.date_label ? <span className="normal-case tracking-normal">{p.date_label}</span> : null}
+            <div className="relative mt-10">
+              <div className="pointer-events-none absolute left-[116px] top-0 hidden h-full w-px bg-gradient-to-b from-transparent via-slate-200 to-transparent md:block" />
+              <div className="space-y-10">
+                {items.map((p) => {
+                  const date = p.date_label ? String(p.date_label) : '';
+                  return (
+                    <div key={p.id} className="grid gap-4 md:grid-cols-[96px_40px_1fr] md:items-start">
+                      <div className="hidden pt-2 text-right text-xs font-semibold text-slate-500 md:block">{date || '-'}</div>
+                      <div className="relative hidden md:flex md:justify-center">
+                        <div className="mt-3 h-4 w-4 rounded-full bg-white ring-2 ring-[var(--public-primary)]/55" />
+                      </div>
+                      <Link
+                        to={`/berita/${p.slug}`}
+                        className="group overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-[var(--public-primary)]/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/45 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                      >
+                        <div className="grid gap-0 md:grid-cols-[260px_1fr]">
+                          <div className="relative overflow-hidden bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))] md:aspect-auto">
+                            <div className="aspect-[16/10] w-full md:aspect-auto md:h-full">
+                              <PublicCoverImage url={p.cover_image_url} alt={p.title} imgClassName="object-cover transition duration-700 group-hover:scale-[1.01]" />
+                            </div>
+                          </div>
+                          <div className="p-5">
+                            <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-widest text-slate-500">
+                              <span>{p.category?.name ?? 'Berita'}</span>
+                              {date ? <span className="text-slate-300">•</span> : null}
+                              {date ? <span className="normal-case tracking-normal">{date}</span> : null}
+                            </div>
+                            <div className="mt-3 text-lg font-extrabold tracking-tight text-slate-900 line-clamp-2 md:text-xl">{p.title}</div>
+                            {p.excerpt ? (
+                              <div className="mt-3 text-sm leading-relaxed text-slate-700 line-clamp-3">{p.excerpt}</div>
+                            ) : (
+                              <div className="mt-3 text-sm text-slate-500 line-clamp-3">Ringkasan belum tersedia.</div>
+                            )}
+                            <div className="mt-5 inline-flex items-center rounded-xl border border-[var(--public-primary)]/35 bg-white px-4 py-2 text-sm font-semibold text-[var(--public-primary)] transition group-hover:bg-[var(--public-primary)]/5">
+                              Baca Selengkapnya
+                            </div>
+                          </div>
+                        </div>
+                      </Link>
                     </div>
-                    <div className="mt-3 text-lg font-extrabold tracking-tight text-slate-900 line-clamp-2">{p.title}</div>
-                    {p.excerpt ? (
-                      <div className="mt-3 text-sm leading-relaxed text-slate-700 line-clamp-3">{p.excerpt}</div>
-                    ) : null}
-                    <div className="mt-5 inline-flex items-center rounded-lg bg-[var(--public-primary)]/10 px-3 py-1.5 text-sm font-semibold text-[var(--public-primary)]">
-                      Baca selengkapnya
-                    </div>
-                  </div>
-                </Link>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           )}
 

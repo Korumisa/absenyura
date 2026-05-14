@@ -23,6 +23,9 @@ export function getPublicSiteMock(reqUrl: string): MockResult | null {
     about_title: 'Tentang Organisasi',
     about_content:
       'Ini adalah contoh konten profil organisasi untuk mode dummy.\n\nSilakan atur judul, deskripsi, logo, dan media melalui menu Konten Website.',
+    vision: 'Menjadi organisasi mahasiswa yang progresif, inklusif, dan berdampak melalui karya dan kolaborasi.',
+    mission:
+      'Meningkatkan kompetensi anggota melalui pelatihan berkelanjutan.\nMendorong publikasi, riset, dan inovasi yang aplikatif.\nMembangun jejaring dan kemitraan strategis.\nMenyelenggarakan program yang bermanfaat untuk kampus dan masyarakat.',
     footer_tagline: 'Terbuka untuk kolaborasi, kemitraan, dan kerja sama dengan berbagai pihak.',
     instagram_url: 'https://instagram.com/',
     tiktok_url: 'https://tiktok.com/',
@@ -183,6 +186,20 @@ export function getPublicSiteMock(reqUrl: string): MockResult | null {
   ];
 
   const structure = [
+    {
+      id: 'group-advisor-1',
+      title: 'Dosen Pembimbing',
+      sort_order: 0,
+      members: [
+        {
+          id: 'm-advisor-1',
+          name: 'Dr. I Made Pembimbing, S.Kom., M.Kom.',
+          role: 'Dosen Pembimbing',
+          photo_url: 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?auto=format&fit=crop&w=900&q=80',
+          sort_order: 1,
+        },
+      ],
+    },
     {
       id: 'group-1',
       title: 'Badan Pengurus Harian',

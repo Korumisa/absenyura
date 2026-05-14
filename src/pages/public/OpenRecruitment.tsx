@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import PublicLayout from '@/components/PublicLayout';
 import useSWR from 'swr';
 import api from '@/services/api';
@@ -12,16 +12,29 @@ import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 import PublicCoverImage from '@/components/PublicCoverImage';
 import useLockBodyScroll from '@/lib/useLockBodyScroll';
 import useFirstLoadOverlay from '@/lib/useFirstLoadOverlay';
+import { useAuthStore } from '@/stores/authStore';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 
 export default function OpenRecruitment() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
   const { data: items = [], isLoading } = useSWR<PublicRecruitment[]>('/public-site/recruitments', fetcher, { revalidateOnFocus: false });
   const showLoading = useFirstLoadOverlay(isLoading);
+  const { isAuthenticated, user } = useAuthStore();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [query, setQuery] = useState('');
   const [openId, setOpenId] = useState<string | null>(null);
   const selected = useMemo(() => items.find((x) => x.id === openId) ?? null, [items, openId]);
   useLockBodyScroll(Boolean(selected));
+
+  useEffect(() => {
+    const id = searchParams.get('id');
+    if (!id) return;
+    if (!items.length) return;
+    if (items.some((x) => x.id === id)) setOpenId(id);
+  }, [items, searchParams]);
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return items;
@@ -95,7 +108,12 @@ export default function OpenRecruitment() {
                 <button
                   key={r.id}
                   type="button"
-                  onClick={() => setOpenId(r.id)}
+                  onClick={() => {
+                    setOpenId(r.id);
+                    const next = new URLSearchParams(searchParams);
+                    next.set('id', r.id);
+                    setSearchParams(next);
+                  }}
                   className="group w-full max-w-[260px] overflow-hidden rounded-2xl border border-black/10 bg-white text-left shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-[var(--public-primary)]/25"
                 >
                   <div className="aspect-[4/5] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))]">
@@ -123,88 +141,144 @@ export default function OpenRecruitment() {
 
       {selected ? (
         <div className="fixed inset-0 z-[60] flex items-end justify-center p-3 sm:items-center sm:p-6">
-          <button type="button" aria-label="Tutup" className="absolute inset-0 bg-black/45 backdrop-blur-[2px]" onClick={() => setOpenId(null)} />
-          <div role="dialog" aria-modal="true" className="relative w-full max-w-4xl overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_30px_80px_-45px_rgba(15,23,42,0.55)]">
-            <div className="flex items-center justify-between gap-4 border-b border-black/10 bg-white px-4 py-3 sm:px-6">
-              <div className="min-w-0">
-                <div className="truncate text-base font-extrabold tracking-tight text-slate-900">{selected.title}</div>
-                <div className="mt-1 text-sm text-slate-600">{selected.date_range ?? '-'}</div>
+          <button
+            type="button"
+            aria-label="Tutup"
+            className="absolute inset-0 bg-black/45 backdrop-blur-[2px]"
+            onClick={() => {
+              setOpenId(null);
+              const next = new URLSearchParams(searchParams);
+              next.delete('id');
+              setSearchParams(next);
+            }}
+          />
+          <div role="dialog" aria-modal="true" className="relative w-full max-w-5xl overflow-hidden rounded-3xl border border-black/10 bg-white shadow-[0_30px_80px_-45px_rgba(15,23,42,0.55)]">
+            <div className="relative">
+              <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(37,99,235,0.16),rgba(56,189,248,0.08),transparent_60%)]" />
+              <div className="relative flex items-start justify-between gap-4 border-b border-black/10 px-5 py-5 sm:px-7">
+                <div className="min-w-0">
+                  <div className="text-xs font-semibold uppercase tracking-widest text-slate-500">Open Recruitment</div>
+                  <div className="mt-2 truncate text-lg font-extrabold tracking-tight text-slate-900 sm:text-xl">{selected.title}</div>
+                  <div className="mt-1 text-sm font-semibold text-slate-600">{selected.date_range ?? '-'}</div>
+                </div>
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center rounded-2xl border border-black/10 bg-white p-2 text-slate-800 hover:bg-slate-50"
+                  onClick={() => {
+                    setOpenId(null);
+                    const next = new URLSearchParams(searchParams);
+                    next.delete('id');
+                    setSearchParams(next);
+                  }}
+                  aria-label="Tutup"
+                >
+                  <X size={18} />
+                </button>
               </div>
-              <button
-                type="button"
-                className="inline-flex items-center justify-center rounded-xl border border-black/10 bg-white p-2 text-slate-800 hover:bg-slate-50"
-                onClick={() => setOpenId(null)}
-                aria-label="Tutup"
-              >
-                <X size={18} />
-              </button>
             </div>
 
-            <div className="grid max-h-[82vh] gap-6 overflow-y-auto p-6 md:grid-cols-[320px_1fr]">
-              <div className="overflow-hidden rounded-2xl border border-black/10 bg-slate-50">
-                <div className="aspect-[16/10] w-full">
-                  <PublicCoverImage url={selected.poster_image_url} alt={selected.title} imgClassName="object-cover" />
+            <div className="max-h-[80vh] overflow-y-auto p-5 sm:p-7">
+              <div className="grid gap-6 lg:grid-cols-[1fr_1.15fr]">
+                <div className="space-y-4">
+                  <div className="overflow-hidden rounded-3xl border border-black/10 bg-slate-50">
+                    <div className="aspect-[4/5] w-full">
+                      <PublicCoverImage url={selected.poster_image_url} alt={selected.title} imgClassName="object-cover" />
+                    </div>
+                  </div>
                 </div>
-              </div>
 
-              <div className="min-w-0">
-                {selected.description ? <div className="text-sm leading-relaxed text-slate-700 whitespace-pre-wrap">{selected.description}</div> : null}
+                <div className="space-y-6">
+                  {selected.description ? (
+                    <div className="rounded-3xl border border-black/10 bg-white p-5 shadow-[0_18px_45px_-42px_rgba(15,23,42,0.25)]">
+                      <div className="text-xs font-semibold uppercase tracking-widest text-[var(--public-primary)]">Deskripsi</div>
+                      <div className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-slate-700">{selected.description}</div>
+                    </div>
+                  ) : null}
+                  {selected.contacts?.length ? (
+                    <div className="rounded-3xl border border-black/10 bg-white p-5 shadow-[0_18px_45px_-42px_rgba(15,23,42,0.25)]">
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="text-sm font-extrabold tracking-tight text-slate-900">Contact Person</div>
+                        <div className="text-xs font-semibold uppercase tracking-widest text-slate-500">{selected.contacts.length} kontak</div>
+                      </div>
+                      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                        {selected.contacts.map((c) => (
+                          <a
+                            key={c.id}
+                            href={contactHref(c.contact)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="rounded-2xl border border-black/10 bg-white p-4 text-left transition hover:border-[var(--public-primary)]/30 hover:bg-[var(--public-primary)]/5"
+                          >
+                            <div className="text-sm font-semibold text-slate-900">{c.name}</div>
+                            <div className="mt-1 text-sm text-slate-600">{c.contact}</div>
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
 
-                {selected.contacts?.length ? (
-                  <div className="mt-6">
-                    <div className="text-sm font-extrabold tracking-tight text-slate-900">Contact Person</div>
-                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                      {selected.contacts.map((c) => (
-                        <a
-                          key={c.id}
-                          href={contactHref(c.contact)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="rounded-2xl border border-black/10 bg-white p-4 text-left transition hover:border-[var(--public-primary)]/30"
+                  {selected.committee?.length ? (
+                    <div className="rounded-3xl border border-black/10 bg-white p-5 shadow-[0_18px_45px_-42px_rgba(15,23,42,0.25)]">
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="text-sm font-extrabold tracking-tight text-slate-900">Panitia / Posisi</div>
+                        <div className="text-xs font-semibold uppercase tracking-widest text-slate-500">{selected.committee.length} orang</div>
+                      </div>
+                      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                        {selected.committee.map((p) => (
+                          <div key={p.id} className="rounded-2xl border border-black/10 bg-white p-4">
+                            <div className="text-sm font-semibold text-slate-900">{p.name}</div>
+                            <div className="text-sm text-slate-600">{p.role}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <div className="rounded-3xl border border-black/10 bg-white p-5 shadow-[0_18px_45px_-42px_rgba(15,23,42,0.25)]">
+                    <div className="text-sm font-extrabold tracking-tight text-slate-900">Pendaftaran</div>
+                    {selected.form_url ? (
+                      <div className="mt-4 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                        <button
+                          type="button"
+                          className="w-full rounded-xl border border-black/10 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 hover:border-[var(--public-primary)]/25 sm:w-auto"
+                          onClick={() => {
+                            setOpenId(null);
+                            const next = new URLSearchParams(searchParams);
+                            next.delete('id');
+                            setSearchParams(next);
+                          }}
                         >
-                          <div className="text-sm font-semibold text-slate-900">{c.name}</div>
-                          <div className="mt-1 text-sm text-slate-600">{c.contact}</div>
-                        </a>
-                      ))}
-                    </div>
+                          Tutup
+                        </button>
+                        {isAuthenticated && user ? (
+                          <a
+                            href={selected.form_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-full rounded-xl bg-[var(--public-primary)] px-5 py-2.5 text-center text-sm font-semibold text-white shadow-[0_16px_32px_rgba(37,99,235,0.35)] transition hover:brightness-110 sm:w-auto"
+                          >
+                            Daftar Sekarang
+                          </a>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const next = new URLSearchParams(searchParams);
+                              next.set('id', selected.id);
+                              setSearchParams(next);
+                              navigate('/login', { state: { from: { pathname: location.pathname, search: `?${next.toString()}` } } });
+                            }}
+                            className="w-full rounded-xl bg-[var(--public-primary)] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_16px_32px_rgba(37,99,235,0.35)] transition hover:brightness-110 sm:w-auto"
+                          >
+                            Login untuk Daftar
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="mt-3 text-sm text-slate-600">Link pendaftaran belum diatur.</div>
+                    )}
                   </div>
-                ) : null}
-
-                {selected.committee?.length ? (
-                  <div className="mt-6">
-                    <div className="text-sm font-extrabold tracking-tight text-slate-900">Panitia</div>
-                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                      {selected.committee.map((p) => (
-                        <div key={p.id} className="rounded-2xl border border-black/10 bg-white p-4">
-                          <div className="text-sm font-semibold text-slate-900">{p.name}</div>
-                          <div className="text-sm text-slate-600">{p.role}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-
-                {selected.form_url ? (
-                  <div className="mt-8 flex flex-wrap items-center justify-end gap-3">
-                    <button
-                      type="button"
-                      className="rounded-xl border border-black/10 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 hover:border-[var(--public-primary)]/25"
-                      onClick={() => setOpenId(null)}
-                    >
-                      Tutup
-                    </button>
-                    <a
-                      href={selected.form_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="rounded-xl bg-[var(--public-primary)] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_16px_32px_rgba(37,99,235,0.35)] transition hover:brightness-110"
-                    >
-                      Daftar Sekarang
-                    </a>
-                  </div>
-                ) : (
-                  <div className="mt-8 text-sm text-slate-600">Link pendaftaran belum diatur.</div>
-                )}
+                </div>
               </div>
             </div>
           </div>

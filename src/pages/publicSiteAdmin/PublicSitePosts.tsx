@@ -177,7 +177,7 @@ export default function PublicSitePosts() {
                 <Label>Slug (opsional)</Label>
                 <Input value={categoryForm.slug ?? ''} onChange={(e) => setCategoryForm((p) => ({ ...p, slug: e.target.value }))} placeholder="contoh: prestasi-mahasiswa" />
               </div>
-              <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+              <div className="flex flex-col gap-3 pt-1 sm:flex-row sm:justify-end">
                 {categoryForm.id ? (
                   <Button className="w-full sm:w-auto" variant="outline" type="button" onClick={resetCategoryForm}>
                     Batal
@@ -187,7 +187,7 @@ export default function PublicSitePosts() {
               </div>
             </form>
 
-            <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-zinc-700">
+            <div className="mt-5 overflow-hidden rounded-lg border border-slate-200 dark:border-zinc-700">
               <Table>
                 <TableHeader>
                   <TableRow>

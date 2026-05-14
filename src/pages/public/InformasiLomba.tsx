@@ -119,60 +119,41 @@ export default function InformasiLomba() {
               {items.map((l) => (
                 <div
                   key={l.id}
-                  className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)]"
+                  className="group overflow-hidden rounded-2xl border border-[var(--public-primary)]/30 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)]"
                 >
-                  <div className="aspect-[4/5] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))]">
-                    <PublicCoverImage url={l.cover_image_url} alt={l.title} imgClassName="object-cover" />
+                  <div className="relative aspect-[4/3] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))]">
+                    <PublicCoverImage url={l.cover_image_url} alt={l.title} imgClassName="object-cover transition duration-700 group-hover:scale-[1.02]" />
+                    <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-black/5" />
                   </div>
                   <div className="p-5">
                     <div className="flex items-start justify-between gap-3">
-                      <div className="text-xs font-semibold uppercase tracking-widest text-slate-500">
-                        {l.date_label ? `Batas: ${l.date_label}` : 'Batas: -'}
+                      <div>
+                        <div className="text-lg font-extrabold tracking-tight text-slate-900 line-clamp-2">{l.title}</div>
+                        <div className="mt-2 text-sm font-semibold text-slate-600">
+                          {l.date_label ? `Batas Pendaftaran : ${l.date_label}` : 'Batas Pendaftaran : -'}
+                        </div>
                       </div>
                       <span
                         className={`rounded-full px-3 py-1 text-xs font-semibold ${
                           (l.status ?? 'Buka') === 'Buka'
                             ? 'bg-emerald-50 text-emerald-700'
-                            : 'bg-slate-100 text-slate-600'
+                            : 'bg-amber-50 text-amber-700'
                         }`}
                       >
                         {l.status ?? 'Buka'}
                       </span>
                     </div>
-                    <div className="mt-3 text-base font-extrabold tracking-tight text-slate-900 line-clamp-2">{l.title}</div>
-                    {l.excerpt ? <div className="mt-3 text-sm text-slate-700 line-clamp-2">{l.excerpt}</div> : null}
-                    <div className="mt-5 flex items-center justify-between gap-3">
+
+                    {l.excerpt ? <div className="mt-4 text-sm leading-relaxed text-slate-700 line-clamp-3">{l.excerpt}</div> : null}
+
+                    <div className="mt-6">
                       <button
                         type="button"
                         onClick={() => setOpenId(l.id)}
-                        className="rounded-xl border border-black/10 bg-white px-4 py-2 text-xs font-semibold text-slate-700 transition hover:border-[var(--public-primary)]/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/45"
+                        className="flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--public-primary)]/45 bg-white px-5 py-3 text-sm font-semibold text-[var(--public-primary)] transition hover:bg-[var(--public-primary)]/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/45"
                       >
-                        Detail
+                        Lihat Detail
                       </button>
-                      {(() => {
-                        const joinUrl = getJoinUrl(l);
-                        if (!joinUrl) {
-                          return (
-                            <button
-                              type="button"
-                              disabled
-                              className="rounded-xl bg-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 opacity-80"
-                            >
-                              Daftar
-                            </button>
-                          );
-                        }
-                        return (
-                          <a
-                            href={joinUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-2 rounded-xl bg-[var(--public-primary)] px-4 py-2 text-xs font-semibold text-white shadow-[0_12px_22px_rgba(37,99,235,0.28)] transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/45"
-                          >
-                            Daftar
-                          </a>
-                        );
-                      })()}
                     </div>
                   </div>
                 </div>
@@ -210,7 +191,8 @@ export default function InformasiLomba() {
                 </button>
                 {(() => {
                   const joinUrl = getJoinUrl(selected);
-                  if (!joinUrl) return null;
+                  const isOpen = (selected.status ?? 'Buka') === 'Buka';
+                  if (!isOpen || !joinUrl) return null;
                   return (
                     <a
                       href={joinUrl}

@@ -207,8 +207,12 @@ export default function PublicSiteProfile() {
             <Textarea value={draft.heroSubtitle} onChange={(e) => setDraft((p) => ({ ...p, heroSubtitle: e.target.value }))} />
           </div>
           <div className="space-y-2 md:col-span-2">
-            <Label>YouTube Embed URL</Label>
-            <Input value={draft.youtubeEmbedUrl} onChange={(e) => setDraft((p) => ({ ...p, youtubeEmbedUrl: e.target.value }))} placeholder="https://www.youtube.com/embed/..." />
+            <Label>Embed URL (YouTube / TikTok / Instagram)</Label>
+            <Input
+              value={draft.youtubeEmbedUrl}
+              onChange={(e) => setDraft((p) => ({ ...p, youtubeEmbedUrl: e.target.value }))}
+              placeholder="Link post / link embed"
+            />
           </div>
           <div className="space-y-2 md:col-span-2">
             <Label>Judul “Tentang”</Label>
@@ -217,14 +221,17 @@ export default function PublicSiteProfile() {
           <div className="space-y-2 md:col-span-2">
             <Label>Konten “Tentang”</Label>
             <Textarea value={draft.aboutContent} onChange={(e) => setDraft((p) => ({ ...p, aboutContent: e.target.value }))} />
+            <div className="text-xs text-slate-500 dark:text-zinc-400">Pisahkan paragraf dengan baris baru (Enter).</div>
           </div>
           <div className="space-y-2 md:col-span-2">
             <Label>Visi</Label>
             <Textarea value={draft.vision} onChange={(e) => setDraft((p) => ({ ...p, vision: e.target.value }))} />
+            <div className="text-xs text-slate-500 dark:text-zinc-400">Gunakan paragraf singkat, bisa dipisah dengan baris baru.</div>
           </div>
           <div className="space-y-2 md:col-span-2">
             <Label>Misi</Label>
             <Textarea value={draft.mission} onChange={(e) => setDraft((p) => ({ ...p, mission: e.target.value }))} />
+            <div className="text-xs text-slate-500 dark:text-zinc-400">Satu baris = satu poin misi.</div>
           </div>
           <div className="space-y-2 md:col-span-2">
             <Label>Footer Tagline</Label>

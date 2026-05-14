@@ -145,11 +145,12 @@ export default function PublicSiteStructure() {
 
       <AdminCard
         title="Grup Struktur"
-        description="Atur grup, tandai divisi inti, lalu tentukan spotlight per grup."
+        description="Atur grup, tandai divisi inti, lalu tentukan spotlight per anggota (maks 1 anggota per grup). Tips: buat grup bernama “Dosen Pembimbing” untuk tampil di atas INTI; untuk foto Visi/Misi di beranda, isi jabatan mengandung “Ketua” dan “Wakil”."
         actions={
           <Button
             type="button"
             variant="outline"
+            className="w-full sm:w-auto"
             onClick={() =>
               setGroupsDirty((prev) => [...prev, { title: '', isCore: false, people: [{ name: '', role: '', photoUrl: '', isSpotlight: false }] }])
             }
@@ -191,10 +192,11 @@ export default function PublicSiteStructure() {
                       Divisi inti
                     </label>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-end md:w-auto">
                     <Button
                       type="button"
                       variant="outline"
+                      className="w-full sm:w-auto"
                       onClick={() =>
                         setGroupsDirty((prev) =>
                           prev.map((x, idx) =>
@@ -208,6 +210,7 @@ export default function PublicSiteStructure() {
                     <Button
                       type="button"
                       variant="destructive"
+                      className="w-full sm:w-auto"
                       onClick={() =>
                         setConfirm({
                           open: true,
@@ -225,29 +228,58 @@ export default function PublicSiteStructure() {
                 </div>
 
                 <div className="mt-4 space-y-3">
-                  <div className="grid gap-3 md:grid-cols-4">
+                  <div className="hidden grid gap-3 md:grid-cols-4 md:grid">
                     <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-zinc-400">Foto</div>
                     <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-zinc-400">Nama</div>
                     <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-zinc-400">Jabatan</div>
                     <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-zinc-400">Spotlight</div>
                   </div>
                   {g.people.map((p, pi) => (
-                    <div key={pi} className="grid gap-3 md:grid-cols-4">
-                      <div className="flex items-center gap-3">
+                    <div
+                      key={pi}
+                      className="grid gap-3 rounded-2xl border border-slate-200/70 bg-slate-50/60 p-3 dark:border-zinc-800/70 dark:bg-zinc-900/30 md:grid-cols-4 md:border-0 md:bg-transparent md:p-0"
+                    >
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                         <div className="h-12 w-12 overflow-hidden rounded-full border border-slate-200 bg-slate-100 dark:border-zinc-700 dark:bg-zinc-900">
                           {p.photoUrl ? <img src={p.photoUrl} alt="Foto" className="h-full w-full object-cover" /> : null}
                         </div>
-                        <Input
+                        <input
+                          id={`structure-photo-${gi}-${pi}`}
                           type="file"
                           accept="image/*"
+                          className="hidden"
                           disabled={saving || uploadingKey === `${gi}:${pi}`}
                           onChange={(e) => {
-                            const file = e.target.files?.[0];
+                            const file = e.currentTarget.files?.[0];
                             if (!file) return;
                             onPickMemberPhoto(gi, pi, file);
                             e.currentTarget.value = '';
                           }}
                         />
+                        <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center">
+                          <Button asChild variant="outline" disabled={saving || uploadingKey === `${gi}:${pi}`} className="w-full sm:w-auto">
+                            <Label htmlFor={`structure-photo-${gi}-${pi}`} className="cursor-pointer">
+                              {uploadingKey === `${gi}:${pi}` ? 'Uploading...' : p.photoUrl ? 'Ganti Foto' : 'Upload Foto'}
+                            </Label>
+                          </Button>
+                          {p.photoUrl ? (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              className="w-full sm:w-auto"
+                              disabled={saving || uploadingKey === `${gi}:${pi}`}
+                              onClick={() =>
+                                setGroupsDirty((prev) =>
+                                  prev.map((x, idx) =>
+                                    idx === gi ? { ...x, people: x.people.map((pp, pidx) => (pidx === pi ? { ...pp, photoUrl: '' } : pp)) } : x
+                                  )
+                                )
+                              }
+                            >
+                              Hapus Foto
+                            </Button>
+                          ) : null}
+                        </div>
                       </div>
                       <Input
                         value={p.name}
@@ -262,7 +294,7 @@ export default function PublicSiteStructure() {
                         }
                         placeholder="Nama"
                       />
-                      <div className="flex gap-2">
+                      <div className="flex flex-col gap-2 sm:flex-row">
                         <Input
                           value={p.role}
                           onChange={(e) =>
@@ -279,6 +311,7 @@ export default function PublicSiteStructure() {
                         <Button
                           type="button"
                           variant="outline"
+                          className="w-full sm:w-auto"
                           onClick={() =>
                             setConfirm({
                               open: true,
@@ -298,7 +331,8 @@ export default function PublicSiteStructure() {
                           Hapus
                         </Button>
                       </div>
-                      <div className="flex items-center justify-start md:justify-center">
+                      <div className="flex items-center justify-start gap-2 md:justify-center">
+                        <span className="text-sm font-medium text-slate-700 dark:text-zinc-300 md:hidden">Spotlight</span>
                         <input
                           type="checkbox"
                           checked={Boolean(p.isSpotlight)}
@@ -328,7 +362,7 @@ export default function PublicSiteStructure() {
           </div>
         )}
 
-        <div className="flex justify-end gap-3">
+        <div className="flex flex-col-reverse justify-end gap-3 sm:flex-row">
           <Button
             variant="outline"
             type="button"
@@ -343,10 +377,11 @@ export default function PublicSiteStructure() {
               })
             }
             disabled={saving || !dirty}
+            className="w-full sm:w-auto"
           >
             Reset
           </Button>
-          <Button type="button" onClick={handleSave} disabled={saving || !dirty}>
+          <Button type="button" onClick={handleSave} disabled={saving || !dirty} className="w-full sm:w-auto">
             Simpan
           </Button>
         </div>

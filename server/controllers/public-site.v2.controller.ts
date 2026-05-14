@@ -25,6 +25,13 @@ function normalizeYoutubeEmbedUrl(input: string): string | null {
   const raw = String(input ?? '').trim();
   if (!raw) return null;
 
+  if (/^https?:\/\//i.test(raw) && raw.includes('tiktok.com/embed')) {
+    return raw.startsWith('http://') ? raw.replace(/^http:\/\//, 'https://') : raw;
+  }
+  if (/^https?:\/\//i.test(raw) && raw.includes('instagram.com') && raw.includes('/embed')) {
+    return raw.startsWith('http://') ? raw.replace(/^http:\/\//, 'https://') : raw;
+  }
+
   const directId = raw.match(/^[a-zA-Z0-9_-]{6,}$/)?.[0];
   if (directId) return `https://www.youtube.com/embed/${directId}`;
 
@@ -36,6 +43,24 @@ function normalizeYoutubeEmbedUrl(input: string): string | null {
     const url = new URL(raw.startsWith('http') ? raw : `https://${raw}`);
     const host = url.hostname.replace(/^www\./, '');
     let id = '';
+
+    if (host.endsWith('tiktok.com')) {
+      const m = url.pathname.match(/\/video\/(\d+)/);
+      const vid = m?.[1] || '';
+      if (vid) return `https://www.tiktok.com/embed/v2/${vid}`;
+      const embed = url.pathname.match(/\/embed\/v2\/(\d+)/)?.[1] || url.pathname.match(/\/embed\/(\d+)/)?.[1] || '';
+      if (embed) return `https://www.tiktok.com/embed/v2/${embed}`;
+      return null;
+    }
+
+    if (host.endsWith('instagram.com')) {
+      const parts = url.pathname.split('/').filter(Boolean);
+      const kind = parts[0] || '';
+      const code = parts[1] || '';
+      if (!kind || !code) return null;
+      if (kind !== 'p' && kind !== 'reel' && kind !== 'tv') return null;
+      return `https://www.instagram.com/${kind}/${code}/embed/`;
+    }
 
     if (host === 'youtu.be') {
       id = url.pathname.split('/').filter(Boolean)[0] || '';

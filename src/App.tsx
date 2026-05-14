@@ -43,8 +43,8 @@ import { ThemeProvider } from "@/providers/theme-provider";
 import { useEffect } from "react";
 import { getOfflineAttendances, deleteOfflineAttendance } from "@/lib/idb";
 import api from "@/services/api";
-import MaintenancePage from "@/pages/Maintenance";
 import { useAppStatusStore } from "@/stores/appStatusStore";
+import PublicLoadingOverlay from "@/components/PublicLoadingOverlay";
 
 export default function App() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -153,34 +153,12 @@ export default function App() {
     <ThemeProvider defaultTheme="light" storageKey="absensyura-theme">
       <ErrorBoundary>
         <Toaster position="top-right" richColors />
-        {isMaintenance ? (
-          <MaintenancePage
-            reason={maintenanceReason}
-            onRetry={async () => {
-              try {
-                const res = await api.get('/health');
-                if (res?.status !== 200 || res?.data?.success !== true) {
-                  setMaintenance('Layanan sedang mengalami gangguan. Silakan coba lagi.');
-                  return;
-                }
-                const db = await api.get('/health/db');
-                if (db?.status === 200 && db?.data?.success === true) {
-                  clearMaintenance();
-                  return;
-                }
-                setMaintenance('Database sedang tidak tersedia. Silakan coba lagi.');
-              } catch {
-                setMaintenance('Server tidak dapat dihubungi. Silakan coba lagi.');
-              }
-            }}
-          />
-        ) : (
+        <PublicLoadingOverlay show={isMaintenance} label={maintenanceReason || 'Menghubungkan ke server...'} />
         <Router>
         <ScrollToTop />
         <Routes>
           <Route path="/" element={isAuthenticated ? <Navigate to={getDefaultRoute()} replace /> : <PublicHome />} />
           <Route path="/login" element={isAuthenticated ? <Navigate to={getDefaultRoute()} replace /> : <Login />} />
-          <Route path="/maintenance" element={<MaintenancePage />} />
           
           {/* Public Static Pages */}
           <Route path="/berita" element={<Berita />} />
@@ -192,14 +170,7 @@ export default function App() {
           <Route path="/program-kerja/:id" element={<ProgramKerjaDetail />} />
           <Route path="/informasi-lomba" element={<InformasiLomba />} />
           <Route path="/galeri" element={<Galeri />} />
-          <Route
-            path="/open-recruitment"
-            element={
-              <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'CONTENT_ADMIN', 'USER']}>
-                <OpenRecruitment />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/open-recruitment" element={<OpenRecruitment />} />
           
           <Route element={<ProtectedRoute />}>
             <Route element={<Layout />}>
@@ -230,7 +201,6 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>
-        )}
       </ErrorBoundary>
     </ThemeProvider>
   );
