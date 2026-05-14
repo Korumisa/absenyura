@@ -486,46 +486,50 @@ export default function Sessions() {
                       <Input
                         value={classSearch}
                         onChange={(e) => setClassSearch(e.target.value)}
-                        placeholder="Cari kelas..."
+                        placeholder="Cari kelas lalu klik untuk menambahkan..."
                         className="pl-9"
                       />
-                    </div>
-                    <div className="max-h-56 space-y-2 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50/60 p-3 dark:border-zinc-700 dark:bg-zinc-900/30">
-                      <label className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2 hover:bg-white dark:hover:bg-zinc-950">
-                        <input
-                          type="checkbox"
-                          checked={formData.class_ids.length === 0}
-                          onChange={(e) => {
-                            if (e.target.checked) setFormData((p) => ({ ...p, class_ids: [] }));
-                          }}
-                          className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 bg-white dark:bg-zinc-950 dark:border-zinc-700"
-                        />
-                        <span className="text-sm font-medium text-slate-700 dark:text-zinc-300">Semua Mahasiswa (Umum)</span>
-                      </label>
-                      <div className="h-px bg-slate-200/70 dark:bg-zinc-700/70" />
-                      {classes
-                        .filter((c) => c.name.toLowerCase().includes(classSearch.trim().toLowerCase()))
-                        .map((c) => (
-                        <label
-                          key={c.id}
-                          className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2 hover:bg-white dark:hover:bg-zinc-950"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={formData.class_ids.includes(c.id)}
-                            onChange={(e) => {
-                              setFormData((p) => {
-                                const set = new Set(p.class_ids);
-                                if (e.target.checked) set.add(c.id);
-                                else set.delete(c.id);
-                                return { ...p, class_ids: Array.from(set) };
-                              });
+                      {classSearch.trim() ? (
+                        <div className="absolute z-20 mt-2 w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-950">
+                          <button
+                            type="button"
+                            className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-zinc-900"
+                            onClick={() => {
+                              setFormData((p) => ({ ...p, class_ids: [] }));
+                              setClassSearch('');
                             }}
-                            className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 bg-white dark:bg-zinc-950 dark:border-zinc-700"
-                          />
-                          <span className="text-sm font-medium text-slate-700 dark:text-zinc-300">{c.name}</span>
-                        </label>
-                      ))}
+                          >
+                            <span className="font-medium text-slate-800 dark:text-zinc-200">Semua Mahasiswa (Umum)</span>
+                            <span className="text-xs text-slate-500 dark:text-zinc-400">Reset</span>
+                          </button>
+                          <div className="h-px bg-slate-200/70 dark:bg-zinc-800/70" />
+                          <div className="max-h-56 overflow-y-auto py-1">
+                            {classes
+                              .filter((c) => c.name.toLowerCase().includes(classSearch.trim().toLowerCase()))
+                              .filter((c) => !formData.class_ids.includes(c.id))
+                              .slice(0, 50)
+                              .map((c) => (
+                                <button
+                                  key={c.id}
+                                  type="button"
+                                  className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-zinc-900"
+                                  onClick={() => {
+                                    setFormData((p) => ({ ...p, class_ids: Array.from(new Set([...p.class_ids, c.id])) }));
+                                    setClassSearch('');
+                                  }}
+                                >
+                                  <span className="font-medium text-slate-800 dark:text-zinc-200">{c.name}</span>
+                                  <span className="text-xs text-slate-500 dark:text-zinc-400">Tambah</span>
+                                </button>
+                              ))}
+                            {classes
+                              .filter((c) => c.name.toLowerCase().includes(classSearch.trim().toLowerCase()))
+                              .filter((c) => !formData.class_ids.includes(c.id)).length === 0 ? (
+                              <div className="px-3 py-2 text-sm text-slate-500 dark:text-zinc-400">Tidak ada kelas.</div>
+                            ) : null}
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
                     <div className="text-xs text-slate-500 dark:text-zinc-400">Kosong = semua mahasiswa.</div>
                   </div>
