@@ -4,7 +4,7 @@ import api from '@/services/api';
 import useSWR from 'swr';
 import { Download, FileText, Search, CheckCircle2, Clock, XCircle, Edit3, X } from 'lucide-react';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
+import { format, isValid } from 'date-fns';
 import { id } from 'date-fns/locale';
 import * as ExcelJS from 'exceljs';
 import jsPDF from 'jspdf';
@@ -24,6 +24,12 @@ import AdminPageShell from '@/components/AdminPageShell';
 import { formatClassLabel } from '@/lib/classLabel';
 
 const fetcher = (url: string) => api.get(url).then(res => res.data);
+
+const safeFormat = (value: unknown, fmt: string) => {
+  const d = new Date(value as any);
+  if (!isValid(d)) return '-';
+  return format(d, fmt, { locale: id });
+};
 
 export default function Reports() {
   const { user } = useAuthStore();
@@ -170,8 +176,8 @@ export default function Reports() {
       String((r as any).user_name ?? '-'),
       r.nim_nip || '-',
       String((r as any).session_title ?? '-'),
-      format(new Date((r as any).session_date), 'dd/MM/yyyy'),
-      format(new Date((r as any).check_in_time), 'HH:mm:ss'),
+      safeFormat((r as any).session_date, 'dd/MM/yyyy'),
+      safeFormat((r as any).check_in_time, 'HH:mm:ss'),
       (r as any).status ?? '-'
     ]);
 
@@ -340,7 +346,7 @@ export default function Reports() {
                 const classesLabel = labels.length ? labels.join(', ') : s.class ? formatClassLabel(s.class) : 'Umum';
                 return (
                   <SelectItem key={s.id} value={s.id}>
-                    {s.title} ({classesLabel}) - {format(new Date(s.session_start), 'dd MMM', { locale: id })}
+                    {s.title} ({classesLabel}) - {safeFormat(s.session_start, 'dd MMM')}
                   </SelectItem>
                 );
               })}
@@ -404,11 +410,11 @@ export default function Reports() {
                       <div className="font-medium text-slate-800 dark:text-zinc-200">{String(report?.session_title ?? '-')}</div>
                       {report?.class_name && <div className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 mt-0.5">{typeof report.class_name === 'object' && report.class_name !== null ? ((report.class_name as any).name || (report.class_name as any).id) : report.class_name}</div>}
                       <div className="text-xs text-slate-500 dark:text-zinc-400 mt-1">
-                        {format(new Date(report.session_date), 'dd MMMM yyyy', { locale: id })}
+                        {safeFormat(report.session_date, 'dd MMMM yyyy')}
                       </div>
                     </TableCell>
                     <TableCell className="text-slate-600 dark:text-zinc-300 font-medium">
-                      {format(new Date(report.check_in_time), 'HH:mm:ss')}
+                      {safeFormat(report.check_in_time, 'HH:mm:ss')}
                     </TableCell>
                     <TableCell>
                       <Badge variant={report.status === 'PRESENT' ? 'success' : report.status === 'LATE' ? 'warning' : report.status === 'SICK' || report.status === 'EXCUSED' ? 'secondary' : 'destructive'}>
@@ -499,7 +505,7 @@ export default function Reports() {
               <div className="mb-4 text-sm text-slate-600 dark:text-zinc-400 bg-slate-50 dark:bg-zinc-900/50 p-4 rounded-lg border border-slate-100 dark:border-zinc-800">
                 <p><strong>Nama:</strong> {selectedReport.user_name}</p>
                 <p><strong>Sesi:</strong> {selectedReport.session_title}</p>
-                <p><strong>Waktu:</strong> {format(new Date(selectedReport.check_in_time), 'dd MMM yyyy HH:mm:ss', { locale: id })}</p>
+                <p><strong>Waktu:</strong> {safeFormat(selectedReport.check_in_time, 'dd MMM yyyy HH:mm:ss')}</p>
               </div>
 
               <div className="space-y-4">
