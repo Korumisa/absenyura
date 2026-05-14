@@ -224,8 +224,18 @@ model PublicSiteProfile {
   youtube_embed_url String?
   about_title      String?
   about_content    String?
+  home_card_left_title  String?
+  home_card_left_body   String?
+  home_card_right_title String?
+  home_card_right_body  String?
   vision           String?
   mission          String?
+  visi_photo_url   String?
+  visi_name        String?
+  visi_role        String?
+  misi_photo_url   String?
+  misi_name        String?
+  misi_role        String?
   footer_tagline   String?
   instagram_url    String?
   tiktok_url       String?

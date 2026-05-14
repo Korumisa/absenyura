@@ -84,6 +84,7 @@ export const initSocket = (server: HttpServer) => {
             id: true,
             created_by_id: true,
             class: { select: { lecturer_id: true } },
+            session_classes: { select: { class: { select: { lecturer_id: true } } } },
           },
         });
 
@@ -94,7 +95,9 @@ export const initSocket = (server: HttpServer) => {
 
         if (user.role === 'ADMIN') {
           const isOwner = session.created_by_id === user.id;
-          const isLecturer = session.class?.lecturer_id === user.id;
+          const isLecturer =
+            session.class?.lecturer_id === user.id ||
+            (session.session_classes ?? []).some((x) => x?.class?.lecturer_id === user.id);
           if (!isOwner && !isLecturer) {
             ack?.({ ok: false, error: 'Forbidden' });
             return;

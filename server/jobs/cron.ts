@@ -15,6 +15,29 @@ export const runCronJob = async () => {
   lastRunTime = nowTime;
 
   try {
+    const resolveExpectedUserIds = async (session: any, allUsers: any[]) => {
+      if (session.class_id) {
+        const enrollments = await prisma.classEnrollment.findMany({
+          where: { class_id: session.class_id },
+          select: { student_id: true },
+        });
+        return enrollments.map((e) => e.student_id);
+      }
+      const linked = await prisma.sessionClass.findMany({
+        where: { session_id: session.id },
+        select: { class_id: true },
+      });
+      const classIds = linked.map((x) => x.class_id);
+      if (classIds.length > 0) {
+        const enrollments = await prisma.classEnrollment.findMany({
+          where: { class_id: { in: classIds } },
+          select: { student_id: true },
+        });
+        return Array.from(new Set(enrollments.map((e) => e.student_id)));
+      }
+      return allUsers.map((u) => u.id);
+    };
+
     const now = new Date();
 
     // UPCOMING -> ACTIVE (when check_in_open_at is reached and before check_in_close_at + 2 min grace period)
@@ -50,17 +73,8 @@ export const runCronJob = async () => {
         });
 
         // Notify students
-        let expectedUserIds: string[] = [];
-        if (session.class_id) {
-          const enrollments = await prisma.classEnrollment.findMany({
-            where: { class_id: session.class_id },
-            select: { student_id: true }
-          });
-          expectedUserIds = enrollments.map(e => e.student_id);
-        } else {
-          const allUsers = await prisma.user.findMany({ where: { role: 'USER', is_active: true } });
-          expectedUserIds = allUsers.map(u => u.id);
-        }
+        const allUsers = await prisma.user.findMany({ where: { role: 'USER', is_active: true } });
+        const expectedUserIds: string[] = await resolveExpectedUserIds(session, allUsers);
 
         if (expectedUserIds.length > 0) {
           await prisma.notification.createMany({
@@ -96,17 +110,7 @@ export const runCronJob = async () => {
 
       for (const session of sessionsToClose) {
         // Determine which users are supposed to attend
-        let expectedUserIds = [];
-        if (session.class_id) {
-          const enrollments = await prisma.classEnrollment.findMany({
-            where: { class_id: session.class_id },
-            select: { student_id: true }
-          });
-          expectedUserIds = enrollments.map(e => e.student_id);
-        } else {
-          // If no class assigned, assume all active users (fallback)
-          expectedUserIds = allUsers.map(u => u.id);
-        }
+        const expectedUserIds: string[] = await resolveExpectedUserIds(session, allUsers);
 
         // Get all present users for this session
         const presentAttendances = await prisma.attendance.findMany({
@@ -156,35 +160,52 @@ export const runCronJob = async () => {
 
         // Check Early Warning System (EWS) for < 75% attendance for absent users
         for (const userId of absentUserIds) {
-          if (session.class_id) {
-            // Count total sessions for this class that are CLOSED
+          const linked = await prisma.sessionClass.findMany({
+            where: { session_id: session.id },
+            select: { class_id: true },
+          });
+          const classIds = session.class_id ? [session.class_id] : linked.map((x) => x.class_id);
+          if (classIds.length === 0) continue;
+
+          for (const classId of classIds) {
+            const isEnrolled = await prisma.classEnrollment.findFirst({
+              where: { class_id: classId, student_id: userId },
+              select: { id: true },
+            });
+            if (!isEnrolled) continue;
+
             const totalSessions = await prisma.session.count({
-              where: { class_id: session.class_id, status: 'CLOSED' }
+              where: {
+                status: 'CLOSED',
+                OR: [{ class_id: classId }, { session_classes: { some: { class_id: classId } } }],
+              },
             });
 
-            if (totalSessions > 0) {
-              // Count total present/late/excused/sick for this user in this class
-              const attendedCount = await prisma.attendance.count({
-                where: {
+            if (totalSessions <= 0) continue;
+
+            const attendedCount = await prisma.attendance.count({
+              where: {
+                user_id: userId,
+                session: {
+                  status: 'CLOSED',
+                  OR: [{ class_id: classId }, { session_classes: { some: { class_id: classId } } }],
+                },
+                status: { in: ['PRESENT', 'LATE', 'SICK', 'EXCUSED'] },
+              },
+            });
+
+            const attendancePercentage = (attendedCount / totalSessions) * 100;
+
+            if (attendancePercentage < 75) {
+              await prisma.notification.create({
+                data: {
                   user_id: userId,
-                  session: { class_id: session.class_id, status: 'CLOSED' },
-                  status: { in: ['PRESENT', 'LATE', 'SICK', 'EXCUSED'] }
-                }
+                  title: 'Peringatan Dini Kehadiran (EWS)',
+                  message: `Tingkat kehadiran Anda di salah satu kelas telah turun menjadi ${Math.round(attendancePercentage)}% (Di bawah batas minimal 75%). Harap perhatikan kehadiran Anda.`,
+                  type: 'WARNING',
+                },
               });
-
-              const attendancePercentage = (attendedCount / totalSessions) * 100;
-
-              // If below 75%, trigger EWS notification
-              if (attendancePercentage < 75) {
-                await prisma.notification.create({
-                  data: {
-                    user_id: userId,
-                    title: 'Peringatan Dini Kehadiran (EWS)',
-                    message: `Tingkat kehadiran Anda di kelas ini telah turun menjadi ${Math.round(attendancePercentage)}% (Di bawah batas minimal 75%). Harap perhatikan kehadiran Anda.`,
-                    type: 'WARNING'
-                  }
-                });
-              }
+              break;
             }
           }
         }

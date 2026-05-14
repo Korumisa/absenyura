@@ -27,8 +27,18 @@ export default function PublicSiteProfile() {
     youtubeEmbedUrl: string;
     aboutTitle: string;
     aboutContent: string;
+    homeCardLeftTitle: string;
+    homeCardLeftBody: string;
+    homeCardRightTitle: string;
+    homeCardRightBody: string;
     vision: string;
     mission: string;
+    visiPhotoUrl: string;
+    visiName: string;
+    visiRole: string;
+    misiPhotoUrl: string;
+    misiName: string;
+    misiRole: string;
     footerTagline: string;
     instagramUrl: string;
     tiktokUrl: string;
@@ -58,8 +68,18 @@ export default function PublicSiteProfile() {
     youtubeEmbedUrl: '',
     aboutTitle: '',
     aboutContent: '',
+    homeCardLeftTitle: '',
+    homeCardLeftBody: '',
+    homeCardRightTitle: '',
+    homeCardRightBody: '',
     vision: '',
     mission: '',
+    visiPhotoUrl: '',
+    visiName: '',
+    visiRole: '',
+    misiPhotoUrl: '',
+    misiName: '',
+    misiRole: '',
     footerTagline: '',
     instagramUrl: '',
     tiktokUrl: '',
@@ -84,8 +104,18 @@ export default function PublicSiteProfile() {
       youtubeEmbedUrl: profile.youtube_embed_url ?? '',
       aboutTitle: profile.about_title ?? '',
       aboutContent: profile.about_content ?? '',
+      homeCardLeftTitle: (profile as any).home_card_left_title ?? '',
+      homeCardLeftBody: (profile as any).home_card_left_body ?? '',
+      homeCardRightTitle: (profile as any).home_card_right_title ?? '',
+      homeCardRightBody: (profile as any).home_card_right_body ?? '',
       vision: profile.vision ?? '',
       mission: profile.mission ?? '',
+      visiPhotoUrl: (profile as any).visi_photo_url ?? '',
+      visiName: (profile as any).visi_name ?? '',
+      visiRole: (profile as any).visi_role ?? '',
+      misiPhotoUrl: (profile as any).misi_photo_url ?? '',
+      misiName: (profile as any).misi_name ?? '',
+      misiRole: (profile as any).misi_role ?? '',
       footerTagline: profile.footer_tagline ?? '',
       instagramUrl: profile.instagram_url ?? '',
       tiktokUrl: profile.tiktok_url ?? '',
@@ -101,7 +131,13 @@ export default function PublicSiteProfile() {
   }, [profile]);
 
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState<{ light: boolean; dark: boolean; home: boolean }>({ light: false, dark: false, home: false });
+  const [uploading, setUploading] = useState<{ light: boolean; dark: boolean; home: boolean; visi: boolean; misi: boolean }>({
+    light: false,
+    dark: false,
+    home: false,
+    visi: false,
+    misi: false,
+  });
   const [isResetOpen, setIsResetOpen] = useState(false);
 
   const uploadImage = async (file: File) => {
@@ -136,8 +172,18 @@ export default function PublicSiteProfile() {
       youtubeEmbedUrl: profile.youtube_embed_url ?? '',
       aboutTitle: profile.about_title ?? '',
       aboutContent: profile.about_content ?? '',
+      homeCardLeftTitle: (profile as any).home_card_left_title ?? '',
+      homeCardLeftBody: (profile as any).home_card_left_body ?? '',
+      homeCardRightTitle: (profile as any).home_card_right_title ?? '',
+      homeCardRightBody: (profile as any).home_card_right_body ?? '',
       vision: profile.vision ?? '',
       mission: profile.mission ?? '',
+      visiPhotoUrl: (profile as any).visi_photo_url ?? '',
+      visiName: (profile as any).visi_name ?? '',
+      visiRole: (profile as any).visi_role ?? '',
+      misiPhotoUrl: (profile as any).misi_photo_url ?? '',
+      misiName: (profile as any).misi_name ?? '',
+      misiRole: (profile as any).misi_role ?? '',
       footerTagline: profile.footer_tagline ?? '',
       instagramUrl: profile.instagram_url ?? '',
       tiktokUrl: profile.tiktok_url ?? '',
@@ -224,6 +270,34 @@ export default function PublicSiteProfile() {
             <div className="text-xs text-slate-500 dark:text-zinc-400">Pisahkan paragraf dengan baris baru (Enter).</div>
           </div>
           <div className="space-y-2 md:col-span-2">
+            <Label>Beranda: Paragraf Kiri</Label>
+            <div className="grid gap-3 md:grid-cols-2">
+              <Input
+                value={draft.homeCardLeftTitle}
+                onChange={(e) => setDraft((p) => ({ ...p, homeCardLeftTitle: e.target.value }))}
+                placeholder="Judul paragraf kiri"
+              />
+              <Input
+                value={draft.homeCardRightTitle}
+                onChange={(e) => setDraft((p) => ({ ...p, homeCardRightTitle: e.target.value }))}
+                placeholder="Judul paragraf kanan"
+              />
+              <Textarea
+                value={draft.homeCardLeftBody}
+                onChange={(e) => setDraft((p) => ({ ...p, homeCardLeftBody: e.target.value }))}
+                placeholder="Isi paragraf kiri"
+                className="min-h-[110px]"
+              />
+              <Textarea
+                value={draft.homeCardRightBody}
+                onChange={(e) => setDraft((p) => ({ ...p, homeCardRightBody: e.target.value }))}
+                placeholder="Isi paragraf kanan"
+                className="min-h-[110px]"
+              />
+            </div>
+            <div className="text-xs text-slate-500 dark:text-zinc-400">Ini akan tampil sebagai 2 kartu paragraf di beranda.</div>
+          </div>
+          <div className="space-y-2 md:col-span-2">
             <Label>Visi</Label>
             <Textarea value={draft.vision} onChange={(e) => setDraft((p) => ({ ...p, vision: e.target.value }))} />
             <div className="text-xs text-slate-500 dark:text-zinc-400">Gunakan paragraf singkat, bisa dipisah dengan baris baru.</div>
@@ -232,6 +306,128 @@ export default function PublicSiteProfile() {
             <Label>Misi</Label>
             <Textarea value={draft.mission} onChange={(e) => setDraft((p) => ({ ...p, mission: e.target.value }))} />
             <div className="text-xs text-slate-500 dark:text-zinc-400">Satu baris = satu poin misi.</div>
+          </div>
+          <div className="space-y-3 md:col-span-2">
+            <Label>Beranda: Foto Visi</Label>
+            <div className="grid gap-3 md:grid-cols-[1fr_220px]">
+              <div className="space-y-3">
+                <Input value={draft.visiRole} onChange={(e) => setDraft((p) => ({ ...p, visiRole: e.target.value }))} placeholder="Jabatan (contoh: Ketua Umum)" />
+                <Input value={draft.visiName} onChange={(e) => setDraft((p) => ({ ...p, visiName: e.target.value }))} placeholder="Nama" />
+                <Input value={draft.visiPhotoUrl} onChange={(e) => setDraft((p) => ({ ...p, visiPhotoUrl: e.target.value }))} placeholder="URL Foto" />
+                <input
+                  id="profile-visi-photo"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  disabled={uploading.visi || uploading.home || uploading.light || uploading.dark || uploading.misi}
+                  onChange={async (e) => {
+                    const file = e.currentTarget.files?.[0];
+                    if (!file) return;
+                    setUploading((x) => ({ ...x, visi: true }));
+                    try {
+                      const url = await uploadImage(file);
+                      setDraft((p) => ({ ...p, visiPhotoUrl: url }));
+                      toast.success('Upload foto visi berhasil');
+                    } catch (err: any) {
+                      toast.error(String(getErrorMessage(err, 'Gagal upload')));
+                    } finally {
+                      setUploading((x) => ({ ...x, visi: false }));
+                      e.currentTarget.value = '';
+                    }
+                  }}
+                />
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button asChild variant="outline" disabled={uploading.visi || uploading.home || uploading.light || uploading.dark || uploading.misi}>
+                    <Label htmlFor="profile-visi-photo" className="cursor-pointer">
+                      {uploading.visi ? 'Uploading...' : draft.visiPhotoUrl ? 'Ganti Foto' : 'Upload Foto'}
+                    </Label>
+                  </Button>
+                  {draft.visiPhotoUrl ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => setDraft((p) => ({ ...p, visiPhotoUrl: '' }))}
+                      disabled={uploading.visi || uploading.home || uploading.light || uploading.dark || uploading.misi}
+                    >
+                      Hapus
+                    </Button>
+                  ) : null}
+                </div>
+                <div className="text-xs text-slate-500 dark:text-zinc-400">PNG/JPG. Maks 4MB.</div>
+              </div>
+              <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50 dark:border-zinc-700 dark:bg-zinc-900/40">
+                <div className="aspect-[4/3] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.2),rgba(255,255,255,0.04))]">
+                  {draft.visiPhotoUrl ? (
+                    <img src={draft.visiPhotoUrl} alt="Foto Visi" className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center px-4 text-center text-xs text-slate-500 dark:text-zinc-300">
+                      Belum ada foto
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="space-y-3 md:col-span-2">
+            <Label>Beranda: Foto Misi</Label>
+            <div className="grid gap-3 md:grid-cols-[1fr_220px]">
+              <div className="space-y-3">
+                <Input value={draft.misiRole} onChange={(e) => setDraft((p) => ({ ...p, misiRole: e.target.value }))} placeholder="Jabatan (contoh: Wakil Ketua)" />
+                <Input value={draft.misiName} onChange={(e) => setDraft((p) => ({ ...p, misiName: e.target.value }))} placeholder="Nama" />
+                <Input value={draft.misiPhotoUrl} onChange={(e) => setDraft((p) => ({ ...p, misiPhotoUrl: e.target.value }))} placeholder="URL Foto" />
+                <input
+                  id="profile-misi-photo"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  disabled={uploading.misi || uploading.home || uploading.light || uploading.dark || uploading.visi}
+                  onChange={async (e) => {
+                    const file = e.currentTarget.files?.[0];
+                    if (!file) return;
+                    setUploading((x) => ({ ...x, misi: true }));
+                    try {
+                      const url = await uploadImage(file);
+                      setDraft((p) => ({ ...p, misiPhotoUrl: url }));
+                      toast.success('Upload foto misi berhasil');
+                    } catch (err: any) {
+                      toast.error(String(getErrorMessage(err, 'Gagal upload')));
+                    } finally {
+                      setUploading((x) => ({ ...x, misi: false }));
+                      e.currentTarget.value = '';
+                    }
+                  }}
+                />
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button asChild variant="outline" disabled={uploading.misi || uploading.home || uploading.light || uploading.dark || uploading.visi}>
+                    <Label htmlFor="profile-misi-photo" className="cursor-pointer">
+                      {uploading.misi ? 'Uploading...' : draft.misiPhotoUrl ? 'Ganti Foto' : 'Upload Foto'}
+                    </Label>
+                  </Button>
+                  {draft.misiPhotoUrl ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => setDraft((p) => ({ ...p, misiPhotoUrl: '' }))}
+                      disabled={uploading.misi || uploading.home || uploading.light || uploading.dark || uploading.visi}
+                    >
+                      Hapus
+                    </Button>
+                  ) : null}
+                </div>
+                <div className="text-xs text-slate-500 dark:text-zinc-400">PNG/JPG. Maks 4MB.</div>
+              </div>
+              <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50 dark:border-zinc-700 dark:bg-zinc-900/40">
+                <div className="aspect-[4/3] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.2),rgba(255,255,255,0.04))]">
+                  {draft.misiPhotoUrl ? (
+                    <img src={draft.misiPhotoUrl} alt="Foto Misi" className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center px-4 text-center text-xs text-slate-500 dark:text-zinc-300">
+                      Belum ada foto
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
           <div className="space-y-2 md:col-span-2">
             <Label>Footer Tagline</Label>
@@ -303,7 +499,7 @@ export default function PublicSiteProfile() {
                   }}
                 />
                 <div className="flex flex-wrap items-center gap-2">
-                  <Button asChild variant="outline" disabled={uploading.home || uploading.light || uploading.dark}>
+                  <Button asChild variant="outline" disabled={uploading.home || uploading.light || uploading.dark || uploading.visi || uploading.misi}>
                     <Label htmlFor="profile-home-image" className="cursor-pointer">
                       {uploading.home ? 'Uploading...' : draft.homeImageUrl ? 'Ganti Foto' : 'Upload Foto'}
                     </Label>
@@ -313,7 +509,7 @@ export default function PublicSiteProfile() {
                       type="button"
                       variant="ghost"
                       onClick={() => setDraft((p) => ({ ...p, homeImageUrl: '' }))}
-                      disabled={uploading.home || uploading.light || uploading.dark}
+                      disabled={uploading.home || uploading.light || uploading.dark || uploading.visi || uploading.misi}
                     >
                       Hapus
                     </Button>
@@ -342,7 +538,7 @@ export default function PublicSiteProfile() {
                 type="file"
                 accept="image/*"
                 className="hidden"
-                disabled={uploading.light || uploading.home || uploading.dark}
+                disabled={uploading.light || uploading.home || uploading.dark || uploading.visi || uploading.misi}
                 onChange={async (e) => {
                   const file = e.currentTarget.files?.[0];
                   if (!file) return;
@@ -360,7 +556,7 @@ export default function PublicSiteProfile() {
                 }}
               />
               <div className="flex flex-wrap items-center gap-2">
-                <Button asChild variant="outline" disabled={uploading.light || uploading.home || uploading.dark}>
+                <Button asChild variant="outline" disabled={uploading.light || uploading.home || uploading.dark || uploading.visi || uploading.misi}>
                   <Label htmlFor="profile-logo-light" className="cursor-pointer">
                     {uploading.light ? 'Uploading...' : draft.logoLightUrl ? 'Ganti Logo' : 'Upload Logo'}
                   </Label>
@@ -370,7 +566,7 @@ export default function PublicSiteProfile() {
                     type="button"
                     variant="ghost"
                     onClick={() => setDraft((p) => ({ ...p, logoLightUrl: '' }))}
-                    disabled={uploading.light || uploading.home || uploading.dark}
+                    disabled={uploading.light || uploading.home || uploading.dark || uploading.visi || uploading.misi}
                   >
                     Hapus
                   </Button>
@@ -386,7 +582,7 @@ export default function PublicSiteProfile() {
                 type="file"
                 accept="image/*"
                 className="hidden"
-                disabled={uploading.dark || uploading.home || uploading.light}
+                disabled={uploading.dark || uploading.home || uploading.light || uploading.visi || uploading.misi}
                 onChange={async (e) => {
                   const file = e.currentTarget.files?.[0];
                   if (!file) return;
@@ -404,7 +600,7 @@ export default function PublicSiteProfile() {
                 }}
               />
               <div className="flex flex-wrap items-center gap-2">
-                <Button asChild variant="outline" disabled={uploading.dark || uploading.home || uploading.light}>
+                <Button asChild variant="outline" disabled={uploading.dark || uploading.home || uploading.light || uploading.visi || uploading.misi}>
                   <Label htmlFor="profile-logo-dark" className="cursor-pointer">
                     {uploading.dark ? 'Uploading...' : draft.logoDarkUrl ? 'Ganti Logo' : 'Upload Logo'}
                   </Label>
@@ -414,7 +610,7 @@ export default function PublicSiteProfile() {
                     type="button"
                     variant="ghost"
                     onClick={() => setDraft((p) => ({ ...p, logoDarkUrl: '' }))}
-                    disabled={uploading.dark || uploading.home || uploading.light}
+                    disabled={uploading.dark || uploading.home || uploading.light || uploading.visi || uploading.misi}
                   >
                     Hapus
                   </Button>

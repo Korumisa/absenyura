@@ -349,12 +349,22 @@ export default function PublicHome() {
   const aboutTitle = profile?.about_title ?? '';
   const aboutContent = profile?.about_content ?? '';
   const aboutParagraphs = aboutContent.split('\n').map((x) => x.trim()).filter(Boolean);
+  const homeCardLeftTitle = profile?.home_card_left_title ?? '';
+  const homeCardLeftBody = profile?.home_card_left_body ?? '';
+  const homeCardRightTitle = profile?.home_card_right_title ?? '';
+  const homeCardRightBody = profile?.home_card_right_body ?? '';
   const vision = profile?.vision ?? '';
   const mission = profile?.mission ?? '';
   const missionItems = mission
     .split('\n')
     .map((x) => x.trim())
     .filter(Boolean);
+  const visiPhotoUrl = profile?.visi_photo_url ?? '';
+  const visiName = profile?.visi_name ?? '';
+  const visiRole = profile?.visi_role ?? '';
+  const misiPhotoUrl = profile?.misi_photo_url ?? '';
+  const misiName = profile?.misi_name ?? '';
+  const misiRole = profile?.misi_role ?? '';
 
   const coreMembers = useMemo(() => {
     const isCoreByTitle = (title: string) => {
@@ -509,19 +519,21 @@ export default function PublicHome() {
                 <div className="mx-auto mt-8 grid max-w-5xl gap-6 text-left md:grid-cols-2">
                   <div className="rounded-2xl border border-black/10 bg-white/70 p-6 shadow-[0_18px_40px_-42px_rgba(15,23,42,0.30)]">
                     <div className="text-xs font-semibold uppercase tracking-widest text-slate-500">
-                      Tentang {orgName || 'Organisasi'}
+                      {homeCardLeftTitle || `Tentang ${orgName || 'Organisasi'}`}
                     </div>
                     <div className="mt-3 text-sm leading-relaxed text-slate-700">
-                      {aboutParagraphs[0] ||
+                      {homeCardLeftBody ||
+                        aboutParagraphs[0] ||
                         `Organisasi ini menjadi ruang tumbuh mahasiswa untuk berkarya, berjejaring, dan meningkatkan kompetensi melalui program yang relevan dan berdampak.`}
                     </div>
                   </div>
                   <div className="rounded-2xl border border-black/10 bg-white/70 p-6 shadow-[0_18px_40px_-42px_rgba(15,23,42,0.30)]">
                     <div className="text-xs font-semibold uppercase tracking-widest text-slate-500">
-                      Kepengurusan {kabinetPeriod || 'Tahun Ini'}
+                      {homeCardRightTitle || `Kepengurusan ${kabinetPeriod || 'Tahun Ini'}`}
                     </div>
                     <div className="mt-3 text-sm leading-relaxed text-slate-700">
-                      {aboutParagraphs[1] ||
+                      {homeCardRightBody ||
+                        aboutParagraphs[1] ||
                         `Kabinet periode ${kabinetPeriod || 'ini'} berkomitmen menghadirkan layanan organisasi yang rapi, kolaboratif, dan adaptif untuk menjawab kebutuhan anggota.`}
                     </div>
                   </div>
@@ -546,8 +558,8 @@ export default function PublicHome() {
                     <div className="relative overflow-hidden rounded-3xl bg-slate-50 shadow-[0_22px_60px_-52px_rgba(15,23,42,0.55)]">
                       <div className="aspect-square w-full">
                         <PublicCoverImage
-                          url={ketua?.photo_url || profile?.home_image_url}
-                          alt={ketua?.name || 'Ketua'}
+                          url={visiPhotoUrl || ketua?.photo_url || profile?.home_image_url}
+                          alt={visiName || ketua?.name || 'Visi'}
                           imgClassName="object-cover"
                         />
                       </div>
@@ -555,8 +567,10 @@ export default function PublicHome() {
                     <div className="mt-4">
                       <div className="h-px w-full bg-[var(--public-primary)]" />
                       <div className="mt-3 text-center">
-                        <div className="text-[11px] font-semibold uppercase tracking-widest text-slate-500">{ketua?.role || 'Ketua'}</div>
-                        <div className="mt-1 text-sm font-extrabold tracking-tight text-slate-900">{ketua?.name || '-'}</div>
+                        <div className="text-[11px] font-semibold uppercase tracking-widest text-slate-500">
+                          {visiRole || ketua?.role || 'Ketua'}
+                        </div>
+                        <div className="mt-1 text-sm font-extrabold tracking-tight text-slate-900">{visiName || ketua?.name || '-'}</div>
                       </div>
                     </div>
                   </div>
@@ -568,8 +582,8 @@ export default function PublicHome() {
                       <div className="relative overflow-hidden rounded-3xl bg-slate-50 shadow-[0_22px_60px_-52px_rgba(15,23,42,0.55)]">
                         <div className="aspect-square w-full">
                           <PublicCoverImage
-                            url={wakil?.photo_url || profile?.home_image_url}
-                            alt={wakil?.name || 'Wakil'}
+                            url={misiPhotoUrl || wakil?.photo_url || profile?.home_image_url}
+                            alt={misiName || wakil?.name || 'Misi'}
                             imgClassName="object-cover"
                           />
                         </div>
@@ -577,8 +591,10 @@ export default function PublicHome() {
                       <div className="mt-4">
                         <div className="h-px w-full bg-[var(--public-primary)]" />
                         <div className="mt-3 text-center">
-                          <div className="text-[11px] font-semibold uppercase tracking-widest text-slate-500">{wakil?.role || 'Wakil Ketua'}</div>
-                          <div className="mt-1 text-sm font-extrabold tracking-tight text-slate-900">{wakil?.name || '-'}</div>
+                          <div className="text-[11px] font-semibold uppercase tracking-widest text-slate-500">
+                            {misiRole || wakil?.role || 'Wakil Ketua'}
+                          </div>
+                          <div className="mt-1 text-sm font-extrabold tracking-tight text-slate-900">{misiName || wakil?.name || '-'}</div>
                         </div>
                       </div>
                     </div>

@@ -134,7 +134,7 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
 
     const session = await prisma.session.findUnique({
       where: { id: session_id },
-      include: { location: true },
+      include: { location: true, session_classes: { select: { class_id: true } } },
     });
 
     if (!session) {
@@ -145,6 +145,18 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
     if (session.status !== 'ACTIVE') {
       res.status(400).json({ success: false, error: `Sesi tidak aktif (Status: ${session.status})` });
       return;
+    }
+
+    if (session.class_id || (session.session_classes ?? []).length > 0) {
+      const classIds = session.class_id ? [session.class_id] : (session.session_classes ?? []).map((x: any) => x.class_id).filter(Boolean);
+      const enrolled = await prisma.classEnrollment.findFirst({
+        where: { student_id: user_id, class_id: { in: classIds } },
+        select: { id: true },
+      });
+      if (!enrolled) {
+        res.status(403).json({ success: false, error: 'Anda tidak terdaftar pada kelas untuk sesi ini' });
+        return;
+      }
     }
 
     const now = new Date();

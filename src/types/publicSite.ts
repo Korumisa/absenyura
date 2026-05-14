@@ -9,8 +9,18 @@ export type PublicProfile = {
   youtube_embed_url: string | null;
   about_title: string | null;
   about_content: string | null;
+  home_card_left_title: string | null;
+  home_card_left_body: string | null;
+  home_card_right_title: string | null;
+  home_card_right_body: string | null;
   vision: string | null;
   mission: string | null;
+  visi_photo_url: string | null;
+  visi_name: string | null;
+  visi_role: string | null;
+  misi_photo_url: string | null;
+  misi_name: string | null;
+  misi_role: string | null;
   footer_tagline: string | null;
   instagram_url: string | null;
   tiktok_url: string | null;

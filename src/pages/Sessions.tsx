@@ -27,6 +27,7 @@ export default function Sessions() {
   const [filterDate, setFilterDate] = useState('');
   const [filterLocation, setFilterLocation] = useState('ALL');
   const [filterClass, setFilterClass] = useState('ALL');
+  const [classSearch, setClassSearch] = useState('');
   
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -454,6 +455,41 @@ export default function Sessions() {
                   </div>
                   <div className="space-y-2">
                     <Label>Target Kelas</Label>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {formData.class_ids.length === 0 ? (
+                        <Badge variant="secondary" className="gap-1">
+                          Semua Mahasiswa
+                        </Badge>
+                      ) : (
+                        formData.class_ids
+                          .map((id) => classes.find((c) => c.id === id))
+                          .filter(Boolean)
+                          .map((c: any) => (
+                            <Badge key={c.id} variant="secondary" className="gap-1">
+                              <span className="max-w-[220px] truncate">{c.name}</span>
+                              <button
+                                type="button"
+                                className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded hover:bg-black/5 dark:hover:bg-white/10"
+                                onClick={() =>
+                                  setFormData((p) => ({ ...p, class_ids: p.class_ids.filter((x) => x !== c.id) }))
+                                }
+                                aria-label="Hapus kelas"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </Badge>
+                          ))
+                      )}
+                    </div>
+                    <div className="relative">
+                      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                      <Input
+                        value={classSearch}
+                        onChange={(e) => setClassSearch(e.target.value)}
+                        placeholder="Cari kelas..."
+                        className="pl-9"
+                      />
+                    </div>
                     <div className="max-h-56 space-y-2 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50/60 p-3 dark:border-zinc-700 dark:bg-zinc-900/30">
                       <label className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2 hover:bg-white dark:hover:bg-zinc-950">
                         <input
@@ -467,7 +503,9 @@ export default function Sessions() {
                         <span className="text-sm font-medium text-slate-700 dark:text-zinc-300">Semua Mahasiswa (Umum)</span>
                       </label>
                       <div className="h-px bg-slate-200/70 dark:bg-zinc-700/70" />
-                      {classes.map((c) => (
+                      {classes
+                        .filter((c) => c.name.toLowerCase().includes(classSearch.trim().toLowerCase()))
+                        .map((c) => (
                         <label
                           key={c.id}
                           className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2 hover:bg-white dark:hover:bg-zinc-950"
