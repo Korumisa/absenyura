@@ -75,6 +75,7 @@ export default function Attend() {
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
   const [isCameraActive, setIsCameraActive] = useState(false);
   const scannerRef = React.useRef<Html5QrcodeScanner | null>(null);
+  const isSubmittingRef = React.useRef(false);
   const [qrFacingMode, setQrFacingMode] = useState<'user' | 'environment'>('environment');
   const [qrCameraId, setQrCameraId] = useState<string | null>(null);
 
@@ -446,6 +447,11 @@ export default function Attend() {
   };
 
   const handleCheckIn = async () => {
+    if (isSubmittingRef.current) return;
+    if (gpsError) {
+      toast.error(`GPS bermasalah: ${gpsError}`);
+      return;
+    }
     if (!scanResult) {
       toast.error('Silakan scan QR Code terlebih dahulu.');
       return;
@@ -460,6 +466,7 @@ export default function Attend() {
       return;
     }
 
+    isSubmittingRef.current = true;
     setLoading(true);
     try {
       let sessionId = derivedSessionId;
@@ -536,6 +543,7 @@ export default function Attend() {
       setPhotoPreview(null);
     } finally {
       setLoading(false);
+      isSubmittingRef.current = false;
     }
   };
 
@@ -729,7 +737,7 @@ export default function Attend() {
                   <Button
                     size="lg"
                     onClick={handleCheckIn}
-                    disabled={loading || !location}
+                    disabled={loading || !location || !!gpsError}
                     className="w-full py-6 font-bold text-lg shadow-lg shadow-indigo-200 dark:shadow-indigo-900/20"
                   >
                     {loading ? 'Memproses...' : 'Kirim Data Absensi'}

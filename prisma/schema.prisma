@@ -68,6 +68,7 @@ model ClassEnrollment {
   enrolled_at DateTime @default(now())
 
   @@unique([class_id, student_id])
+  @@index([student_id])
 }
 
 model Location {
@@ -149,6 +150,7 @@ model Attendance {
   updated_at          DateTime  @updatedAt
 
   @@unique([session_id, user_id]) // Prevent double check-in
+  @@index([user_id, check_in_time])
 }
 
 model ExcuseRequest {

@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import prisma from '../utils/prisma.js';
 import ExcelJS from 'exceljs';
 import { Prisma } from '@prisma/client';
+import fs from 'fs';
 
 const ALLOWED_ROLES = new Set(['USER', 'ADMIN', 'SUPER_ADMIN', 'CONTENT_ADMIN']);
 
@@ -247,16 +248,15 @@ export const deleteUser = async (req: Request, res: Response): Promise<void> => 
 };
 
 export const importUsers = async (req: Request, res: Response): Promise<void> => {
+  const filePath = req.file?.path;
   try {
-    if (!req.file) {
+    if (!req.file || !filePath) {
       res.status(400).json({ success: false, error: 'File Excel tidak ditemukan' });
       return;
     }
 
     const workbook = new ExcelJS.Workbook();
-    // ExcelJS requires ArrayBuffer, but multer provides Buffer. Convert to Uint8Array then to ArrayBuffer.
-    const arrayBuffer = new Uint8Array(req.file.buffer).buffer;
-    await workbook.xlsx.load(arrayBuffer);
+    await workbook.xlsx.readFile(filePath);
     
     const worksheet = workbook.worksheets[0]; // Get the first sheet
     if (!worksheet) {
@@ -304,9 +304,10 @@ export const importUsers = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    // Insert to database (using createMany, but skipping duplicates)
+    // Insert to database (using createMany, and skipping duplicates)
     const createdUsers = await prisma.user.createMany({
       data: newUsers,
+      skipDuplicates: true,
     });
 
     await prisma.auditLog.create({
@@ -329,6 +330,10 @@ export const importUsers = async (req: Request, res: Response): Promise<void> =>
   } catch (error: unknown) {
     console.error('Error importing users:', error);
     res.status(500).json({ success: false, error: 'Gagal mengimpor file Excel. Pastikan format benar.' });
+  } finally {
+    if (filePath) {
+      await fs.promises.unlink(filePath).catch(() => {});
+    }
   }
 };
 

@@ -117,37 +117,45 @@ export const createExcuse = async (req: Request, res: Response): Promise<void> =
     }
 
     let proof_url = null;
-    if (file && file.buffer) {
+    if (file && file.path) {
       if (process.env.CLOUDINARY_URL) {
-        const b64 = Buffer.from(file.buffer).toString('base64');
-        const dataURI = `data:${file.mimetype};base64,${b64}`;
         try {
-          const result = await cloudinary.uploader.upload(dataURI, { folder: 'excuses' });
+          const result = await cloudinary.uploader.upload(file.path, { folder: 'excuses' });
           proof_url = result.secure_url;
         } catch (err) {
           console.error('Cloudinary Upload Error:', err);
+          await fs.promises.unlink(file.path).catch(() => {});
           res.status(500).json({ success: false, error: 'Gagal mengunggah dokumen bukti' });
           return;
+        } finally {
+          await fs.promises.unlink(file.path).catch(() => {});
         }
       } else {
-        const extFromMime: Record<string, string> = {
-          'image/jpeg': '.jpg',
-          'image/jpg': '.jpg',
-          'image/png': '.png',
-          'image/webp': '.webp',
-          'application/pdf': '.pdf',
-        };
-        const rawExt = path.extname(path.basename(String(file.originalname || ''))).toLowerCase();
-        const ext = (rawExt && rawExt.length <= 10 ? rawExt : '') || extFromMime[String(file.mimetype || '').toLowerCase()] || '';
+        try {
+          const extFromMime: Record<string, string> = {
+            'image/jpeg': '.jpg',
+            'image/jpg': '.jpg',
+            'image/png': '.png',
+            'image/webp': '.webp',
+            'application/pdf': '.pdf',
+          };
+          const rawExt = path.extname(path.basename(String(file.originalname || ''))).toLowerCase();
+          const ext = (rawExt && rawExt.length <= 10 ? rawExt : '') || extFromMime[String(file.mimetype || '').toLowerCase()] || '';
 
-        const uploadDir = path.join(process.cwd(), 'uploads', 'excuses');
-        if (!fs.existsSync(uploadDir)) {
-          fs.mkdirSync(uploadDir, { recursive: true });
+          const uploadDir = path.join(process.cwd(), 'uploads', 'excuses');
+          if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+          }
+          const filename = `${file.fieldname}-${crypto.randomBytes(16).toString('hex')}${ext}`;
+          const finalFilePath = path.join(uploadDir, filename);
+          await fs.promises.rename(file.path, finalFilePath);
+          proof_url = `/uploads/excuses/${filename}`;
+        } catch (err) {
+          console.error('Local File Save Error:', err);
+          await fs.promises.unlink(file.path).catch(() => {});
+          res.status(500).json({ success: false, error: 'Gagal memproses dokumen bukti' });
+          return;
         }
-        const filename = `${file.fieldname}-${crypto.randomBytes(16).toString('hex')}${ext}`;
-        const filePath = path.join(uploadDir, filename);
-        fs.writeFileSync(filePath, file.buffer);
-        proof_url = `/uploads/excuses/${filename}`;
       }
     }
 

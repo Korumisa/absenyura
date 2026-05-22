@@ -2,6 +2,7 @@ import cron from 'node-cron';
 import prisma from '../utils/prisma.js';
 import fs from 'fs';
 import path from 'path';
+import { v2 as cloudinary } from 'cloudinary';
 
 let isRunning = false;
 let lastRunTime = 0;
@@ -15,7 +16,7 @@ export const runCronJob = async () => {
   lastRunTime = nowTime;
 
   try {
-    const resolveExpectedUserIds = async (session: any, allUsers: any[]) => {
+    const resolveExpectedUserIds = async (session: any) => {
       if (session.class_id) {
         const enrollments = await prisma.classEnrollment.findMany({
           where: { class_id: session.class_id },
@@ -35,7 +36,11 @@ export const runCronJob = async () => {
         });
         return Array.from(new Set(enrollments.map((e) => e.student_id)));
       }
-      return allUsers.map((u) => u.id);
+      const activeUsers = await prisma.user.findMany({
+        where: { role: 'USER', is_active: true },
+        select: { id: true },
+      });
+      return activeUsers.map((u) => u.id);
     };
 
     const now = new Date();
@@ -73,8 +78,7 @@ export const runCronJob = async () => {
         });
 
         // Notify students
-        const allUsers = await prisma.user.findMany({ where: { role: 'USER', is_active: true } });
-        const expectedUserIds: string[] = await resolveExpectedUserIds(session, allUsers);
+        const expectedUserIds: string[] = await resolveExpectedUserIds(session);
 
         if (expectedUserIds.length > 0) {
           await prisma.notification.createMany({
@@ -106,11 +110,9 @@ export const runCronJob = async () => {
       });
 
       // Auto-Absent Job
-      const allUsers = await prisma.user.findMany({ where: { role: 'USER', is_active: true } });
-
       for (const session of sessionsToClose) {
         // Determine which users are supposed to attend
-        const expectedUserIds: string[] = await resolveExpectedUserIds(session, allUsers);
+        const expectedUserIds: string[] = await resolveExpectedUserIds(session);
 
         // Get all present users for this session
         const presentAttendances = await prisma.attendance.findMany({
@@ -158,55 +160,77 @@ export const runCronJob = async () => {
           });
         }
 
-        // Check Early Warning System (EWS) for < 75% attendance for absent users
-        for (const userId of absentUserIds) {
-          const linked = await prisma.sessionClass.findMany({
-            where: { session_id: session.id },
-            select: { class_id: true },
-          });
-          const classIds = session.class_id ? [session.class_id] : linked.map((x) => x.class_id);
-          if (classIds.length === 0) continue;
-
+        // Check Early Warning System (EWS) for < 75% attendance for absent users (Optimized N+1)
+        const linked = await prisma.sessionClass.findMany({
+          where: { session_id: session.id },
+          select: { class_id: true },
+        });
+        const classIds = session.class_id ? [session.class_id] : linked.map((x) => x.class_id);
+        
+        if (classIds.length > 0 && absentUserIds.length > 0) {
+          const notificationsToCreate: any[] = [];
+          
+          const totalSessionsMap: Record<string, number> = {};
           for (const classId of classIds) {
-            const isEnrolled = await prisma.classEnrollment.findFirst({
-              where: { class_id: classId, student_id: userId },
-              select: { id: true },
-            });
-            if (!isEnrolled) continue;
-
-            const totalSessions = await prisma.session.count({
-              where: {
-                status: 'CLOSED',
-                OR: [{ class_id: classId }, { session_classes: { some: { class_id: classId } } }],
-              },
-            });
-
-            if (totalSessions <= 0) continue;
-
-            const attendedCount = await prisma.attendance.count({
-              where: {
-                user_id: userId,
-                session: {
+             const count = await prisma.session.count({
+                where: {
                   status: 'CLOSED',
                   OR: [{ class_id: classId }, { session_classes: { some: { class_id: classId } } }],
                 },
-                status: { in: ['PRESENT', 'LATE', 'SICK', 'EXCUSED'] },
-              },
-            });
+             });
+             totalSessionsMap[classId] = count;
+          }
 
-            const attendancePercentage = (attendedCount / totalSessions) * 100;
+          const enrollments = await prisma.classEnrollment.findMany({
+            where: { class_id: { in: classIds }, student_id: { in: absentUserIds } }
+          });
 
-            if (attendancePercentage < 75) {
-              await prisma.notification.create({
-                data: {
-                  user_id: userId,
-                  title: 'Peringatan Dini Kehadiran (EWS)',
-                  message: `Tingkat kehadiran Anda di salah satu kelas telah turun menjadi ${Math.round(attendancePercentage)}% (Di bawah batas minimal 75%). Harap perhatikan kehadiran Anda.`,
-                  type: 'WARNING',
-                },
-              });
-              break;
-            }
+          const userClassAttendances = await prisma.attendance.findMany({
+            where: {
+              user_id: { in: absentUserIds },
+              status: { in: ['PRESENT', 'LATE', 'SICK', 'EXCUSED'] },
+              session: {
+                status: 'CLOSED',
+                OR: [
+                  { class_id: { in: classIds } }, 
+                  { session_classes: { some: { class_id: { in: classIds } } } }
+                ]
+              }
+            },
+            select: { user_id: true, session: { select: { class_id: true, session_classes: { select: { class_id: true } } } } }
+          });
+
+          const attendanceCounts: Record<string, Record<string, number>> = {};
+          for (const att of userClassAttendances) {
+             const attClassIds = att.session.class_id ? [att.session.class_id] : att.session.session_classes.map((x: any) => x.class_id);
+             for (const cId of attClassIds) {
+                if (classIds.includes(cId)) {
+                   if (!attendanceCounts[att.user_id]) attendanceCounts[att.user_id] = {};
+                   attendanceCounts[att.user_id][cId] = (attendanceCounts[att.user_id][cId] || 0) + 1;
+                }
+             }
+          }
+
+          for (const enr of enrollments) {
+             const total = totalSessionsMap[enr.class_id] || 0;
+             if (total > 0) {
+               const attended = (attendanceCounts[enr.student_id] && attendanceCounts[enr.student_id][enr.class_id]) || 0;
+               const percentage = (attended / total) * 100;
+               if (percentage < 75) {
+                 notificationsToCreate.push({
+                    user_id: enr.student_id,
+                    title: 'Peringatan Dini Kehadiran (EWS)',
+                    message: `Tingkat kehadiran Anda di salah satu kelas telah turun menjadi ${Math.round(percentage)}% (Di bawah batas minimal 75%). Harap perhatikan kehadiran Anda.`,
+                    type: 'WARNING',
+                 });
+               }
+             }
+          }
+
+          // Deduplicate notifications so a user doesn't get spammed if multiple classes drop below 75% simultaneously
+          const uniqueNotifications = Array.from(new Map(notificationsToCreate.map(item => [item.user_id, item])).values());
+          if (uniqueNotifications.length > 0) {
+            await prisma.notification.createMany({ data: uniqueNotifications });
           }
         }
       }
@@ -245,13 +269,21 @@ export const startCronJobs = () => {
       let deletedCount = 0;
       for (const att of oldAttendances) {
         if (att.photo_url) {
-          // att.photo_url is like '/uploads/attendance/file-name.jpg'
-          const fileName = path.basename(att.photo_url);
-          const filePath = path.join(process.cwd(), 'uploads', 'attendance', fileName);
-
-          // Hapus file fisik jika ada
-          if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
+          if (att.photo_url.includes('cloudinary') || att.photo_url.includes('res.cloudinary.com')) {
+            try {
+              const urlParts = att.photo_url.split('/');
+              const filenameWithExt = urlParts[urlParts.length - 1];
+              const publicId = `attendance/${filenameWithExt.split('.')[0]}`;
+              await cloudinary.uploader.destroy(publicId);
+            } catch (err) {
+              console.error('[Cron] Failed to destroy cloudinary image:', err);
+            }
+          } else {
+            const fileName = path.basename(att.photo_url);
+            const filePath = path.join(process.cwd(), 'uploads', 'attendance', fileName);
+            if (fs.existsSync(filePath)) {
+              fs.unlinkSync(filePath);
+            }
           }
 
           // Kosongkan URL di database agar tidak ada error link patah (broken image)
@@ -277,7 +309,8 @@ export const startCronJobs = () => {
     try {
       console.log('[Cron] Running daily semester update job...');
       const users = await prisma.user.findMany({
-        where: { role: 'USER', is_active: true }
+        where: { role: 'USER', is_active: true },
+        select: { id: true, enrollment_date: true, semester: true }
       });
 
       let updatedCount = 0;

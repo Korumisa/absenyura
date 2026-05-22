@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import prisma from '../utils/prisma.js';
 import crypto from 'crypto';
 import fs from 'fs';
+import fsPromises from 'fs/promises';
 import path from 'path';
 import { v2 as cloudinary } from 'cloudinary';
 
@@ -9,6 +10,51 @@ import { v2 as cloudinary } from 'cloudinary';
 if (process.env.CLOUDINARY_URL) {
   // It will automatically use the CLOUDINARY_URL
 }
+
+// Background photo upload helper
+const uploadPhotoInBackground = async (
+  attendanceId: string,
+  filePath: string,
+  originalname: string,
+  fieldname: string
+): Promise<void> => {
+  try {
+    let photoUrl: string | null = null;
+    if (process.env.CLOUDINARY_URL) {
+      const result = await cloudinary.uploader.upload(filePath, { folder: 'attendance' });
+      photoUrl = result.secure_url;
+    } else {
+      const extFromMime: Record<string, string> = {
+        'image/jpeg': '.jpg',
+        'image/jpg': '.jpg',
+        'image/png': '.png',
+        'image/webp': '.webp',
+      };
+      const rawExt = path.extname(path.basename(String(originalname || ''))).toLowerCase();
+      const ext = (rawExt && rawExt.length <= 10 ? rawExt : '') || '.jpg';
+
+      const uploadDir = path.join(process.cwd(), 'uploads', 'attendance');
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+      const filename = `${fieldname}-${crypto.randomBytes(16).toString('hex')}${ext}`;
+      const newFilePath = path.join(uploadDir, filename);
+      await fsPromises.rename(filePath, newFilePath);
+      photoUrl = `/uploads/attendance/${filename}`;
+    }
+
+    if (photoUrl) {
+      await prisma.attendance.update({
+        where: { id: attendanceId },
+        data: { photo_url: photoUrl }
+      });
+    }
+  } catch (error) {
+    console.error(`[Background Upload Error] Attendance ID: ${attendanceId}`, error);
+  } finally {
+    await fsPromises.unlink(filePath).catch(() => {});
+  }
+};
 
 // Helper for distance calculation (Haversine formula)
 function getDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -42,18 +88,19 @@ export const getChallenge = async (req: Request, res: Response): Promise<void> =
 };
 
 export const checkIn = async (req: Request, res: Response): Promise<void> => {
+  let isUploadingInBackground = false;
   try {
     const user_id = (req as any).user.id;
     const { session_id, qr_token, latitude, longitude, accuracy, ip_address, device_fingerprint, nonce, signature } = req.body;
 
     // --- ANTI-CHEAT LAYER 1: Server-side Accuracy Validation ---
     if (!accuracy) {
-      res.status(400).json({ success: false, error: 'Data akurasi GPS tidak ditemukan. Pastikan Anda mengizinkan akses lokasi dengan presisi tinggi.' });
+      res.status(400).json({ success: false, error: 'Kami tidak dapat mendeteksi tingkat akurasi GPS Anda. Harap aktifkan pengaturan lokasi presisi tinggi pada perangkat Anda dan coba lagi.' });
       return;
     }
     const accuracyValue = parseFloat(accuracy);
     if (accuracyValue > 150) {
-      res.status(400).json({ success: false, error: `Sinyal GPS terlalu lemah/tidak akurat (Akurasi: ${Math.round(accuracyValue)}m). Coba di ruang terbuka.` });
+      res.status(400).json({ success: false, error: `Sinyal GPS kami kurang kuat saat ini (Akurasi: ${Math.round(accuracyValue)}m). Mari coba berpindah ke tempat yang lebih terbuka lalu segarkan kembali halaman.` });
       return;
     }
 
@@ -63,68 +110,27 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const validNonce = await prisma.challengeNonce.findUnique({ where: { nonce } });
-    if (!validNonce || validNonce.expires_at < new Date()) {
-      res.status(400).json({ success: false, error: 'Sesi kamera telah kedaluwarsa. Silakan jepret foto ulang.' });
-      return;
+    try {
+      const deletedNonce = await prisma.challengeNonce.delete({ where: { nonce } });
+      if (deletedNonce.expires_at < new Date()) {
+        res.status(400).json({ success: false, error: 'Waktu pengambilan foto Anda telah habis demi keamanan. Mari ambil foto ulang untuk melanjutkan.' });
+        return;
+      }
+    } catch (error: any) {
+      if (error?.code === 'P2025') {
+        res.status(400).json({ success: false, error: 'Waktu pengambilan foto Anda telah habis demi keamanan. Mari ambil foto ulang untuk melanjutkan.' });
+        return;
+      }
+      throw error;
     }
-    // Delete to prevent replay attacks
-    await prisma.challengeNonce.delete({ where: { nonce } });
 
     const secret = process.env.VITE_APP_SECRET || 'absenyura-secure-2026';
     const payloadToSign = `${nonce}:${latitude}:${longitude}:${secret}`;
     const expectedSignature = crypto.createHash('sha256').update(payloadToSign).digest('hex');
 
     if (signature !== expectedSignature) {
-      res.status(400).json({ success: false, error: 'Terdeteksi manipulasi foto atau lokasi (Signature mismatch).' });
+      res.status(400).json({ success: false, error: 'Data foto atau koordinat lokasi tidak cocok. Silakan segarkan halaman dan ambil foto ulang di lokasi kelas.' });
       return;
-    }
-
-    let photoUrl = null;
-    if (req.file && (req.file as any).buffer) {
-      const fileBuffer = (req.file as any).buffer;
-      
-      // --- ANTI-CHEAT LAYER 3: EXIF / Canvas Blob Analysis ---
-      // Canvas .toBlob() in browser produces very clean JFIF with APP0, and generally lacks APP1 Exif.
-      // Photos taken from gallery / camera apps usually have "Exif" identifier near the start.
-      // We read the first 1024 bytes looking for "Exif".
-      const headerString = fileBuffer.subarray(0, Math.min(fileBuffer.length, 1024)).toString('ascii');
-      if (headerString.includes('Exif')) {
-        res.status(400).json({ success: false, error: 'Terdeteksi foto dari Galeri. Anda wajib mengambil foto langsung menggunakan kamera aplikasi.' });
-        return;
-      }
-      if (process.env.CLOUDINARY_URL) {
-        // Upload to Cloudinary using a stream
-        const b64 = Buffer.from((req.file as any).buffer).toString('base64');
-        const dataURI = `data:${req.file.mimetype};base64,${b64}`;
-        try {
-          const result = await cloudinary.uploader.upload(dataURI, { folder: 'attendance' });
-          photoUrl = result.secure_url;
-        } catch (err) {
-          console.error('Cloudinary Upload Error:', err);
-          res.status(500).json({ success: false, error: 'Gagal mengunggah foto ke cloud' });
-          return;
-        }
-      } else {
-        // Save to local disk
-        const extFromMime: Record<string, string> = {
-          'image/jpeg': '.jpg',
-          'image/jpg': '.jpg',
-          'image/png': '.png',
-          'image/webp': '.webp',
-        };
-        const rawExt = path.extname(path.basename(String(req.file.originalname || ''))).toLowerCase();
-        const ext = (rawExt && rawExt.length <= 10 ? rawExt : '') || extFromMime[String(req.file.mimetype || '').toLowerCase()] || '';
-
-        const uploadDir = path.join(process.cwd(), 'uploads', 'attendance');
-        if (!fs.existsSync(uploadDir)) {
-          fs.mkdirSync(uploadDir, { recursive: true });
-        }
-        const filename = `${req.file.fieldname}-${crypto.randomBytes(16).toString('hex')}${ext}`;
-        const filePath = path.join(uploadDir, filename);
-        fs.writeFileSync(filePath, (req.file as any).buffer);
-        photoUrl = `/uploads/attendance/${filename}`;
-      }
     }
 
     if (!session_id || !latitude || !longitude) {
@@ -132,10 +138,26 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const session = await prisma.session.findUnique({
-      where: { id: session_id },
-      include: { location: true, session_classes: { select: { class_id: true } } },
-    });
+    const [session, lastAttendance, user, existingAttendance] = await Promise.all([
+      prisma.session.findUnique({
+        where: { id: session_id },
+        include: { location: true, session_classes: { select: { class_id: true } } },
+      }),
+      prisma.attendance.findFirst({
+        where: {
+          user_id,
+          check_in_lat: { not: null },
+          check_in_lng: { not: null }
+        },
+        orderBy: { check_in_time: 'desc' }
+      }),
+      prisma.user.findUnique({ where: { id: user_id } }),
+      prisma.attendance.findUnique({
+        where: {
+          session_id_user_id: { session_id, user_id }
+        }
+      })
+    ]);
 
     if (!session) {
       res.status(404).json({ success: false, error: 'Sesi absensi tidak ditemukan atau sudah dihapus.' });
@@ -154,7 +176,7 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
         select: { id: true },
       });
       if (!enrolled) {
-        res.status(403).json({ success: false, error: 'Anda tidak terdaftar pada kelas untuk sesi ini' });
+        res.status(403).json({ success: false, error: 'Nama Anda belum terdaftar di kelas ini. Silakan hubungi admin atau dosen pengajar untuk menambahkan Anda.' });
         return;
       }
     }
@@ -172,7 +194,7 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
       // Differentiate message if the class is still running
       if (now < session.session_end) {
         const timeStr = session.check_in_close_at.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' });
-        res.status(400).json({ success: false, error: `Batas waktu absensi telah habis pada ${timeStr} WIB, meskipun kelas masih berjalan.` });
+        res.status(400).json({ success: false, error: `Batas waktu absensi telah ditutup pada pukul ${timeStr} WIB. Hubungi dosen Anda jika Anda mengalami kendala koneksi.` });
       } else {
         res.status(400).json({ success: false, error: 'Waktu absensi sudah ditutup.' });
       }
@@ -244,7 +266,7 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
     if (distance > session.location.radius) {
       res.status(400).json({
         success: false,
-        error: `Anda berada di luar area absensi (${Math.round(distance)}m > ${session.location.radius}m)`,
+        error: `Posisi Anda terdeteksi di luar jangkauan absensi kelas (sekitar ${Math.round(distance)} meter). Mari mendekat ke area kelas dan coba lagi.`,
       });
       return;
     }
@@ -281,7 +303,7 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
             if (device_fingerprint && device_fingerprint.includes('[OFFLINE_SYNC]')) {
                console.log(`Bypassing IP restriction for offline sync: User ${user_id}`);
             } else {
-               res.status(400).json({ success: false, error: 'Jaringan IP/WiFi Anda tidak diizinkan untuk absensi ini' });
+               res.status(400).json({ success: false, error: 'Koneksi internet Anda berada di luar jaringan kampus. Harap hubungkan perangkat Anda ke Wi-Fi resmi kampus untuk melakukan absensi.' });
                return;
             }
           }
@@ -293,15 +315,6 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
     }
 
     // Layer 4: Anti-Spoofing (Teleportation Check)
-    const lastAttendance = await prisma.attendance.findFirst({
-      where: {
-        user_id,
-        check_in_lat: { not: null },
-        check_in_lng: { not: null }
-      },
-      orderBy: { check_in_time: 'desc' }
-    });
-
     if (lastAttendance && lastAttendance.check_in_lat && lastAttendance.check_in_lng) {
       const distanceLastCheckin = getDistance(
         parseFloat(latitude),
@@ -319,7 +332,7 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
         if (speedKmH > 250) {
           res.status(400).json({ 
             success: false, 
-            error: 'Aktivitas mencurigakan: Perpindahan lokasi terlalu cepat (Terdeteksi Fake GPS)' 
+            error: 'Sistem mendeteksi adanya ketidaksesuaian data GPS. Harap nonaktifkan aplikasi lokasi palsu di perangkat Anda dan coba segarkan halaman.' 
           });
           return;
         }
@@ -331,7 +344,6 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
     const status = nowTime > lateThresholdTime ? 'LATE' : 'PRESENT';
 
     // Device Fingerprint Binding Logic
-    const user = await prisma.user.findUnique({ where: { id: user_id } });
     if (user && !user.device_fingerprint && device_fingerprint && device_fingerprint !== 'unknown-device') {
       // First time check-in: Bind device
       await prisma.user.update({
@@ -344,16 +356,12 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
       const incomingDevice = device_fingerprint ? device_fingerprint.replace(' [OFFLINE_SYNC]', '') : '';
 
       if (storedDevice !== incomingDevice) {
-        res.status(403).json({ success: false, error: 'Perangkat tidak dikenali. Akun Anda telah terikat pada perangkat lain. Silakan hubungi Admin.' });
+        res.status(403).json({ success: false, error: 'Sistem mendeteksi perangkat lain terhubung dengan akun Anda. Hubungi tim Admin untuk mengalihkan akun ke perangkat ini.' });
         return;
       }
     }
 
     // Check if already checked in
-    const existingAttendance = await prisma.attendance.findFirst({
-      where: { session_id, user_id }
-    });
-
     if (existingAttendance) {
       if (existingAttendance.check_out_time) {
          res.status(400).json({ success: false, error: 'Anda sudah menyelesaikan absensi (Check-in & Check-out) pada sesi ini' });
@@ -384,12 +392,39 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
         check_in_accuracy: parseFloat(accuracy),
         check_in_ip: ip_address,
         check_in_device: device_fingerprint,
-        photo_url: photoUrl,
+        photo_url: null,
       },
       include: {
         user: { select: { name: true, nim_nip: true } },
       },
     });
+
+    // Emit real-time socket notification to the lecturer's QRDisplay feed
+    try {
+      const { io } = await import('../server.js');
+      if (io) {
+        io.to(`session_${session_id}`).emit('new_attendance', {
+          id: attendance.id,
+          user_name: attendance.user.name,
+          nim_nip: attendance.user.nim_nip,
+          status: attendance.status,
+          check_in_time: attendance.check_in_time,
+          check_out_time: attendance.check_out_time,
+        });
+      }
+    } catch (e) {
+      console.error('[Socket Error] Failed to emit new_attendance:', e);
+    }
+
+    if (req.file && req.file.path) {
+      isUploadingInBackground = true;
+      uploadPhotoInBackground(
+        attendance.id,
+        req.file.path,
+        req.file.originalname,
+        req.file.fieldname
+      );
+    }
 
     res.status(201).json({ success: true, data: attendance, message: 'Check-in berhasil' });
   } catch (error: any) {
@@ -398,6 +433,10 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
       return;
     }
     res.status(500).json({ success: false, error: 'Internal server error' });
+  } finally {
+    if (req.file && req.file.path && !isUploadingInBackground) {
+      fsPromises.unlink(req.file.path).catch(() => {});
+    }
   }
 };
 

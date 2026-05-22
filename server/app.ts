@@ -30,7 +30,7 @@ import auditRoutes from './routes/audit.js'
 import classRoutes from './routes/classes.js'
 import excuseRoutes from './routes/excuses.js'
 import publicSiteRoutes from './routes/public-site.js'
-import { runCronJob } from './jobs/cron.js'
+import cronRoutes from './routes/cron.js'
 import { authenticate } from './middlewares/auth.middleware.js'
 
 dotenv.config()// for esm mode
@@ -39,6 +39,11 @@ const __dirname = path.dirname(__filename)
 
 // load env
 dotenv.config()
+
+if (process.env.NODE_ENV === 'production' && !process.env.CLOUDINARY_URL) {
+  console.error('[FATAL] CLOUDINARY_URL must be configured in production environment!');
+  process.exit(1);
+}
 
 const app: express.Application = express()
 
@@ -82,11 +87,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 app.use(cookieParser())
 app.use(csrfProtect)
 
-// Fallback Cron execution on every request (max once per minute)
-app.use((req, res, next) => {
-  runCronJob().catch(err => console.error('Cron fallback error:', err));
-  next();
-});
+// Cron fallback removed in favor of Vercel Cron endpoint
 
 // Rate limiting
 const authLimiter = rateLimit({
@@ -98,10 +99,21 @@ const authLimiter = rateLimit({
 
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 500, // Increased limit from 100 to 500 to avoid blocking API calls
-  message: 'Too many requests from this IP, please try again after 15 minutes',
+  max: 1000, // 1000 requests per window
+  message: 'Too many requests, please try again after 15 minutes',
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: (req) => {
+    // Attempt to rate limit by user token to prevent Campus NAT IP blocking
+    if (req.cookies && req.cookies.token) {
+      return req.cookies.token;
+    }
+    if (req.headers && req.headers.authorization) {
+      return req.headers.authorization;
+    }
+    // Fallback to IP if no auth is present
+    return req.ip || 'unknown';
+  }
 });
 
 app.use('/api/auth/login', authLimiter)
@@ -124,6 +136,7 @@ app.use('/api/notifications', notificationRoutes)
 app.use('/api/audit-logs', auditRoutes)
 app.use('/api/classes', classRoutes)
 app.use('/api/excuses', excuseRoutes)
+app.use('/api/cron', cronRoutes)
 app.use('/uploads/public-site', express.static(path.join(__dirname, '../uploads/public-site')))
 app.use('/uploads', authenticate, express.static(path.join(__dirname, '../uploads')))
 

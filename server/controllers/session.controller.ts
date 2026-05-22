@@ -233,14 +233,39 @@ export const deleteSession = async (req: Request, res: Response): Promise<void> 
 export const getSessionById = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
+    const user = (req as any).user;
     const session = await prisma.session.findUnique({
       where: { id },
-      include: { location: true, creator: { select: { name: true } } },
+      include: { 
+        location: true, 
+        creator: { select: { name: true } },
+        session_classes: { select: { class_id: true } }
+      },
     });
 
     if (!session) {
       res.status(404).json({ success: false, error: 'Session not found' });
       return;
+    }
+
+    if (user.role === 'USER') {
+      const classIds = session.class_id ? [session.class_id] : (session.session_classes ?? []).map((sc: any) => sc.class_id).filter(Boolean);
+      if (classIds.length > 0) {
+        const enrolled = await prisma.classEnrollment.findFirst({
+          where: {
+            student_id: user.id,
+            class_id: { in: classIds }
+          }
+        });
+        if (!enrolled) {
+          res.status(403).json({
+            success: false,
+            error_code: 'BOLA_UNAUTHORIZED_CLASS',
+            error: 'Kode QR ini bukan untuk kelas Anda. Pastikan Anda memindai kode yang benar.'
+          });
+          return;
+        }
+      }
     }
 
     res.status(200).json({ success: true, data: session });

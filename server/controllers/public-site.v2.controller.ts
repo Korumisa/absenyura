@@ -3,6 +3,7 @@ import prisma from '../utils/prisma.js';
 import { upload } from '../utils/upload.js';
 import { v2 as cloudinary } from 'cloudinary';
 import { sendInternalServerError } from '../utils/errorResponse.js';
+import fs from 'fs';
 
 type PublicRoleRequest = Request & { user?: { id: string; role: string } };
 
@@ -867,22 +868,25 @@ export const uploadPublicAsset = async (req: PublicRoleRequest, res: Response): 
       res.status(400).json({ success: false, error: err?.message || 'Gagal mengunggah file' });
       return;
     }
+    const filePath = req.file?.path;
     try {
       if (!process.env.CLOUDINARY_URL) {
         res.status(500).json({ success: false, error: 'Cloudinary belum dikonfigurasi' });
         return;
       }
-      if (!req.file || !(req.file as any).buffer) {
+      if (!req.file || !filePath) {
         res.status(400).json({ success: false, error: 'File tidak ditemukan' });
         return;
       }
-      const b64 = Buffer.from((req.file as any).buffer).toString('base64');
-      const dataURI = `data:${(req.file as any).mimetype};base64,${b64}`;
-      const result = await cloudinary.uploader.upload(dataURI, { folder: 'public-site' });
+      const result = await cloudinary.uploader.upload(filePath, { folder: 'public-site' });
       res.status(200).json({ success: true, data: { url: result.secure_url, publicId: result.public_id } });
     } catch (error) {
       console.error('Error uploading public asset:', error);
       res.status(500).json({ success: false, error: 'Gagal mengunggah file' });
+    } finally {
+      if (filePath) {
+        await fs.promises.unlink(filePath).catch(() => {});
+      }
     }
   });
 };
