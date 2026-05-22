@@ -325,7 +325,7 @@ export default function Attend() {
     };
   }, []);
 
-  const startCamera = async (mode = facingMode) => {
+  const startCamera = async (mode = facingMode, retryCount = 0) => {
     try {
       setCameraPermissionError(null);
       if (!navigator.mediaDevices?.getUserMedia) {
@@ -337,11 +337,14 @@ export default function Attend() {
       // Stop existing streams
       stopCamera();
       
+      // Give mobile hardware a tiny bit of time to release locks if we are retrying or switching from QR
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
       let stream;
       try {
         // Try exact facing mode first
         stream = await navigator.mediaDevices.getUserMedia({ 
-          video: { facingMode: { ideal: mode } } 
+          video: { facingMode: { ideal: mode }, width: { ideal: 1280 }, height: { ideal: 720 } } 
         });
       } catch (e: any) {
         // Fallback to any available video camera
@@ -349,7 +352,15 @@ export default function Attend() {
            stream = await navigator.mediaDevices.getUserMedia({ video: true });
         } catch(fallbackErr: any) {
            console.error('Camera fallback error:', fallbackErr);
-           // Handle specific NotAllowedError vs NotFoundError
+           
+           // If we hit a hardware lock error, retry up to 2 times
+           const isHardwareLock = ['NotReadableError', 'TrackStartError', 'OverconstrainedError'].includes(fallbackErr.name);
+           if (retryCount < 2 && isHardwareLock) {
+             console.warn(`Retrying camera connection (Attempt ${retryCount + 1})...`);
+             return startCamera(mode, retryCount + 1);
+           }
+           
+           // Handle specific errors
            if (fallbackErr.name === 'NotAllowedError' || fallbackErr.name === 'SecurityError') {
              setCameraPermissionError('Izin ditolak. Izinkan akses kamera di pengaturan browser.');
            } else if (fallbackErr.name === 'NotFoundError' || fallbackErr.name === 'DevicesNotFoundError') {
