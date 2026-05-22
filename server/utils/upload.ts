@@ -4,7 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import os from 'os';
 import sharp from 'sharp';
-import { fileTypeFromFile } from 'file-type';
+import { fileTypeFromFile, fileTypeFromBuffer } from 'file-type';
 import { Request, Response, NextFunction } from 'express';
 
 const tempDir = os.tmpdir();
@@ -92,8 +92,14 @@ export const processAndValidateImage = async (req: Request, res: Response, next:
       });
     }
 
-    // 2. Sniff MIME type
-    const meta = await fileTypeFromFile(filePath);
+    // Read the first 4100 bytes ONCE to avoid Windows file lock (EBUSY) issues
+    const fileHandle = await fs.promises.open(filePath, 'r');
+    const buffer = Buffer.alloc(4100);
+    const { bytesRead } = await fileHandle.read(buffer, 0, 4100, 0);
+    await fileHandle.close();
+
+    // 2. Sniff MIME type from buffer
+    const meta = await fileTypeFromBuffer(buffer.subarray(0, bytesRead));
     if (!meta || !meta.mime.startsWith('image/')) {
       await fs.promises.unlink(filePath).catch(() => {});
       req.file = undefined;
@@ -114,12 +120,7 @@ export const processAndValidateImage = async (req: Request, res: Response, next:
     }
 
     // 3. Gallery Upload Check (Look for "Exif" in the first 1024 bytes)
-    const fileHandle = await fs.promises.open(filePath, 'r');
-    const buffer = Buffer.alloc(1024);
-    const { bytesRead } = await fileHandle.read(buffer, 0, 1024, 0);
-    await fileHandle.close();
-
-    const headerString = buffer.subarray(0, bytesRead).toString('ascii');
+    const headerString = buffer.subarray(0, Math.min(bytesRead, 1024)).toString('ascii');
     if (headerString.includes('Exif')) {
       await fs.promises.unlink(filePath).catch(() => {});
       req.file = undefined;
@@ -141,14 +142,14 @@ export const processAndValidateImage = async (req: Request, res: Response, next:
     }
 
     next();
-  } catch (error) {
+  } catch (error: any) {
     console.error('Image processing error:', error);
     await fs.promises.unlink(filePath).catch(() => {});
     await fs.promises.unlink(tempCleanedPath).catch(() => {});
     req.file = undefined;
     return res.status(400).json({
       success: false,
-      error: 'Foto yang diunggah rusak atau tidak dapat diproses.'
+      error: 'Foto yang diunggah rusak atau tidak dapat diproses. (' + (error?.message || 'Unknown Error') + ')'
     });
   }
 };
