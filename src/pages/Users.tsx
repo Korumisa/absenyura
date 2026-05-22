@@ -16,6 +16,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import AdminPageShell from '@/components/AdminPageShell';
 import type { User } from '@/types/user';
+import type { PaginationMeta } from '@/types/common';
 
 export default function Users() {
   const { user: currentUser } = useAuthStore();
@@ -23,6 +24,23 @@ export default function Users() {
   const [roleFilter, setRoleFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
   
+  // Pagination & Debounce State
+  const [page, setPage] = useState(1);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  // Debounce search input at 400ms
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 400);
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
+
+  // Reset page to 1 when debouncedSearch or other filters change
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, roleFilter, statusFilter]);
+
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -40,12 +58,29 @@ export default function Users() {
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const [userToReset, setUserToReset] = useState<string | null>(null);
 
-  const fetcher = (url: string) => api.get(url).then(res => res.data.data);
+  const fetcher = (url: string) => api.get(url).then(res => res.data);
   // Delete Modal state
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
 
-  const { data: users = [], error, isLoading: loading, mutate } = useSWR<User[]>('/users', fetcher, { revalidateOnFocus: false });
+  const queryParams = new URLSearchParams({
+    page: page.toString(),
+    limit: '20'
+  });
+  if (debouncedSearch.trim()) {
+    queryParams.append('search', debouncedSearch.trim());
+  }
+  if (roleFilter && roleFilter !== 'ALL') {
+    queryParams.append('role', roleFilter);
+  }
+  if (statusFilter && statusFilter !== 'ALL') {
+    queryParams.append('status', statusFilter);
+  }
+
+  const { data, error, isLoading: loading, isValidating, mutate } = useSWR(`/users?${queryParams.toString()}`, fetcher, { revalidateOnFocus: false });
+
+  const users: User[] = Array.isArray(data?.data) ? data.data : [];
+  const meta: PaginationMeta | null = data?.meta || null;
 
   const fetchFaculties = async () => {
     try {
@@ -120,23 +155,7 @@ export default function Users() {
     }
   };
 
-  const filteredUsers = users.filter(u => {
-    if (!u) return false;
-    const userName = typeof u.name === 'string' ? u.name : '';
-    const userEmail = typeof u.email === 'string' ? u.email : '';
-    const userNim = typeof u.nim_nip === 'string' ? u.nim_nip : '';
-
-    const matchesSearch = userName.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          userEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          (userNim && userNim.toLowerCase().includes(searchTerm.toLowerCase()));
-    
-    const matchesRole = roleFilter === 'ALL' || u.role === roleFilter;
-    const matchesStatus = statusFilter === 'ALL' || 
-                          (statusFilter === 'ACTIVE' && u.is_active) || 
-                          (statusFilter === 'INACTIVE' && !u.is_active);
-                          
-    return matchesSearch && matchesRole && matchesStatus;
-  });
+  const filteredUsers = users;
 
   const handleDownloadTemplate = async () => {
     const workbook = new ExcelJS.Workbook();
@@ -402,6 +421,32 @@ export default function Users() {
             </TableBody>
           </Table>
         </div>
+
+        {meta && meta.totalPages > 1 && (
+          <div className="flex items-center justify-between p-4 border-t border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800/50">
+            <span className="text-sm text-slate-500 dark:text-zinc-400">
+              Menampilkan {((meta.page - 1) * meta.limit) + 1} - {Math.min(meta.page * meta.limit, meta.total)} dari {meta.total} pengguna
+            </span>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1 || isValidating}
+              >
+                Sebelumnya
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage(p => Math.min(meta.totalPages, p + 1))}
+                disabled={page === meta.totalPages || isValidating}
+              >
+                Selanjutnya
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>

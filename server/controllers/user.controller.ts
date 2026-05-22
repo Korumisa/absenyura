@@ -9,24 +9,105 @@ const ALLOWED_ROLES = new Set(['USER', 'ADMIN', 'SUPER_ADMIN', 'CONTENT_ADMIN'])
 
 export const getUsers = async (req: Request, res: Response): Promise<void> => {
   try {
-    const users = await prisma.user.findMany({
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        nim_nip: true,
-        department: true,
-        phone: true,
-        is_active: true,
-        semester: true,
-        enrollment_date: true,
-        device_fingerprint: true,
-        created_at: true,
-      },
-      orderBy: { created_at: 'desc' },
-    });
-    res.status(200).json({ success: true, data: users });
+    const pageQuery = req.query.page;
+    const limitQuery = req.query.limit;
+
+    // Filters
+    const search = req.query.search as string | undefined;
+    const role = req.query.role as string | undefined;
+    const status = req.query.status as string | undefined;
+
+    const where: Prisma.UserWhereInput = {};
+
+    if (search && search.trim()) {
+      const searchLower = search.trim().toLowerCase();
+      where.OR = [
+        { name: { contains: searchLower, mode: 'insensitive' } },
+        { email: { contains: searchLower, mode: 'insensitive' } },
+        { nim_nip: { contains: searchLower, mode: 'insensitive' } },
+      ];
+    }
+
+    if (role && role !== 'ALL') {
+      where.role = role as any;
+    }
+
+    if (status && status !== 'ALL') {
+      where.is_active = status === 'ACTIVE' || status === 'true';
+    }
+
+    if (pageQuery !== undefined) {
+      // strict parsing and validation
+      const parsedPage = parseInt(pageQuery as string, 10);
+      const page = Number.isInteger(parsedPage) && parsedPage >= 1 ? parsedPage : 1;
+
+      let limit = 10;
+      if (limitQuery !== undefined) {
+        const parsedLimit = parseInt(limitQuery as string, 10);
+        limit = Number.isInteger(parsedLimit) && parsedLimit >= 1 ? parsedLimit : 10;
+      }
+      // hard cap at 50
+      if (limit > 50) {
+        limit = 50;
+      }
+
+      const skip = (page - 1) * limit;
+
+      const [users, total] = await Promise.all([
+        prisma.user.findMany({
+          where,
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            nim_nip: true,
+            department: true,
+            phone: true,
+            is_active: true,
+            semester: true,
+            enrollment_date: true,
+            device_fingerprint: true,
+            created_at: true,
+          },
+          orderBy: { created_at: 'desc' },
+          skip,
+          take: limit,
+        }),
+        prisma.user.count({ where }),
+      ]);
+
+      res.status(200).json({
+        success: true,
+        data: users,
+        meta: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
+      });
+    } else {
+      const users = await prisma.user.findMany({
+        where,
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          nim_nip: true,
+          department: true,
+          phone: true,
+          is_active: true,
+          semester: true,
+          enrollment_date: true,
+          device_fingerprint: true,
+          created_at: true,
+        },
+        orderBy: { created_at: 'desc' },
+      });
+      res.status(200).json({ success: true, data: users });
+    }
   } catch (error: unknown) {
     console.error('Error fetching users:', error);
     res.status(500).json({ success: false, error: 'Internal server error' });

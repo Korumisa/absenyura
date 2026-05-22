@@ -130,9 +130,15 @@ export const processAndValidateImage = async (req: Request, res: Response, next:
     }
 
     // 4. Strip EXIF metadata using sharp
-    await sharp(filePath).toFile(tempCleanedPath);
-    await fs.promises.unlink(filePath).catch(() => {});
-    await fs.promises.rename(tempCleanedPath, filePath);
+    try {
+      await sharp(filePath).toFile(tempCleanedPath);
+      await fs.promises.unlink(filePath).catch(() => {});
+      await fs.promises.rename(tempCleanedPath, filePath);
+    } catch (sharpError) {
+      console.warn('Sharp image processing failed, falling back to original file:', sharpError);
+      // Clean up tempCleanedPath if it was created
+      await fs.promises.unlink(tempCleanedPath).catch(() => {});
+    }
 
     next();
   } catch (error) {
