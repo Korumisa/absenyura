@@ -65,17 +65,11 @@ export default function Users() {
 
   const queryParams = new URLSearchParams({
     page: page.toString(),
-    limit: '20'
+    limit: '20',
+    search: debouncedSearch.trim(),
+    role: roleFilter,
+    status: statusFilter
   });
-  if (debouncedSearch.trim()) {
-    queryParams.append('search', debouncedSearch.trim());
-  }
-  if (roleFilter && roleFilter !== 'ALL') {
-    queryParams.append('role', roleFilter);
-  }
-  if (statusFilter && statusFilter !== 'ALL') {
-    queryParams.append('status', statusFilter);
-  }
 
   const { data, error, isLoading: loading, isValidating, mutate } = useSWR(`/users?${queryParams.toString()}`, fetcher, { revalidateOnFocus: false });
 
