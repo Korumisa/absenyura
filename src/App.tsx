@@ -115,9 +115,9 @@ export default function App() {
 
     const checkHealth = async () => {
       try {
-        const res = await api.get('/health');
+        const res = await api.get('/status');
         if (cancelled) return;
-        if (res?.status === 200 && (res?.data?.status === 'ok' || res?.data?.success === true)) {
+        if (res?.status === 200 && res?.data?.success === true) {
           clearMaintenance();
           return;
         }

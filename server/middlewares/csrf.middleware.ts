@@ -12,6 +12,7 @@ function shouldSkipPath(pathname: string): boolean {
   if (pathname === '/api/auth/flush-db') return true;
   if (pathname === '/api/health') return true;
   if (pathname === '/api/health/db') return true;
+  if (pathname === '/api/status') return true;
   if (pathname.startsWith('/api/cron')) return true;
   return false;
 }
