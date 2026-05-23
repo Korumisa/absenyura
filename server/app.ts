@@ -13,7 +13,7 @@ import dotenv from 'dotenv'
 import { fileURLToPath } from 'url'
 import cookieParser from 'cookie-parser'
 import helmet from 'helmet'
-import rateLimit from 'express-rate-limit'
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit'
 import { csrfProtect } from './middlewares/csrf.middleware.js'
 import { requestTiming } from './middlewares/requestTiming.middleware.js'
 import { guardInternal, guardCron } from './middlewares/guardInternal.js'
@@ -105,6 +105,7 @@ const authLimiter = rateLimit({
   max: 20,
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: (req) => ipKeyGenerator(req.ip ?? 'unknown'),
 })
 
 const apiLimiter = rateLimit({
@@ -115,16 +116,15 @@ const apiLimiter = rateLimit({
   legacyHeaders: false,
   keyGenerator: (req) => {
     // Attempt to rate limit by user token to prevent Campus NAT IP blocking
-    if (req.cookies && req.cookies.token) {
-      return req.cookies.token;
+    if (req.cookies?.token) {
+      return req.cookies.token
     }
-    if (req.headers && req.headers.authorization) {
-      return req.headers.authorization;
+    if (req.headers?.authorization) {
+      return String(req.headers.authorization)
     }
-    // Fallback to IP if no auth is present
-    return req.ip || 'unknown';
-  }
-});
+    return ipKeyGenerator(req.ip ?? 'unknown')
+  },
+})
 
 app.use('/api/auth/login', authLimiter)
 app.use('/api/auth/refresh', authLimiter)
