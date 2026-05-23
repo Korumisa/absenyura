@@ -26,9 +26,9 @@ export default defineConfig(({ mode }) => {
         registerType: 'autoUpdate',
         includeAssets: ['favicon.svg'],
         manifest: {
-          name: 'Absensyura Campus',
-          short_name: 'Absensyura',
-          description: 'Sistem Absensi Mahasiswa Modern',
+          name: 'E-Absensi',
+          short_name: 'E-Absensi',
+          description: 'Sistem absensi mahasiswa HM SDP',
           theme_color: '#4f46e5',
           background_color: '#ffffff',
           display: 'standalone',
