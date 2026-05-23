@@ -15,6 +15,7 @@ import cookieParser from 'cookie-parser'
 import helmet from 'helmet'
 import rateLimit from 'express-rate-limit'
 import { csrfProtect } from './middlewares/csrf.middleware.js'
+import { requestTiming } from './middlewares/requestTiming.middleware.js'
 import prisma from './utils/prisma.js'
 
 import authRoutes from './routes/auth.js'
@@ -50,6 +51,8 @@ const app: express.Application = express()
 if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
   app.set('trust proxy', 1)
 }
+
+app.use(requestTiming)
 
 app.disable('x-powered-by')
 app.use(helmet())
@@ -141,27 +144,36 @@ app.use('/uploads/public-site', express.static(path.join(__dirname, '../uploads/
 app.use('/uploads', authenticate, express.static(path.join(__dirname, '../uploads')))
 
 /**
- * health
+ * health — DB ping + keep-warm target (Vercel Cron optional)
  */
-app.get('/api/health', (_req: Request, res: Response): void => {
-  res.status(200).json({
-    success: true,
-    message: 'ok',
-  })
-})
-
-app.get('/api/health/db', async (_req: Request, res: Response): Promise<void> => {
+app.get('/api/health', async (_req: Request, res: Response): Promise<void> => {
+  const ts = Date.now();
   try {
     await prisma.$queryRaw`SELECT 1`
     res.status(200).json({
+      status: 'ok',
+      db: 'connected',
+      ts,
       success: true,
-      message: 'ok',
     })
   } catch {
     res.status(503).json({
+      status: 'degraded',
+      db: 'disconnected',
+      ts,
       success: false,
-      error: 'db_unavailable',
     })
+  }
+})
+
+/** @deprecated use GET /api/health */
+app.get('/api/health/db', async (_req: Request, res: Response): Promise<void> => {
+  const ts = Date.now();
+  try {
+    await prisma.$queryRaw`SELECT 1`
+    res.status(200).json({ status: 'ok', db: 'connected', ts, success: true })
+  } catch {
+    res.status(503).json({ status: 'degraded', db: 'disconnected', ts, success: false })
   }
 })
 

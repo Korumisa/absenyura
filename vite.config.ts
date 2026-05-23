@@ -42,6 +42,7 @@ export default defineConfig(({ mode }) => {
         },
         workbox: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+          globIgnores: ['**/vendor-export*.js', '**/vendor-maps*.js'],
           maximumFileSizeToCacheInBytes: 5000000, // <== Added to allow large chunk caching
           runtimeCaching: [
             {
@@ -62,6 +63,21 @@ export default defineConfig(({ mode }) => {
         }
       })
     ],
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+            'vendor-charts': ['recharts'],
+            'vendor-maps': ['leaflet', 'react-leaflet'],
+            'vendor-qr': ['html5-qrcode'],
+            'vendor-export': ['exceljs', 'jspdf', 'jspdf-autotable', 'html2canvas'],
+            'vendor-motion': ['framer-motion'],
+            'vendor-ui': ['@radix-ui/react-dialog', '@radix-ui/react-select'],
+          },
+        },
+      },
+    },
     server: {
       host: '0.0.0.0',
       hmr: {

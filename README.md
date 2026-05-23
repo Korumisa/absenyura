@@ -32,8 +32,10 @@ npm install
 Buka file `.env` di *root* direktori, dan ubah variabel berikut:
 ```env
 PORT=3001
-# Ganti [YOUR-PASSWORD] dengan password database Supabase Anda
-DATABASE_URL="postgresql://postgres:[YOUR-PASSWORD]@db.nztchtwylutzkiisvrid.supabase.co:5432/postgres?pgbouncer=true"
+# Production/Vercel: pooler port 6543 + connection_limit=1
+DATABASE_URL="postgresql://postgres.[ref]:[YOUR-PASSWORD]@aws-0-[region].pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1"
+# Migrasi Prisma (direct) port 5432
+DIRECT_URL="postgresql://postgres.[ref]:[YOUR-PASSWORD]@db.[ref].supabase.co:5432/postgres"
 
 # Ganti dengan string acak rahasia yang panjang
 JWT_SECRET="ganti_dengan_rahasia_jwt_anda"
@@ -79,7 +81,8 @@ Buat/edit file `.env` di VPS:
 ```env
 NODE_ENV="production"
 PORT=3001
-DATABASE_URL="postgresql://postgres:[YOUR-PASSWORD]@db.nztchtwylutzkiisvrid.supabase.co:5432/postgres?pgbouncer=true"
+DATABASE_URL="postgresql://postgres.[ref]:[YOUR-PASSWORD]@aws-0-[region].pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1"
+DIRECT_URL="postgresql://postgres.[ref]:[YOUR-PASSWORD]@db.[ref].supabase.co:5432/postgres"
 JWT_SECRET="BUAT_STRING_ACAK_YANG_SANGAT_PANJANG_DAN_RUMIT"
 JWT_REFRESH_SECRET="BUAT_STRING_ACAK_YANG_SANGAT_PANJANG_DAN_RUMIT_LAINNYA"
 FRONTEND_URL="https://absensi.namakampus.ac.id" # URL Asli Anda

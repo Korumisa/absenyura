@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import prisma from '../utils/prisma.js';
 import crypto from 'crypto';
+import { locationAttendSelect, sessionListRelations } from '../utils/sessionQuerySelect.js';
+import { buildDynamicQrToken, QR_WINDOW_MS } from '../utils/dynamicQr.js';
 
 const isMissingSemesterColumn = (err: any) =>
   Boolean(err && err.code === 'P2022' && String(err?.meta?.column || '').includes('Class.semester'));
@@ -22,13 +24,7 @@ export const getSessions = async (req: Request, res: Response): Promise<void> =>
               { session_classes: { some: { class: { enrollments: { some: { student_id: userId } } } } } },
             ]
           },
-          include: {
-            location: true,
-            creator: { select: { name: true } },
-            class: { select: { id: true, name: true, semester: true } },
-            session_classes: { include: { class: { select: { id: true, name: true, semester: true } } } },
-            attendances: { where: { user_id: userId } },
-          },
+          include: sessionListRelations({ userId, withSemester: true }),
           orderBy: { session_start: 'asc' },
         });
       } catch (err: any) {
@@ -42,13 +38,7 @@ export const getSessions = async (req: Request, res: Response): Promise<void> =>
               { session_classes: { some: { class: { enrollments: { some: { student_id: userId } } } } } },
             ]
           },
-          include: {
-            location: true,
-            creator: { select: { name: true } },
-            class: { select: { id: true, name: true } },
-            session_classes: { include: { class: { select: { id: true, name: true } } } },
-            attendances: { where: { user_id: userId } },
-          },
+          include: sessionListRelations({ userId, withSemester: false }),
           orderBy: { session_start: 'asc' },
         });
       }
@@ -57,24 +47,14 @@ export const getSessions = async (req: Request, res: Response): Promise<void> =>
       try {
         sessions = await prisma.session.findMany({
           where: user.role === 'ADMIN' ? { created_by_id: user.id } : {},
-          include: {
-            location: true,
-            creator: { select: { name: true } },
-            class: { select: { id: true, name: true, semester: true } },
-            session_classes: { include: { class: { select: { id: true, name: true, semester: true } } } },
-          },
+          include: sessionListRelations({ withSemester: true }),
           orderBy: { created_at: 'desc' },
         });
       } catch (err: any) {
         if (!isMissingSemesterColumn(err)) throw err;
         sessions = await prisma.session.findMany({
           where: user.role === 'ADMIN' ? { created_by_id: user.id } : {},
-          include: {
-            location: true,
-            creator: { select: { name: true } },
-            class: { select: { id: true, name: true } },
-            session_classes: { include: { class: { select: { id: true, name: true } } } },
-          },
+          include: sessionListRelations({ withSemester: false }),
           orderBy: { created_at: 'desc' },
         });
       }
@@ -236,10 +216,10 @@ export const getSessionById = async (req: Request, res: Response): Promise<void>
     const user = (req as any).user;
     const session = await prisma.session.findUnique({
       where: { id },
-      include: { 
-        location: true, 
+      include: {
+        location: { select: locationAttendSelect },
         creator: { select: { name: true } },
-        session_classes: { select: { class_id: true } }
+        session_classes: { select: { class_id: true } },
       },
     });
 
@@ -280,7 +260,10 @@ export const getSessionById = async (req: Request, res: Response): Promise<void>
 export const getSessionQR = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const session = await prisma.session.findUnique({ where: { id } });
+    const session = await prisma.session.findUnique({
+      where: { id },
+      select: { id: true, qr_mode: true, qr_token: true, qr_secret: true },
+    });
 
     if (!session) {
       res.status(404).json({ success: false, error: 'Session not found' });
@@ -297,22 +280,17 @@ export const getSessionQR = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    // DYNAMIC QR mode logic
-    const timestamp = Date.now();
-    const payload = `${session.id}:${timestamp}`;
-    
-    // Create HMAC using the session's qr_secret
     if (!session.qr_secret) {
       res.status(500).json({ success: false, error: 'QR Secret is not configured for this session' });
       return;
     }
-    const hmac = crypto.createHmac('sha256', session.qr_secret);
-    hmac.update(payload);
-    const signature = hmac.digest('hex');
 
-    const dynamicToken = `${payload}:${signature}`;
+    const dynamicToken = buildDynamicQrToken(session.id, session.qr_secret);
 
-    res.status(200).json({ success: true, data: { token: dynamicToken, expires_in: 15000 } });
+    res.status(200).json({
+      success: true,
+      data: { token: dynamicToken, expires_in: QR_WINDOW_MS },
+    });
   } catch (error) {
     console.error('Error getting QR:', error);
     res.status(500).json({ success: false, error: 'Internal server error' });
@@ -324,10 +302,14 @@ export const getSessionAttendances = async (req: Request, res: Response): Promis
     const { id } = req.params;
     const attendances = await prisma.attendance.findMany({
       where: { session_id: id },
-      include: {
-        user: { select: { name: true, nim_nip: true } }
+      select: {
+        id: true,
+        status: true,
+        check_in_time: true,
+        check_out_time: true,
+        user: { select: { name: true, nim_nip: true } },
       },
-      orderBy: { check_in_time: 'desc' }
+      orderBy: { check_in_time: 'desc' },
     });
 
     res.status(200).json({ success: true, data: attendances });

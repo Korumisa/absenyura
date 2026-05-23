@@ -1,9 +1,7 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '@/services/api';
-import { useAuthStore } from '@/stores/authStore';
 import QRCode from 'qrcode';
-import { io, Socket } from 'socket.io-client';
 import { toast } from 'sonner';
 import { Users, Clock, ArrowLeft, CheckCircle2, Download } from 'lucide-react';
 import { format } from 'date-fns';
@@ -11,61 +9,68 @@ import { id as idLocale } from 'date-fns/locale';
 import type { SessionSummary } from '@/types/session';
 import { Attendee } from '@/types/qrdisplay'
 
+const QR_ROTATE_MS = 15_000;
+const QR_PREFETCH_AT_MS = 12_000;
+
 export default function QRDisplay() {
-  const { id } = useParams<{ id: string }>();
+  const { id: sessionId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [session, setSession] = useState<SessionSummary | null>(null);
   const [qrData, setQrData] = useState<string>('');
   const [countdown, setCountdown] = useState(15);
   const [attendees, setAttendees] = useState<Attendee[]>([]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const socketRef = useRef<Socket | null>(null);
+
+  const fetchSession = useCallback(async () => {
+    if (!sessionId) return;
+    try {
+      const res = await api.get(`/sessions/${sessionId}`);
+      setSession(res.data.data);
+    } catch (error) {
+      toast.error('Gagal mengambil data sesi');
+    }
+  }, [sessionId]);
+
+  const fetchAttendees = useCallback(async () => {
+    if (!sessionId) return;
+    try {
+      const res = await api.get(`/sessions/${sessionId}/attendances?_t=${Date.now()}`);
+      setAttendees(res.data.data.map((att: any) => ({
+        id: att.id,
+        user_name: att.user.name,
+        nim_nip: att.user.nim_nip,
+        status: att.status,
+        check_in_time: att.check_in_time,
+        check_out_time: att.check_out_time
+      })));
+    } catch (error) {
+      console.error('Failed to fetch attendees:', error);
+    }
+  }, [sessionId]);
 
   useEffect(() => {
     fetchSession();
+  }, [fetchSession]);
+
+  useEffect(() => {
+    if (!sessionId) return;
     fetchAttendees();
-    
-    // Init Socket (Token is no longer passed explicitly; cookies are used)
-    const socketUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-    socketRef.current = io(socketUrl, {
-      withCredentials: true
-    });
-
-    socketRef.current.on('connect', () => {
-      socketRef.current?.emit('join_session', id);
-    });
-
-    socketRef.current.on('new_attendance', (data: Attendee) => {
-      setAttendees(prev => [data, ...prev]);
-      toast.success(`${data.user_name} berhasil absen!`);
-    });
-
-    // Auto-refresh attendees every 15 seconds
-    const intervalId = setInterval(() => {
-      fetchAttendees();
-    }, 15000);
-
-    return () => {
-      clearInterval(intervalId);
-      if (socketRef.current) {
-        socketRef.current.emit('leave_session', id);
-        socketRef.current.disconnect();
-      }
-    };
-  }, [id]);
+    const intervalId = setInterval(fetchAttendees, 5000);
+    return () => clearInterval(intervalId);
+  }, [sessionId, fetchAttendees]);
 
   useEffect(() => {
     if (session && session.qr_mode !== 'NONE' && session.status === 'ACTIVE') {
       fetchQR();
-      
+
       if (session.qr_mode === 'DYNAMIC') {
         const interval = setInterval(() => {
           fetchQR();
           setCountdown(15);
-        }, 15000);
+        }, QR_ROTATE_MS);
 
         const countdownInterval = setInterval(() => {
-          setCountdown(prev => (prev > 0 ? prev - 1 : 15));
+          setCountdown((prev) => (prev > 0 ? prev - 1 : 15));
         }, 1000);
 
         return () => {
@@ -75,6 +80,17 @@ export default function QRDisplay() {
       }
     }
   }, [session]);
+
+  // Prefetch token bucket berikutnya ~3 detik sebelum rotasi UI (mengurangi cold start di detik ke-15)
+  useEffect(() => {
+    if (!session || session.qr_mode !== 'DYNAMIC' || session.status !== 'ACTIVE' || !qrData) {
+      return;
+    }
+    const timeoutId = setTimeout(() => {
+      fetchQR();
+    }, QR_PREFETCH_AT_MS);
+    return () => clearTimeout(timeoutId);
+  }, [qrData, session]);
 
   useEffect(() => {
     if (qrData && canvasRef.current) {
@@ -91,39 +107,15 @@ export default function QRDisplay() {
     }
   }, [qrData]);
 
-  const fetchSession = async () => {
-    try {
-      const res = await api.get(`/sessions/${id}`);
-      setSession(res.data.data);
-    } catch (error) {
-      toast.error('Gagal mengambil data sesi');
-    }
-  };
-
-  const fetchAttendees = async () => {
-    try {
-      const res = await api.get(`/sessions/${id}/attendances?_t=${Date.now()}`);
-      setAttendees(res.data.data.map((att: any) => ({
-        id: att.id,
-        user_name: att.user.name,
-        nim_nip: att.user.nim_nip,
-        status: att.status,
-        check_in_time: att.check_in_time,
-        check_out_time: att.check_out_time
-      })));
-    } catch (error) {
-      console.error('Failed to fetch attendees:', error);
-    }
-  };
-
   const fetchQR = async () => {
+    if (!sessionId) return;
     try {
-      const res = await api.get(`/sessions/${id}/qr`);
+      const res = await api.get(`/sessions/${sessionId}/qr`);
       const token = res.data.data.token;
       
       // ALWAYS embed the session ID into the QR URL to ensure the scanner app knows which session this is.
       // If it's a dynamic QR, it already has the session ID in the token string, but we pass it anyway for consistency.
-      const url = `${window.location.origin}/attend?session=${id}&token=${encodeURIComponent(token)}`;
+      const url = `${window.location.origin}/attend?session=${sessionId}&token=${encodeURIComponent(token)}`;
       setQrData(url);
     } catch (error: any) {
       console.error('Failed to fetch QR:', error);

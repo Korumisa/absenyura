@@ -7,18 +7,14 @@ dotenv.config();
 
 const PORT = process.env.PORT || 3001;
 
-export let io: any;
-
 async function startLocalServer() {
-  const [{ default: app }, { initSocket }, { startCronJobs }] = await Promise.all([
+  const [{ default: app }, { startCronJobs }] = await Promise.all([
     import('./app.js'),
-    import('./socket/index.js'),
     import('./jobs/cron.js'),
   ]);
 
   const server = createServer(app);
 
-  io = initSocket(server);
   startCronJobs();
   console.log('[Server] Cron jobs started');
 
@@ -26,9 +22,6 @@ async function startLocalServer() {
     console.log(`Server ready on port ${PORT}`);
   });
 
-  /**
-   * close server
-   */
   process.on('SIGTERM', () => {
     console.log('SIGTERM signal received');
     server.close(() => {
@@ -46,9 +39,6 @@ async function startLocalServer() {
   });
 }
 
-/**
- * close server
- */
 if (!process.env.VERCEL) {
   startLocalServer();
 }

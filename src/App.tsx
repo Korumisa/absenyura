@@ -1,50 +1,56 @@
+import { lazy, Suspense, useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
-import { SpeedInsights } from "@vercel/speed-insights/next"
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import Login from "@/pages/Login";
-import Dashboard from "@/pages/Dashboard";
 import Layout from "@/components/Layout";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useAuthStore } from "@/stores/authStore";
 import { useAutoLogout } from "@/hooks/useAutoLogout";
-
-import Users from "@/pages/Users";
-import Classes from "@/pages/Classes";
-import Excuses from "@/pages/Excuses";
-import Locations from "@/pages/Locations";
-import Sessions from "@/pages/Sessions";
-import Reports from "@/pages/Reports";
-import Settings from "@/pages/Settings";
-import AuditLogs from "@/pages/AuditLogs";
-import MasterData from "./pages/MasterData";
-import HistoryPage from "@/pages/History";
-import QRDisplay from "@/pages/QRDisplay";
-import Attend from "@/pages/Attend";
 import ScrollToTop from "@/components/ScrollToTop";
-import PublicSiteProfile from "@/pages/publicSiteAdmin/PublicSiteProfile";
-import PublicSiteStructure from "@/pages/publicSiteAdmin/PublicSiteStructure";
-import PublicSitePrograms from "@/pages/publicSiteAdmin/PublicSitePrograms";
-import PublicSitePosts from "@/pages/publicSiteAdmin/PublicSitePosts";
-import PublicSiteGalleries from "@/pages/publicSiteAdmin/PublicSiteGalleries";
-import PublicSiteRecruitments from "@/pages/publicSiteAdmin/PublicSiteRecruitments";
-import PublicHome from "@/pages/public/PublicHome";
-import Berita from "@/pages/public/Berita";
-import BeritaDetail from "@/pages/public/BeritaDetail";
-import Fungsionaris from "@/pages/public/Fungsionaris";
-import ProgramKerja from "@/pages/public/ProgramKerja";
-import ProgramKerjaDetail from "@/pages/public/ProgramKerjaDetail";
-import InformasiLomba from "@/pages/public/InformasiLomba";
-import Kegiatan from "@/pages/public/Kegiatan";
-import Galeri from "@/pages/public/Galeri";
-import OpenRecruitment from "@/pages/public/OpenRecruitment";
+import PageSkeleton from "@/components/PageSkeleton";
 
 import { ThemeProvider } from "@/providers/theme-provider";
-import { useEffect } from "react";
 import { getOfflineAttendances, deleteOfflineAttendance } from "@/lib/idb";
 import api from "@/services/api";
 import { useAppStatusStore } from "@/stores/appStatusStore";
 import PublicLoadingOverlay from "@/components/PublicLoadingOverlay";
+
+const Login = lazy(() => import("@/pages/Login"));
+const Dashboard = lazy(() => import("@/pages/Dashboard"));
+const Users = lazy(() => import("@/pages/Users"));
+const Classes = lazy(() => import("@/pages/Classes"));
+const Excuses = lazy(() => import("@/pages/Excuses"));
+const Locations = lazy(() => import("@/pages/Locations"));
+const Sessions = lazy(() => import("@/pages/Sessions"));
+const Reports = lazy(() => import("@/pages/Reports"));
+const Settings = lazy(() => import("@/pages/Settings"));
+const AuditLogs = lazy(() => import("@/pages/AuditLogs"));
+const MasterData = lazy(() => import("@/pages/MasterData"));
+const HistoryPage = lazy(() => import("@/pages/History"));
+const QRDisplay = lazy(() => import("@/pages/QRDisplay"));
+const Attend = lazy(() => import("@/pages/Attend"));
+
+const PublicSiteProfile = lazy(() => import("@/pages/publicSiteAdmin/PublicSiteProfile"));
+const PublicSiteStructure = lazy(() => import("@/pages/publicSiteAdmin/PublicSiteStructure"));
+const PublicSitePrograms = lazy(() => import("@/pages/publicSiteAdmin/PublicSitePrograms"));
+const PublicSitePosts = lazy(() => import("@/pages/publicSiteAdmin/PublicSitePosts"));
+const PublicSiteGalleries = lazy(() => import("@/pages/publicSiteAdmin/PublicSiteGalleries"));
+const PublicSiteRecruitments = lazy(() => import("@/pages/publicSiteAdmin/PublicSiteRecruitments"));
+
+const PublicHome = lazy(() => import("@/pages/public/PublicHome"));
+const Berita = lazy(() => import("@/pages/public/Berita"));
+const BeritaDetail = lazy(() => import("@/pages/public/BeritaDetail"));
+const Fungsionaris = lazy(() => import("@/pages/public/Fungsionaris"));
+const ProgramKerja = lazy(() => import("@/pages/public/ProgramKerja"));
+const ProgramKerjaDetail = lazy(() => import("@/pages/public/ProgramKerjaDetail"));
+const InformasiLomba = lazy(() => import("@/pages/public/InformasiLomba"));
+const Kegiatan = lazy(() => import("@/pages/public/Kegiatan"));
+const Galeri = lazy(() => import("@/pages/public/Galeri"));
+const OpenRecruitment = lazy(() => import("@/pages/public/OpenRecruitment"));
+
+function PageSuspense({ children }: { children: React.ReactNode }) {
+  return <Suspense fallback={<PageSkeleton />}>{children}</Suspense>;
+}
 
 export default function App() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -111,7 +117,7 @@ export default function App() {
       try {
         const res = await api.get('/health');
         if (cancelled) return;
-        if (res?.status === 200 && res?.data?.success === true) {
+        if (res?.status === 200 && (res?.data?.status === 'ok' || res?.data?.success === true)) {
           clearMaintenance();
           return;
         }
@@ -157,43 +163,47 @@ export default function App() {
         <Router>
         <ScrollToTop />
         <Routes>
-          <Route path="/" element={isAuthenticated ? <Navigate to={getDefaultRoute()} replace /> : <PublicHome />} />
-          <Route path="/login" element={isAuthenticated ? <Navigate to={getDefaultRoute()} replace /> : <Login />} />
+          <Route path="/" element={isAuthenticated ? <Navigate to={getDefaultRoute()} replace /> : (
+            <PageSuspense><PublicHome /></PageSuspense>
+          )} />
+          <Route path="/login" element={isAuthenticated ? <Navigate to={getDefaultRoute()} replace /> : (
+            <PageSuspense><Login /></PageSuspense>
+          )} />
           
           {/* Public Static Pages */}
-          <Route path="/berita" element={<Berita />} />
-          <Route path="/berita/:slug" element={<BeritaDetail />} />
-          <Route path="/kegiatan" element={<Kegiatan />} />
-          <Route path="/informasi" element={<Kegiatan />} />
-          <Route path="/struktur-organisasi" element={<Fungsionaris />} />
-          <Route path="/program-kerja" element={<ProgramKerja />} />
-          <Route path="/program-kerja/:id" element={<ProgramKerjaDetail />} />
-          <Route path="/informasi-lomba" element={<InformasiLomba />} />
-          <Route path="/galeri" element={<Galeri />} />
-          <Route path="/open-recruitment" element={<OpenRecruitment />} />
+          <Route path="/berita" element={<PageSuspense><Berita /></PageSuspense>} />
+          <Route path="/berita/:slug" element={<PageSuspense><BeritaDetail /></PageSuspense>} />
+          <Route path="/kegiatan" element={<PageSuspense><Kegiatan /></PageSuspense>} />
+          <Route path="/informasi" element={<PageSuspense><Kegiatan /></PageSuspense>} />
+          <Route path="/struktur-organisasi" element={<PageSuspense><Fungsionaris /></PageSuspense>} />
+          <Route path="/program-kerja" element={<PageSuspense><ProgramKerja /></PageSuspense>} />
+          <Route path="/program-kerja/:id" element={<PageSuspense><ProgramKerjaDetail /></PageSuspense>} />
+          <Route path="/informasi-lomba" element={<PageSuspense><InformasiLomba /></PageSuspense>} />
+          <Route path="/galeri" element={<PageSuspense><Galeri /></PageSuspense>} />
+          <Route path="/open-recruitment" element={<PageSuspense><OpenRecruitment /></PageSuspense>} />
           
           <Route element={<ProtectedRoute />}>
             <Route element={<Layout />}>
-              <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'USER']}><Dashboard /></ProtectedRoute>} />
-              <Route path="/sessions" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'USER']}><Sessions /></ProtectedRoute>} />
-              <Route path="/sessions/:id/qr" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}><QRDisplay /></ProtectedRoute>} />
-              <Route path="/attend" element={<ProtectedRoute allowedRoles={['USER']}><Attend /></ProtectedRoute>} />
-              <Route path="/history" element={<ProtectedRoute allowedRoles={['USER']}><HistoryPage /></ProtectedRoute>} />
-              <Route path="/classes" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'USER']}><Classes /></ProtectedRoute>} />
-              <Route path="/excuses" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'USER']}><Excuses /></ProtectedRoute>} />
-              <Route path="/users" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><Users /></ProtectedRoute>} />
-              <Route path="/locations" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}><Locations /></ProtectedRoute>} />
-              <Route path="/reports" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}><Reports /></ProtectedRoute>} />
-              <Route path="/public-site" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'CONTENT_ADMIN']}><Navigate to="/public-site/profile" replace /></ProtectedRoute>} />
-              <Route path="/public-site/profile" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'CONTENT_ADMIN']}><PublicSiteProfile /></ProtectedRoute>} />
-              <Route path="/public-site/structure" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'CONTENT_ADMIN']}><PublicSiteStructure /></ProtectedRoute>} />
-              <Route path="/public-site/programs" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'CONTENT_ADMIN']}><PublicSitePrograms /></ProtectedRoute>} />
-              <Route path="/public-site/posts" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'CONTENT_ADMIN']}><PublicSitePosts /></ProtectedRoute>} />
-              <Route path="/public-site/galleries" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'CONTENT_ADMIN']}><PublicSiteGalleries /></ProtectedRoute>} />
-              <Route path="/public-site/recruitments" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'CONTENT_ADMIN']}><PublicSiteRecruitments /></ProtectedRoute>} />
-              <Route path="/settings" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'USER']}><Settings /></ProtectedRoute>} />
-              <Route path="/master-data" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><MasterData /></ProtectedRoute>} />
-              <Route path="/audit" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><AuditLogs /></ProtectedRoute>} />
+              <Route path="/dashboard" element={<PageSuspense><ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'USER']}><Dashboard /></ProtectedRoute></PageSuspense>} />
+              <Route path="/sessions" element={<PageSuspense><ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'USER']}><Sessions /></ProtectedRoute></PageSuspense>} />
+              <Route path="/sessions/:id/qr" element={<PageSuspense><ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}><QRDisplay /></ProtectedRoute></PageSuspense>} />
+              <Route path="/attend" element={<PageSuspense><ProtectedRoute allowedRoles={['USER']}><Attend /></ProtectedRoute></PageSuspense>} />
+              <Route path="/history" element={<PageSuspense><ProtectedRoute allowedRoles={['USER']}><HistoryPage /></ProtectedRoute></PageSuspense>} />
+              <Route path="/classes" element={<PageSuspense><ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'USER']}><Classes /></ProtectedRoute></PageSuspense>} />
+              <Route path="/excuses" element={<PageSuspense><ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'USER']}><Excuses /></ProtectedRoute></PageSuspense>} />
+              <Route path="/users" element={<PageSuspense><ProtectedRoute allowedRoles={['SUPER_ADMIN']}><Users /></ProtectedRoute></PageSuspense>} />
+              <Route path="/locations" element={<PageSuspense><ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}><Locations /></ProtectedRoute></PageSuspense>} />
+              <Route path="/reports" element={<PageSuspense><ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}><Reports /></ProtectedRoute></PageSuspense>} />
+              <Route path="/public-site" element={<PageSuspense><ProtectedRoute allowedRoles={['SUPER_ADMIN', 'CONTENT_ADMIN']}><Navigate to="/public-site/profile" replace /></ProtectedRoute></PageSuspense>} />
+              <Route path="/public-site/profile" element={<PageSuspense><ProtectedRoute allowedRoles={['SUPER_ADMIN', 'CONTENT_ADMIN']}><PublicSiteProfile /></ProtectedRoute></PageSuspense>} />
+              <Route path="/public-site/structure" element={<PageSuspense><ProtectedRoute allowedRoles={['SUPER_ADMIN', 'CONTENT_ADMIN']}><PublicSiteStructure /></ProtectedRoute></PageSuspense>} />
+              <Route path="/public-site/programs" element={<PageSuspense><ProtectedRoute allowedRoles={['SUPER_ADMIN', 'CONTENT_ADMIN']}><PublicSitePrograms /></ProtectedRoute></PageSuspense>} />
+              <Route path="/public-site/posts" element={<PageSuspense><ProtectedRoute allowedRoles={['SUPER_ADMIN', 'CONTENT_ADMIN']}><PublicSitePosts /></ProtectedRoute></PageSuspense>} />
+              <Route path="/public-site/galleries" element={<PageSuspense><ProtectedRoute allowedRoles={['SUPER_ADMIN', 'CONTENT_ADMIN']}><PublicSiteGalleries /></ProtectedRoute></PageSuspense>} />
+              <Route path="/public-site/recruitments" element={<PageSuspense><ProtectedRoute allowedRoles={['SUPER_ADMIN', 'CONTENT_ADMIN']}><PublicSiteRecruitments /></ProtectedRoute></PageSuspense>} />
+              <Route path="/settings" element={<PageSuspense><ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'USER']}><Settings /></ProtectedRoute></PageSuspense>} />
+              <Route path="/master-data" element={<PageSuspense><ProtectedRoute allowedRoles={['SUPER_ADMIN']}><MasterData /></ProtectedRoute></PageSuspense>} />
+              <Route path="/audit" element={<PageSuspense><ProtectedRoute allowedRoles={['SUPER_ADMIN']}><AuditLogs /></ProtectedRoute></PageSuspense>} />
               {/* Other protected routes go here */}
               <Route path="/other" element={<div className="p-8 text-xl font-medium text-slate-700 dark:text-zinc-300">Other Page - Coming Soon</div>} />
             </Route>

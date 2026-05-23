@@ -1,5 +1,8 @@
 import { Request, Response } from 'express';
 import prisma from '../utils/prisma.js';
+import { sessionCheckInSelect } from '../utils/sessionQuerySelect.js';
+import { validateDynamicQrToken } from '../utils/dynamicQr.js';
+import { logCheckinStep } from '../utils/checkinLogger.js';
 import crypto from 'crypto';
 import fs from 'fs';
 import fsPromises from 'fs/promises';
@@ -89,6 +92,7 @@ export const getChallenge = async (req: Request, res: Response): Promise<void> =
 
 export const checkIn = async (req: Request, res: Response): Promise<void> => {
   let isUploadingInBackground = false;
+  const checkinStart = Date.now();
   try {
     const user_id = (req as any).user.id;
     const { session_id, qr_token, latitude, longitude, accuracy, ip_address, device_fingerprint, nonce, signature } = req.body;
@@ -141,7 +145,7 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
     const [session, lastAttendance, user, existingAttendance] = await Promise.all([
       prisma.session.findUnique({
         where: { id: session_id },
-        include: { location: true, session_classes: { select: { class_id: true } } },
+        select: sessionCheckInSelect,
       }),
       prisma.attendance.findFirst({
         where: {
@@ -151,7 +155,10 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
         },
         orderBy: { check_in_time: 'desc' }
       }),
-      prisma.user.findUnique({ where: { id: user_id } }),
+      prisma.user.findUnique({
+        where: { id: user_id },
+        select: { device_fingerprint: true },
+      }),
       prisma.attendance.findUnique({
         where: {
           session_id_user_id: { session_id, user_id }
@@ -214,46 +221,23 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
           return;
         }
       } else if (session.qr_mode === 'DYNAMIC') {
-        // dynamic QR format: sessionId:timestamp:signature
-        const parts = qr_token.trim().split(':');
-        
-        // Cek jika user secara tidak sengaja men-scan QR Static di kelas Dinamis
-        if (parts.length !== 3) {
-          res.status(400).json({ success: false, error: 'Format QR tidak valid. Pastikan Anda men-scan QR Dinamis yang benar.' });
-          return;
-        }
-
-        const [scannedSessionId, scannedTimestampStr, signature] = parts;
-        const payload = `${scannedSessionId}:${scannedTimestampStr}`;
-
-        if (scannedSessionId !== session.id) {
-          res.status(400).json({ success: false, error: 'QR bukan untuk sesi ini' });
-          return;
-        }
-
         if (!session.qr_secret) {
           res.status(500).json({ success: false, error: 'QR Secret is not configured for this session' });
           return;
         }
-        const hmac = crypto.createHmac('sha256', session.qr_secret);
-        hmac.update(payload);
-        const expectedSignature = hmac.digest('hex');
 
-        if (signature !== expectedSignature) {
-          res.status(400).json({ success: false, error: 'QR Code tidak valid / dimanipulasi' });
-          return;
-        }
-
-        // IMPORTANT: We do not check timestamp expiration strictly if we just scanned it within the grace period.
-        // Dynamic QR refreshes every 15s. We allow up to 60s to account for slow internet uploading photos.
-        const scannedTimestamp = parseInt(scannedTimestampStr, 10);
-        const qrAgeMs = now.getTime() - scannedTimestamp;
-        if (qrAgeMs > 60000) {
-          res.status(400).json({ success: false, error: 'QR Code sudah kedaluwarsa. Silakan scan ulang' });
+        const qrCheck = validateDynamicQrToken(session.id, session.qr_secret, qr_token, now);
+        if (qrCheck.ok === false) {
+          if (qrCheck.error.includes('kedaluwarsa')) {
+            logCheckinStep('qr_expired', session_id, checkinStart, { statusCode: qrCheck.status });
+          }
+          res.status(qrCheck.status).json({ success: false, error: qrCheck.error });
           return;
         }
       }
     }
+
+    logCheckinStep('qr_valid', session_id, checkinStart);
 
     // Layer 2: Geofencing Validation
     const distance = getDistance(
@@ -270,6 +254,8 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
       });
       return;
     }
+
+    logCheckinStep('geo_valid', session_id, checkinStart);
 
     // Layer 3: IP/WiFi Validation (this project stores allowed IPs in wifi_bssid)
     if (session.location.wifi_bssid && session.location.wifi_bssid.trim() !== '') {
@@ -399,22 +385,10 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
       },
     });
 
-    // Emit real-time socket notification to the lecturer's QRDisplay feed
-    try {
-      const { io } = await import('../server.js');
-      if (io) {
-        io.to(`session_${session_id}`).emit('new_attendance', {
-          id: attendance.id,
-          user_name: attendance.user.name,
-          nim_nip: attendance.user.nim_nip,
-          status: attendance.status,
-          check_in_time: attendance.check_in_time,
-          check_out_time: attendance.check_out_time,
-        });
-      }
-    } catch (e) {
-      console.error('[Socket Error] Failed to emit new_attendance:', e);
-    }
+    logCheckinStep('db_insert', session_id, checkinStart, { attendanceId: attendance.id });
+
+    // TODO: ganti dengan Supabase Realtime jika butuh push live feed ke dosen di masa depan.
+    // QRDisplay memakai polling GET /sessions/:id/attendances setiap 5 detik.
 
     if (req.file && req.file.path) {
       isUploadingInBackground = true;
@@ -426,6 +400,7 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
       );
     }
 
+    logCheckinStep('complete', session_id, checkinStart, { status: attendance.status });
     res.status(201).json({ success: true, data: attendance, message: 'Check-in berhasil' });
   } catch (error: any) {
     if (error?.code === 'P2002') {

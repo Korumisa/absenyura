@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { Prisma } from '@prisma/client';
 import prisma from '../utils/prisma.js';
 import { fillChartData, getWibRangeUtc, type ChartRow } from '../utils/dashboardChart.js';
+import { sessionListRelations } from '../utils/sessionQuerySelect.js';
 
 const isMissingSemesterColumn = (err: any) =>
   Boolean(err && err.code === 'P2022' && String(err?.meta?.column || '').includes('Class.semester'));
@@ -46,12 +47,7 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
           },
           orderBy: { session_start: 'asc' },
           take: 5,
-          include: { 
-            location: { select: { name: true } }, 
-            class: { select: { id: true, name: true, semester: true } },
-            session_classes: { include: { class: { select: { id: true, name: true, semester: true } } } },
-            attendances: { where: { user_id: userId } }
-          }
+          include: sessionListRelations({ userId, withSemester: true }),
         });
       } catch (err: any) {
         if (!isMissingSemesterColumn(err)) throw err;
@@ -66,12 +62,7 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
           },
           orderBy: { session_start: 'asc' },
           take: 5,
-          include: { 
-            location: { select: { name: true } }, 
-            class: { select: { id: true, name: true } },
-            session_classes: { include: { class: { select: { id: true, name: true } } } },
-            attendances: { where: { user_id: userId } }
-          }
+          include: sessionListRelations({ userId, withSemester: false }),
         });
       }
 
