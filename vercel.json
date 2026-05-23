@@ -2,7 +2,7 @@
   "version": 2,
   "crons": [
     {
-      "path": "/api/health",
+      "path": "/api/cron/trigger",
       "schedule": "*/5 * * * *"
     }
   ],

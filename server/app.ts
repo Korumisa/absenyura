@@ -16,6 +16,7 @@ import helmet from 'helmet'
 import rateLimit from 'express-rate-limit'
 import { csrfProtect } from './middlewares/csrf.middleware.js'
 import { requestTiming } from './middlewares/requestTiming.middleware.js'
+import { guardInternal, guardCron } from './middlewares/guardInternal.js'
 import prisma from './utils/prisma.js'
 
 import authRoutes from './routes/auth.js'
@@ -81,7 +82,13 @@ app.use(
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'X-Seed-Secret'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-CSRF-Token',
+      'X-Seed-Secret',
+      'X-Internal-Token',
+    ],
     optionsSuccessStatus: 204,
   })
 )
@@ -121,7 +128,10 @@ const apiLimiter = rateLimit({
 
 app.use('/api/auth/login', authLimiter)
 app.use('/api/auth/refresh', authLimiter)
-app.use('/api/', apiLimiter);
+app.use('/api/', apiLimiter)
+
+app.use('/api/cron', guardCron)
+app.use('/api/health', guardInternal)
 
 /**
  * API Routes
