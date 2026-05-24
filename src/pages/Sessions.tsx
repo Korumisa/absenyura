@@ -518,18 +518,12 @@ export default function Sessions() {
               <WizardStepIndicator labels={WIZARD_LABELS} currentStep={wizardStep} />
 
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                <div className={`space-y-4 ${wizardStep === 1 ? '' : 'hidden'}`}>
+                <div className={`grid grid-cols-1 gap-4 sm:grid-cols-2 md:col-span-2 ${wizardStep === 1 ? '' : 'hidden'}`}>
                   <div className="space-y-2">
                     <Label>Judul / Mata Kuliah <span className="text-red-500">*</span></Label>
                     <Input 
                       type="text" required value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})}
                       placeholder="Pemrograman Web Lanjut (A)"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Deskripsi</Label>
-                    <Textarea 
-                      rows={2} value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})}
                     />
                   </div>
                   <div className="space-y-2">
@@ -544,6 +538,12 @@ export default function Sessions() {
                         ))}
                       </SelectContent>
                     </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Deskripsi</Label>
+                    <Textarea 
+                      rows={3} value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>Metode Validasi QR <span className="text-red-500">*</span></Label>

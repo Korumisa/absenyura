@@ -6,25 +6,34 @@ import { toast } from 'sonner';
 import { Building2, BookOpen, Trash2, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import AdminPageShell from '@/components/AdminPageShell';
+import AdminCard from '@/components/AdminCard';
+import { cn } from '@/lib/utils';
 
 export default function MasterData() {
   const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState<'departments' | 'subjects'>('departments');
 
-  // Department Settings
-  const [faculties, setFaculties] = useState<{name: string, departments: string[]}[]>([]);
+  const [faculties, setFaculties] = useState<{ name: string; departments: string[] }[]>([]);
   const [newFaculty, setNewFaculty] = useState('');
   const [newDepartments, setNewDepartments] = useState<Record<number, string>>({});
 
-  // Subject Settings
-  const [subjects, setSubjects] = useState<{code: string, name: string}[]>([]);
+  const [subjects, setSubjects] = useState<{ code: string; name: string }[]>([]);
   const [newSubjectCode, setNewSubjectCode] = useState('');
   const [newSubjectName, setNewSubjectName] = useState('');
 
-  const fetcher = (url: string) => api.get(url).then(res => res.data.data);
+  const fetcher = (url: string) => api.get(url).then((res) => res.data.data);
 
-  const { data: serverFaculties } = useSWR(user?.role === 'SUPER_ADMIN' ? '/settings/departments' : null, fetcher, { revalidateOnFocus: false });
-  const { data: serverSubjects } = useSWR(user?.role === 'SUPER_ADMIN' ? '/settings/subjects' : null, fetcher, { revalidateOnFocus: false });
+  const { data: serverFaculties } = useSWR(
+    user?.role === 'SUPER_ADMIN' ? '/settings/departments' : null,
+    fetcher,
+    { revalidateOnFocus: false },
+  );
+  const { data: serverSubjects } = useSWR(
+    user?.role === 'SUPER_ADMIN' ? '/settings/subjects' : null,
+    fetcher,
+    { revalidateOnFocus: false },
+  );
 
   useEffect(() => {
     if (serverFaculties) setFaculties(serverFaculties);
@@ -38,7 +47,7 @@ export default function MasterData() {
     try {
       await api.post('/settings/departments', { data: faculties });
       toast.success('Data Fakultas & Prodi berhasil disimpan');
-    } catch (error) {
+    } catch {
       toast.error('Gagal menyimpan Fakultas & Prodi');
     }
   };
@@ -47,186 +56,259 @@ export default function MasterData() {
     try {
       await api.post('/settings/subjects', { data: subjects });
       toast.success('Data Mata Kuliah berhasil disimpan');
-    } catch (error) {
+    } catch {
       toast.error('Gagal menyimpan Mata Kuliah');
     }
   };
 
   if (user?.role !== 'SUPER_ADMIN') {
-    return <div className="p-8 text-center text-slate-500">Anda tidak memiliki akses ke halaman ini.</div>;
+    return (
+      <AdminPageShell title="Master Data" description="Halaman ini hanya untuk Super Admin." variant="plain">
+        <p className="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-500 dark:border-zinc-800 dark:bg-zinc-900">
+          Anda tidak memiliki akses ke halaman ini.
+        </p>
+      </AdminPageShell>
+    );
   }
 
+  const tabBtn = (id: typeof activeTab, label: string, Icon: typeof Building2) => (
+    <Button
+      type="button"
+      variant="ghost"
+      onClick={() => setActiveTab(id)}
+      className={cn(
+        'w-full justify-start min-h-11',
+        activeTab === id
+          ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400'
+          : 'text-slate-600 dark:text-slate-400',
+      )}
+    >
+      <Icon className="mr-3 h-5 w-5" />
+      {label}
+    </Button>
+  );
+
   return (
-    <div className="p-6 max-w-5xl mx-auto">
-      <h1 className="text-2xl font-bold text-slate-800 dark:text-white mb-6">Kelola Master Data</h1>
-
-      <div className="flex flex-col md:flex-row gap-6">
-        <div className="w-full md:w-64 shrink-0">
-          <div className="bg-white dark:bg-zinc-900 rounded-xl border border-slate-200 dark:border-zinc-800 p-2 flex flex-col gap-1 shadow-sm">
-            <Button 
-              variant="ghost" 
-              onClick={() => setActiveTab('departments')}
-              className={`w-full justify-start ${activeTab === 'departments' ? 'text-indigo-700 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-800'}`}
-            >
-              <Building2 className="w-5 h-5 mr-3" /> Fakultas & Prodi
-            </Button>
-            <Button 
-              variant="ghost" 
-              onClick={() => setActiveTab('subjects')}
-              className={`w-full justify-start ${activeTab === 'subjects' ? 'text-indigo-700 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-800'}`}
-            >
-              <BookOpen className="w-5 h-5 mr-3" /> Mata Kuliah
-            </Button>
+    <AdminPageShell
+      title="Fakultas, Prodi & Mata Kuliah"
+      description="Kelola hierarki fakultas/program studi dan daftar mata kuliah untuk sesi absensi."
+      variant="plain"
+      icon={<Building2 className="h-5 w-5" />}
+    >
+      <div className="flex flex-col gap-6 lg:flex-row">
+        <aside className="w-full shrink-0 lg:w-56">
+          <div className="flex flex-row gap-1 rounded-xl border border-slate-200 bg-white p-2 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 lg:flex-col">
+            {tabBtn('departments', 'Fakultas & Prodi', Building2)}
+            {tabBtn('subjects', 'Mata Kuliah', BookOpen)}
           </div>
-        </div>
+        </aside>
 
-        <div className="flex-1">
-          {activeTab === 'departments' && (
-            <div className="bg-white dark:bg-zinc-800 rounded-xl border border-slate-200 dark:border-zinc-700 shadow-sm p-6">
-              <div className="flex justify-between items-center mb-6">
-                <div>
-                  <h2 className="text-lg font-bold text-slate-800 dark:text-white">Manajemen Fakultas & Prodi</h2>
-                  <p className="text-sm text-slate-500">Atur hierarki fakultas dan program studi untuk pengguna.</p>
-                </div>
-                <Button onClick={handleSaveDepartments}>Simpan Data</Button>
-              </div>
-
-              <div className="space-y-6">
+        <div className="min-w-0 flex-1">
+          {activeTab === 'departments' ? (
+            <AdminCard
+              title="Manajemen Fakultas & Prodi"
+              description="Atur hierarki fakultas dan program studi untuk profil pengguna."
+              actions={
+                <Button type="button" className="min-h-11" onClick={handleSaveDepartments}>
+                  Simpan data
+                </Button>
+              }
+            >
+              <div className="space-y-4">
                 {faculties.map((faculty, index) => {
                   if (!faculty) return null;
+                  const facultyName =
+                    typeof faculty.name === 'object' && faculty.name !== null
+                      ? ((faculty.name as { name?: string; id?: string }).name ||
+                          (faculty.name as { id?: string }).id)
+                      : faculty.name;
+
                   return (
-                  <div key={index} className="border border-slate-200 dark:border-zinc-700 rounded-xl p-4 bg-slate-50 dark:bg-zinc-900/50">
-                    <div className="flex justify-between items-center mb-4">
-                      <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                        <Building2 className="w-4 h-4 text-indigo-500" />
-                        {typeof faculty.name === 'object' && faculty.name !== null ? ((faculty.name as any).name || (faculty.name as any).id) : faculty.name}
-                      </h3>
-                      <Button variant="ghost" size="sm" className="text-red-500" onClick={() => {
-                        setFaculties(faculties.filter((_, i) => i !== index));
-                      }}>
-                        Hapus Fakultas
-                      </Button>
-                    </div>
-
-                    <div className="pl-6 space-y-3">
-                      {faculty.departments?.map((dept, dIndex) => {
-                        const deptName = typeof dept === 'object' && dept !== null ? ((dept as any).name || (dept as any).id) : dept;
-                        return (
-                        <div key={dIndex} className="flex justify-between items-center bg-white dark:bg-zinc-800 p-2 px-3 rounded-lg border border-slate-200 dark:border-zinc-700">
-                          <span className="text-sm text-slate-700 dark:text-zinc-300">{deptName}</span>
-                          <Button variant="ghost" size="icon" onClick={() => {
-                            const newFacs = [...faculties];
-                            newFacs[index].departments = newFacs[index].departments.filter((_, i) => i !== dIndex);
-                            setFaculties(newFacs);
-                          }} className="text-slate-400 hover:text-red-500 h-6 w-6">
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      )})}
-
-                      <div className="flex gap-2 mt-2">
-                        <Input 
-                          size={1}
-                          placeholder="Tambah Prodi Baru..." 
-                          className="h-8 text-sm"
-                          value={newDepartments[index] || ''}
-                          onChange={e => setNewDepartments({...newDepartments, [index]: e.target.value})}
-                          onKeyDown={e => {
-                            if (e.key === 'Enter' && newDepartments[index]) {
-                              e.preventDefault();
-                              const newFacs = [...faculties];
-                              newFacs[index].departments.push(newDepartments[index]);
-                              setFaculties(newFacs);
-                              setNewDepartments({...newDepartments, [index]: ''});
-                            }
-                          }}
-                        />
-                        <Button 
-                          size="sm" 
-                          variant="secondary"
-                          onClick={() => {
-                            if (newDepartments[index]) {
-                              const newFacs = [...faculties];
-                              newFacs[index].departments.push(newDepartments[index]);
-                              setFaculties(newFacs);
-                              setNewDepartments({...newDepartments, [index]: ''});
-                            }
-                          }}
+                    <div
+                      key={index}
+                      className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 dark:border-zinc-700 dark:bg-zinc-900/50"
+                    >
+                      <div className="mb-4 flex items-center justify-between gap-2">
+                        <h3 className="flex items-center gap-2 font-bold text-slate-800 dark:text-white">
+                          <Building2 className="h-4 w-4 text-indigo-500" />
+                          {facultyName}
+                        </h3>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="text-red-500"
+                          onClick={() => setFaculties(faculties.filter((_, i) => i !== index))}
                         >
-                          <Plus className="w-4 h-4" />
+                          Hapus fakultas
                         </Button>
                       </div>
+
+                      <div className="space-y-2 border-l-2 border-indigo-200 pl-4 dark:border-indigo-900">
+                        {faculty.departments?.map((dept, dIndex) => {
+                          const deptName =
+                            typeof dept === 'object' && dept !== null
+                              ? ((dept as { name?: string; id?: string }).name ||
+                                  (dept as { id?: string }).id)
+                              : dept;
+                          return (
+                            <div
+                              key={dIndex}
+                              className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800"
+                            >
+                              <span className="text-sm text-slate-700 dark:text-zinc-300">{deptName}</span>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-slate-400 hover:text-red-500"
+                                onClick={() => {
+                                  const newFacs = [...faculties];
+                                  newFacs[index].departments = newFacs[index].departments.filter(
+                                    (_, i) => i !== dIndex,
+                                  );
+                                  setFaculties(newFacs);
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          );
+                        })}
+
+                        <div className="flex gap-2 pt-1">
+                          <Input
+                            placeholder="Nama prodi baru…"
+                            className="h-9 text-sm"
+                            value={newDepartments[index] || ''}
+                            onChange={(e) =>
+                              setNewDepartments({ ...newDepartments, [index]: e.target.value })
+                            }
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && newDepartments[index]) {
+                                e.preventDefault();
+                                const newFacs = [...faculties];
+                                newFacs[index].departments.push(newDepartments[index]);
+                                setFaculties(newFacs);
+                                setNewDepartments({ ...newDepartments, [index]: '' });
+                              }
+                            }}
+                          />
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => {
+                              if (newDepartments[index]) {
+                                const newFacs = [...faculties];
+                                newFacs[index].departments.push(newDepartments[index]);
+                                setFaculties(newFacs);
+                                setNewDepartments({ ...newDepartments, [index]: '' });
+                              }
+                            }}
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                )})}
+                  );
+                })}
 
-                <div className="flex gap-2 pt-4 border-t border-slate-200 dark:border-zinc-700">
-                  <Input 
-                    placeholder="Nama Fakultas Baru..." 
+                <div className="flex flex-col gap-2 border-t border-slate-200 pt-4 dark:border-zinc-700 sm:flex-row">
+                  <Input
+                    placeholder="Nama fakultas baru…"
                     value={newFaculty}
-                    onChange={e => setNewFaculty(e.target.value)}
+                    onChange={(e) => setNewFaculty(e.target.value)}
                   />
-                  <Button variant="outline" onClick={() => {
-                    if (newFaculty) {
-                      setFaculties([...faculties, { name: newFaculty, departments: [] }]);
-                      setNewFaculty('');
-                    }
-                  }}>Tambah Fakultas</Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="shrink-0"
+                    onClick={() => {
+                      if (newFaculty) {
+                        setFaculties([...faculties, { name: newFaculty, departments: [] }]);
+                        setNewFaculty('');
+                      }
+                    }}
+                  >
+                    Tambah fakultas
+                  </Button>
                 </div>
               </div>
-            </div>
-          )}
-
-          {activeTab === 'subjects' && (
-            <div className="bg-white dark:bg-zinc-800 rounded-xl border border-slate-200 dark:border-zinc-700 shadow-sm p-6">
-              <div className="flex justify-between items-center mb-6">
-                <div>
-                  <h2 className="text-lg font-bold text-slate-800 dark:text-white">Manajemen Mata Kuliah</h2>
-                  <p className="text-sm text-slate-500">Daftar ini akan muncul sebagai pilihan saat Admin menambahkan kelas baru.</p>
-                </div>
-                <Button onClick={handleSaveSubjects}>Simpan Data</Button>
-              </div>
-
-              <div className="space-y-4">
+            </AdminCard>
+          ) : (
+            <AdminCard
+              title="Manajemen Mata Kuliah"
+              description="Daftar ini muncul saat admin membuat sesi kehadiran baru."
+              actions={
+                <Button type="button" className="min-h-11" onClick={handleSaveSubjects}>
+                  Simpan data
+                </Button>
+              }
+            >
+              <div className="space-y-3">
                 {subjects.map((subject, index) => (
-                  <div key={index} className="flex justify-between items-center p-3 border border-slate-200 dark:border-zinc-700 rounded-lg">
+                  <div
+                    key={index}
+                    className="flex items-center justify-between rounded-lg border border-slate-200 p-3 dark:border-zinc-700"
+                  >
                     <div>
-                      <span className="font-semibold font-mono text-sm text-indigo-600 dark:text-indigo-400 mr-2">{subject.code}</span>
+                      <span className="mr-2 font-mono text-sm font-semibold text-indigo-600 dark:text-indigo-400">
+                        {subject.code}
+                      </span>
                       <span className="text-slate-800 dark:text-white">{subject.name}</span>
                     </div>
-                    <Button variant="ghost" size="sm" className="text-red-500" onClick={() => setSubjects(subjects.filter((_, i) => i !== index))}>
-                      <Trash2 className="w-4 h-4" />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-500"
+                      onClick={() => setSubjects(subjects.filter((_, i) => i !== index))}
+                    >
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 ))}
 
-                <div className="flex gap-2 pt-4 border-t border-slate-200 dark:border-zinc-700">
-                  <Input 
-                    placeholder="Kode MK (Maks 10 char)" 
-                    className="w-1/3"
+                <div className="flex flex-col gap-2 border-t border-slate-200 pt-4 dark:border-zinc-700 sm:flex-row">
+                  <Input
+                    placeholder="Kode MK"
+                    className="sm:w-32"
                     maxLength={10}
                     value={newSubjectCode}
-                    onChange={e => setNewSubjectCode(e.target.value.toUpperCase())}
+                    onChange={(e) => setNewSubjectCode(e.target.value.toUpperCase())}
                   />
-                  <Input 
-                    placeholder="Nama Mata Kuliah Baru..." 
-                    className="w-2/3"
+                  <Input
+                    placeholder="Nama mata kuliah…"
+                    className="flex-1"
                     value={newSubjectName}
-                    onChange={e => setNewSubjectName(e.target.value)}
+                    onChange={(e) => setNewSubjectName(e.target.value)}
                   />
-                  <Button variant="outline" onClick={() => {
-                    if (newSubjectName && newSubjectCode && !subjects.some(s => s.code === newSubjectCode)) {
-                      setSubjects([...subjects, { code: newSubjectCode, name: newSubjectName }]);
-                      setNewSubjectCode('');
-                      setNewSubjectName('');
-                    }
-                  }}>Tambah</Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="shrink-0"
+                    onClick={() => {
+                      if (
+                        newSubjectName &&
+                        newSubjectCode &&
+                        !subjects.some((s) => s.code === newSubjectCode)
+                      ) {
+                        setSubjects([...subjects, { code: newSubjectCode, name: newSubjectName }]);
+                        setNewSubjectCode('');
+                        setNewSubjectName('');
+                      }
+                    }}
+                  >
+                    Tambah
+                  </Button>
                 </div>
               </div>
-            </div>
+            </AdminCard>
           )}
         </div>
       </div>
-    </div>
+    </AdminPageShell>
   );
 }

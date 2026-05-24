@@ -19,6 +19,7 @@ import { formatClassLabel } from '@/lib/classLabel';
 import AdminPageShell from '@/components/AdminPageShell';
 import { MobileTableHint } from '@/components/ui/MobileTableHint';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ErrorWithRetry } from '@/components/ErrorWithRetry';
 import { excuseStatusLabel } from '@/lib/sessionStatusLabel';
 
 export default function Excuses() {
@@ -224,6 +225,14 @@ export default function Excuses() {
         </div>
       }
     >
+      {error ? (
+        <ErrorWithRetry
+          title="Gagal memuat pengajuan izin"
+          error={error}
+          onRetry={() => mutate()}
+          className="mb-6"
+        />
+      ) : null}
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
         <div className="p-4 border-b border-slate-200 dark:border-zinc-800 flex flex-col sm:flex-row gap-4">
           <div className="relative max-w-md flex-1">
@@ -313,6 +322,7 @@ export default function Excuses() {
               ))}
         </ul>
 
+        <MobileTableHint />
         <div className="hidden overflow-x-auto md:block">
           <Table>
             <TableHeader className="bg-slate-50 dark:bg-zinc-950/50">

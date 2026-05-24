@@ -4,6 +4,8 @@ import { Plus, Edit2, Trash2, Search, X, MapPin, LocateFixed } from 'lucide-reac
 import { toast } from 'sonner';
 import { MapContainer, TileLayer, Marker, Circle, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import { MapResizeOnOpen } from '@/components/MapResizeOnOpen';
 import useSWR from 'swr';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -419,10 +421,12 @@ export default function Locations() {
               
               <div className="flex h-64 min-h-[280px] flex-col md:h-[400px] md:w-1/2">
                 <div className="location-map-panel relative isolate z-0 min-h-[280px] flex-1 overflow-hidden bg-slate-100 dark:bg-zinc-900">
+                  {isModalOpen ? (
                   <MapContainer 
+                    key={editingLocation?.id ?? 'new-location'}
                     center={mapCenter} 
                     zoom={16} 
-                    style={{ height: '100%', width: '100%' }}
+                    style={{ height: '100%', width: '100%', minHeight: 280 }}
                     scrollWheelZoom={true}
                   >
                     <TileLayer
@@ -436,7 +440,9 @@ export default function Locations() {
                       pathOptions={{ color: 'indigo', fillColor: 'indigo', fillOpacity: 0.2 }}
                     />
                     <MapEvents />
+                    <MapResizeOnOpen when={isModalOpen} />
                   </MapContainer>
+                  ) : null}
 
                   {/* Geolocation Button overlay */}
                   <Button

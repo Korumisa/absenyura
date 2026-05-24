@@ -43,6 +43,15 @@ export default function Dashboard() {
     return sessions.find((s: { status?: string }) => s.status === 'ACTIVE') ?? null;
   }, [data?.recent_sessions]);
 
+  const chartData = data?.chart_data ?? [];
+  const chartPointCount = chartData.length;
+  const chartStacked = chartFilter === 'ALL';
+  const chartBarSize = useMemo(() => {
+    if (chartPointCount > 60) return 10;
+    if (chartPointCount > 30) return 14;
+    return 22;
+  }, [chartPointCount]);
+
   if (loading && !data) {
     return (
       <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-8">
@@ -429,41 +438,89 @@ export default function Dashboard() {
                   </div>
                 ) : null}
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={data?.chart_data} margin={{ top: 5, right: 12, left: 0, bottom: 8 }}>
+                  <BarChart
+                    data={chartData}
+                    margin={{ top: 8, right: 12, left: 4, bottom: 8 }}
+                    barCategoryGap={chartStacked ? '18%' : '24%'}
+                    barGap={chartStacked ? 2 : 4}
+                  >
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" opacity={0.5} />
                     <XAxis 
                       dataKey="date" 
                       tickFormatter={(val) => format(new Date(val), 'dd MMM', { locale: id })}
                       axisLine={false}
                       tickLine={false}
-                      tick={{ fill: '#64748b', fontSize: 12, fontWeight: 500 }}
+                      tick={{ fill: '#64748b', fontSize: 11, fontWeight: 500 }}
+                      interval={chartPointCount > 20 ? Math.floor(chartPointCount / 10) : 0}
                       dy={10}
                     />
                     <YAxis 
+                      allowDecimals={false}
                       axisLine={false}
                       tickLine={false}
                       tick={{ fill: '#64748b', fontSize: 12, fontWeight: 500 }}
+                      width={36}
                     />
                     <Tooltip 
                       contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                       labelFormatter={(val) => val ? format(new Date(val as string), 'dd MMMM yyyy', { locale: id }) : ''}
                       labelStyle={{ fontWeight: 'bold', color: '#1e293b', marginBottom: '4px' }}
                     />
-                    <Legend verticalAlign="bottom" height={24} />
+                    <Legend verticalAlign="bottom" height={28} />
                     {(chartFilter === 'ALL' || chartFilter === 'PRESENT') && (
-                      <Bar dataKey="present" name="Hadir" fill="#16a34a" radius={[6, 6, 0, 0]} />
+                      <Bar
+                        dataKey="present"
+                        name="Hadir"
+                        fill="#16a34a"
+                        stackId={chartStacked ? 'kehadiran' : undefined}
+                        barSize={chartBarSize}
+                        minPointSize={4}
+                        radius={chartStacked ? [0, 0, 0, 0] : [6, 6, 0, 0]}
+                      />
                     )}
                     {(chartFilter === 'ALL' || chartFilter === 'LATE') && (
-                      <Bar dataKey="late" name="Terlambat" fill="#f59e0b" radius={[6, 6, 0, 0]} />
+                      <Bar
+                        dataKey="late"
+                        name="Terlambat"
+                        fill="#f59e0b"
+                        stackId={chartStacked ? 'kehadiran' : undefined}
+                        barSize={chartBarSize}
+                        minPointSize={4}
+                        radius={chartStacked ? [0, 0, 0, 0] : [6, 6, 0, 0]}
+                      />
                     )}
                     {(chartFilter === 'ALL' || chartFilter === 'SICK_EXCUSED') && (
-                      <Bar dataKey="sick" name="Sakit" fill="#64748b" radius={[6, 6, 0, 0]} />
+                      <Bar
+                        dataKey="sick"
+                        name="Sakit"
+                        fill="#64748b"
+                        stackId={chartStacked ? 'kehadiran' : undefined}
+                        barSize={chartBarSize}
+                        minPointSize={4}
+                        radius={chartStacked ? [0, 0, 0, 0] : [6, 6, 0, 0]}
+                      />
                     )}
                     {(chartFilter === 'ALL' || chartFilter === 'SICK_EXCUSED') && (
-                      <Bar dataKey="excused" name="Izin" fill="#6366f1" radius={[6, 6, 0, 0]} />
+                      <Bar
+                        dataKey="excused"
+                        name="Izin"
+                        fill="#6366f1"
+                        stackId={chartStacked ? 'kehadiran' : undefined}
+                        barSize={chartBarSize}
+                        minPointSize={4}
+                        radius={chartStacked ? [0, 0, 0, 0] : [6, 6, 0, 0]}
+                      />
                     )}
                     {(chartFilter === 'ALL' || chartFilter === 'ABSENT') && (
-                      <Bar dataKey="absent" name="Alfa" fill="#ef4444" radius={[6, 6, 0, 0]} />
+                      <Bar
+                        dataKey="absent"
+                        name="Alfa"
+                        fill="#ef4444"
+                        stackId={chartStacked ? 'kehadiran' : undefined}
+                        barSize={chartBarSize}
+                        minPointSize={4}
+                        radius={chartStacked ? [6, 6, 0, 0] : [6, 6, 0, 0]}
+                      />
                     )}
                   </BarChart>
                 </ResponsiveContainer>

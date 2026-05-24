@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '@/services/api';
-import { Search, Activity, Calendar, Shield, Database, Trash2 } from 'lucide-react';
+import { Search, Activity, Calendar, Shield, Database, Trash2, LogIn, User } from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { Input } from '@/components/ui/input';
@@ -8,66 +8,89 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import AdminPageShell from '@/components/AdminPageShell';
+import { ErrorWithRetry } from '@/components/ErrorWithRetry';
+import { MobileTableHint } from '@/components/ui/MobileTableHint';
 import type { AuditLog } from '@/types/audit';
 import type { PaginationMeta } from '@/types/common';
+import {
+  formatAuditDetail,
+  getAuditActionLabel,
+  getAuditActionVariant,
+  getAuditTableLabel,
+} from '@/lib/auditActionLabel';
 
 export default function AuditLogs() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<unknown>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  
+
   const [page, setPage] = useState(1);
   const [meta, setMeta] = useState<PaginationMeta | null>(null);
 
-  useEffect(() => {
-    const fetchLogs = async () => {
-      setLoading(true);
-      try {
-        const res = await api.get(`/audit-logs?page=${page}&limit=20`);
-        setLogs(res.data.data);
-        setMeta(res.data.meta);
-      } catch (error) {
-        console.error('Failed to fetch logs');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchLogs();
-  }, [page]);
-
-  const getActionColor = (action: string) => {
-    if (action.includes('CREATE')) return 'success';
-    if (action.includes('UPDATE')) return 'warning';
-    if (action.includes('DELETE')) return 'destructive';
-    return 'default';
+  const loadLogs = async () => {
+    setLoading(true);
+    setFetchError(null);
+    try {
+      const res = await api.get(`/audit-logs?page=${page}&limit=20`);
+      setLogs(res.data.data);
+      setMeta(res.data.meta);
+    } catch (error) {
+      setFetchError(error);
+      setLogs([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
+  useEffect(() => {
+    loadLogs();
+  }, [page]);
+
   const getActionIcon = (action: string) => {
-    if (action.includes('CREATE')) return <Database size={16} />;
-    if (action.includes('UPDATE')) return <Activity size={16} />;
-    if (action.includes('DELETE')) return <Trash2 size={16} />;
+    const upper = action.toUpperCase();
+    if (upper.includes('LOGIN')) return <LogIn size={16} />;
+    if (upper.includes('CREATE') || upper.includes('IMPORT')) return <Database size={16} />;
+    if (upper.includes('UPDATE') || upper.includes('OVERRIDE')) return <Activity size={16} />;
+    if (upper.includes('DELETE')) return <Trash2 size={16} />;
     return <Shield size={16} />;
   };
 
-  const filteredLogs = logs.filter(log => 
-    log.action.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    (log.target_table && log.target_table.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  const filteredLogs = logs.filter((log) => {
+    const label = getAuditActionLabel(log.action).toLowerCase();
+    const q = searchTerm.toLowerCase();
+    return (
+      log.action.toLowerCase().includes(q) ||
+      label.includes(q) ||
+      (log.target_table && log.target_table.toLowerCase().includes(q)) ||
+      (log.actor_id && log.actor_id.toLowerCase().includes(q)) ||
+      (log.ip_address && log.ip_address.includes(q))
+    );
+  });
 
   return (
     <AdminPageShell
       title="Audit Log Sistem"
-      description="Jejak rekaman aktivitas pengguna dan perubahan data dalam sistem."
+      description="Jejak aktivitas penting: masuk sistem, perubahan pengguna, dan penyesuaian kehadiran."
       variant="plain"
       icon={<Shield className="h-5 w-5" />}
     >
-      <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-800 overflow-hidden">
-        <div className="p-4 border-b border-slate-200 dark:border-zinc-800">
+      {fetchError ? (
+        <ErrorWithRetry
+          title="Gagal memuat audit log"
+          error={fetchError}
+          onRetry={loadLogs}
+          className="mb-6"
+        />
+      ) : null}
+
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="border-b border-slate-200 p-4 dark:border-zinc-800">
           <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-            <Input 
-              type="text" 
-              placeholder="Cari aktivitas atau tabel target..." 
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Input
+              type="text"
+              placeholder="Cari aktivitas, tabel, ID pengguna, atau IP..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-9"
@@ -75,63 +98,107 @@ export default function AuditLogs() {
           </div>
         </div>
 
+        <MobileTableHint />
+
         <div className="overflow-x-auto">
           <Table>
             <TableHeader className="bg-slate-50 dark:bg-zinc-950/50">
               <TableRow>
                 <TableHead>Aktivitas</TableHead>
-                <TableHead>Tabel Target</TableHead>
-                <TableHead>ID Aktor</TableHead>
-                <TableHead>Alamat IP</TableHead>
-                <TableHead>Waktu Kejadian</TableHead>
+                <TableHead>Target</TableHead>
+                <TableHead>Pengguna</TableHead>
+                <TableHead>Detail</TableHead>
+                <TableHead>IP</TableHead>
+                <TableHead>Waktu</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={5} className="h-24 text-center text-slate-500">Memuat data...</TableCell></TableRow>
+                <TableRow>
+                  <TableCell colSpan={6} className="h-24 text-center text-slate-500">
+                    Memuat data...
+                  </TableCell>
+                </TableRow>
               ) : filteredLogs.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="h-24 text-center text-slate-500">Tidak ada data ditemukan.</TableCell></TableRow>
+                <TableRow>
+                  <TableCell colSpan={6} className="h-24 text-center text-slate-500">
+                    {searchTerm ? 'Tidak ada log yang cocok dengan pencarian.' : 'Belum ada aktivitas tercatat.'}
+                  </TableCell>
+                </TableRow>
               ) : (
-                filteredLogs.map((log) => (
-                  <TableRow key={log.id}>
-                    <TableCell>
-                      <Badge variant={getActionColor(log.action) as any} className="gap-1.5">
-                        {getActionIcon(log.action)}
-                        {log.action}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="font-medium text-slate-700 dark:text-zinc-300">
-                      {log.target_table || '-'}
-                    </TableCell>
-                    <TableCell className="text-slate-500 dark:text-zinc-400 font-mono text-sm">
-                      {log.actor_id || 'System'}
-                    </TableCell>
-                    <TableCell className="text-slate-500 dark:text-zinc-400 font-mono text-sm">
-                      {log.ip_address || '-'}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-zinc-300">
-                        <Calendar size={14} />
-                        {format(new Date(log.created_at), 'dd MMM yyyy HH:mm:ss', { locale: id })}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
+                filteredLogs.map((log) => {
+                  const detail = formatAuditDetail(log);
+                  return (
+                    <TableRow key={log.id}>
+                      <TableCell>
+                        <Badge
+                          variant={getAuditActionVariant(log.action) as 'default' | 'destructive' | 'secondary'}
+                          className="gap-1.5 font-normal"
+                        >
+                          {getActionIcon(log.action)}
+                          {getAuditActionLabel(log.action)}
+                        </Badge>
+                        <p className="mt-1 font-mono text-[10px] text-slate-400">{log.action}</p>
+                      </TableCell>
+                      <TableCell>
+                        <p className="font-medium text-slate-700 dark:text-zinc-300">
+                          {getAuditTableLabel(log.target_table)}
+                        </p>
+                        {log.target_id ? (
+                          <p className="mt-0.5 truncate font-mono text-xs text-slate-400" title={log.target_id}>
+                            {log.target_id.slice(0, 8)}…
+                          </p>
+                        ) : null}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-zinc-300">
+                          <User size={14} className="shrink-0 text-slate-400" />
+                          {log.actor_id ? (
+                            <span className="font-mono text-xs" title={log.actor_id}>
+                              {log.actor_id.slice(0, 8)}…
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">Sistem</span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="max-w-[200px] text-sm text-slate-600 dark:text-zinc-400">
+                        {detail ?? '—'}
+                      </TableCell>
+                      <TableCell className="font-mono text-sm text-slate-500 dark:text-zinc-400">
+                        {log.ip_address || '—'}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-zinc-300">
+                          <Calendar size={14} className="shrink-0 text-slate-400" />
+                          <span>
+                            {format(new Date(log.created_at), 'dd MMM yyyy', { locale: id })}
+                            <br />
+                            <span className="text-xs text-slate-400">
+                              {format(new Date(log.created_at), 'HH:mm:ss')}
+                            </span>
+                          </span>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
         </div>
-        
-        {meta && meta.totalPages > 1 && (
-          <div className="flex items-center justify-between p-4 border-t border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800/50">
+
+        {meta && meta.totalPages > 1 ? (
+          <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50 p-4 dark:border-zinc-700 dark:bg-zinc-800/50">
             <span className="text-sm text-slate-500 dark:text-zinc-400">
-              Menampilkan {((meta.page - 1) * meta.limit) + 1} - {Math.min(meta.page * meta.limit, meta.total)} dari {meta.total} log
+              Menampilkan {(meta.page - 1) * meta.limit + 1}–{Math.min(meta.page * meta.limit, meta.total)} dari{' '}
+              {meta.total} log
             </span>
             <div className="flex gap-2">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setPage(p => Math.max(1, p - 1))}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
               >
                 Sebelumnya
@@ -139,14 +206,14 @@ export default function AuditLogs() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setPage(p => Math.min(meta.totalPages, p + 1))}
+                onClick={() => setPage((p) => Math.min(meta.totalPages, p + 1))}
                 disabled={page === meta.totalPages}
               >
                 Selanjutnya
               </Button>
             </div>
           </div>
-        )}
+        ) : null}
       </div>
     </AdminPageShell>
   );

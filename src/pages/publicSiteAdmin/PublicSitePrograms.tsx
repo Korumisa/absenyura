@@ -134,7 +134,7 @@ export default function PublicSitePrograms() {
             }
           >
             <AdminCard title={form.id ? 'Ubah program' : 'Program baru'} description="Isi detail program kerja.">
-            <form onSubmit={upsert} className="mx-auto max-w-2xl space-y-4">
+            <form onSubmit={upsert} className="space-y-4">
               <div className="space-y-2">
                 <Label>Judul</Label>
                 <Input value={form.title ?? ''} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} />

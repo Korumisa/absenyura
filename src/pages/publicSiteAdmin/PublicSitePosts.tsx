@@ -284,7 +284,7 @@ export default function PublicSitePosts() {
               title={postForm.id ? `Ubah ${typeLabel}` : `Tulis ${typeLabel}`}
               description="Isi form lalu simpan. Pratinjau tampilan publik ada di samping."
             >
-              <form onSubmit={upsertPost} className="mx-auto max-w-2xl space-y-4">
+              <form onSubmit={upsertPost} className="space-y-4">
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-slate-500">Jenis:</span>
                   <Badge variant="secondary">{typeLabel}</Badge>

@@ -139,7 +139,7 @@ export default function PublicSiteGalleries() {
             }
           >
           <AdminCard title={form.id ? 'Ubah album' : 'Album baru'} description="Judul, foto, dan status publikasi.">
-            <form onSubmit={upsert} className="mx-auto max-w-2xl space-y-4">
+            <form onSubmit={upsert} className="space-y-4">
               <div className="space-y-2 md:col-span-2">
                 <Label>Judul Album</Label>
                 <Input value={form.title ?? ''} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} />

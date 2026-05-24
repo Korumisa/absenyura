@@ -1,4 +1,19 @@
+export function getChunkLoadUserMessage(err: unknown): string | null {
+  const msg = err instanceof Error ? err.message : String(err ?? '');
+  if (
+    msg.includes('Failed to fetch dynamically imported module') ||
+    msg.includes('Importing a module script failed') ||
+    msg.includes('dynamically imported module')
+  ) {
+    return 'Versi aplikasi di perangkat Anda sudah usang (biasanya setelah pembaruan situs). Muat ulang halaman untuk memuat file terbaru.';
+  }
+  return null;
+}
+
 export function getErrorMessage(err: any, fallback: string) {
+  const chunkMsg = getChunkLoadUserMessage(err);
+  if (chunkMsg) return chunkMsg;
+
   const status = err?.response?.status;
   const url = String(err?.response?.config?.url || '');
   const method = String(err?.response?.config?.method || '').toUpperCase();
