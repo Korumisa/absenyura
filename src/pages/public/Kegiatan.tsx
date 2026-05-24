@@ -10,10 +10,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import PublicEnter from '@/components/PublicEnter';
 import PublicReveal from '@/components/PublicReveal';
 import PublicPageHero from '@/components/PublicPageHero';
-import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 import PublicCoverImage from '@/components/PublicCoverImage';
 import useLockBodyScroll from '@/lib/useLockBodyScroll';
-import useFirstLoadOverlay from '@/lib/useFirstLoadOverlay';
 import { motion } from 'framer-motion';
 import { useReducedMotion } from '@/lib/useReducedMotion';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
@@ -56,7 +54,6 @@ export default function Kegiatan() {
 
   const selected = useMemo(() => (paged?.items ?? []).find((e) => e.id === openId) ?? null, [paged?.items, openId]);
   useLockBodyScroll(Boolean(selected));
-  const showLoading = useFirstLoadOverlay(isLoading);
   const reducedMotion = useReducedMotion();
 
   if (isError) {
@@ -65,7 +62,6 @@ export default function Kegiatan() {
 
   return (
     <PublicLayout>
-      <PublicLoadingOverlay show={showLoading} />
       <PublicEnter>
         <PublicPageHero
           top="Informasi"

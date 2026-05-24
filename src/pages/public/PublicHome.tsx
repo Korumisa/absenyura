@@ -7,7 +7,6 @@ import api from '@/services/api';
 import type { PublicGalleryAlbum, PublicPost, PublicProfile, PublicProgram, PublicRecruitment, PublicStructureGroup } from '@/types/publicSite';
 import PublicEnter from '@/components/PublicEnter';
 import PublicReveal from '@/components/PublicReveal';
-import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 import PublicCoverImage from '@/components/PublicCoverImage';
 import PublicProgramCard from '@/components/PublicProgramCard';
 import useHorizontalWheelScroll from '@/lib/useHorizontalWheelScroll';
@@ -316,10 +315,6 @@ function normalizeYoutubeEmbedUrl(input: string) {
 }
 
 export default function PublicHome() {
-  const [hasLoadedOnce, setHasLoadedOnce] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false;
-    return window.sessionStorage.getItem('public-home-ready') === '1';
-  });
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
   const profileSwr = useSWR<PublicProfile | null>('/public-site/profile', fetcher, { revalidateOnFocus: false });
   const { data: profile, isInitialLoading: isLoadingProfile, isError: isProfileError, retry: retryProfile } =
@@ -346,17 +341,6 @@ export default function PublicHome() {
     (url) => api.get(url).then((r) => r.data.data),
     { revalidateOnFocus: false }
   );
-
-  const isPageLoading =
-    isLoadingProfile || isLoadingPrograms || isLoadingStructure || isLoadingLatest || isLoadingRecruitments || isLoadingGalleries || isLoadingLomba;
-  const showLoadingOverlay = !hasLoadedOnce && isPageLoading;
-
-  useEffect(() => {
-    if (!hasLoadedOnce && !isPageLoading) {
-      setHasLoadedOnce(true);
-      if (typeof window !== 'undefined') window.sessionStorage.setItem('public-home-ready', '1');
-    }
-  }, [hasLoadedOnce, isPageLoading]);
 
   if (isProfileError && !profile) {
     return <PublicPageError title="Gagal memuat beranda" error={profileSwr.error} onRetry={retryProfile} />;
@@ -415,7 +399,7 @@ export default function PublicHome() {
   return (
     <PublicLayout>
       <div className="relative">
-        <div className={`transition-opacity duration-200 ${showLoadingOverlay ? 'pointer-events-none select-none opacity-75' : ''}`}>
+        <div>
           <section
             aria-label="Beranda organisasi"
             className="relative overflow-hidden bg-[radial-gradient(circle_at_20%_20%,rgba(37,99,235,0.18),transparent_50%),radial-gradient(circle_at_70%_10%,rgba(59,130,246,0.14),transparent_55%),linear-gradient(180deg,rgba(15,23,42,0.02),transparent)]"
@@ -1093,8 +1077,6 @@ export default function PublicHome() {
             </PublicReveal>
           </section>
         </div>
-
-        <PublicLoadingOverlay show={showLoadingOverlay} />
       </div>
     </PublicLayout>
   );

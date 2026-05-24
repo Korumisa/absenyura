@@ -5,9 +5,7 @@ import api from '@/services/api';
 import type { PublicProfile, PublicStructureGroup } from '@/types/publicSite';
 import { Skeleton } from '@/components/ui/skeleton';
 import PublicPageHero from '@/components/PublicPageHero';
-import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 import PublicCoverImage from '@/components/PublicCoverImage';
-import useFirstLoadOverlay from '@/lib/useFirstLoadOverlay';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useReducedMotion } from '@/lib/useReducedMotion';
 import { fadeTransition } from '@/lib/motionPresets';
@@ -22,7 +20,6 @@ export default function Fungsionaris() {
   const structureSwr = useSWR<PublicStructureGroup[]>('/public-site/structure', fetcher, { revalidateOnFocus: false });
   const { data: groups = [], isInitialLoading: isLoading, isError, retry } = useSwrPageState(structureSwr);
   const { data: profile } = useSWR<PublicProfile | null>('/public-site/profile', fetcher, { revalidateOnFocus: false });
-  const showLoading = useFirstLoadOverlay(isLoading);
   const reducedMotion = useReducedMotion();
 
   const ordered = useMemo(
@@ -103,7 +100,6 @@ export default function Fungsionaris() {
 
   return (
     <PublicLayout>
-      <PublicLoadingOverlay show={showLoading} />
       <PublicEnter>
         <PublicPageHero
           top="Susunan"

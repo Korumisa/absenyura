@@ -8,7 +8,6 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useAuthStore } from "@/stores/authStore";
 import { useAutoLogout } from "@/hooks/useAutoLogout";
 import ScrollToTop from "@/components/ScrollToTop";
-import PageSkeleton from "@/components/PageSkeleton";
 
 import { ThemeProvider } from "@/providers/theme-provider";
 import { getOfflineAttendances, deleteOfflineAttendance } from "@/lib/idb";
@@ -50,8 +49,12 @@ const Kegiatan = lazyWithRetry(() => import("@/pages/public/Kegiatan"));
 const Galeri = lazyWithRetry(() => import("@/pages/public/Galeri"));
 const OpenRecruitment = lazyWithRetry(() => import("@/pages/public/OpenRecruitment"));
 
+/**
+ * Suspense hanya menunggu unduhan chunk JS (code-split).
+ * Loading data/API ditangani skeleton per halaman — hindari "Memuat halaman..." ganda.
+ */
 function PageSuspense({ children }: { children: React.ReactNode }) {
-  return <Suspense fallback={<PageSkeleton />}>{children}</Suspense>;
+  return <Suspense fallback={null}>{children}</Suspense>;
 }
 
 export default function App() {

@@ -8,7 +8,7 @@ export function CardSkeleton({ className, count = 1 }: { className?: string; cou
       {Array.from({ length: count }).map((_, i) => (
         <div
           key={i}
-          className={cn('flex gap-3 rounded-lg border border-border bg-card p-4 animate-pulse', className)}
+          className={cn('flex gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm', className)}
           aria-hidden
         >
           <Skeleton className="h-10 w-10 shrink-0 rounded-full" />

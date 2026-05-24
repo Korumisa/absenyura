@@ -3,13 +3,11 @@ import PublicLayout from '@/components/PublicLayout';
 import PublicEnter from '@/components/PublicEnter';
 import PublicReveal from '@/components/PublicReveal';
 import PublicPageHero from '@/components/PublicPageHero';
-import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 import useSWR from 'swr';
 import api from '@/services/api';
 import type { PublicProgram } from '@/types/publicSite';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
-import useFirstLoadOverlay from '@/lib/useFirstLoadOverlay';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { PublicPageError } from '@/components/public/PublicPageError';
 
@@ -76,15 +74,12 @@ export default function ProgramKerjaDetail() {
 
   const program = useMemo(() => items.find((p) => p.id === id) ?? null, [items, id]);
   const parsed = useMemo(() => parseProgramDescription(program?.description ?? null), [program?.description]);
-  const showLoading = useFirstLoadOverlay(isLoading);
-
   if (isError) {
     return <PublicPageError title="Gagal memuat program" error={swr.error} onRetry={retry} />;
   }
 
   return (
     <PublicLayout>
-      <PublicLoadingOverlay show={showLoading} />
       <PublicEnter>
         <PublicPageHero top="Program" bottom="Kerja" subtitle="Detail program kerja yang dipublikasikan." />
 

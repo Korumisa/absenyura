@@ -9,10 +9,8 @@ import { Search, X } from 'lucide-react';
 import PublicEnter from '@/components/PublicEnter';
 import PublicReveal from '@/components/PublicReveal';
 import PublicPageHero from '@/components/PublicPageHero';
-import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 import PublicCoverImage from '@/components/PublicCoverImage';
 import useLockBodyScroll from '@/lib/useLockBodyScroll';
-import useFirstLoadOverlay from '@/lib/useFirstLoadOverlay';
 import { useAuthStore } from '@/stores/authStore';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
@@ -23,8 +21,6 @@ export default function OpenRecruitment() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
   const swr = useSWR<PublicRecruitment[]>('/public-site/recruitments', fetcher, { revalidateOnFocus: false });
   const { data: items = [], isInitialLoading: isLoading, isError, retry } = useSwrPageState(swr);
-  const showLoading = useFirstLoadOverlay(isLoading);
-
   if (isError) {
     return <PublicPageError title="Gagal memuat open recruitment" error={swr.error} onRetry={retry} />;
   }
@@ -65,7 +61,6 @@ export default function OpenRecruitment() {
 
   return (
     <PublicLayout>
-      <PublicLoadingOverlay show={showLoading} />
       <PublicEnter>
         <PublicPageHero top="Open" bottom="Recruitment" subtitle="Informasi pendaftaran, deskripsi, dan link form. Bisa dikelola dari menu Konten Website." />
 

@@ -20,7 +20,7 @@ import {
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
+import { DashboardAdminSkeleton, DashboardUserSkeleton } from '@/components/admin/DashboardSkeleton';
 import { Badge } from '@/components/ui/badge';
 import { formatClassLabel } from '@/lib/classLabel';
 import { sessionStatusLabel } from '@/lib/sessionStatusLabel';
@@ -105,18 +105,7 @@ export default function Dashboard() {
       icon={<BarChart3 className="h-5 w-5" />}
     >
       {loading && !data ? (
-        <div className="space-y-8">
-          <Skeleton className="h-48 w-full rounded-3xl" />
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {[...Array(4)].map((_, i) => (
-              <Skeleton key={i} className="h-32 w-full rounded-2xl" />
-            ))}
-          </div>
-          <div className="grid gap-6 lg:grid-cols-3">
-            <Skeleton className="h-96 w-full rounded-2xl lg:col-span-2" />
-            <Skeleton className="h-96 w-full rounded-2xl" />
-          </div>
-        </div>
+        isUser ? <DashboardUserSkeleton /> : <DashboardAdminSkeleton />
       ) : error && !data ? (
         <ErrorWithRetry title="Gagal memuat dashboard" error={error} onRetry={() => mutate()} />
       ) : !data ? null : isUser ? (

@@ -9,11 +9,9 @@ import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import PublicEnter from '@/components/PublicEnter';
 import PublicReveal from '@/components/PublicReveal';
 import PublicPageHero from '@/components/PublicPageHero';
-import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 import PublicPhotoFrame from '@/components/PublicPhotoFrame';
 import PublicCoverImage from '@/components/PublicCoverImage';
 import useLockBodyScroll from '@/lib/useLockBodyScroll';
-import useFirstLoadOverlay from '@/lib/useFirstLoadOverlay';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { PublicPageError } from '@/components/public/PublicPageError';
 import { PublicEmptyState } from '@/components/public/PublicEmptyState';
@@ -23,8 +21,6 @@ export default function Galeri() {
   const { data: profile } = useSWR<PublicProfile | null>('/public-site/profile', fetcher, { revalidateOnFocus: false });
   const swr = useSWR<PublicGalleryAlbum[]>('/public-site/galleries', fetcher, { revalidateOnFocus: false });
   const { data: albums = [], isInitialLoading: isLoading, isError, retry } = useSwrPageState(swr);
-  const showLoading = useFirstLoadOverlay(isLoading);
-
   if (isError) {
     return <PublicPageError title="Gagal memuat galeri" error={swr.error} onRetry={retry} />;
   }
@@ -49,7 +45,6 @@ export default function Galeri() {
 
   return (
     <PublicLayout>
-      <PublicLoadingOverlay show={showLoading} />
       <PublicEnter>
         <PublicPageHero top="Galeri" bottom="Kegiatan" subtitle="Dokumentasi kegiatan, momen, dan karya. Album bisa dikelola dari menu Konten Website." />
 

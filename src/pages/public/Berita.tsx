@@ -9,9 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import PublicEnter from '@/components/PublicEnter';
 import PublicReveal from '@/components/PublicReveal';
 import PublicPageHero from '@/components/PublicPageHero';
-import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 import PublicCoverImage from '@/components/PublicCoverImage';
-import useFirstLoadOverlay from '@/lib/useFirstLoadOverlay';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { PublicPageError } from '@/components/public/PublicPageError';
 import { PublicEmptyState } from '@/components/public/PublicEmptyState';
@@ -41,8 +39,6 @@ export default function Berita() {
   const postsSwr = useSWR<Paged<PublicPost>>(queryUrl, fetcher, { revalidateOnFocus: false });
   const { data: paged, isInitialLoading: isLoading, isError, retry } = useSwrPageState(postsSwr);
   const items = paged?.items ?? [];
-  const showLoading = useFirstLoadOverlay(isLoading || isLoadingCategories);
-
   if (isError) {
     return (
       <PublicPageError title="Gagal memuat berita" error={postsSwr.error} onRetry={retry} />
@@ -83,7 +79,6 @@ export default function Berita() {
 
   return (
     <PublicLayout>
-      <PublicLoadingOverlay show={showLoading} />
       <PublicEnter>
         <PublicPageHero top="Berita" bottom="Terbaru" subtitle="Baca update kampus, prestasi, dan info penting. Formatnya singkat, jelas, dan enak dibagikan.">
           <div className="relative w-full max-w-md">

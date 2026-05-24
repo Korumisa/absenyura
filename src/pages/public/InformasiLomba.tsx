@@ -9,10 +9,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import PublicEnter from '@/components/PublicEnter';
 import PublicReveal from '@/components/PublicReveal';
 import PublicPageHero from '@/components/PublicPageHero';
-import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 import PublicCoverImage from '@/components/PublicCoverImage';
 import useLockBodyScroll from '@/lib/useLockBodyScroll';
-import useFirstLoadOverlay from '@/lib/useFirstLoadOverlay';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { PublicPageError } from '@/components/public/PublicPageError';
 import { PublicEmptyState } from '@/components/public/PublicEmptyState';
@@ -38,8 +36,6 @@ export default function InformasiLomba() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
   const swr = useSWR<Paged<PublicPost>>('/public-site/posts?type=LOMBA&page=1&pageSize=24', fetcher, { revalidateOnFocus: false });
   const { data: paged, isInitialLoading: isLoading, isError, retry } = useSwrPageState(swr);
-  const showLoading = useFirstLoadOverlay(isLoading);
-
   if (isError) {
     return <PublicPageError title="Gagal memuat informasi lomba" error={swr.error} onRetry={retry} />;
   }
@@ -65,7 +61,6 @@ export default function InformasiLomba() {
 
   return (
     <PublicLayout>
-      <PublicLoadingOverlay show={showLoading} />
       <PublicEnter>
         <PublicPageHero top="Informasi" bottom="Lomba" subtitle="Info lomba yang masih buka/tutup, lengkap dengan detail. Konten dikelola dari menu Konten Website." />
 

@@ -7,11 +7,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import PublicEnter from '@/components/PublicEnter';
 import PublicReveal from '@/components/PublicReveal';
 import PublicPageHero from '@/components/PublicPageHero';
-import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 import PublicProgramCard from '@/components/PublicProgramCard';
 import useHorizontalWheelScroll from '@/lib/useHorizontalWheelScroll';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
-import useFirstLoadOverlay from '@/lib/useFirstLoadOverlay';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { PublicPageError } from '@/components/public/PublicPageError';
 import { PublicEmptyState } from '@/components/public/PublicEmptyState';
@@ -34,8 +32,6 @@ export default function ProgramKerja() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
   const swr = useSWR<PublicProgram[]>('/public-site/programs', fetcher, { revalidateOnFocus: false });
   const { data: items = [], isInitialLoading: isLoading, isError, retry } = useSwrPageState(swr);
-  const showLoading = useFirstLoadOverlay(isLoading);
-
   if (isError) {
     return <PublicPageError title="Gagal memuat program kerja" error={swr.error} onRetry={retry} />;
   }
@@ -64,7 +60,6 @@ export default function ProgramKerja() {
 
   return (
     <PublicLayout>
-      <PublicLoadingOverlay show={showLoading} />
       <PublicEnter>
         <PublicPageHero top="Program" bottom="Kerja" subtitle="Daftar program kerja yang dapat dipantau publik dan dikelola oleh admin." />
 
