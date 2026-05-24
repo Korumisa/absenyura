@@ -8,6 +8,7 @@ import { NotificationMenu } from './NotificationMenu';
 import { UserDropdown } from './UserDropdown';
 import { ThemeToggle } from './ThemeToggle';
 import { Button } from '@/components/ui/button';
+import { AdminRouteTransition } from '@/components/admin/AdminRouteTransition';
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -213,7 +214,9 @@ export default function Layout() {
 
         {/* Page Content */}
         <main id="app-main-scroll" className="min-h-0 flex-1 overflow-y-auto bg-[#f5f7fb] dark:bg-zinc-900">
-          <Outlet />
+          <AdminRouteTransition>
+            <Outlet />
+          </AdminRouteTransition>
         </main>
       </div>
     </div>

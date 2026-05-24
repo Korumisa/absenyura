@@ -354,7 +354,7 @@ export default function Locations() {
           </div>
 
           <form onSubmit={handleSubmit} className="flex flex-col overflow-hidden md:flex-row">
-              <div className="p-6 md:w-1/2 overflow-y-auto space-y-4 border-r border-slate-200 dark:border-zinc-800">
+              <div className="relative z-10 shrink-0 space-y-4 overflow-y-auto border-r border-slate-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950 md:w-1/2">
                 <div className="space-y-2">
                   <Label>Nama Lokasi <span className="text-red-500">*</span></Label>
                   <Input 
@@ -417,8 +417,8 @@ export default function Locations() {
                 </div>
               </div>
               
-              <div className="md:w-1/2 flex flex-col h-64 md:h-[400px]">
-                <div className="bg-slate-100 dark:bg-zinc-900 flex-1 relative z-0 min-h-[300px]">
+              <div className="flex h-64 min-h-[280px] flex-col md:h-[400px] md:w-1/2">
+                <div className="location-map-panel relative isolate z-0 min-h-[280px] flex-1 overflow-hidden bg-slate-100 dark:bg-zinc-900">
                   <MapContainer 
                     center={mapCenter} 
                     zoom={16} 

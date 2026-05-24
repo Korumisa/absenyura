@@ -19,20 +19,22 @@ import { Image } from 'lucide-react';
 import { CmsTabNav, type CmsTabItem } from '@/components/ui/CmsTabNav';
 import { CmsPublishTabs } from '@/components/ui/CmsPublishTabs';
 import { MobileTableHint } from '@/components/ui/MobileTableHint';
-import { CmsPreviewCollapsible } from '@/components/ui/CmsPreviewCollapsible';
 import { CmsViewSiteLink } from '@/components/cms/CmsViewSiteLink';
+import { CmsEditorLayout } from '@/components/cms/CmsEditorLayout';
+import { CmsListToolbar } from '@/components/cms/CmsListToolbar';
+import { AdminContentTransition } from '@/components/admin/AdminContentTransition';
 
 type PageTab = 'form' | 'list';
 const PAGE_TABS: readonly CmsTabItem<PageTab>[] = [
-  { id: 'form', label: 'Form' },
   { id: 'list', label: 'Daftar' },
+  { id: 'form', label: 'Editor' },
 ];
 
 export default function PublicSiteGalleries() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
   const { data: galleries = [], mutate } = useSWR<PublicGalleryAlbum[]>('/public-site/admin/galleries', fetcher, { revalidateOnFocus: false });
 
-  const [pageTab, setPageTab] = useState<PageTab>('form');
+  const [pageTab, setPageTab] = useState<PageTab>('list');
   type ItemDraft = { imageUrl: string; caption: string };
   const [form, setForm] = useState<{ id?: string; title?: string; description?: string; isPublished?: boolean; items?: ItemDraft[] }>({ items: [] });
   const resetForm = () => setForm({ items: [] });
@@ -122,15 +124,22 @@ export default function PublicSiteGalleries() {
       icon={<Image size={22} />}
       actions={<CmsViewSiteLink href="/galeri" label="Lihat galeri publik" />}
     >
-      <CmsTabNav<PageTab> tabs={PAGE_TABS} value={pageTab} onChange={setPageTab} ariaLabel="Bagian galeri" />
-      <p className="text-sm text-slate-500 dark:text-zinc-400" aria-live="polite">
-        Langkah: {pageTab === 'form' ? '1 — Form album' : '2 — Daftar album'}
-      </p>
+      <CmsTabNav<PageTab> tabs={PAGE_TABS} value={pageTab} onChange={setPageTab} ariaLabel="Mode galeri" />
 
       {pageTab === 'form' ? (
-        <div className="grid gap-6 xl:grid-cols-[1fr_minmax(280px,340px)]">
-          <AdminCard title="Form Album" description="Tambah atau ubah album dan items foto.">
-            <form onSubmit={upsert} className="grid gap-4 md:grid-cols-2">
+        <AdminContentTransition contentKey={`form-${form.id ?? 'new'}`}>
+          <CmsEditorLayout
+            preview={
+              <PublicSiteGalleryPreview
+                title={form.title}
+                description={form.description}
+                isPublished={form.isPublished}
+                items={form.items}
+              />
+            }
+          >
+          <AdminCard title={form.id ? 'Ubah album' : 'Album baru'} description="Judul, foto, dan status publikasi.">
+            <form onSubmit={upsert} className="mx-auto max-w-2xl space-y-4">
               <div className="space-y-2 md:col-span-2">
                 <Label>Judul Album</Label>
                 <Input value={form.title ?? ''} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} />
@@ -218,29 +227,34 @@ export default function PublicSiteGalleries() {
                   </div>
                 )}
               </div>
-              <div className="flex flex-col-reverse gap-3 md:col-span-2 sm:flex-row sm:justify-end">
+              <div className="flex flex-col-reverse gap-2 border-t border-slate-100 pt-4 dark:border-zinc-800 sm:flex-row sm:justify-end">
+                <Button type="button" variant="outline" className="min-h-11" onClick={() => setPageTab('list')}>
+                  Kembali ke daftar
+                </Button>
                 {form.id ? (
-                  <Button variant="outline" type="button" className="min-h-11" onClick={resetForm}>
-                    Batal
+                  <Button variant="ghost" type="button" className="min-h-11" onClick={resetForm}>
+                    Reset
                   </Button>
                 ) : null}
-                <Button type="submit" className="min-h-11">
-                  {form.id ? 'Update' : 'Tambah'}
+                <Button type="submit" className="min-h-11" disabled={uploading}>
+                  {form.id ? 'Simpan album' : 'Tambah album'}
                 </Button>
               </div>
             </form>
           </AdminCard>
-          <CmsPreviewCollapsible>
-            <PublicSiteGalleryPreview
-              title={form.title}
-              description={form.description}
-              isPublished={form.isPublished}
-              items={form.items}
-            />
-          </CmsPreviewCollapsible>
-        </div>
+          </CmsEditorLayout>
+        </AdminContentTransition>
       ) : (
-        <AdminCard title="Daftar Album" description="Album yang tersimpan di CMS.">
+        <AdminContentTransition contentKey="list-galleries">
+        <AdminCard title="Daftar album" description="Kelola album galeri publik.">
+          <CmsListToolbar
+            count={galleries.length}
+            countLabel="album"
+            onCreate={() => {
+              resetForm();
+              setPageTab('form');
+            }}
+          />
           <ul className="space-y-3 md:hidden" aria-label="Daftar album">
             {galleries.map((g) => (
               <li key={g.id} className="rounded-2xl border border-slate-200 p-4 dark:border-zinc-800">
@@ -322,6 +336,7 @@ export default function PublicSiteGalleries() {
             </Table>
           </div>
         </AdminCard>
+        </AdminContentTransition>
       )}
 
       <ConfirmModal

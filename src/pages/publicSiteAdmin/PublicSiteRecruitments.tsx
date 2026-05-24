@@ -19,15 +19,17 @@ import { FileText } from 'lucide-react';
 import { CmsTabNav, type CmsTabItem } from '@/components/ui/CmsTabNav';
 import { CmsPublishTabs } from '@/components/ui/CmsPublishTabs';
 import { MobileTableHint } from '@/components/ui/MobileTableHint';
-import { CmsPreviewCollapsible } from '@/components/ui/CmsPreviewCollapsible';
 import { CmsViewSiteLink } from '@/components/cms/CmsViewSiteLink';
+import { CmsEditorLayout } from '@/components/cms/CmsEditorLayout';
+import { CmsListToolbar } from '@/components/cms/CmsListToolbar';
+import { AdminContentTransition } from '@/components/admin/AdminContentTransition';
 
 type PageTab = 'form' | 'list';
 type FormTab = 'info' | 'team';
 
 const PAGE_TABS: readonly CmsTabItem<PageTab>[] = [
-  { id: 'form', label: 'Form' },
   { id: 'list', label: 'Daftar' },
+  { id: 'form', label: 'Editor' },
 ];
 
 const FORM_TABS: readonly CmsTabItem<FormTab>[] = [
@@ -39,7 +41,7 @@ export default function PublicSiteRecruitments() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
   const { data: recruitments = [], mutate } = useSWR<PublicRecruitment[]>('/public-site/admin/recruitments', fetcher, { revalidateOnFocus: false });
 
-  const [pageTab, setPageTab] = useState<PageTab>('form');
+  const [pageTab, setPageTab] = useState<PageTab>('list');
   const [formTab, setFormTab] = useState<FormTab>('info');
 
   type CommitteeDraft = { name: string; role: string };
@@ -173,14 +175,25 @@ export default function PublicSiteRecruitments() {
       icon={<FileText size={22} />}
       actions={<CmsViewSiteLink href="/open-recruitment" label="Lihat open recruitment" />}
     >
-      <CmsTabNav<PageTab> tabs={PAGE_TABS} value={pageTab} onChange={setPageTab} ariaLabel="Bagian recruitment" />
-      <p className="text-sm text-slate-500 dark:text-zinc-400" aria-live="polite">
-        Langkah: {pageTab === 'form' ? '1 — Form recruitment' : '2 — Daftar recruitment'}
-      </p>
+      <CmsTabNav<PageTab> tabs={PAGE_TABS} value={pageTab} onChange={setPageTab} ariaLabel="Mode recruitment" />
 
       {pageTab === 'form' ? (
-        <div className="grid gap-6 xl:grid-cols-[1fr_minmax(280px,340px)]">
-          <AdminCard title="Form Recruitment" description="Tambah atau ubah informasi dan panitia.">
+        <AdminContentTransition contentKey={`form-${form.id ?? 'new'}-${formTab}`}>
+          <CmsEditorLayout
+            preview={
+              <PublicSiteRecruitmentPreview
+                title={form.title}
+                dateRange={dateRangePreview}
+                description={form.description}
+                formUrl={form.formUrl}
+                posterImageUrl={form.posterImageUrl}
+                isPublished={form.isPublished}
+                committeeCount={form.committee?.length ?? 0}
+                contactsCount={form.contacts?.length ?? 0}
+              />
+            }
+          >
+          <AdminCard title={form.id ? 'Ubah recruitment' : 'Recruitment baru'} description="Informasi umum dan data panitia.">
             <form onSubmit={upsert} className="space-y-5">
               <CmsTabNav<FormTab> tabs={FORM_TABS} value={formTab} onChange={setFormTab} ariaLabel="Bagian form recruitment" />
 
@@ -379,34 +392,37 @@ export default function PublicSiteRecruitments() {
                 </div>
               </div>
 
-              <div className="flex flex-col-reverse gap-3 border-t border-slate-200 pt-4 dark:border-zinc-800 sm:flex-row sm:justify-end">
+              <div className="flex flex-col-reverse gap-2 border-t border-slate-200 pt-4 dark:border-zinc-800 sm:flex-row sm:justify-end">
+                <Button type="button" variant="outline" className="min-h-11" onClick={() => setPageTab('list')}>
+                  Kembali ke daftar
+                </Button>
                 {form.id ? (
-                  <Button variant="outline" type="button" className="min-h-11" onClick={resetForm}>
-                    Batal
+                  <Button variant="ghost" type="button" className="min-h-11" onClick={resetForm}>
+                    Reset
                   </Button>
                 ) : null}
                 <Button type="submit" className="min-h-11">
-                  {form.id ? 'Update' : 'Tambah'}
+                  {form.id ? 'Simpan' : 'Tambah recruitment'}
                 </Button>
               </div>
             </form>
           </AdminCard>
-
-          <CmsPreviewCollapsible>
-            <PublicSiteRecruitmentPreview
-              title={form.title}
-              dateRange={dateRangePreview}
-              description={form.description}
-              formUrl={form.formUrl}
-              posterImageUrl={form.posterImageUrl}
-              isPublished={form.isPublished}
-              committeeCount={form.committee?.length ?? 0}
-              contactsCount={form.contacts?.length ?? 0}
-            />
-          </CmsPreviewCollapsible>
-        </div>
+          </CmsEditorLayout>
+        </AdminContentTransition>
       ) : (
-        <AdminCard title="Daftar Recruitment" description="Data yang tersimpan di CMS.">
+        <AdminContentTransition contentKey="list-recruitments">
+        <AdminCard title="Daftar recruitment" description="Open recruitment yang tampil di situs publik.">
+          <CmsListToolbar
+            count={recruitments.length}
+            countLabel="recruitment"
+            onCreate={() => {
+              resetForm();
+              setDateStart('');
+              setDateEnd('');
+              setFormTab('info');
+              setPageTab('form');
+            }}
+          />
           <ul className="space-y-3 md:hidden" aria-label="Daftar recruitment">
             {recruitments.map((r) => (
               <li key={r.id} className="rounded-2xl border border-slate-200 p-4 dark:border-zinc-800">
@@ -459,6 +475,7 @@ export default function PublicSiteRecruitments() {
             </Table>
           </div>
         </AdminCard>
+        </AdminContentTransition>
       )}
 
       <ConfirmModal

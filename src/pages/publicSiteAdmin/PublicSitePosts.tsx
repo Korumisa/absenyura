@@ -21,7 +21,10 @@ import { CmsPublishTabs } from '@/components/ui/CmsPublishTabs';
 import { MobileTableHint } from '@/components/ui/MobileTableHint';
 import PublicSitePostPreview from '@/components/publicSiteAdmin/PublicSitePostPreview';
 import { CmsViewSiteLink } from '@/components/cms/CmsViewSiteLink';
-import { CmsPreviewCollapsible } from '@/components/ui/CmsPreviewCollapsible';
+import { CmsEditorLayout } from '@/components/cms/CmsEditorLayout';
+import { CmsCollapsibleSection } from '@/components/cms/CmsCollapsibleSection';
+import { CmsListToolbar } from '@/components/cms/CmsListToolbar';
+import { AdminContentTransition } from '@/components/admin/AdminContentTransition';
 
 const POST_TYPE_TABS: readonly CmsTabItem<PublicPostType>[] = [
   { id: 'BERITA', label: 'Berita' },
@@ -32,15 +35,15 @@ const POST_TYPE_TABS: readonly CmsTabItem<PublicPostType>[] = [
 
 type ContentTab = 'edit' | 'list';
 const CONTENT_TABS: readonly CmsTabItem<ContentTab>[] = [
-  { id: 'edit', label: 'Tulis Konten' },
   { id: 'list', label: 'Daftar' },
+  { id: 'edit', label: 'Editor' },
 ];
 
 export default function PublicSitePosts() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
   const { data: categories = [], mutate: mutateCategories } = useSWR<PublicCategory[]>('/public-site/admin/categories', fetcher, { revalidateOnFocus: false });
   const [postType, setPostType] = useState<PublicPostType>('BERITA');
-  const [contentTab, setContentTab] = useState<ContentTab>('edit');
+  const [contentTab, setContentTab] = useState<ContentTab>('list');
   const { data: posts = [], mutate: mutatePosts } = useSWR<PublicPost[]>(`/public-site/admin/posts?type=${postType}`, fetcher, { revalidateOnFocus: false });
 
   const [categoryForm, setCategoryForm] = useState<{ id?: string; name?: string; slug?: string }>({});
@@ -64,6 +67,11 @@ export default function PublicSitePosts() {
 
   useEffect(() => {
     resetPostForm();
+    setContentTab('list');
+  }, [postType]);
+
+  useEffect(() => {
+    setPostForm((p) => ({ ...p, type: postType }));
   }, [postType]);
 
   const uploadImage = async (file: File) => {
@@ -210,211 +218,188 @@ export default function PublicSitePosts() {
         tabs={CONTENT_TABS}
         value={contentTab}
         onChange={setContentTab}
-        ariaLabel="Bagian konten"
+        ariaLabel="Mode konten"
       />
-      <p className="text-sm text-slate-500 dark:text-zinc-400" aria-live="polite">
-        Langkah: {contentTab === 'edit' ? '1 — Tulis konten' : '2 — Kelola daftar'}
-      </p>
 
       {contentTab === 'edit' ? (
-      <div className="grid gap-6 xl:grid-cols-[1fr_minmax(280px,340px)]">
-      <div className="grid min-w-0 gap-6 lg:grid-cols-2">
-        {postType === 'BERITA' || postType === 'KEGIATAN' ? (
-          <AdminCard title="Kategori" description="Dipakai untuk Berita dan Kegiatan.">
-            <form onSubmit={upsertCategory} className="grid gap-4">
-              <div className="space-y-2">
-                <Label>Nama</Label>
-                <Input value={categoryForm.name ?? ''} onChange={(e) => setCategoryForm((p) => ({ ...p, name: e.target.value }))} />
-              </div>
-              <div className="space-y-2">
-                <Label>Slug (opsional)</Label>
-                <Input value={categoryForm.slug ?? ''} onChange={(e) => setCategoryForm((p) => ({ ...p, slug: e.target.value }))} placeholder="contoh: prestasi-mahasiswa" />
-              </div>
-              <div className="flex flex-col gap-3 pt-1 sm:flex-row sm:justify-end">
-                {categoryForm.id ? (
-                  <Button className="w-full sm:w-auto" variant="outline" type="button" onClick={resetCategoryForm}>
-                    Batal
-                  </Button>
-                ) : null}
-                <Button className="w-full sm:w-auto" type="submit">{categoryForm.id ? 'Update' : 'Tambah'}</Button>
-              </div>
-            </form>
-
-            <ul className="mt-5 space-y-3 md:hidden" aria-label="Daftar kategori">
-              {categories.map((c) => (
-                <li key={c.id} className="rounded-xl border border-slate-200 p-4 dark:border-zinc-700">
-                  <p className="font-semibold text-slate-900 dark:text-white">{c.name}</p>
-                  <p className="text-sm text-slate-500">{c.slug}</p>
-                  <div className="mt-3 flex gap-2">
-                    <Button variant="outline" size="sm" type="button" className="min-h-11 flex-1" onClick={() => setCategoryForm({ id: c.id, name: c.name, slug: c.slug })}>
-                      Edit
-                    </Button>
-                    <Button variant="destructive" size="sm" type="button" className="min-h-11 flex-1" onClick={() => openDelete('categories', c.id)}>
-                      Hapus
+        <AdminContentTransition contentKey={`edit-${postType}-${postForm.id ?? 'new'}`}>
+          <CmsEditorLayout
+            preview={
+              <PublicSitePostPreview
+                type={postType}
+                title={postForm.title}
+                excerpt={postForm.excerpt}
+                dateLabel={postForm.dateLabel}
+                coverImageUrl={postForm.coverImageUrl}
+                isPublished={postForm.isPublished}
+              />
+            }
+          >
+            {postType === 'BERITA' || postType === 'KEGIATAN' ? (
+              <CmsCollapsibleSection title="Kelola kategori" description="Opsional — untuk pengelompokan di halaman publik.">
+                <form onSubmit={upsertCategory} className="grid max-w-xl gap-4">
+                  <div className="space-y-2">
+                    <Label>Nama</Label>
+                    <Input value={categoryForm.name ?? ''} onChange={(e) => setCategoryForm((p) => ({ ...p, name: e.target.value }))} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Slug (opsional)</Label>
+                    <Input value={categoryForm.slug ?? ''} onChange={(e) => setCategoryForm((p) => ({ ...p, slug: e.target.value }))} placeholder="contoh: prestasi-mahasiswa" />
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {categoryForm.id ? (
+                      <Button variant="outline" type="button" className="min-h-11" onClick={resetCategoryForm}>
+                        Batal
+                      </Button>
+                    ) : null}
+                    <Button type="submit" className="min-h-11">
+                      {categoryForm.id ? 'Simpan kategori' : 'Tambah kategori'}
                     </Button>
                   </div>
-                </li>
-              ))}
-            </ul>
-
-            <div className="mt-5 hidden overflow-hidden rounded-lg border border-slate-200 dark:border-zinc-700 md:block">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nama</TableHead>
-                    <TableHead>Slug</TableHead>
-                    <TableHead className="text-right">Aksi</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {categories.map((c) => (
-                    <TableRow key={c.id}>
-                      <TableCell className="font-medium">{c.name}</TableCell>
-                      <TableCell>{c.slug}</TableCell>
-                      <TableCell className="text-right space-x-2">
-                        <Button variant="outline" size="sm" type="button" onClick={() => setCategoryForm({ id: c.id, name: c.name, slug: c.slug })}>
-                          Edit
-                        </Button>
-                        <Button variant="destructive" size="sm" type="button" onClick={() => openDelete('categories', c.id)}>
-                          Hapus
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </AdminCard>
-        ) : (
-          <AdminCard title={typeLabel} description="Kategori tidak digunakan untuk jenis konten ini.">
-            <div className="text-sm text-slate-600 dark:text-zinc-300">Kategori tidak digunakan untuk jenis konten ini.</div>
-          </AdminCard>
-        )}
-
-        <AdminCard title="Konten" description="Tambah atau ubah data konten.">
-          <form onSubmit={upsertPost} className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label>Tipe</Label>
-              <Select value={postForm.type ?? postType} onValueChange={(v) => setPostForm((p) => ({ ...p, type: v as PublicPostType }))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="BERITA">Berita</SelectItem>
-                  <SelectItem value="KEGIATAN">Kegiatan</SelectItem>
-                  <SelectItem value="LOMBA">Informasi Lomba</SelectItem>
-                  <SelectItem value="PENGUMUMAN">Pengumuman</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label>Judul</Label>
-              <Input value={postForm.title ?? ''} onChange={(e) => setPostForm((p) => ({ ...p, title: e.target.value }))} />
-            </div>
-            <div className="space-y-2">
-              <Label>Slug (opsional)</Label>
-              <Input value={postForm.slug ?? ''} onChange={(e) => setPostForm((p) => ({ ...p, slug: e.target.value }))} />
-            </div>
-            <div className="space-y-2">
-              <Label>Tanggal Label</Label>
-              <Input value={postForm.dateLabel ?? ''} onChange={(e) => setPostForm((p) => ({ ...p, dateLabel: e.target.value }))} placeholder="contoh: 7 Mei 2026" />
-            </div>
-            <div className="space-y-2">
-              <Label>Kategori</Label>
-              <Select
-                value={postForm.categoryId ?? '__none__'}
-                onValueChange={(v) => setPostForm((p) => ({ ...p, categoryId: v === '__none__' ? undefined : v }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="-" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">-</SelectItem>
-                  {categories
-                    .filter((c) => Boolean(c?.id))
-                    .map((c) => (
-                      <SelectItem key={c.id} value={String(c.id)}>
-                        {c.name}
-                      </SelectItem>
+                </form>
+                {categories.length > 0 ? (
+                  <ul className="mt-4 space-y-2 text-sm" aria-label="Daftar kategori">
+                    {categories.map((c) => (
+                      <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 px-3 py-2 dark:border-zinc-700">
+                        <span>
+                          <span className="font-medium text-slate-900 dark:text-white">{c.name}</span>
+                          <span className="text-slate-500"> · {c.slug}</span>
+                        </span>
+                        <span className="flex gap-1">
+                          <Button variant="ghost" size="sm" type="button" onClick={() => setCategoryForm({ id: c.id, name: c.name, slug: c.slug })}>
+                            Edit
+                          </Button>
+                          <Button variant="ghost" size="sm" type="button" className="text-red-600" onClick={() => openDelete('categories', c.id)}>
+                            Hapus
+                          </Button>
+                        </span>
+                      </li>
                     ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Status (opsional)</Label>
-              <Input value={postForm.status ?? ''} onChange={(e) => setPostForm((p) => ({ ...p, status: e.target.value }))} placeholder="contoh: Buka / Tutup" />
-            </div>
-            {postForm.type === 'LOMBA' ? (
-              <div className="space-y-2 md:col-span-2">
-                <Label>Link Pendaftaran (opsional)</Label>
-                <Input
-                  value={postForm.formUrl ?? ''}
-                  onChange={(e) => setPostForm((p) => ({ ...p, formUrl: e.target.value }))}
-                  placeholder="https://..."
-                />
-              </div>
+                  </ul>
+                ) : null}
+              </CmsCollapsibleSection>
             ) : null}
-            <div className="space-y-2 md:col-span-2">
-              <Label>Status publikasi</Label>
-              <CmsPublishTabs published={postForm.isPublished ?? false} onChange={(v) => setPostForm((p) => ({ ...p, isPublished: v }))} />
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label>Ringkas</Label>
-              <Textarea value={postForm.excerpt ?? ''} onChange={(e) => setPostForm((p) => ({ ...p, excerpt: e.target.value }))} />
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label>Konten</Label>
-              <Textarea value={postForm.content ?? ''} onChange={(e) => setPostForm((p) => ({ ...p, content: e.target.value }))} className="min-h-[160px]" />
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label>Cover Image URL</Label>
-              <Input value={postForm.coverImageUrl ?? ''} onChange={(e) => setPostForm((p) => ({ ...p, coverImageUrl: e.target.value }))} />
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label>Upload Cover</Label>
-              <Input
-                type="file"
-                accept="image/*"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  try {
-                    const url = await uploadImage(file);
-                    setPostForm((p) => ({ ...p, coverImageUrl: url }));
-                    toast.success('Upload berhasil');
-                  } catch (err: any) {
-                    toast.error(getErrorMessage(err, 'Gagal upload'));
-                  } finally {
-                    e.target.value = '';
-                  }
-                }}
-              />
-            </div>
-            <div className="md:col-span-2 flex flex-col gap-3 sm:flex-row sm:justify-end">
-              {postForm.id ? (
-                <Button className="w-full sm:w-auto" variant="outline" type="button" onClick={resetPostForm}>
-                  Batal
-                </Button>
-              ) : null}
-              <Button className="w-full sm:w-auto" type="submit">{postForm.id ? 'Update' : 'Tambah'}</Button>
-            </div>
-          </form>
-        </AdminCard>
-      </div>
 
-      <CmsPreviewCollapsible>
-        <PublicSitePostPreview
-          type={(postForm.type ?? postType) as PublicPostType}
-          title={postForm.title}
-          excerpt={postForm.excerpt}
-          dateLabel={postForm.dateLabel}
-          coverImageUrl={postForm.coverImageUrl}
-          isPublished={postForm.isPublished}
-        />
-      </CmsPreviewCollapsible>
-      </div>
+            <AdminCard
+              title={postForm.id ? `Ubah ${typeLabel}` : `Tulis ${typeLabel}`}
+              description="Isi form lalu simpan. Pratinjau tampilan publik ada di samping."
+            >
+              <form onSubmit={upsertPost} className="mx-auto max-w-2xl space-y-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-slate-500">Jenis:</span>
+                  <Badge variant="secondary">{typeLabel}</Badge>
+                </div>
+                <div className="space-y-2">
+                  <Label>Judul</Label>
+                  <Input value={postForm.title ?? ''} onChange={(e) => setPostForm((p) => ({ ...p, title: e.target.value }))} />
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Slug (opsional)</Label>
+                    <Input value={postForm.slug ?? ''} onChange={(e) => setPostForm((p) => ({ ...p, slug: e.target.value }))} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Tanggal label</Label>
+                    <Input value={postForm.dateLabel ?? ''} onChange={(e) => setPostForm((p) => ({ ...p, dateLabel: e.target.value }))} placeholder="7 Mei 2026" />
+                  </div>
+                </div>
+                {(postType === 'BERITA' || postType === 'KEGIATAN') && (
+                  <div className="space-y-2">
+                    <Label>Kategori konten</Label>
+                    <Select
+                      value={postForm.categoryId ?? '__none__'}
+                      onValueChange={(v) => setPostForm((p) => ({ ...p, categoryId: v === '__none__' ? undefined : v }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Pilih kategori" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">Tanpa kategori</SelectItem>
+                        {categories
+                          .filter((c) => Boolean(c?.id))
+                          .map((c) => (
+                            <SelectItem key={c.id} value={String(c.id)}>
+                              {c.name}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                <div className="space-y-2">
+                  <Label>Status singkat (opsional)</Label>
+                  <Input value={postForm.status ?? ''} onChange={(e) => setPostForm((p) => ({ ...p, status: e.target.value }))} placeholder="Buka / Tutup" />
+                </div>
+                {postType === 'LOMBA' ? (
+                  <div className="space-y-2">
+                    <Label>Link pendaftaran</Label>
+                    <Input value={postForm.formUrl ?? ''} onChange={(e) => setPostForm((p) => ({ ...p, formUrl: e.target.value }))} placeholder="https://..." />
+                  </div>
+                ) : null}
+                <div className="space-y-2">
+                  <Label>Status publikasi</Label>
+                  <CmsPublishTabs published={postForm.isPublished ?? false} onChange={(v) => setPostForm((p) => ({ ...p, isPublished: v }))} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Ringkasan</Label>
+                  <Textarea rows={3} value={postForm.excerpt ?? ''} onChange={(e) => setPostForm((p) => ({ ...p, excerpt: e.target.value }))} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Konten</Label>
+                  <Textarea rows={8} value={postForm.content ?? ''} onChange={(e) => setPostForm((p) => ({ ...p, content: e.target.value }))} />
+                </div>
+                <div className="space-y-2">
+                  <Label>URL cover</Label>
+                  <Input value={postForm.coverImageUrl ?? ''} onChange={(e) => setPostForm((p) => ({ ...p, coverImageUrl: e.target.value }))} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Upload cover</Label>
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      try {
+                        const url = await uploadImage(file);
+                        setPostForm((p) => ({ ...p, coverImageUrl: url }));
+                        toast.success('Upload berhasil');
+                      } catch (err: any) {
+                        toast.error(getErrorMessage(err, 'Gagal upload'));
+                      } finally {
+                        e.target.value = '';
+                      }
+                    }}
+                  />
+                </div>
+                <div className="flex flex-col-reverse gap-2 border-t border-slate-100 pt-4 dark:border-zinc-800 sm:flex-row sm:justify-end">
+                  <Button type="button" variant="outline" className="min-h-11" onClick={() => setContentTab('list')}>
+                    Kembali ke daftar
+                  </Button>
+                  {postForm.id ? (
+                    <Button type="button" variant="ghost" className="min-h-11" onClick={resetPostForm}>
+                      Reset form
+                    </Button>
+                  ) : null}
+                  <Button type="submit" className="min-h-11">
+                    {postForm.id ? 'Simpan perubahan' : 'Terbitkan ke daftar'}
+                  </Button>
+                </div>
+              </form>
+            </AdminCard>
+          </CmsEditorLayout>
+        </AdminContentTransition>
       ) : (
-      <AdminCard title={`Daftar ${typeLabel}`} description="Klik Edit untuk mengisi form dari data yang sudah ada.">
+        <AdminContentTransition contentKey={`list-${postType}`}>
+          <AdminCard title={`Daftar ${typeLabel}`} description="Pilih baris untuk mengedit, atau buat konten baru.">
+            <CmsListToolbar
+              count={posts.length}
+              countLabel={typeLabel.toLowerCase()}
+              onCreate={() => {
+                resetPostForm();
+                setContentTab('edit');
+              }}
+            />
         <ul className="space-y-3 md:hidden" aria-label="Daftar konten">
           {posts.map((p) => (
             <li key={p.id} className="rounded-2xl border border-slate-200 p-4 dark:border-zinc-800">
@@ -440,7 +425,6 @@ export default function PublicSitePosts() {
           <TableHeader>
             <TableRow>
               <TableHead>Judul</TableHead>
-              <TableHead>Tipe</TableHead>
               <TableHead>Kategori</TableHead>
               <TableHead>Tanggal</TableHead>
               <TableHead>Status</TableHead>
@@ -451,7 +435,6 @@ export default function PublicSitePosts() {
             {posts.map((p) => (
               <TableRow key={p.id}>
                 <TableCell className="font-medium">{p.title}</TableCell>
-                <TableCell>{p.type}</TableCell>
                 <TableCell>{p.category?.name ?? '-'}</TableCell>
                 <TableCell>{p.date_label ?? '-'}</TableCell>
                 <TableCell>
@@ -470,7 +453,8 @@ export default function PublicSitePosts() {
           </TableBody>
         </Table>
         </div>
-      </AdminCard>
+          </AdminCard>
+        </AdminContentTransition>
       )}
 
       <ConfirmModal

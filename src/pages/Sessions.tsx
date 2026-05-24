@@ -23,6 +23,7 @@ import AdminPageShell from '@/components/AdminPageShell';
 import type { Location, Session } from '@/types/session';
 import { formatClassLabel } from '@/lib/classLabel';
 import { MobileTableHint } from '@/components/ui/MobileTableHint';
+import { WizardStepIndicator } from '@/components/ui/WizardStepIndicator';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
 
@@ -514,27 +515,7 @@ export default function Sessions() {
           </div>
 
           <form onSubmit={handleSubmit} className="max-h-[75vh] space-y-6 overflow-y-auto p-6">
-              {/* [IA] #7 — wizard form sesi */}
-              <nav aria-label="Langkah form sesi" className="flex flex-wrap gap-2 border-b border-slate-200 pb-4 dark:border-zinc-800">
-                {WIZARD_LABELS.map((label, i) => {
-                  const step = i + 1;
-                  return (
-                    <button
-                      key={label}
-                      type="button"
-                      onClick={() => setWizardStep(step)}
-                      className={`min-h-11 rounded-full px-4 text-sm font-semibold transition-colors ${
-                        wizardStep === step
-                          ? 'bg-indigo-600 text-white'
-                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-zinc-800 dark:text-zinc-300'
-                      }`}
-                      aria-current={wizardStep === step ? 'step' : undefined}
-                    >
-                      {step}. {label}
-                    </button>
-                  );
-                })}
-              </nav>
+              <WizardStepIndicator labels={WIZARD_LABELS} currentStep={wizardStep} />
 
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <div className={`space-y-4 ${wizardStep === 1 ? '' : 'hidden'}`}>

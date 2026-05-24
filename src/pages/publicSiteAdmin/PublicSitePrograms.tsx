@@ -18,20 +18,22 @@ import { ClipboardList } from 'lucide-react';
 import { CmsTabNav, type CmsTabItem } from '@/components/ui/CmsTabNav';
 import { CmsPublishTabs } from '@/components/ui/CmsPublishTabs';
 import { MobileTableHint } from '@/components/ui/MobileTableHint';
-import { CmsPreviewCollapsible } from '@/components/ui/CmsPreviewCollapsible';
 import { CmsViewSiteLink } from '@/components/cms/CmsViewSiteLink';
+import { CmsEditorLayout } from '@/components/cms/CmsEditorLayout';
+import { CmsListToolbar } from '@/components/cms/CmsListToolbar';
+import { AdminContentTransition } from '@/components/admin/AdminContentTransition';
 
 type PageTab = 'form' | 'list';
 const PAGE_TABS: readonly CmsTabItem<PageTab>[] = [
-  { id: 'form', label: 'Form' },
   { id: 'list', label: 'Daftar' },
+  { id: 'form', label: 'Editor' },
 ];
 
 export default function PublicSitePrograms() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
   const { data: programs = [], mutate } = useSWR<PublicProgram[]>('/public-site/admin/programs', fetcher, { revalidateOnFocus: false });
 
-  const [pageTab, setPageTab] = useState<PageTab>('form');
+  const [pageTab, setPageTab] = useState<PageTab>('list');
   const [form, setForm] = useState<{ id?: string; title?: string; description?: string; isPublished?: boolean }>({});
   const [dateStart, setDateStart] = useState('');
   const [dateEnd, setDateEnd] = useState('');
@@ -117,58 +119,74 @@ export default function PublicSitePrograms() {
       icon={<ClipboardList size={22} />}
       actions={<CmsViewSiteLink href="/program-kerja" label="Lihat program kerja" />}
     >
-      <CmsTabNav<PageTab> tabs={PAGE_TABS} value={pageTab} onChange={setPageTab} ariaLabel="Bagian program kerja" />
-      <p className="text-sm text-slate-500 dark:text-zinc-400" aria-live="polite">
-        Langkah: {pageTab === 'form' ? '1 — Form program' : '2 — Daftar program'}
-      </p>
+      <CmsTabNav<PageTab> tabs={PAGE_TABS} value={pageTab} onChange={setPageTab} ariaLabel="Mode program kerja" />
 
       {pageTab === 'form' ? (
-        <div className="grid gap-6 xl:grid-cols-[1fr_minmax(280px,340px)]">
-          <AdminCard title="Form Program" description="Tambah atau ubah program kerja.">
-            <form onSubmit={upsert} className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2 md:col-span-2">
+        <AdminContentTransition contentKey={`form-${form.id ?? 'new'}`}>
+          <CmsEditorLayout
+            preview={
+              <PublicSiteProgramPreview
+                title={form.title}
+                dateRange={dateRangePreview}
+                description={form.description}
+                isPublished={form.isPublished}
+              />
+            }
+          >
+            <AdminCard title={form.id ? 'Ubah program' : 'Program baru'} description="Isi detail program kerja.">
+            <form onSubmit={upsert} className="mx-auto max-w-2xl space-y-4">
+              <div className="space-y-2">
                 <Label>Judul</Label>
                 <Input value={form.title ?? ''} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} />
               </div>
-              <div className="space-y-2">
-                <Label>Tanggal Mulai</Label>
-                <Input type="date" value={dateStart} onChange={(e) => setDateStart(e.target.value)} />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Tanggal mulai</Label>
+                  <Input type="date" value={dateStart} onChange={(e) => setDateStart(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Tanggal selesai</Label>
+                  <Input type="date" value={dateEnd} onChange={(e) => setDateEnd(e.target.value)} />
+                </div>
               </div>
               <div className="space-y-2">
-                <Label>Tanggal Selesai</Label>
-                <Input type="date" value={dateEnd} onChange={(e) => setDateEnd(e.target.value)} />
-              </div>
-              <div className="space-y-2 md:col-span-2">
                 <Label>Status publikasi</Label>
                 <CmsPublishTabs published={form.isPublished ?? false} onChange={(v) => setForm((p) => ({ ...p, isPublished: v }))} />
               </div>
-              <div className="space-y-2 md:col-span-2">
+              <div className="space-y-2">
                 <Label>Deskripsi</Label>
-                <Textarea value={form.description ?? ''} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} />
+                <Textarea rows={5} value={form.description ?? ''} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} />
               </div>
-              <div className="flex flex-col-reverse gap-3 md:col-span-2 sm:flex-row sm:justify-end">
+              <div className="flex flex-col-reverse gap-2 border-t border-slate-100 pt-4 dark:border-zinc-800 sm:flex-row sm:justify-end">
+                <Button type="button" variant="outline" className="min-h-11" onClick={() => setPageTab('list')}>
+                  Kembali ke daftar
+                </Button>
                 {form.id ? (
-                  <Button variant="outline" type="button" className="min-h-11" onClick={resetForm}>
-                    Batal
+                  <Button variant="ghost" type="button" className="min-h-11" onClick={resetForm}>
+                    Reset
                   </Button>
                 ) : null}
                 <Button type="submit" className="min-h-11">
-                  {form.id ? 'Update' : 'Tambah'}
+                  {form.id ? 'Simpan' : 'Tambah program'}
                 </Button>
               </div>
             </form>
           </AdminCard>
-          <CmsPreviewCollapsible>
-            <PublicSiteProgramPreview
-              title={form.title}
-              dateRange={dateRangePreview}
-              description={form.description}
-              isPublished={form.isPublished}
-            />
-          </CmsPreviewCollapsible>
-        </div>
+          </CmsEditorLayout>
+        </AdminContentTransition>
       ) : (
-        <AdminCard title="Daftar Program" description="Program kerja yang tersimpan di CMS.">
+        <AdminContentTransition contentKey="list-programs">
+        <AdminCard title="Daftar program" description="Semua program kerja di CMS.">
+          <CmsListToolbar
+            count={programs.length}
+            countLabel="program"
+            onCreate={() => {
+              resetForm();
+              setDateStart('');
+              setDateEnd('');
+              setPageTab('form');
+            }}
+          />
           <ul className="space-y-3 md:hidden" aria-label="Daftar program">
             {programs.map((p) => (
               <li key={p.id} className="rounded-2xl border border-slate-200 p-4 dark:border-zinc-800">
@@ -259,6 +277,7 @@ export default function PublicSitePrograms() {
             </Table>
           </div>
         </AdminCard>
+        </AdminContentTransition>
       )}
 
       <ConfirmModal

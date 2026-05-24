@@ -177,6 +177,17 @@
   margin-bottom: 10px;
 }
 
+/* [UX] Leaflet di dialog lokasi — cegah tile menimpa kolom form */
+.location-map-panel {
+  isolation: isolate;
+  overflow: hidden;
+}
+.location-map-panel .leaflet-container {
+  height: 100%;
+  width: 100%;
+  z-index: 0;
+}
+
 /* [A11y] P2 — hormati prefers-reduced-motion untuk transisi CSS global */
 @media (prefers-reduced-motion: reduce) {
   *,
