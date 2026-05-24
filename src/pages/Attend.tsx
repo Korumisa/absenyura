@@ -84,10 +84,13 @@ export default function Attend() {
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
   const [isCameraActive, setIsCameraActive] = useState(false);
   const scannerRef = React.useRef<Html5Qrcode | null>(null);
+  const qrCameraIdRef = React.useRef<string | null>(null);
+  const qrBootGenRef = React.useRef(0);
   const [qrScannerError, setQrScannerError] = useState<string | null>(null);
+  const [camerasReady, setCamerasReady] = useState(false);
+  const [qrBootNonce, setQrBootNonce] = useState(0);
   const isSubmittingRef = React.useRef(false);
   const [qrFacingMode, setQrFacingMode] = useState<'user' | 'environment'>('environment');
-  const [qrCameraId, setQrCameraId] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<{ message: string; hint?: string } | null>(null);
 
   const loadQrCamera = useCallback(async (preferRear: boolean) => {
@@ -97,9 +100,11 @@ export default function Attend() {
         cameras.map((c) => ({ id: c.id, label: c.label })),
         { preferRear }
       );
-      setQrCameraId(preferredId);
+      qrCameraIdRef.current = preferredId;
     } catch {
-      setQrCameraId(null);
+      qrCameraIdRef.current = null;
+    } finally {
+      setCamerasReady(true);
     }
   }, []);
 
@@ -358,17 +363,18 @@ export default function Attend() {
   }, []);
 
   useEffect(() => {
-    if (!scanning || scanResult) return;
+    if (!scanning || scanResult || !camerasReady) return;
 
+    const bootGen = ++qrBootGenRef.current;
     let cancelled = false;
 
     const bootScanner = async () => {
       setQrScannerError(null);
       await waitForCameraRelease(350);
-      if (cancelled || scannerRef.current) return;
+      if (cancelled || bootGen !== qrBootGenRef.current || scannerRef.current) return;
 
-      const cameraConfig: string | MediaTrackConstraints = qrCameraId
-        ? qrCameraId
+      const cameraConfig: string | MediaTrackConstraints = qrCameraIdRef.current
+        ? qrCameraIdRef.current
         : { facingMode: qrFacingMode };
 
       const qr = new Html5Qrcode('qr-reader', {
@@ -386,7 +392,7 @@ export default function Attend() {
             disableFlip: qrFacingMode === 'user',
           },
           async (decodedText) => {
-            if (cancelled) return;
+            if (cancelled || bootGen !== qrBootGenRef.current) return;
             await releaseQrScanner();
             setScanResult(decodedText);
             setScanning(false);
@@ -395,7 +401,7 @@ export default function Attend() {
             // Abaikan kegagalan scan berulang sampai QR terbaca
           },
         );
-        if (cancelled) {
+        if (cancelled || bootGen !== qrBootGenRef.current) {
           try {
             if (qr.isScanning) await qr.stop();
             qr.clear();
@@ -421,6 +427,7 @@ export default function Attend() {
 
     return () => {
       cancelled = true;
+      qrBootGenRef.current += 1;
       const instance = scannerRef.current;
       scannerRef.current = null;
       if (instance) {
@@ -435,16 +442,17 @@ export default function Attend() {
         })();
       }
     };
-  }, [scanning, scanResult, qrCameraId, qrFacingMode, releaseQrScanner]);
+  }, [scanning, scanResult, camerasReady, qrFacingMode, qrBootNonce, releaseQrScanner]);
 
   const switchQrCamera = async () => {
     const nextMode = qrFacingMode === 'environment' ? 'user' : 'environment';
+    await releaseQrScanner();
     setQrFacingMode(nextMode);
     await loadQrCamera(nextMode === 'environment');
-    await releaseQrScanner();
     setScanResult(null);
     setQrScannerError(null);
     setScanning(true);
+    setQrBootNonce((n) => n + 1);
   };
 
   const stopCamera = () => {
@@ -729,8 +737,8 @@ export default function Attend() {
     return (
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-lg flex-col items-center justify-center p-6 text-center">
         <AlertCircle className="mb-4 h-12 w-12 text-red-500" aria-hidden="true" />
-        <h1 className="text-xl font-bold text-slate-900 dark:text-white">Gagal memuat sesi</h1>
-        <p className="mt-2 text-sm text-muted-foreground text-muted-foreground" role="alert">
+        <h1 className="text-xl font-bold text-foreground">Gagal memuat sesi</h1>
+        <p className="mt-2 text-sm text-muted-foreground" role="alert">
           {sessionLoadError}
         </p>
         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
@@ -768,11 +776,11 @@ export default function Attend() {
         <ActionLoadingOverlay show={!!actionOverlayLabel} label={actionOverlayLabel ?? ''} />
         <div className="mx-auto min-h-[calc(100vh-4rem)] max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
         <div className="mb-8 space-y-2">
-          <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Check-out Kehadiran</h1>
-          <p className="text-muted-foreground text-muted-foreground">Konfirmasi untuk menyelesaikan kehadiran di sesi ini.</p>
+          <h1 className="text-2xl font-bold text-foreground">Check-out Kehadiran</h1>
+          <p className="text-muted-foreground">Konfirmasi untuk menyelesaikan kehadiran di sesi ini.</p>
         </div>
 
-        <div className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-sm border-border bg-muted">
+        <div className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-card">
           {isOffline && (
             <div className="flex items-center justify-center gap-2 bg-amber-100 p-3 text-center text-sm font-medium text-amber-900" role="status">
               <WifiOff size={16} aria-hidden="true" />
@@ -798,7 +806,7 @@ export default function Attend() {
             <div className="flex flex-1 flex-col items-center gap-6 p-6 sm:p-8">
               <div className="w-full space-y-4 text-center">
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Kelas / Sesi</p>
-                <p className="text-lg font-bold text-slate-900 dark:text-white">
+                <p className="text-lg font-bold text-foreground">
                   {sessionDetails?.title || myAttendance.session_title}
                 </p>
                 <p className="pt-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Waktu check-in</p>
@@ -839,11 +847,11 @@ export default function Attend() {
       <ActionLoadingOverlay show={!!actionOverlayLabel} label={actionOverlayLabel ?? ''} />
     <div className="mx-auto min-h-[calc(100vh-4rem)] max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
       <div className="mb-8 space-y-2">
-        <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Check-in Kehadiran</h1>
-        <p className="text-muted-foreground text-muted-foreground">Scan QR Code kelas dan pastikan Anda berada di lokasi.</p>
+        <h1 className="text-2xl font-bold text-foreground">Check-in Kehadiran</h1>
+        <p className="text-sm text-muted-foreground">Scan QR Code kelas dan pastikan Anda berada di lokasi.</p>
       </div>
 
-      <div className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-sm border-border bg-muted">
+      <div className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-card">
         {isOffline && (
           <div className="flex items-center justify-center gap-2 bg-amber-100 p-3 text-center text-sm font-medium text-amber-900" role="status">
             <WifiOff size={16} aria-hidden="true" />
@@ -881,32 +889,32 @@ export default function Attend() {
         )}
 
         {/* Status Indicators */}
-        <div className="grid grid-cols-2 divide-x divide-y border-b border-border bg-slate-50 dark:divide-zinc-700 border-border bg-background md:grid-cols-4 md:divide-y-0">
+        <div className="grid grid-cols-2 divide-x divide-y divide-border border-b border-border bg-muted/40 md:grid-cols-4 md:divide-y-0">
           <div className="flex flex-col items-center gap-2 p-5 text-center">
-            <QrCode className={scanResult ? 'text-green-500' : 'text-slate-400'} size={24} />
-            <span className="text-xs font-medium text-muted-foreground text-muted-foreground">QR Code</span>
-            <span className="text-xs font-bold text-slate-900 dark:text-white">
+            <QrCode className={scanResult ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'} size={24} aria-hidden="true" />
+            <span className="text-xs font-medium text-muted-foreground">QR Code</span>
+            <span className="text-xs font-semibold text-foreground">
               {sessionDetails?.qr_mode === 'NONE' ? 'Tidak Perlu' : scanResult ? 'Terscan' : 'Menunggu'}
             </span>
           </div>
           <div className="flex flex-col items-center gap-2 p-5 text-center">
-            <MapPin className={!location ? 'text-amber-500 animate-pulse' : isLocationValid() ? 'text-green-500' : 'text-red-500'} size={24} />
-            <span className="text-xs font-medium text-muted-foreground text-muted-foreground">GPS Lokasi</span>
-            <span className="text-xs font-bold text-slate-900 dark:text-white">
+            <MapPin className={!location ? 'text-amber-600 animate-pulse dark:text-amber-400' : isLocationValid() ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} size={24} aria-hidden="true" />
+            <span className="text-xs font-medium text-muted-foreground">GPS Lokasi</span>
+            <span className="text-xs font-semibold text-foreground">
               {!location ? (gpsError ? 'Error' : 'Mencari…') : isLocationValid() ? 'Akurat' : 'Di Luar Radius'}
             </span>
           </div>
           <div className="flex flex-col items-center gap-2 p-5 text-center">
-            <ShieldAlert className={!ipAddress ? 'text-slate-400' : isIpValid() ? 'text-green-500' : 'text-red-500'} size={24} />
-            <span className="text-xs font-medium text-muted-foreground text-muted-foreground">IP Validasi</span>
-            <span className="text-xs font-bold text-slate-900 dark:text-white">
+            <ShieldAlert className={!ipAddress ? 'text-muted-foreground' : isIpValid() ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} size={24} aria-hidden="true" />
+            <span className="text-xs font-medium text-muted-foreground">IP Validasi</span>
+            <span className="text-xs font-semibold text-foreground">
               {ipStatusLabel()}
             </span>
           </div>
           <div className="flex flex-col items-center gap-2 p-5 text-center">
-            <Camera className={photoBlob ? 'text-green-500' : cameraStarting ? 'text-indigo-500 animate-pulse' : 'text-amber-500'} size={24} />
-            <span className="text-xs font-medium text-muted-foreground text-muted-foreground">Foto Bukti</span>
-            <span className="text-xs font-bold text-slate-900 dark:text-white">
+            <Camera className={photoBlob ? 'text-green-600 dark:text-green-400' : cameraStarting ? 'text-brand animate-pulse' : 'text-amber-600 dark:text-amber-400'} size={24} aria-hidden="true" />
+            <span className="text-xs font-medium text-muted-foreground">Foto Bukti</span>
+            <span className="text-xs font-semibold text-foreground">
               {photoBlob ? 'Tersimpan' : cameraStarting ? 'Menyiapkan…' : 'Menunggu'}
             </span>
           </div>
@@ -950,7 +958,7 @@ export default function Attend() {
                 {!photoBlob && !cameraStarting ? ' — ketuk Buka Kamera' : ''}
                 {cameraStarting ? ' — menyiapkan kamera…' : ''}
               </li>
-              <li className={checkInReady ? 'font-semibold text-emerald-800 dark:text-emerald-300' : 'text-muted-foreground text-muted-foreground'}>
+              <li className={checkInReady ? 'font-semibold text-emerald-800 dark:text-emerald-300' : 'text-muted-foreground'}>
                 {checkInReady ? '✓ Siap dikirim' : '○ Belum siap dikirim'}
               </li>
             </ul>
@@ -1010,6 +1018,7 @@ export default function Attend() {
                           void releaseQrScanner().then(() => {
                             setQrScannerError(null);
                             setScanning(true);
+                            setQrBootNonce((n) => n + 1);
                           });
                         }}
                       >
@@ -1031,7 +1040,7 @@ export default function Attend() {
               </div>
             ) : !photoBlob ? (
               <div className="flex w-full max-w-md animate-in flex-col items-center gap-6 duration-300 zoom-in">
-                <h2 className="text-center text-xl font-bold text-slate-800 dark:text-white">Ambil Foto Bukti Kehadiran</h2>
+                <h2 className="text-center text-xl font-bold text-foreground">Ambil Foto Bukti Kehadiran</h2>
                 
                 <div className="relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-2xl border border-border bg-black shadow-inner border-border">
                   <video 
@@ -1101,8 +1110,8 @@ export default function Attend() {
                 </div>
                 
                 <div className="space-y-2 px-2 text-center">
-                <h2 className="text-xl font-bold text-slate-800 dark:text-white">Data Siap Dikirim</h2>
-                <p className="text-sm leading-relaxed text-muted-foreground text-muted-foreground">
+                <h2 className="text-xl font-bold text-foreground">Data Siap Dikirim</h2>
+                <p className="text-sm leading-relaxed text-muted-foreground">
                   Sistem telah mendapatkan token QR, lokasi GPS, foto bukti, dan informasi perangkat Anda.
                 </p>
                 </div>
@@ -1140,7 +1149,10 @@ export default function Attend() {
                           setScanning(false);
                         } else {
                           setScanResult(null);
-                          void releaseQrScanner().then(() => setScanning(true));
+                          void releaseQrScanner().then(() => {
+                            setScanning(true);
+                            setQrBootNonce((n) => n + 1);
+                          });
                         }
                       }}
                       disabled={loading}

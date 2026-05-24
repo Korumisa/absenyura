@@ -12,13 +12,13 @@ export default function PublicSiteStructurePreview({ groups }: { groups: GroupPr
   return (
     <CmsPreviewAside title="Pratinjau struktur">
       {visible.length === 0 ? (
-        <p className="text-sm text-muted-foreground text-muted-foreground">Belum ada grup. Tambahkan grup di editor.</p>
+        <p className="text-sm text-muted-foreground">Belum ada grup. Tambahkan grup di editor.</p>
       ) : (
         <div className="max-h-[70vh] space-y-4 overflow-y-auto pr-1">
           {visible.map((g, gi) => (
-            <div key={gi} className="rounded-xl border border-border p-3 border-border">
+            <div key={gi} className="rounded-xl border border-border bg-muted/20 p-3">
               <div className="flex items-center gap-2">
-                <p className="text-sm font-bold text-slate-900 dark:text-white">{g.title || 'Grup tanpa nama'}</p>
+                <p className="text-sm font-bold text-foreground">{g.title || 'Grup tanpa nama'}</p>
                 {g.isCore ? (
                   <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
                     Inti
@@ -30,11 +30,11 @@ export default function PublicSiteStructurePreview({ groups }: { groups: GroupPr
                   .filter((p) => p.name.trim() || p.role.trim())
                   .map((p, pi) => (
                     <li key={pi} className="flex items-center gap-2">
-                      <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full bg-slate-100 bg-muted">
+                      <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full bg-muted">
                         {p.photoUrl ? <img src={p.photoUrl} alt="" className="h-full w-full object-cover" /> : null}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-xs font-semibold text-slate-800 dark:text-zinc-200">{p.name || '—'}</p>
+                        <p className="truncate text-xs font-semibold text-foreground">{p.name || '—'}</p>
                         <p className="truncate text-[10px] text-muted-foreground">{p.role || 'Jabatan'}</p>
                       </div>
                       {p.isSpotlight ? (

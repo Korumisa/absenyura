@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import api from '@/services/api';
 import { toast } from 'sonner';
@@ -12,11 +12,11 @@ import { prepareImageForUpload } from '@/lib/imageUpload';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import AdminPageShell from '@/components/AdminPageShell';
 import AdminCard from '@/components/AdminCard';
+import { AdminCardActions } from '@/components/admin/AdminCardActions';
 import PublicSiteProfilePreview from '@/components/publicSiteAdmin/PublicSiteProfilePreview';
 import { Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CmsTabNav, type CmsTabItem } from '@/components/ui/CmsTabNav';
-import { CmsPreviewCollapsible } from '@/components/ui/CmsPreviewCollapsible';
 import { CmsEditorLayout } from '@/components/cms/CmsEditorLayout';
 
 type ProfileTab = 'identity' | 'home' | 'visimisi' | 'contact';
@@ -245,13 +245,9 @@ export default function PublicSiteProfile() {
 
       <AdminCard title="Pengaturan Profil" description="Data ini dipakai untuk halaman public, footer, dan kontak organisasi." className="">
         <CmsEditorLayout
-          preview={
-            <CmsPreviewCollapsible>
-              <PublicSiteProfilePreview draft={draft} />
-            </CmsPreviewCollapsible>
-          }
+          preview={<PublicSiteProfilePreview draft={draft} />}
         >
-          <div className="min-w-0 space-y-5">
+          <div className="min-w-0 space-y-6">
             <CmsTabNav<ProfileTab> tabs={PROFILE_TABS} value={profileTab} onChange={setProfileTab} ariaLabel="Bagian profil" />
 
         <div className={cn('grid gap-5 md:grid-cols-2', profileTab !== 'identity' && 'hidden')}>
@@ -309,7 +305,7 @@ export default function PublicSiteProfile() {
           <div className="space-y-2 md:col-span-2">
             <Label>Konten “Tentang”</Label>
             <Textarea value={draft.aboutContent} onChange={(e) => updateDraft((p) => ({ ...p, aboutContent: e.target.value }))} />
-            <div className="text-xs text-muted-foreground text-muted-foreground">Pisahkan paragraf dengan baris baru (Enter).</div>
+            <div className="text-xs text-muted-foreground">Pisahkan paragraf dengan baris baru (Enter).</div>
           </div>
           <div className="space-y-2 md:col-span-2">
             <Label>Beranda: Paragraf Kiri</Label>
@@ -337,7 +333,7 @@ export default function PublicSiteProfile() {
                 className="min-h-[110px]"
               />
             </div>
-            <div className="text-xs text-muted-foreground text-muted-foreground">Ini akan tampil sebagai 2 kartu paragraf di beranda.</div>
+            <div className="text-xs text-muted-foreground">Ini akan tampil sebagai 2 kartu paragraf di beranda.</div>
           </div>
           <div className="space-y-2 md:col-span-2">
             <Label>Foto Anggota (URL)</Label>
@@ -392,12 +388,12 @@ export default function PublicSiteProfile() {
           <div className="space-y-2 md:col-span-2">
             <Label>Visi</Label>
             <Textarea value={draft.vision} onChange={(e) => updateDraft((p) => ({ ...p, vision: e.target.value }))} />
-            <div className="text-xs text-muted-foreground text-muted-foreground">Gunakan paragraf singkat, bisa dipisah dengan baris baru.</div>
+            <div className="text-xs text-muted-foreground">Gunakan paragraf singkat, bisa dipisah dengan baris baru.</div>
           </div>
           <div className="space-y-2 md:col-span-2">
             <Label>Misi</Label>
             <Textarea value={draft.mission} onChange={(e) => updateDraft((p) => ({ ...p, mission: e.target.value }))} />
-            <div className="text-xs text-muted-foreground text-muted-foreground">Satu baris = satu poin misi.</div>
+            <div className="text-xs text-muted-foreground">Satu baris = satu poin misi.</div>
           </div>
           <div className="space-y-3 md:col-span-2">
             <Label>Beranda: Foto Visi</Label>
@@ -445,9 +441,9 @@ export default function PublicSiteProfile() {
                     </Button>
                   ) : null}
                 </div>
-                <div className="text-xs text-muted-foreground text-muted-foreground">PNG/JPG. Maks 4MB.</div>
+                <div className="text-xs text-muted-foreground">PNG/JPG. Maks 4MB.</div>
               </div>
-              <div className="overflow-hidden rounded-xl border border-border bg-slate-50 border-border bg-background/40">
+              <div className="overflow-hidden rounded-xl border border-border bg-muted/30">
                 <div className="aspect-[4/3] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.2),rgba(255,255,255,0.04))]">
                   {draft.visiPhotoUrl ? (
                     <img src={draft.visiPhotoUrl} alt="Foto Visi" className="h-full w-full object-cover" />
@@ -506,9 +502,9 @@ export default function PublicSiteProfile() {
                     </Button>
                   ) : null}
                 </div>
-                <div className="text-xs text-muted-foreground text-muted-foreground">PNG/JPG. Maks 4MB.</div>
+                <div className="text-xs text-muted-foreground">PNG/JPG. Maks 4MB.</div>
               </div>
-              <div className="overflow-hidden rounded-xl border border-border bg-slate-50 border-border bg-background/40">
+              <div className="overflow-hidden rounded-xl border border-border bg-muted/30">
                 <div className="aspect-[4/3] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.2),rgba(255,255,255,0.04))]">
                   {draft.misiPhotoUrl ? (
                     <img src={draft.misiPhotoUrl} alt="Foto Misi" className="h-full w-full object-cover" />
@@ -653,14 +649,14 @@ export default function PublicSiteProfile() {
           </div>
         </div>
 
-        <div className="flex justify-end gap-3">
-          <Button variant="outline" type="button" onClick={() => setIsResetOpen(true)} disabled={saving} className="min-h-11">
+        <AdminCardActions>
+          <Button variant="outline" type="button" onClick={() => setIsResetOpen(true)} disabled={saving} className="min-h-11 w-full sm:w-auto">
             Reset
           </Button>
-          <Button type="button" onClick={handleSave} disabled={saving || !dirty} className="min-h-11" aria-busy={saving}>
+          <Button type="button" onClick={handleSave} disabled={saving || !dirty} className="min-h-11 w-full sm:w-auto" aria-busy={saving}>
             {saving ? 'Menyimpan…' : 'Simpan'}
           </Button>
-        </div>
+        </AdminCardActions>
           </div>
         </CmsEditorLayout>
       </AdminCard>

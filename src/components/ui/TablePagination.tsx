@@ -26,7 +26,7 @@ export function TablePagination({
   return (
     <div
       className={cn(
-        'flex flex-col gap-3 border-t border-border bg-muted/50 p-4 sm:flex-row sm:items-center sm:justify-between',
+        'flex flex-col gap-3 bg-muted/50 p-4 sm:flex-row sm:items-center sm:justify-between',
         className,
       )}
       aria-label="Paginasi tabel"

@@ -12,11 +12,11 @@ export function CmsPreviewAside({
 }) {
   return (
     <aside
-      className={`sticky top-4 overflow-hidden rounded-2xl border border-border bg-white shadow-sm border-border bg-card ${className}`}
+      className={`sticky top-4 overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-card ${className}`}
       aria-label={title}
     >
-      <div className="border-b border-border px-4 py-3 border-border">
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground text-muted-foreground">{title}</p>
+      <div className="border-b border-border bg-muted/40 px-4 py-3">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{title}</p>
       </div>
       <div className="p-4">{children}</div>
     </aside>

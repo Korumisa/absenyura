@@ -329,7 +329,7 @@ export default function Users() {
         </div>
 
         {/* [UX] #11 — daftar kartu di mobile */}
-        <ul className="space-y-3 p-5 md:hidden" aria-label="Daftar pengguna">
+        <ul className="space-y-4 md:hidden" aria-label="Daftar pengguna">
             {loading ? (
               <li>
                 <CardSkeletonList count={4} />
@@ -345,7 +345,7 @@ export default function Users() {
               )
               : filteredUsers.map((user) => (
               <li key={user.id} className="rounded-2xl border border-border bg-background p-4">
-                <p className="font-bold text-slate-900 dark:text-white">{user.name}</p>
+                <p className="font-bold text-foreground">{user.name}</p>
                 <p className="text-sm text-muted-foreground">{user.email}</p>
                 <p className="mt-1 text-sm text-muted-foreground">{user.nim_nip || '—'}</p>
                 <p className="mt-1 text-xs text-muted-foreground">
@@ -416,7 +416,7 @@ export default function Users() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-10 text-center text-muted-foreground text-muted-foreground">
+                  <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
                     Memuat data...
                   </TableCell>
                 </TableRow>
@@ -430,8 +430,8 @@ export default function Users() {
                 filteredUsers.map((user) => (
                   <TableRow key={user.id}>
                     <TableCell>
-                      <div className="font-medium text-slate-900 dark:text-white">{user.name}</div>
-                      <div className="text-sm text-muted-foreground text-muted-foreground">{user.email}</div>
+                      <div className="font-medium text-foreground">{user.name}</div>
+                      <div className="text-sm text-muted-foreground">{user.email}</div>
                     </TableCell>
                     <TableCell className="text-muted-foreground dark:text-zinc-300">{user.nim_nip || '-'}</TableCell>
                     <TableCell>
@@ -518,7 +518,7 @@ export default function Users() {
         <DialogContent className="max-w-2xl p-0">
           <div className="border-b border-border px-6 py-4 border-border">
             <DialogHeader>
-              <DialogTitle className="text-xl font-bold text-slate-800 dark:text-white">
+              <DialogTitle className="text-xl font-bold text-foreground">
                 {editingUser ? 'Edit Pengguna' : 'Tambah Pengguna Baru'}
               </DialogTitle>
               <DialogDescription className="sr-only">Form pengguna</DialogDescription>
@@ -602,12 +602,12 @@ export default function Users() {
               {editingUser ? (
                 <div className="flex items-center gap-3 pt-6">
                   <Checkbox checked={Boolean(formData.is_active)} onCheckedChange={(checked) => setFormData((p) => ({ ...p, is_active: Boolean(checked) }))} />
-                  <span className="text-sm font-medium text-slate-700 dark:text-zinc-300">Akun Aktif</span>
+                  <span className="text-sm font-medium text-muted-foreground">Akun Aktif</span>
                 </div>
               ) : null}
             </div>
 
-            <DialogFooter className="mt-8 border-t border-border pt-4 border-border">
+            <DialogFooter className="mt-6">
               <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
                 Batal
               </Button>

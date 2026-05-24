@@ -1,4 +1,4 @@
-import { Camera, MapPin, QrCode } from 'lucide-react'
+﻿import { Camera, MapPin, QrCode } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export type AttendStep = 'scan' | 'verify' | 'photo'
@@ -20,7 +20,7 @@ export function AttendWizardHeader({
   const currentIndex = STEPS.findIndex((s) => s.id === current)
 
   return (
-    <nav aria-label="Langkah absensi" className="border-b border-border bg-white px-4 py-4 border-border bg-background">
+    <nav aria-label="Langkah absensi" className="border-b border-border bg-card px-4 py-4">
       <ol className="flex items-center justify-between gap-2">
         {STEPS.map((step, index) => {
           const done = index < currentIndex
@@ -47,7 +47,7 @@ export function AttendWizardHeader({
           )
         })}
       </ol>
-      <p className="mt-2 text-center text-xs text-muted-foreground text-muted-foreground" aria-live="polite">
+      <p className="mt-2 text-center text-xs text-muted-foreground" aria-live="polite">
         Langkah {currentIndex + 1} dari {STEPS.length}
       </p>
     </nav>

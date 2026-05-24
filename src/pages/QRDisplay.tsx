@@ -204,7 +204,7 @@ export default function QRDisplay() {
 
   return (
     <div className="min-h-screen bg-slate-100">
-      <header className="border-b border-border bg-white shadow-sm">
+      <header className="border-b border-border bg-card text-card-foreground shadow-card">
         <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-6">
           <div className="flex min-w-0 items-start gap-3">
             <Button
@@ -248,11 +248,11 @@ export default function QRDisplay() {
       </header>
 
       <main className="mx-auto grid max-w-6xl grid-cols-1 gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-stretch">
-        <section className="flex flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-sm lg:min-h-[min(72vh,680px)]">
+        <section className="flex flex-col overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-card lg:min-h-[min(72vh,680px)]">
           <div className="flex flex-1 flex-col items-center justify-center p-6 sm:p-8 lg:p-10">
           {isActive ? (
             <>
-              <div className="w-full max-w-[min(100%,380px)] rounded-2xl border-4 border-indigo-100 bg-white p-4 shadow-inner">
+              <div className="w-full max-w-[min(100%,380px)] rounded-2xl border-4 border-brand/20 bg-card p-4 shadow-inner">
                 <canvas ref={canvasRef} className="mx-auto block h-auto w-full max-w-[340px]" aria-label="Kode QR absensi" />
               </div>
 
@@ -289,7 +289,7 @@ export default function QRDisplay() {
           </div>
         </section>
 
-        <aside className="flex flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-sm lg:min-h-[min(72vh,680px)]">
+        <aside className="flex flex-col overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-card lg:min-h-[min(72vh,680px)]">
           <div className="flex shrink-0 items-center justify-between border-b border-border bg-slate-50 px-5 py-4">
             <h2 className="font-bold text-slate-800">Kehadiran live</h2>
             <span className="relative flex h-2.5 w-2.5" aria-hidden="true">

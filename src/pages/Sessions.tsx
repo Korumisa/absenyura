@@ -388,7 +388,7 @@ export default function Sessions() {
           </div>
         </div>
 
-        <ul className="space-y-4 p-5 md:hidden" aria-label="Daftar sesi">
+        <ul className="space-y-4 md:hidden" aria-label="Daftar sesi">
           {loading ? (
             <li>
               <CardSkeletonList count={3} />
@@ -440,7 +440,7 @@ export default function Sessions() {
                     <p className="text-xs text-muted-foreground">{qrModeLabel(session.qr_mode)}</p>
                     <p className="text-xs text-muted-foreground">Dibuat oleh: {session.creator?.name}</p>
                   </div>
-                  <div className="mt-5 flex flex-wrap gap-3 border-t border-border pt-4">
+                  <div className="mt-5 flex flex-wrap gap-3">
                     {session.qr_mode !== 'NONE' && session.status !== 'CLOSED' && (
                       <Button
                         variant="outline"
@@ -580,28 +580,28 @@ export default function Sessions() {
               paginatedSessions.map((session) => (
                 <TableRow key={session.id}>
                   <TableCell>
-                    <div className="font-bold text-slate-900 dark:text-white text-base">{session.title}</div>
-                    <div className="text-sm text-muted-foreground text-muted-foreground flex items-center gap-1 mt-1">
+                    <div className="font-bold text-foreground text-base">{session.title}</div>
+                    <div className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
                       <MapPin size={14} className="text-indigo-500" />
                       {session.location?.name}
                     </div>
                     <div className="text-xs text-slate-400 text-muted-foreground mt-1">Dibuat oleh: {session.creator?.name}</div>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-1.5 text-slate-700 dark:text-zinc-300 mb-1">
+                    <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
                       <Clock size={14} className="text-indigo-500" />
                       <span className="font-medium">{format(new Date(session.session_start), 'dd MMM yyyy', { locale: id })}</span>
                     </div>
-                    <div className="text-xs text-muted-foreground text-muted-foreground">
+                    <div className="text-xs text-muted-foreground">
                       {format(new Date(session.session_start), 'HH:mm')} - {format(new Date(session.session_end), 'HH:mm')} WIB
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="font-medium text-slate-700 dark:text-zinc-300">{sessionClassNames(session)}</div>
+                    <div className="font-medium text-muted-foreground">{sessionClassNames(session)}</div>
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col gap-2">
-                      <div className="flex items-center gap-1.5 text-slate-700 dark:text-zinc-300">
+                      <div className="flex items-center gap-1.5 text-muted-foreground">
                         <MapPin size={14} className="text-emerald-500 shrink-0" />
                         <span className="font-medium text-sm line-clamp-1">{session.location?.name || 'Lokasi tidak diketahui'}</span>
                       </div>
@@ -700,7 +700,7 @@ export default function Sessions() {
         <DialogContent className="max-w-4xl p-0">
           <div className="border-b border-border px-6 py-4 border-border">
             <DialogHeader>
-              <DialogTitle className="text-xl font-bold text-slate-800 dark:text-white">
+              <DialogTitle className="text-xl font-bold text-foreground">
                 {editingSession ? 'Edit Sesi Kehadiran' : 'Buat Sesi Baru'}
               </DialogTitle>
               <DialogDescription className="sr-only">Form sesi kehadiran</DialogDescription>
@@ -828,7 +828,7 @@ export default function Sessions() {
                     </div>
                     <div className="flex items-center gap-2 pt-8">
                       <Checkbox checked={Boolean(formData.require_checkout)} onCheckedChange={(checked) => setFormData((p) => ({ ...p, require_checkout: Boolean(checked) }))} />
-                      <span className="text-sm font-medium text-slate-700 dark:text-zinc-300">Wajib Check-out</span>
+                      <span className="text-sm font-medium text-muted-foreground">Wajib Check-out</span>
                     </div>
                   </div>
                   {editingSession && (
@@ -865,7 +865,7 @@ export default function Sessions() {
                       />
                     </div>
 
-                    <div className="scrollbar-hide max-h-56 overflow-y-auto rounded-xl border border-border bg-white p-2 border-border bg-card">
+                    <div className="scrollbar-hide max-h-56 overflow-y-auto rounded-xl border border-border rounded-xl border border-border bg-card p-2">
                       <Button
                         type="button"
                         variant="ghost"
@@ -909,18 +909,18 @@ export default function Sessions() {
                               {selected ? (
                                 <span className="text-xs font-semibold">Terpilih</span>
                               ) : (
-                                <span className="text-xs text-muted-foreground text-muted-foreground">Tambah</span>
+                                <span className="text-xs text-muted-foreground">Tambah</span>
                               )}
                             </Button>
                           );
                         })}
                       {classes.filter((c) => c.name.toLowerCase().includes(classSearch.trim().toLowerCase())).length === 0 ? (
-                        <div className="px-3 py-2 text-sm text-muted-foreground text-muted-foreground">Tidak ada kelas.</div>
+                        <div className="px-3 py-2 text-sm text-muted-foreground">Tidak ada kelas.</div>
                       ) : null}
                     </div>
 
-                    <div className="rounded-xl border border-border bg-slate-50/60 p-3 border-border bg-background/30">
-                      <div className="text-sm font-semibold text-slate-800 dark:text-zinc-200">Kelas Terpilih:</div>
+                    <div className="rounded-xl border border-border bg-muted/30 p-3">
+                      <div className="text-sm font-semibold text-foreground">Kelas Terpilih:</div>
                       <div className="mt-2 flex flex-wrap gap-2">
                         {formData.class_ids.length === 0 ? (
                           <Badge variant="secondary">Semua Mahasiswa</Badge>
@@ -949,12 +949,12 @@ export default function Sessions() {
                       </div>
                     </div>
 
-                    <div className="text-xs text-muted-foreground text-muted-foreground">Kosong = semua mahasiswa.</div>
+                    <div className="text-xs text-muted-foreground">Kosong = semua mahasiswa.</div>
                   </div>
                 </div>
               </div>
               
-              <DialogFooter className="mt-2 flex flex-wrap gap-3 border-t border-border pt-8 border-border">
+              <DialogFooter className="mt-6 flex flex-wrap gap-3">
                 <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)} disabled={saving} className="min-h-11">
                   Batal
                 </Button>

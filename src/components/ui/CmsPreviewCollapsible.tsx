@@ -24,14 +24,14 @@ export function CmsPreviewCollapsible({
     <div className={cn('xl:contents', className)}>
       <button
         type="button"
-        className="mb-3 flex min-h-11 w-full items-center justify-between rounded-xl border border-border bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800 border-border bg-background dark:text-zinc-200 xl:hidden"
+        className="mb-4 flex min-h-11 w-full items-center justify-between rounded-xl border border-border bg-muted px-4 py-3 text-sm font-semibold text-foreground xl:hidden"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
       >
         Pratinjau tampilan publik
         <ChevronDown className={cn('h-5 w-5 transition-transform', open && 'rotate-180')} aria-hidden="true" />
       </button>
-      <div className={cn('hidden xl:block', open && 'block')}>{children}</div>
+      <div className={cn('hidden space-y-4 xl:block', open && 'block')}>{children}</div>
     </div>
   );
 }

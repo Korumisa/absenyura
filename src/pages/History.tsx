@@ -123,10 +123,10 @@ export default function HistoryPage() {
       ) : (
         <div className="overflow-hidden rounded-xl border border-border bg-card shadow-card dark:shadow-none dark:ring-1 dark:ring-white/10">
         {/* [UX] #18 — kartu mobile */}
-        <ul className="space-y-3 p-5 md:hidden" aria-label="Riwayat kehadiran">
+        <ul className="space-y-4 md:hidden" aria-label="Riwayat kehadiran">
           {filteredHistory.map((item) => (
-            <li key={item.id} className="rounded-2xl border border-border bg-white p-4 border-border bg-background">
-              <p className="font-bold text-slate-900 dark:text-white">{item.session_title}</p>
+            <li key={item.id} className="rounded-2xl border border-border bg-card p-4">
+              <p className="font-bold text-foreground">{item.session_title}</p>
               <p className="text-sm text-brand">{item.class_name || 'Umum'}</p>
               <div className="mt-2 flex flex-col gap-1 text-sm text-muted-foreground">
                 <div className="flex items-center gap-1.5">
@@ -182,25 +182,25 @@ export default function HistoryPage() {
                 {filteredHistory.map((item) => (
                   <TableRow key={item.id}>
                     <TableCell>
-                      <div className="font-bold text-slate-900 dark:text-white text-base">{item.session_title}</div>
+                      <div className="font-bold text-foreground text-base">{item.session_title}</div>
                       {item.class_name && (
                         <p className="text-sm font-semibold text-brand text-brand mt-0.5">{typeof item.class_name === 'object' && item.class_name !== null ? ((item.class_name as any).name || (item.class_name as any).id) : item.class_name}</p>
                       )}
                     </TableCell>
                     <TableCell>
-                      <div className="flex flex-col gap-1.5 text-slate-700 dark:text-zinc-300">
+                      <div className="flex flex-col gap-1.5 text-muted-foreground">
                         <div className="flex items-center gap-2">
                           <Calendar size={14} className="text-indigo-500" />
                           <span className="font-medium">{format(new Date(item.session_date), 'dd MMM yyyy', { locale: id })}</span>
                         </div>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground text-muted-foreground">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Clock size={14} />
                           {format(new Date(item.check_in_time), 'HH:mm:ss')} WIB
                         </div>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex flex-col gap-1 text-xs text-muted-foreground text-muted-foreground">
+                      <div className="flex flex-col gap-1 text-xs text-muted-foreground">
                         <div className="flex items-center gap-1.5">
                           <Smartphone size={14} className="text-slate-400 shrink-0" />
                           <span className="truncate max-w-[150px]" title={item.device}>{item.device || 'Perangkat tidak diketahui'}</span>

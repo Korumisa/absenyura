@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import api from '@/services/api';
 import { Bell, Check, Trash2, X } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
@@ -68,9 +68,9 @@ export function NotificationMenu() {
       {isOpen && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)}></div>
-          <div className="absolute -right-12 sm:right-0 mt-2 w-[320px] max-w-[calc(100vw-2rem)] bg-white bg-muted border border-border border-border shadow-xl rounded-xl z-50 overflow-hidden animate-in slide-in-from-top-2 duration-200">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-border border-border/50 bg-slate-50 bg-background/50">
-              <h3 className="font-bold text-slate-800 dark:text-white">Notifikasi</h3>
+          <div className="absolute -right-12 sm:right-0 mt-2 w-[320px] max-w-[calc(100vw-2rem)] bg-card text-card-foreground border border-border shadow-xl rounded-xl z-50 overflow-hidden animate-in slide-in-from-top-2 duration-200">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 bg-muted/50">
+              <h3 className="font-bold text-foreground">Notifikasi</h3>
               {unreadCount > 0 && (
                 <button 
                   onClick={markAllAsRead}
@@ -83,7 +83,7 @@ export function NotificationMenu() {
 
             <div className="max-h-[400px] overflow-y-auto">
               {notifications.length === 0 ? (
-                <div className="p-6 text-center text-muted-foreground text-muted-foreground text-sm">
+                <div className="p-6 text-center text-muted-foreground text-sm">
                   Belum ada notifikasi baru.
                 </div>
               ) : (
@@ -99,10 +99,10 @@ export function NotificationMenu() {
                       )}
                       <div className="flex gap-3">
                         <div className="flex-1 min-w-0">
-                          <p className={`text-sm font-medium mb-1 truncate ${!notif.is_read ? 'text-slate-900 dark:text-white font-bold' : 'text-slate-700 dark:text-zinc-300'}`}>
+                          <p className={`text-sm font-medium mb-1 truncate ${!notif.is_read ? 'text-foreground font-bold' : 'text-muted-foreground'}`}>
                             {notif.title}
                           </p>
-                          <p className="text-xs text-muted-foreground text-muted-foreground line-clamp-2">
+                          <p className="text-xs text-muted-foreground line-clamp-2">
                             {notif.message}
                           </p>
                           <p className="text-[10px] text-slate-400 text-muted-foreground mt-2 font-medium">
@@ -116,7 +116,7 @@ export function NotificationMenu() {
               )}
             </div>
             
-            <div className="p-2 bg-slate-50 bg-background/50 border-t border-border border-border/50 text-center">
+            <div className="bg-muted/50 p-2 text-center">
               <button onClick={() => setIsOpen(false)} className="text-xs text-muted-foreground hover:text-slate-700 text-muted-foreground dark:hover:text-zinc-200">
                 Tutup
               </button>

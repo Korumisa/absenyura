@@ -1,4 +1,4 @@
-import { Check } from 'lucide-react';
+﻿import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /** [IA] Stepper — label langkah + penjelasan singkat fungsi langkah aktif */
@@ -29,7 +29,7 @@ export function WizardStepIndicator({
                   'flex items-center gap-2 rounded-full px-3 py-2 text-sm font-medium',
                   active && 'bg-brand text-white',
                   done && 'text-brand text-brand',
-                  !active && !done && 'text-muted-foreground text-muted-foreground',
+                  !active && !done && 'text-muted-foreground',
                 )}
                 aria-current={active ? 'step' : undefined}
               >

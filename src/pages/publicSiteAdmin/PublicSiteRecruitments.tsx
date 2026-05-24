@@ -263,7 +263,7 @@ export default function PublicSiteRecruitments() {
                         ) : null}
                       </div>
                     </div>
-                    <div className="overflow-hidden rounded-xl border border-border border-border">
+                    <div className="overflow-hidden rounded-xl border border-border">
                       <div className="aspect-[4/5] w-full bg-slate-100 bg-background">
                         {form.posterImageUrl ? (
                           <img src={form.posterImageUrl} alt="Poster" className="h-full w-full object-cover" />
@@ -290,7 +290,7 @@ export default function PublicSiteRecruitments() {
                     </Button>
                   </div>
                   {(form.committee ?? []).length === 0 ? (
-                    <div className="rounded-xl border border-dashed border-border bg-slate-50 p-4 text-sm text-muted-foreground border-border bg-background/40 dark:text-zinc-300">
+                    <div className="rounded-xl border border-dashed rounded-xl border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
                       Belum ada panitia.
                     </div>
                   ) : (
@@ -346,7 +346,7 @@ export default function PublicSiteRecruitments() {
                     </Button>
                   </div>
                   {(form.contacts ?? []).length === 0 ? (
-                    <div className="rounded-xl border border-dashed border-border bg-slate-50 p-4 text-sm text-muted-foreground border-border bg-background/40 dark:text-zinc-300">
+                    <div className="rounded-xl border border-dashed rounded-xl border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
                       Belum ada kontak.
                     </div>
                   ) : (
@@ -390,7 +390,7 @@ export default function PublicSiteRecruitments() {
                 </div>
               </div>
 
-              <div className="flex flex-col-reverse gap-2 border-t border-border pt-4 border-border sm:flex-row sm:justify-end">
+              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                 <Button type="button" variant="outline" className="min-h-11" onClick={() => setPageTab('list')}>
                   Kembali ke daftar
                 </Button>
@@ -421,13 +421,13 @@ export default function PublicSiteRecruitments() {
               setPageTab('form');
             }}
           />
-          <ul className="space-y-3 md:hidden" aria-label="Daftar recruitment">
+          <ul className="space-y-4 md:hidden" aria-label="Daftar recruitment">
             {recruitments.length === 0 ? (
               <li className="py-8 text-center text-sm text-muted-foreground">Belum ada recruitment.</li>
             ) : null}
             {recruitments.map((r) => (
               <li key={r.id} className="rounded-2xl border border-border p-4 border-border">
-                <p className="font-bold text-slate-900 dark:text-white">{r.title}</p>
+                <p className="font-bold text-foreground">{r.title}</p>
                 <p className="text-sm text-muted-foreground">{r.date_range ?? '—'}</p>
                 <Badge className="mt-2" variant={r.is_published ? 'success' : 'secondary'}>
                   {r.is_published ? 'Publik' : 'Draft'}

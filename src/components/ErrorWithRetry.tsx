@@ -20,8 +20,8 @@ export function ErrorWithRetry({
       role="alert"
     >
       <AlertCircle className="mx-auto mb-4 h-12 w-12 text-red-500" aria-hidden="true" />
-      <h2 className="text-lg font-bold text-slate-900 dark:text-white">{title}</h2>
-      <p className="mt-2 text-sm text-muted-foreground text-muted-foreground">
+      <h2 className="text-lg font-bold text-foreground">{title}</h2>
+      <p className="mt-2 text-sm text-muted-foreground">
         {getErrorMessage(error, 'Periksa koneksi internet Anda lalu coba muat ulang.')}
       </p>
       <Button type="button" className="mt-6 min-h-11" onClick={onRetry}>

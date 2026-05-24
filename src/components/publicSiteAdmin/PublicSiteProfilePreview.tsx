@@ -22,7 +22,7 @@ export default function PublicSiteProfilePreview({ draft }: { draft: DraftPrevie
 
   return (
     <aside
-      className="sticky top-4 overflow-hidden rounded-2xl border border-border bg-white shadow-sm border-border bg-card"
+      className="sticky top-4 overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-card"
       aria-label="Pratinjau tampilan website"
     >
       <div className="border-b border-border px-4 py-3 border-border">
@@ -68,10 +68,10 @@ export default function PublicSiteProfilePreview({ draft }: { draft: DraftPrevie
         </div>
 
         <div className="mt-4 space-y-2 rounded-xl bg-slate-50 p-3 bg-background">
-          <p className="text-xs font-bold text-slate-800 dark:text-white">Visi</p>
-          <p className="line-clamp-2 text-xs text-muted-foreground text-muted-foreground">{draft.vision || '—'}</p>
-          <p className="text-xs font-bold text-slate-800 dark:text-white">Misi</p>
-          <p className="line-clamp-3 whitespace-pre-line text-xs text-muted-foreground text-muted-foreground">{draft.mission || '—'}</p>
+          <p className="text-xs font-bold text-foreground">Visi</p>
+          <p className="line-clamp-2 text-xs text-muted-foreground">{draft.vision || '—'}</p>
+          <p className="text-xs font-bold text-foreground">Misi</p>
+          <p className="line-clamp-3 whitespace-pre-line text-xs text-muted-foreground">{draft.mission || '—'}</p>
         </div>
 
         <p className="mt-4 text-center text-[10px] text-muted-foreground">{draft.footerTagline || 'Footer tagline'}</p>

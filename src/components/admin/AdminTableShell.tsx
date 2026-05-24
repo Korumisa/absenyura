@@ -39,10 +39,10 @@ export function AdminTableShell({
       )}
     >
       {filter ? (
-        <div className="border-b border-border p-5">{filter}</div>
+        <div className="border-b border-border p-5 sm:p-6">{filter}</div>
       ) : null}
 
-      {mobile ? <div className="md:hidden">{mobile}</div> : null}
+      {mobile ? <div className="space-y-4 p-5 sm:p-6 md:hidden">{mobile}</div> : null}
 
       {!hideScrollHint ? (
         <div className="hidden md:block">

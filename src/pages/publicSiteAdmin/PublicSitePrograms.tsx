@@ -155,7 +155,7 @@ export default function PublicSitePrograms() {
                 <Label>Deskripsi</Label>
                 <Textarea rows={5} value={form.description ?? ''} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} />
               </div>
-              <div className="flex flex-col-reverse gap-2 border-t border-border pt-4 border-border sm:flex-row sm:justify-end">
+              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                 <Button type="button" variant="outline" className="min-h-11" onClick={() => setPageTab('list')}>
                   Kembali ke daftar
                 </Button>
@@ -185,10 +185,10 @@ export default function PublicSitePrograms() {
               setPageTab('form');
             }}
           />
-          <ul className="space-y-3 md:hidden" aria-label="Daftar program">
+          <ul className="space-y-4 md:hidden" aria-label="Daftar program">
             {programs.map((p) => (
               <li key={p.id} className="rounded-2xl border border-border p-4 border-border">
-                <p className="font-bold text-slate-900 dark:text-white">{p.title}</p>
+                <p className="font-bold text-foreground">{p.title}</p>
                 <p className="text-sm text-muted-foreground">{p.date_range ?? '—'}</p>
                 <Badge className="mt-2" variant={p.is_published ? 'success' : 'secondary'}>
                   {p.is_published ? 'Publik' : 'Draft'}

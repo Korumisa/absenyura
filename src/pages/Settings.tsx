@@ -406,7 +406,7 @@ export default function Settings() {
                   </div>
               </div>
 
-              <div className="flex justify-end border-t border-border pt-6">
+              <div className="flex justify-end pt-2">
                 <Button type="submit" disabled={saving || profileLoading}>
                   {saving ? 'Menyimpan...' : 'Simpan Perubahan'}
                 </Button>

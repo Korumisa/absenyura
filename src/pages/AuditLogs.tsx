@@ -82,7 +82,7 @@ export default function AuditLogs() {
           {getAuditActionLabel(log.action)}
         </Badge>
         <p className="mt-1 font-mono text-[10px] text-slate-400">{log.action}</p>
-        <p className="mt-2 text-sm font-medium text-slate-700 dark:text-zinc-300">
+        <p className="mt-2 text-sm font-medium text-muted-foreground">
           {getAuditTableLabel(log.target_table)}
         </p>
         {detail ? <p className="mt-1 text-sm text-muted-foreground">{detail}</p> : null}
@@ -119,7 +119,7 @@ export default function AuditLogs() {
             </div>
           </div>
 
-          <ul className="space-y-3 p-5 md:hidden" aria-label="Daftar audit log">
+          <ul className="space-y-4 md:hidden" aria-label="Daftar audit log">
             {loading ? (
               <li className="py-8 text-center text-muted-foreground">Memuat data...</li>
             ) : filteredLogs.length === 0 ? (
@@ -139,7 +139,7 @@ export default function AuditLogs() {
               filteredLogs.map((log) => (
                 <li
                   key={log.id}
-                  className="rounded-2xl border border-border bg-white p-4 border-border bg-card"
+                  className="rounded-2xl border border-border rounded-2xl border border-border bg-card p-4"
                 >
                   {renderLogRow(log)}
                 </li>
@@ -204,7 +204,7 @@ export default function AuditLogs() {
                           <p className="mt-1 font-mono text-[10px] text-slate-400">{log.action}</p>
                         </TableCell>
                         <TableCell>
-                          <p className="font-medium text-slate-700 dark:text-zinc-300">
+                          <p className="font-medium text-muted-foreground">
                             {getAuditTableLabel(log.target_table)}
                           </p>
                           {log.target_id ? (
@@ -228,10 +228,10 @@ export default function AuditLogs() {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="max-w-[200px] text-sm text-muted-foreground text-muted-foreground">
+                        <TableCell className="max-w-[200px] text-sm text-muted-foreground">
                           {detail ?? '—'}
                         </TableCell>
-                        <TableCell className="font-mono text-sm text-muted-foreground text-muted-foreground">
+                        <TableCell className="font-mono text-sm text-muted-foreground">
                           {log.ip_address || '—'}
                         </TableCell>
                         <TableCell>

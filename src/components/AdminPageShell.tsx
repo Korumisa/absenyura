@@ -71,7 +71,7 @@ export default function AdminPageShell({
     );
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6 p-5 sm:p-6 lg:p-8">
+    <div className="mx-auto max-w-7xl space-y-8 p-5 sm:p-6 lg:p-8">
       {header}
       {children}
     </div>

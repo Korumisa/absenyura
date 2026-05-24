@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import api from '@/services/api';
 import useSWR from 'swr';
@@ -78,7 +78,7 @@ export default function MasterData() {
   if (user?.role !== 'SUPER_ADMIN') {
     return (
       <AdminPageShell title="Master Data" description="Halaman ini hanya untuk Super Admin." variant="plain">
-        <p className="rounded-xl border border-border bg-white p-8 text-center text-muted-foreground border-border bg-background">
+        <p className="rounded-xl border border-border bg-card p-8 text-center text-muted-foreground">
           Anda tidak memiliki akses ke halaman ini.
         </p>
       </AdminPageShell>
@@ -109,9 +109,9 @@ export default function MasterData() {
       variant="plain"
       icon={<Building2 className="h-5 w-5" />}
     >
-      <div className="flex flex-col gap-6 lg:flex-row">
+      <div className="flex flex-col gap-8 lg:flex-row">
         <aside className="w-full shrink-0 lg:w-56">
-          <div className="flex flex-row gap-1 rounded-xl border border-border bg-white p-2 shadow-sm border-border bg-background lg:flex-col">
+          <div className="flex flex-row gap-1 rounded-xl border border-border bg-card p-2 shadow-card lg:flex-col">
             {tabBtn('departments', 'Fakultas & Prodi', Building2)}
             {tabBtn('subjects', 'Mata Kuliah', BookOpen)}
           </div>
@@ -149,10 +149,10 @@ export default function MasterData() {
                   return (
                     <div
                       key={index}
-                      className="rounded-xl border border-border bg-slate-50/80 p-4 border-border bg-background/50"
+                      className="rounded-xl border border-border bg-muted/30 p-4"
                     >
                       <div className="mb-4 flex items-center justify-between gap-2">
-                        <h3 className="flex items-center gap-2 font-bold text-slate-800 dark:text-white">
+                        <h3 className="flex items-center gap-2 font-bold text-foreground">
                           <Building2 className="h-4 w-4 text-indigo-500" />
                           {facultyName}
                         </h3>
@@ -177,9 +177,9 @@ export default function MasterData() {
                           return (
                             <div
                               key={dIndex}
-                              className="flex items-center justify-between rounded-lg border border-border bg-white px-3 py-2 border-border bg-muted"
+                              className="flex items-center justify-between rounded-lg border border-border bg-background px-3 py-2"
                             >
-                              <span className="text-sm text-slate-700 dark:text-zinc-300">{deptName}</span>
+                              <span className="text-sm text-foreground">{deptName}</span>
                               <Button
                                 type="button"
                                 variant="ghost"
@@ -238,7 +238,7 @@ export default function MasterData() {
                   );
                 })}
 
-                <div className="flex flex-col gap-2 border-t border-border pt-4 border-border sm:flex-row">
+                <div className="flex flex-col gap-2 sm:flex-row">
                   <Input
                     placeholder="Nama fakultas baru…"
                     value={newFaculty}
@@ -287,7 +287,7 @@ export default function MasterData() {
                       <span className="mr-2 font-mono text-sm font-semibold text-brand text-brand">
                         {subject.code}
                       </span>
-                      <span className="text-slate-800 dark:text-white">{subject.name}</span>
+                      <span className="text-foreground">{subject.name}</span>
                     </div>
                     <Button
                       type="button"
@@ -301,7 +301,7 @@ export default function MasterData() {
                   </div>
                 ))}
 
-                <div className="flex flex-col gap-2 border-t border-border pt-4 border-border sm:flex-row">
+                <div className="flex flex-col gap-2 sm:flex-row">
                   <Input
                     placeholder="Kode MK"
                     className="sm:w-32"

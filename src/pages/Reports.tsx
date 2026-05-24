@@ -413,7 +413,7 @@ export default function Reports() {
         <div className="shrink-0 border-b border-border p-5">
           <button
             type="button"
-            className="mb-3 flex min-h-11 w-full items-center justify-between rounded-xl border border-border bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800 border-border bg-background dark:text-zinc-200 md:hidden"
+            className="mb-3 flex min-h-11 w-full items-center justify-between rounded-xl border border-border bg-muted px-4 py-3 text-sm font-semibold text-foreground md:hidden"
             aria-expanded={filtersOpen}
             onClick={() => setFiltersOpen((v) => !v)}
           >
@@ -480,12 +480,12 @@ export default function Reports() {
             </SelectContent>
           </Select>
         </div>
-        <p id="reports-search-hint" className="mt-3 text-xs text-muted-foreground text-muted-foreground">
+        <p id="reports-search-hint" className="mt-3 text-xs text-muted-foreground">
           Pencarian memfilter data di halaman ini ({filteredReports.length} baris).
         </p>
         </div>
 
-        <ul className="space-y-4 p-5 md:hidden" aria-label="Daftar laporan kehadiran">
+        <ul className="space-y-4 md:hidden" aria-label="Daftar laporan kehadiran">
           {loading ? (
             <li>
               <CardSkeletonList count={4} />
@@ -499,7 +499,7 @@ export default function Reports() {
               <li key={report.id ?? idx} className="space-y-3 rounded-2xl border border-border p-5">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    <p className="font-bold text-slate-900 dark:text-white">{report.user_name}</p>
+                    <p className="font-bold text-foreground">{report.user_name}</p>
                     <p className="text-sm text-muted-foreground">{report.nim_nip}</p>
                   </div>
                   <Badge variant={attendanceBadgeVariant(report.status)} className="shrink-0 gap-1">
@@ -609,13 +609,13 @@ export default function Reports() {
                   .map((report: any, idx: number) => (
                   <TableRow key={String(report?.id ?? idx)}>
                     <TableCell>
-                      <div className="font-medium text-slate-900 dark:text-white">{String(report?.user_name ?? '-')}</div>
-                      <div className="text-sm text-muted-foreground text-muted-foreground">{String(report?.nim_nip ?? '-') || '-'}</div>
+                      <div className="font-medium text-foreground">{String(report?.user_name ?? '-')}</div>
+                      <div className="text-sm text-muted-foreground">{String(report?.nim_nip ?? '-') || '-'}</div>
                     </TableCell>
                     <TableCell>
                       <div className="font-medium text-slate-800 dark:text-zinc-200">{String(report?.session_title ?? '-')}</div>
                       {report?.class_name && <div className="text-xs font-semibold text-brand text-brand mt-0.5">{typeof report.class_name === 'object' && report.class_name !== null ? ((report.class_name as any).name || (report.class_name as any).id) : report.class_name}</div>}
-                      <div className="text-xs text-muted-foreground text-muted-foreground mt-1">
+                      <div className="text-xs text-muted-foreground mt-1">
                         {safeFormat(report.session_date, 'dd MMMM yyyy')}
                       </div>
                     </TableCell>
@@ -634,16 +634,16 @@ export default function Reports() {
                     <TableCell>
                       {report.photo_url ? (
                         <a href={report.photo_url} target="_blank" rel="noreferrer" className="inline-block hover:opacity-80 transition-opacity">
-                          <img src={report.photo_url} alt="Bukti Hadir" className="w-10 h-10 object-cover rounded-md shadow-sm border border-border border-border" />
+                          <img src={report.photo_url} alt="Bukti Hadir" className="w-10 h-10 object-cover rounded-md shadow-sm border border-border" />
                         </a>
                       ) : (
-                        <div className="w-10 h-10 bg-slate-100 bg-muted rounded-md flex items-center justify-center text-xs text-slate-400 text-muted-foreground">
+                        <div className="w-10 h-10 bg-muted rounded-md flex items-center justify-center text-xs text-slate-400 text-muted-foreground">
                           -
                         </div>
                       )}
                     </TableCell>
                     <TableCell>
-                      <div className="text-xs text-muted-foreground text-muted-foreground font-mono mb-1">
+                      <div className="text-xs text-muted-foreground font-mono mb-1">
                         IP: {report.ip || '-'}
                       </div>
                       <div className="text-xs text-slate-400 text-muted-foreground max-w-[150px] truncate" title={report.device || '-'}>
@@ -681,7 +681,7 @@ export default function Reports() {
         <DialogContent className="max-w-md p-0">
           <div className="border-b border-border px-6 py-4 border-border">
             <DialogHeader>
-              <DialogTitle className="text-xl font-bold text-slate-800 dark:text-white">Ubah Status Manual</DialogTitle>
+              <DialogTitle className="text-xl font-bold text-foreground">Ubah Status Manual</DialogTitle>
               <DialogDescription className="sr-only">Override status kehadiran</DialogDescription>
             </DialogHeader>
           </div>

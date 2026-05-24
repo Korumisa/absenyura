@@ -19,7 +19,7 @@ export default function PublicSiteGalleryPreview({
     <CmsPreviewAside title="Pratinjau album">
       <div className="space-y-3">
         <div className="flex items-start justify-between gap-2">
-          <p className="font-bold text-slate-900 dark:text-white">{title || 'Judul album'}</p>
+          <p className="font-bold text-foreground">{title || 'Judul album'}</p>
           <span
             className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
               isPublished ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-muted-foreground'
@@ -28,7 +28,7 @@ export default function PublicSiteGalleryPreview({
             {isPublished ? 'Publik' : 'Draft'}
           </span>
         </div>
-        {description ? <p className="line-clamp-2 text-xs text-muted-foreground text-muted-foreground">{description}</p> : null}
+        {description ? <p className="line-clamp-2 text-xs text-muted-foreground">{description}</p> : null}
         {photos.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border p-6 text-center text-xs text-muted-foreground border-border">
             Belum ada foto

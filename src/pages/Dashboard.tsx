@@ -142,37 +142,37 @@ export default function Dashboard() {
 
           {/* Stats Grid */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            <div className="bg-white bg-background p-4 sm:p-6 rounded-3xl border border-border border-border shadow-sm hover:shadow-md transition-shadow group">
+            <div className="bg-card text-card-foreground p-4 sm:p-6 rounded-3xl border border-border shadow-sm hover:shadow-md transition-shadow group">
               <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center text-brand text-brand mb-4 group-hover:scale-110 transition-transform">
                 <Calendar size={24} />
               </div>
-              <p className="text-sm text-muted-foreground text-muted-foreground font-medium mb-1">Total Sesi</p>
-              <p className="text-3xl font-extrabold text-slate-800 dark:text-white">{data?.stats.total}</p>
+              <p className="text-sm text-muted-foreground font-medium mb-1">Total Sesi</p>
+              <p className="text-3xl font-extrabold text-foreground">{data?.stats.total}</p>
             </div>
-            <div className="bg-white bg-background p-4 sm:p-6 rounded-3xl border border-border border-border shadow-sm hover:shadow-md transition-shadow group">
+            <div className="bg-card text-card-foreground p-4 sm:p-6 rounded-3xl border border-border shadow-sm hover:shadow-md transition-shadow group">
               <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-900/30 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 mb-4 group-hover:scale-110 transition-transform">
                 <CheckCircle2 size={24} />
               </div>
-              <p className="text-sm text-muted-foreground text-muted-foreground font-medium mb-1">Hadir Tepat Waktu</p>
-              <p className="text-3xl font-extrabold text-slate-800 dark:text-white">{data?.stats.present}</p>
+              <p className="text-sm text-muted-foreground font-medium mb-1">Hadir Tepat Waktu</p>
+              <p className="text-3xl font-extrabold text-foreground">{data?.stats.present}</p>
             </div>
-            <div className="bg-white bg-background p-4 sm:p-6 rounded-3xl border border-border border-border shadow-sm hover:shadow-md transition-shadow group">
+            <div className="bg-card text-card-foreground p-4 sm:p-6 rounded-3xl border border-border shadow-sm hover:shadow-md transition-shadow group">
               <div className="w-12 h-12 bg-amber-50 dark:bg-amber-900/30 rounded-2xl flex items-center justify-center text-amber-600 dark:text-amber-400 mb-4 group-hover:scale-110 transition-transform">
                 <FileText size={24} />
               </div>
-              <p className="text-sm text-muted-foreground text-muted-foreground font-medium mb-1">Total Izin / Sakit</p>
-              <h3 className="text-3xl font-extrabold text-slate-800 dark:text-white">
+              <p className="text-sm text-muted-foreground font-medium mb-1">Total Izin / Sakit</p>
+              <h3 className="text-3xl font-extrabold text-foreground">
                 {(data?.stats.sick || 0) + (data?.stats.excused || 0)}
               </h3>
             </div>
 
-            <div className="bg-white bg-background p-4 sm:p-6 rounded-3xl border border-border border-border shadow-sm hover:shadow-md transition-shadow group">
+            <div className="bg-card text-card-foreground p-4 sm:p-6 rounded-3xl border border-border shadow-sm hover:shadow-md transition-shadow group">
               <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center text-blue-600 dark:text-blue-400 mb-4 group-hover:scale-110 transition-transform">
                 <BarChart3 size={24} />
               </div>
-              <p className="text-sm text-muted-foreground text-muted-foreground font-medium mb-1">Rasio Kehadiran</p>
+              <p className="text-sm text-muted-foreground font-medium mb-1">Rasio Kehadiran</p>
               <div className="flex items-end gap-2">
-                <p className="text-3xl font-extrabold text-slate-800 dark:text-white">{data?.stats.percentage}%</p>
+                <p className="text-3xl font-extrabold text-foreground">{data?.stats.percentage}%</p>
                 <span className={`text-xs font-bold mb-1.5 ${data?.stats.percentage >= 80 ? 'text-green-500' : 'text-red-500'}`}>
                   {data?.stats.percentage >= 80 ? 'Aman' : 'Perlu perhatian'}
                 </span>
@@ -182,20 +182,20 @@ export default function Dashboard() {
 
             <div className="overflow-hidden rounded-xl border border-border bg-card shadow-card dark:shadow-none dark:ring-1 dark:ring-white/10">
               <div className="flex items-center justify-between border-b border-border px-6 py-5">
-                <h2 className="text-xl font-bold text-slate-800 dark:text-white">Jadwal Sesi Terdekat</h2>
+                <h2 className="text-xl font-bold text-foreground">Jadwal Sesi Terdekat</h2>
                 <span className="bg-indigo-50 dark:bg-indigo-900/30 text-brand text-brand py-1 px-3 rounded-full text-xs font-bold">
                   {data?.recent_sessions?.length || 0} Sesi
                 </span>
               </div>
               
               {/* [UX] D-01 — kartu mobile jadwal sesi */}
-              <ul className="space-y-3 p-5 md:hidden" aria-label="Jadwal sesi terdekat">
+              <ul className="space-y-4 md:hidden" aria-label="Jadwal sesi terdekat">
                 {!data?.recent_sessions?.length ? (
                   <li className="py-8 text-center text-muted-foreground">Belum ada sesi terdekat.</li>
                 ) : (
                   data.recent_sessions.map((session: any) => (
                     <li key={session.id} className="rounded-2xl border border-border p-4 border-border">
-                      <p className="font-bold text-slate-900 dark:text-white">{session.title}</p>
+                      <p className="font-bold text-foreground">{session.title}</p>
                       <p className="text-sm text-brand text-brand">
                         {(() => {
                           const labels = (session.session_classes ?? []).map((x: any) => formatClassLabel(x?.class)).filter(Boolean);
@@ -203,7 +203,7 @@ export default function Dashboard() {
                           return session.class ? formatClassLabel(session.class) : 'Semua Mahasiswa';
                         })()}
                       </p>
-                      <p className="mt-2 text-sm text-muted-foreground text-muted-foreground">
+                      <p className="mt-2 text-sm text-muted-foreground">
                         {format(new Date(session.session_start), 'dd MMM yyyy · HH:mm', { locale: id })} WIB
                       </p>
                       <p className="text-xs text-muted-foreground truncate">
@@ -265,7 +265,7 @@ export default function Dashboard() {
                       data?.recent_sessions?.map((session: any) => (
                         <TableRow key={session.id}>
                           <TableCell>
-                            <div className="font-bold text-slate-900 dark:text-white text-base">
+                            <div className="font-bold text-foreground text-base">
                               {typeof session.title === 'object' && session.title !== null ? ((session.title as any).name || (session.title as any).id) : session.title}
                             </div>
                             <p className="text-sm font-semibold text-brand text-brand mt-0.5">
@@ -283,19 +283,19 @@ export default function Dashboard() {
                             </p>
                           </TableCell>
                           <TableCell>
-                            <div className="flex flex-col gap-1.5 text-slate-700 dark:text-zinc-300">
+                            <div className="flex flex-col gap-1.5 text-muted-foreground">
                               <div className="flex items-center gap-2">
                                 <Calendar size={14} className="text-indigo-500" />
                                 <span className="font-medium">{format(new Date(session.session_start), 'dd MMM yyyy', { locale: id })}</span>
                               </div>
-                              <div className="flex items-center gap-2 text-sm text-muted-foreground text-muted-foreground">
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                 <Clock size={14} />
                                 {format(new Date(session.session_start), 'HH:mm')} - {format(new Date(session.session_end), 'HH:mm')} WIB
                               </div>
                             </div>
                           </TableCell>
                           <TableCell>
-                            <div className="flex items-center gap-1.5 mt-1 text-muted-foreground text-muted-foreground">
+                            <div className="flex items-center gap-1.5 mt-1 text-muted-foreground">
                                 <MapPin size={14} className="shrink-0" />
                                 <span className="truncate max-w-[200px]">{typeof session.location === 'object' && session.location !== null ? ((session.location as any).name || (session.location as any).id) : (session.location?.name || session.location || '-')}</span>
                               </div>
@@ -355,56 +355,56 @@ export default function Dashboard() {
 
           {/* Stats Grid Admin */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            <div className="bg-white bg-background p-6 rounded-3xl border border-border border-border shadow-sm hover:shadow-md transition-shadow group">
+            <div className="bg-card text-card-foreground p-6 rounded-3xl border border-border shadow-sm hover:shadow-md transition-shadow group">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-medium text-muted-foreground text-muted-foreground">Total Pengguna</h3>
+                <h3 className="text-sm font-medium text-muted-foreground">Total Pengguna</h3>
                 <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center text-brand text-brand group-hover:scale-110 transition-transform">
                   <Users size={24} />
                 </div>
               </div>
-              <p className="text-3xl font-extrabold text-slate-800 dark:text-white">{data?.stats.total_users}</p>
+              <p className="text-3xl font-extrabold text-foreground">{data?.stats.total_users}</p>
               <p className="text-xs text-slate-400 text-muted-foreground mt-2 font-medium">Mahasiswa terdaftar</p>
             </div>
             
-            <div className="bg-white bg-background p-6 rounded-3xl border border-border border-border shadow-sm hover:shadow-md transition-shadow group">
+            <div className="bg-card text-card-foreground p-6 rounded-3xl border border-border shadow-sm hover:shadow-md transition-shadow group">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-medium text-muted-foreground text-muted-foreground">Total Sesi</h3>
+                <h3 className="text-sm font-medium text-muted-foreground">Total Sesi</h3>
                 <div className="w-12 h-12 bg-purple-50 dark:bg-purple-900/30 rounded-2xl flex items-center justify-center text-purple-600 dark:text-purple-400 group-hover:scale-110 transition-transform">
                   <Calendar size={24} />
                 </div>
               </div>
-              <p className="text-3xl font-extrabold text-slate-800 dark:text-white">{data?.stats.total_sessions}</p>
+              <p className="text-3xl font-extrabold text-foreground">{data?.stats.total_sessions}</p>
               <p className="text-xs text-slate-400 text-muted-foreground mt-2 font-medium">Sesi kelas dibuat</p>
             </div>
 
-            <div className="bg-white bg-background p-6 rounded-3xl border border-border border-border shadow-sm hover:shadow-md transition-shadow group">
+            <div className="bg-card text-card-foreground p-6 rounded-3xl border border-border shadow-sm hover:shadow-md transition-shadow group">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-medium text-muted-foreground text-muted-foreground">Hadir Hari Ini</h3>
+                <h3 className="text-sm font-medium text-muted-foreground">Hadir Hari Ini</h3>
                 <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-900/30 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform">
                   <CheckCircle2 size={24} />
                 </div>
               </div>
-              <p className="text-3xl font-extrabold text-slate-800 dark:text-white">{data?.stats.today_present}</p>
+              <p className="text-3xl font-extrabold text-foreground">{data?.stats.today_present}</p>
               <p className="text-xs text-slate-400 text-muted-foreground mt-2 font-medium">Peserta tepat waktu</p>
             </div>
 
-            <div className="bg-white bg-background p-6 rounded-3xl border border-border border-border shadow-sm hover:shadow-md transition-shadow group">
+            <div className="bg-card text-card-foreground p-6 rounded-3xl border border-border shadow-sm hover:shadow-md transition-shadow group">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-medium text-muted-foreground text-muted-foreground">Terlambat Hari Ini</h3>
+                <h3 className="text-sm font-medium text-muted-foreground">Terlambat Hari Ini</h3>
                 <div className="w-12 h-12 bg-amber-50 dark:bg-amber-900/30 rounded-2xl flex items-center justify-center text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform">
                   <Clock size={24} />
                 </div>
               </div>
-              <p className="text-3xl font-extrabold text-slate-800 dark:text-white">{data?.stats.today_late}</p>
+              <p className="text-3xl font-extrabold text-foreground">{data?.stats.today_late}</p>
               <p className="text-xs text-slate-400 text-muted-foreground mt-2 font-medium">Peserta terlambat</p>
             </div>
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
             {/* Chart Section */}
-            <div className="xl:col-span-2 bg-white bg-background p-4 sm:p-6 lg:p-8 rounded-3xl border border-border border-border shadow-sm">
+            <div className="xl:col-span-2 bg-card text-card-foreground p-4 sm:p-6 lg:p-8 rounded-3xl border border-border shadow-sm">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
-                <h2 className="text-xl font-bold text-slate-800 dark:text-white">Tren Kehadiran</h2>
+                <h2 className="text-xl font-bold text-foreground">Tren Kehadiran</h2>
                 <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
                   <Select value={dateRange} onValueChange={setDateRange}>
                     <SelectTrigger className="w-full bg-slate-50 bg-muted sm:w-[140px]">
@@ -433,12 +433,12 @@ export default function Dashboard() {
               
               <div className="relative min-h-[320px] w-full min-w-0" aria-busy={isValidating}>
                 {isValidating ? (
-                  <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-white/60 bg-background/60">
+                  <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-background/60">
                     <p className="text-sm font-medium text-muted-foreground dark:text-zinc-300">Memperbarui grafik…</p>
                   </div>
                 ) : null}
                 {chartData.length === 0 ? (
-                  <div className="flex h-[320px] items-center justify-center text-sm text-muted-foreground text-muted-foreground">
+                  <div className="flex h-[320px] items-center justify-center text-sm text-muted-foreground">
                     Belum ada data grafik untuk rentang ini.
                   </div>
                 ) : (
@@ -536,7 +536,7 @@ export default function Dashboard() {
             {/* Recent Sessions List Admin — kartu vertikal, tanpa scroll horizontal */}
             <div className="rounded-xl border border-border bg-card shadow-card dark:shadow-none dark:ring-1 dark:ring-white/10">
               <div className="border-b border-border px-6 py-5">
-                <h2 className="text-xl font-bold text-slate-800 dark:text-white">Aktivitas Sesi Terbaru</h2>
+                <h2 className="text-xl font-bold text-foreground">Aktivitas Sesi Terbaru</h2>
               </div>
 
               <ul className="space-y-3 p-5" aria-label="Sesi terbaru">

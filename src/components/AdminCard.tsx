@@ -26,7 +26,7 @@ export default function AdminCard({
           {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
         </CardHeader>
       ) : null}
-      <CardContent className="p-5">{children}</CardContent>
+      <CardContent className="flex flex-col gap-6 p-5 sm:p-6">{children}</CardContent>
     </Card>
   );
 }

@@ -224,7 +224,7 @@ export default function Classes() {
           </div>
         </div>
 
-        <ul className="space-y-3 p-5 md:hidden" aria-label="Daftar kelas">
+        <ul className="space-y-4 md:hidden" aria-label="Daftar kelas">
           {loading
             ? Array.from({ length: 3 }).map((_, i) => (
                 <li key={i} className="rounded-2xl border border-border p-4 border-border">
@@ -247,13 +247,13 @@ export default function Classes() {
                 </li>
               )
             : paginatedClasses.map((c) => (
-                <li key={c.id} className="rounded-2xl border border-border bg-white p-4 border-border bg-background">
+                <li key={c.id} className="rounded-2xl border border-border bg-card p-4">
                   <div className="flex items-start gap-2">
                     <BookOpen size={18} className="mt-0.5 shrink-0 text-indigo-500" />
                     <div className="min-w-0 flex-1">
-                      <p className="font-bold text-slate-900 dark:text-white">{c.name}</p>
+                      <p className="font-bold text-foreground">{c.name}</p>
                       <p className="text-sm text-muted-foreground">{c.course_code || '—'} · Semester {c.semester}</p>
-                      <p className="mt-1 text-sm text-muted-foreground text-muted-foreground">Dosen: {c.lecturer.name}</p>
+                      <p className="mt-1 text-sm text-muted-foreground">Dosen: {c.lecturer.name}</p>
                       <div className="mt-2 flex flex-wrap gap-2">
                         <Badge variant="secondary">{c._count.enrollments} mahasiswa</Badge>
                         <Badge variant="outline">{c._count.sessions} sesi</Badge>
@@ -334,14 +334,14 @@ export default function Classes() {
                 paginatedClasses.map((c) => (
                   <TableRow key={c.id}>
                     <TableCell>
-                      <div className="flex items-center gap-2 font-medium text-slate-900 dark:text-white">
+                      <div className="flex items-center gap-2 font-medium text-foreground">
                         <BookOpen size={16} className="text-indigo-500" />
                         <span className="truncate">{c.name}</span>
                         <Badge variant="outline" className="h-6 rounded-full px-2 text-[11px] font-semibold">
                           Sem {c.semester}
                         </Badge>
                       </div>
-                      <div className="text-sm text-muted-foreground text-muted-foreground mt-1">
+                      <div className="text-sm text-muted-foreground mt-1">
                         {c.course_code || '-'}
                       </div>
                     </TableCell>
@@ -414,7 +414,7 @@ export default function Classes() {
         <DialogContent className="max-w-lg p-0">
           <div className="border-b border-border px-6 py-4 border-border">
             <DialogHeader>
-              <DialogTitle className="text-xl font-bold text-slate-800 dark:text-white">
+              <DialogTitle className="text-xl font-bold text-foreground">
                 {editingClass ? 'Edit Kelas' : 'Tambah Kelas Baru'}
               </DialogTitle>
               <DialogDescription className="sr-only">Form kelas</DialogDescription>
@@ -501,7 +501,7 @@ export default function Classes() {
                 </Select>
               </div>
               
-              <DialogFooter className="mt-8 border-t border-border pt-4 border-border">
+              <DialogFooter className="mt-6">
                 <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
                   Batal
                 </Button>
@@ -524,7 +524,7 @@ export default function Classes() {
         <DialogContent className="max-w-2xl p-0">
           <div className="border-b border-border px-6 py-4 border-border">
             <DialogHeader>
-              <DialogTitle className="text-xl font-bold text-slate-800 dark:text-white">Daftar Mahasiswa</DialogTitle>
+              <DialogTitle className="text-xl font-bold text-foreground">Daftar Mahasiswa</DialogTitle>
               <DialogDescription className="sr-only">Kelola enrollment mahasiswa</DialogDescription>
             </DialogHeader>
           </div>
@@ -553,7 +553,7 @@ export default function Classes() {
                 </div>
               )}
 
-              <div className="border border-border border-border rounded-lg overflow-y-auto flex-1 mt-4">
+              <div className="border border-border rounded-lg overflow-y-auto flex-1 mt-4">
                 <Table>
                   <TableHeader className="sticky top-0 z-10 bg-muted/50 [&_tr]:border-b">
                     <TableRow>
@@ -571,7 +571,7 @@ export default function Classes() {
                       enrolledStudents.map(student => (
                         <TableRow key={student.id}>
                           <TableCell className="font-medium text-slate-800 dark:text-zinc-200">{student.name}</TableCell>
-                          <TableCell className="text-muted-foreground text-muted-foreground">{student.nim_nip || '-'}</TableCell>
+                          <TableCell className="text-muted-foreground">{student.nim_nip || '-'}</TableCell>
                           <TableCell className="text-right">
                             {currentUser?.role !== 'USER' && (
                               <Button 

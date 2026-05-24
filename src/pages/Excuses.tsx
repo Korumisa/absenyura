@@ -309,7 +309,7 @@ export default function Excuses() {
           </Select>
         </div>
 
-        <ul className="space-y-3 p-5 md:hidden" aria-label="Daftar pengajuan izin">
+        <ul className="space-y-4 md:hidden" aria-label="Daftar pengajuan izin">
           {loading
             ? Array.from({ length: 3 }).map((_, i) => (
                 <li key={i} className="rounded-2xl border border-border p-4 border-border">
@@ -345,7 +345,7 @@ export default function Excuses() {
                 <li key={excuse.id} className="rounded-2xl border border-border p-4 border-border">
                   {currentUser?.role !== 'USER' && (
                     <>
-                      <p className="font-bold text-slate-900 dark:text-white">{excuse.user.name}</p>
+                      <p className="font-bold text-foreground">{excuse.user.name}</p>
                       <p className="text-xs text-muted-foreground">{excuse.user.nim_nip || '-'}</p>
                     </>
                   )}
@@ -451,7 +451,7 @@ export default function Excuses() {
                   <TableRow key={excuse.id}>
                     {currentUser?.role !== 'USER' && (
                       <TableCell>
-                        <div className="font-medium text-slate-900 dark:text-white">{excuse.user.name}</div>
+                        <div className="font-medium text-foreground">{excuse.user.name}</div>
                         <div className="text-xs text-muted-foreground">{excuse.user.nim_nip}</div>
                       </TableCell>
                     )}
@@ -472,7 +472,7 @@ export default function Excuses() {
                       <Badge variant={excuse.reason === 'SICK' ? 'destructive' : 'warning'}>
                         {excuse.reason === 'SICK' ? 'Sakit' : 'Izin'}
                       </Badge>
-                      <p className="text-xs mt-1 max-w-xs truncate text-muted-foreground text-muted-foreground" title={excuse.description}>
+                      <p className="text-xs mt-1 max-w-xs truncate text-muted-foreground" title={excuse.description}>
                         {excuse.description || '-'}
                       </p>
                     </TableCell>
@@ -546,7 +546,7 @@ export default function Excuses() {
         <DialogContent className="max-w-lg p-0">
           <div className="border-b border-border px-6 py-5 border-border">
             <DialogHeader>
-              <DialogTitle className="text-xl font-bold text-slate-800 dark:text-white">Buat Pengajuan Izin Baru</DialogTitle>
+              <DialogTitle className="text-xl font-bold text-foreground">Buat Pengajuan Izin Baru</DialogTitle>
               <DialogDescription className="sr-only">Form pengajuan izin</DialogDescription>
             </DialogHeader>
           </div>
@@ -645,19 +645,19 @@ export default function Excuses() {
                       <div className="text-sm font-medium text-slate-800 dark:text-zinc-200">
                         Drag & drop file di sini, atau klik untuk upload
                       </div>
-                      <div className="text-xs text-muted-foreground text-muted-foreground">Gambar atau PDF</div>
+                      <div className="text-xs text-muted-foreground">Gambar atau PDF</div>
                     </>
                   ) : (
                     <div className="flex w-full flex-col gap-3">
                       {filePreviewUrl ? (
                         <img src={filePreviewUrl} alt="Pratinjau bukti" className="mx-auto max-h-40 rounded-lg object-contain" />
                       ) : file.type === 'application/pdf' ? (
-                        <p className="text-sm text-muted-foreground text-muted-foreground">Pratinjau PDF: buka setelah upload untuk memastikan isi dokumen benar.</p>
+                        <p className="text-sm text-muted-foreground">Pratinjau PDF: buka setelah upload untuk memastikan isi dokumen benar.</p>
                       ) : null}
                     <div className="flex w-full items-center justify-between gap-3">
                       <div className="min-w-0">
                         <div className="truncate text-sm font-medium text-slate-800 dark:text-zinc-200">{file.name}</div>
-                        <div className="text-xs text-muted-foreground text-muted-foreground">{(file.size / 1024 / 1024).toFixed(2)} MB</div>
+                        <div className="text-xs text-muted-foreground">{(file.size / 1024 / 1024).toFixed(2)} MB</div>
                       </div>
                       <Button
                         type="button"
@@ -678,7 +678,7 @@ export default function Excuses() {
                 </div>
               </div>
               
-              <DialogFooter className="mt-2 gap-3 border-t border-border pt-6 border-border sm:gap-4">
+              <DialogFooter className="mt-4 gap-4 sm:gap-3">
                 <Button type="button" variant="outline" className="min-h-11" disabled={submitting} onClick={() => setIsModalOpen(false)}>
                   Batal
                 </Button>

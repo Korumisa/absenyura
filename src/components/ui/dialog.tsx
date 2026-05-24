@@ -30,7 +30,7 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 rounded-xl border border-border bg-card p-6 shadow-modal outline-none dark:shadow-none dark:ring-1 dark:ring-white/10",
+        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-6 rounded-xl border border-border bg-card p-6 shadow-modal outline-none dark:shadow-none dark:ring-1 dark:ring-white/10 sm:p-8",
         className
       )}
       {...props}
@@ -51,7 +51,7 @@ function DialogHeader({ className, ...props }: React.HTMLAttributes<HTMLDivEleme
 DialogHeader.displayName = "DialogHeader"
 
 function DialogFooter({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2", className)} {...props} />
+  return <div className={cn("flex flex-col-reverse gap-4 sm:flex-row sm:justify-end sm:gap-3", className)} {...props} />
 }
 DialogFooter.displayName = "DialogFooter"
 

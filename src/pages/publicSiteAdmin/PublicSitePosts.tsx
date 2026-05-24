@@ -250,7 +250,7 @@ export default function PublicSitePosts() {
                     {categories.map((c) => (
                       <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border px-3 py-2 border-border">
                         <span>
-                          <span className="font-medium text-slate-900 dark:text-white">{c.name}</span>
+                          <span className="font-medium text-foreground">{c.name}</span>
                           <span className="text-muted-foreground"> · {c.slug}</span>
                         </span>
                         <span className="flex gap-1">
@@ -360,7 +360,7 @@ export default function PublicSitePosts() {
                     }}
                   />
                 </div>
-                <div className="flex flex-col-reverse gap-2 border-t border-border pt-4 border-border sm:flex-row sm:justify-end">
+                <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                   <Button type="button" variant="outline" className="min-h-11" onClick={() => setContentTab('list')}>
                     Kembali ke daftar
                   </Button>
@@ -388,13 +388,13 @@ export default function PublicSitePosts() {
                 setContentTab('edit');
               }}
             />
-        <ul className="space-y-3 md:hidden" aria-label="Daftar konten">
+        <ul className="space-y-4 md:hidden" aria-label="Daftar konten">
           {posts.length === 0 ? (
             <li className="py-8 text-center text-sm text-muted-foreground">Belum ada konten.</li>
           ) : null}
           {posts.map((p) => (
             <li key={p.id} className="rounded-2xl border border-border p-4 border-border">
-              <p className="font-bold text-slate-900 dark:text-white">{p.title}</p>
+              <p className="font-bold text-foreground">{p.title}</p>
               <p className="text-sm text-muted-foreground">{p.category?.name ?? p.type}</p>
               <Badge className="mt-2" variant={p.is_published ? 'success' : 'secondary'}>
                 {p.is_published ? 'Publik' : 'Draft'}
