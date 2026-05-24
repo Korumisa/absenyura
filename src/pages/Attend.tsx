@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Html5Qrcode, Html5QrcodeScanner, Html5QrcodeSupportedFormats } from 'html5-qrcode';
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import api from '@/services/api';
 import { toast } from 'sonner';
 import { MapPin, QrCode, ShieldAlert, Camera, RefreshCw, WifiOff, AlertCircle, LogOut, Loader2 } from 'lucide-react';
@@ -83,7 +83,8 @@ export default function Attend() {
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
   const [isCameraActive, setIsCameraActive] = useState(false);
-  const scannerRef = React.useRef<Html5QrcodeScanner | null>(null);
+  const scannerRef = React.useRef<Html5Qrcode | null>(null);
+  const [qrScannerError, setQrScannerError] = useState<string | null>(null);
   const isSubmittingRef = React.useRef(false);
   const [qrFacingMode, setQrFacingMode] = useState<'user' | 'environment'>('environment');
   const [qrCameraId, setQrCameraId] = useState<string | null>(null);
@@ -341,9 +342,13 @@ export default function Attend() {
   }, []);
 
   const releaseQrScanner = useCallback(async () => {
-    if (scannerRef.current) {
+    const instance = scannerRef.current;
+    if (instance) {
       try {
-        await scannerRef.current.clear();
+        if (instance.isScanning) {
+          await instance.stop();
+        }
+        instance.clear();
       } catch {
         void 0;
       }
@@ -353,41 +358,81 @@ export default function Attend() {
   }, []);
 
   useEffect(() => {
-    if (scanning && !scanResult && !scannerRef.current) {
-      const videoConstraints = qrCameraId
-        ? { deviceId: { ideal: qrCameraId } }
-        : { facingMode: { ideal: qrFacingMode } };
+    if (!scanning || scanResult) return;
 
-      const scanner = new Html5QrcodeScanner(
-        'qr-reader',
-        {
-          fps: 10,
-          qrbox: { width: 250, height: 250 },
-          formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
-          aspectRatio: 1.0,
-          rememberLastUsedCamera: true,
-          videoConstraints,
-        },
-        false
-      );
-      scannerRef.current = scanner;
+    let cancelled = false;
 
-      scanner.render(
-        async (decodedText) => {
-          await releaseQrScanner();
-          setScanResult(decodedText);
-          setScanning(false);
-        },
-        () => {
-          // Abaikan kegagalan scan berulang sampai QR terbaca
+    const bootScanner = async () => {
+      setQrScannerError(null);
+      await waitForCameraRelease(350);
+      if (cancelled || scannerRef.current) return;
+
+      const cameraConfig: string | MediaTrackConstraints = qrCameraId
+        ? qrCameraId
+        : { facingMode: qrFacingMode };
+
+      const qr = new Html5Qrcode('qr-reader', {
+        formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
+        verbose: false,
+      });
+
+      try {
+        await qr.start(
+          cameraConfig,
+          {
+            fps: 10,
+            qrbox: { width: 250, height: 250 },
+            aspectRatio: 1.0,
+            disableFlip: qrFacingMode === 'user',
+          },
+          async (decodedText) => {
+            if (cancelled) return;
+            await releaseQrScanner();
+            setScanResult(decodedText);
+            setScanning(false);
+          },
+          () => {
+            // Abaikan kegagalan scan berulang sampai QR terbaca
+          },
+        );
+        if (cancelled) {
+          try {
+            if (qr.isScanning) await qr.stop();
+            qr.clear();
+          } catch {
+            void 0;
+          }
+          return;
         }
-      );
-    }
+        scannerRef.current = qr;
+      } catch (err) {
+        const msg = humanizeCameraError(err);
+        setQrScannerError(msg);
+        toast.error(msg);
+        try {
+          qr.clear();
+        } catch {
+          void 0;
+        }
+      }
+    };
+
+    void bootScanner();
 
     return () => {
-      if (scannerRef.current) {
-        scannerRef.current.clear().catch(() => undefined);
-        scannerRef.current = null;
+      cancelled = true;
+      const instance = scannerRef.current;
+      scannerRef.current = null;
+      if (instance) {
+        void (async () => {
+          try {
+            if (instance.isScanning) await instance.stop();
+            instance.clear();
+          } catch {
+            void 0;
+          }
+          await waitForCameraRelease(200);
+        })();
       }
     };
   }, [scanning, scanResult, qrCameraId, qrFacingMode, releaseQrScanner]);
@@ -396,16 +441,9 @@ export default function Attend() {
     const nextMode = qrFacingMode === 'environment' ? 'user' : 'environment';
     setQrFacingMode(nextMode);
     await loadQrCamera(nextMode === 'environment');
-
-    if (scannerRef.current) {
-      try {
-        await scannerRef.current.clear();
-      } catch {
-        void 0;
-      }
-      scannerRef.current = null;
-    }
+    await releaseQrScanner();
     setScanResult(null);
+    setQrScannerError(null);
     setScanning(true);
   };
 
@@ -950,21 +988,42 @@ export default function Attend() {
 
           <div className="flex flex-1 flex-col items-center justify-center">
             {scanning ? (
-              <div className="w-full max-w-md">
+              <div className="attend-qr-root w-full max-w-md">
                 <div className="relative overflow-hidden rounded-2xl border-4 border-border bg-slate-900 shadow-2xl border-border">
                   <div className="pointer-events-none absolute inset-0 z-10 m-8 rounded-xl border-[3px] border-dashed border-indigo-500/50" />
-                  <div
-                    id="qr-reader"
-                    className="flex min-h-[300px] w-full flex-col bg-black [&>div]:border-none [&>div]:shadow-none [&_video]:h-full [&_video]:w-full [&_video]:object-cover"
-                  />
+                  <div id="qr-reader" className="min-h-[300px] w-full bg-black" />
                 </div>
                 <div className="mt-8 space-y-4 text-center">
-                  <p className="text-sm font-medium text-muted-foreground text-muted-foreground">
-                    Arahkan kamera ke QR Code yang ditampilkan oleh Dosen.
-                  </p>
+                  {qrScannerError ? (
+                    <div
+                      className="rounded-xl border border-red-200 bg-red-50 p-4 text-left text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300"
+                      role="alert"
+                    >
+                      <p className="font-semibold">Kamera QR tidak dapat dibuka</p>
+                      <p className="mt-1">{qrScannerError}</p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="mt-3 min-h-11"
+                        onClick={() => {
+                          void releaseQrScanner().then(() => {
+                            setQrScannerError(null);
+                            setScanning(true);
+                          });
+                        }}
+                      >
+                        Coba lagi
+                      </Button>
+                    </div>
+                  ) : (
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Arahkan kamera ke QR Code yang ditampilkan oleh Dosen.
+                    </p>
+                  )}
                   <div className="flex justify-center">
-                    <Button type="button" variant="outline" onClick={switchQrCamera} className="gap-2">
-                      <RefreshCw size={16} />
+                    <Button type="button" variant="outline" onClick={() => void switchQrCamera()} className="min-h-11 gap-2">
+                      <RefreshCw size={16} aria-hidden="true" />
                       Kamera QR {qrFacingMode === 'environment' ? 'Belakang' : 'Depan'}
                     </Button>
                   </div>

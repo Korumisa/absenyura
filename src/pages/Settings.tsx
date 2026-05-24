@@ -131,9 +131,10 @@ export default function Settings() {
       variant="plain"
       icon={<User className="h-5 w-5" />}
     >
-      <div className="max-w-5xl space-y-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-6 lg:space-y-0">
+      <div className="grid w-full gap-6 xl:grid-cols-12 xl:items-start">
           
           {activeTab === 'profile' && profileError ? (
+            <div className="xl:col-span-12">
             <ErrorWithRetry
               title="Gagal memuat profil"
               error={profileError}
@@ -164,9 +165,10 @@ export default function Settings() {
                 })();
               }}
             />
+            </div>
           ) : activeTab === 'profile' && (
             <>
-              <div className="space-y-6">
+              <aside className="space-y-6 xl:col-span-4 2xl:col-span-3">
               <Card className={settingsCardClass}>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-lg">Tampilan</CardTitle>
@@ -227,9 +229,33 @@ export default function Settings() {
                   ) : null}
                 </CardContent>
               </Card>
-              </div>
 
-              <Card className={cn(settingsCardClass, 'lg:min-h-[32rem]')}>
+              {!isStudent ? (
+              <Card className={cn(settingsCardClass, 'border-red-200 dark:border-red-900/50')}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg text-red-600 dark:text-red-400">Manajemen Perangkat</CardTitle>
+                  <CardDescription>
+                    Hapus penautan perangkat ini; login berikutnya akan meminta verifikasi ulang.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      localStorage.removeItem('device_fingerprint');
+                      toast.success('Perangkat dilupakan. Anda akan diminta login kembali pada percobaan berikutnya.');
+                    }}
+                    className="min-h-11 w-full border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-900/20 sm:w-auto"
+                  >
+                    <LogOut size={16} className="mr-2" aria-hidden="true" /> Lupakan Perangkat Ini
+                  </Button>
+                </CardContent>
+              </Card>
+              ) : null}
+              </aside>
+
+              <Card className={cn(settingsCardClass, 'xl:col-span-8 2xl:col-span-9')}>
             <CardHeader className="pb-2">
               <CardTitle className="text-lg">Informasi Profil</CardTitle>
               <CardDescription>Perbarui nama, kontak, dan kata sandi akun Anda.</CardDescription>
@@ -286,7 +312,7 @@ export default function Settings() {
                   </p>
                 ) : null}
               </div>
-              <div className="space-y-2 sm:col-span-2">
+              <div className="space-y-2">
                 <Label>Email</Label>
                 <Input
                   type="email"
@@ -315,8 +341,8 @@ export default function Settings() {
               <h3 className="mb-2 text-base font-bold text-foreground">Ubah Kata Sandi</h3>
               <p className="mb-4 text-sm text-muted-foreground">Kosongkan jika tidak ingin mengubah kata sandi.</p>
               
-              <div className="space-y-4">
-                <div className="space-y-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="space-y-2 sm:col-span-2">
                   <Label>Kata Sandi Saat Ini</Label>
                   <Input
                     type="password"
@@ -337,7 +363,6 @@ export default function Settings() {
                     </p>
                   ) : null}
                 </div>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label>Kata Sandi Baru</Label>
                     <Input
@@ -379,10 +404,9 @@ export default function Settings() {
                       </p>
                     ) : null}
                   </div>
-                </div>
               </div>
 
-              <div className="flex justify-end pt-4">
+              <div className="flex justify-end border-t border-border pt-6">
                 <Button type="submit" disabled={saving || profileLoading}>
                   {saving ? 'Menyimpan...' : 'Simpan Perubahan'}
                 </Button>
@@ -392,30 +416,6 @@ export default function Settings() {
             </form>
             </CardContent>
           </Card>
-
-          {!isStudent ? (
-          <Card className={cn(settingsCardClass, 'border-red-200 dark:border-red-900/50 lg:col-span-2')}>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg text-red-600 dark:text-red-400">Manajemen Perangkat</CardTitle>
-              <CardDescription>
-                Hapus penautan perangkat ini; login berikutnya akan meminta verifikasi ulang.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                localStorage.removeItem('device_fingerprint');
-                toast.success('Perangkat dilupakan. Anda akan diminta login kembali pada percobaan berikutnya.');
-              }}
-              className="min-h-11 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-900/20"
-            >
-              <LogOut size={16} className="mr-2" aria-hidden="true" /> Lupakan Perangkat Ini
-            </Button>
-            </CardContent>
-          </Card>
-          ) : null}
           </>
         )}
       </div>
