@@ -55,7 +55,7 @@ export function NotificationMenu() {
     <div className="relative">
       <button 
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 text-slate-500 hover:text-indigo-600 dark:text-zinc-400 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-full transition-colors focus:outline-none"
+        className="relative p-2 text-muted-foreground hover:text-brand text-muted-foreground dark:hover:text-indigo-400 hover:bg-muted hover:bg-muted rounded-full transition-colors focus:outline-none"
       >
         <Bell size={22} />
         {unreadCount > 0 && (
@@ -68,13 +68,13 @@ export function NotificationMenu() {
       {isOpen && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)}></div>
-          <div className="absolute -right-12 sm:right-0 mt-2 w-[320px] max-w-[calc(100vw-2rem)] bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 shadow-xl rounded-xl z-50 overflow-hidden animate-in slide-in-from-top-2 duration-200">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-zinc-700/50 bg-slate-50 dark:bg-zinc-900/50">
+          <div className="absolute -right-12 sm:right-0 mt-2 w-[320px] max-w-[calc(100vw-2rem)] bg-white bg-muted border border-border border-border shadow-xl rounded-xl z-50 overflow-hidden animate-in slide-in-from-top-2 duration-200">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border border-border/50 bg-slate-50 bg-background/50">
               <h3 className="font-bold text-slate-800 dark:text-white">Notifikasi</h3>
               {unreadCount > 0 && (
                 <button 
                   onClick={markAllAsRead}
-                  className="text-xs text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 font-medium flex items-center gap-1"
+                  className="text-xs text-brand hover:text-indigo-700 text-brand font-medium flex items-center gap-1"
                 >
                   <Check size={14} /> Tandai semua dibaca
                 </button>
@@ -83,7 +83,7 @@ export function NotificationMenu() {
 
             <div className="max-h-[400px] overflow-y-auto">
               {notifications.length === 0 ? (
-                <div className="p-6 text-center text-slate-500 dark:text-zinc-400 text-sm">
+                <div className="p-6 text-center text-muted-foreground text-muted-foreground text-sm">
                   Belum ada notifikasi baru.
                 </div>
               ) : (
@@ -102,10 +102,10 @@ export function NotificationMenu() {
                           <p className={`text-sm font-medium mb-1 truncate ${!notif.is_read ? 'text-slate-900 dark:text-white font-bold' : 'text-slate-700 dark:text-zinc-300'}`}>
                             {notif.title}
                           </p>
-                          <p className="text-xs text-slate-500 dark:text-zinc-400 line-clamp-2">
+                          <p className="text-xs text-muted-foreground text-muted-foreground line-clamp-2">
                             {notif.message}
                           </p>
-                          <p className="text-[10px] text-slate-400 dark:text-zinc-500 mt-2 font-medium">
+                          <p className="text-[10px] text-slate-400 text-muted-foreground mt-2 font-medium">
                             {formatDistanceToNow(new Date(notif.created_at), { addSuffix: true, locale: id })}
                           </p>
                         </div>
@@ -116,8 +116,8 @@ export function NotificationMenu() {
               )}
             </div>
             
-            <div className="p-2 bg-slate-50 dark:bg-zinc-900/50 border-t border-slate-100 dark:border-zinc-700/50 text-center">
-              <button onClick={() => setIsOpen(false)} className="text-xs text-slate-500 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-zinc-200">
+            <div className="p-2 bg-slate-50 bg-background/50 border-t border-border border-border/50 text-center">
+              <button onClick={() => setIsOpen(false)} className="text-xs text-muted-foreground hover:text-slate-700 text-muted-foreground dark:hover:text-zinc-200">
                 Tutup
               </button>
             </div>

@@ -19,6 +19,11 @@ export default {
           DEFAULT: 'var(--brand-primary-hex)',
           foreground: '#ffffff',
         },
+        sidebar: {
+          DEFAULT: 'hsl(var(--sidebar-bg))',
+          border: 'hsl(var(--sidebar-border))',
+          active: 'hsl(var(--nav-active-bg))',
+        },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -58,6 +63,11 @@ export default {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+      },
+      boxShadow: {
+        card: '0 1px 3px 0 rgb(0 0 0 / 0.1)',
+        elevated: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+        modal: '0 20px 25px -5px rgb(0 0 0 / 0.1)',
       },
     },
   },

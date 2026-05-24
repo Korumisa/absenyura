@@ -17,7 +17,7 @@ export function CmsCollapsibleSection({
   const [open, setOpen] = useState(defaultOpen);
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white dark:border-zinc-800 dark:bg-zinc-950/40">
+    <div className="rounded-2xl border border-border bg-white border-border bg-card/40">
       <button
         type="button"
         className="flex min-h-11 w-full items-center justify-between gap-3 px-5 py-4 text-left"
@@ -26,11 +26,11 @@ export function CmsCollapsibleSection({
       >
         <div>
           <div className="text-sm font-semibold text-slate-900 dark:text-white">{title}</div>
-          {description ? <p className="mt-0.5 text-sm text-slate-500 dark:text-zinc-400">{description}</p> : null}
+          {description ? <p className="mt-0.5 text-sm text-muted-foreground text-muted-foreground">{description}</p> : null}
         </div>
-        <ChevronDown className={cn('h-5 w-5 shrink-0 text-slate-500 transition-transform', open && 'rotate-180')} aria-hidden="true" />
+        <ChevronDown className={cn('h-5 w-5 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')} aria-hidden="true" />
       </button>
-      {open ? <div className="border-t border-slate-200 px-5 py-4 dark:border-zinc-800">{children}</div> : null}
+      {open ? <div className="border-t border-border px-5 py-4 border-border">{children}</div> : null}
     </div>
   );
 }

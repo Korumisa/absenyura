@@ -309,7 +309,7 @@ export default function PublicSiteProfile() {
           <div className="space-y-2 md:col-span-2">
             <Label>Konten “Tentang”</Label>
             <Textarea value={draft.aboutContent} onChange={(e) => updateDraft((p) => ({ ...p, aboutContent: e.target.value }))} />
-            <div className="text-xs text-slate-500 dark:text-zinc-400">Pisahkan paragraf dengan baris baru (Enter).</div>
+            <div className="text-xs text-muted-foreground text-muted-foreground">Pisahkan paragraf dengan baris baru (Enter).</div>
           </div>
           <div className="space-y-2 md:col-span-2">
             <Label>Beranda: Paragraf Kiri</Label>
@@ -337,7 +337,7 @@ export default function PublicSiteProfile() {
                 className="min-h-[110px]"
               />
             </div>
-            <div className="text-xs text-slate-500 dark:text-zinc-400">Ini akan tampil sebagai 2 kartu paragraf di beranda.</div>
+            <div className="text-xs text-muted-foreground text-muted-foreground">Ini akan tampil sebagai 2 kartu paragraf di beranda.</div>
           </div>
           <div className="space-y-2 md:col-span-2">
             <Label>Foto Anggota (URL)</Label>
@@ -377,11 +377,11 @@ export default function PublicSiteProfile() {
                   </Button>
                 </div>
               </div>
-              <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50 dark:border-zinc-700">
+              <div className="overflow-hidden rounded-xl border border-border bg-slate-50 border-border">
                 {draft.homeImageUrl ? (
                   <img src={draft.homeImageUrl} alt="Pratinjau foto anggota" className="aspect-[4/3] w-full object-cover" />
                 ) : (
-                  <div className="flex aspect-[4/3] items-center justify-center text-xs text-slate-500">Belum ada foto</div>
+                  <div className="flex aspect-[4/3] items-center justify-center text-xs text-muted-foreground">Belum ada foto</div>
                 )}
               </div>
             </div>
@@ -392,12 +392,12 @@ export default function PublicSiteProfile() {
           <div className="space-y-2 md:col-span-2">
             <Label>Visi</Label>
             <Textarea value={draft.vision} onChange={(e) => updateDraft((p) => ({ ...p, vision: e.target.value }))} />
-            <div className="text-xs text-slate-500 dark:text-zinc-400">Gunakan paragraf singkat, bisa dipisah dengan baris baru.</div>
+            <div className="text-xs text-muted-foreground text-muted-foreground">Gunakan paragraf singkat, bisa dipisah dengan baris baru.</div>
           </div>
           <div className="space-y-2 md:col-span-2">
             <Label>Misi</Label>
             <Textarea value={draft.mission} onChange={(e) => updateDraft((p) => ({ ...p, mission: e.target.value }))} />
-            <div className="text-xs text-slate-500 dark:text-zinc-400">Satu baris = satu poin misi.</div>
+            <div className="text-xs text-muted-foreground text-muted-foreground">Satu baris = satu poin misi.</div>
           </div>
           <div className="space-y-3 md:col-span-2">
             <Label>Beranda: Foto Visi</Label>
@@ -445,14 +445,14 @@ export default function PublicSiteProfile() {
                     </Button>
                   ) : null}
                 </div>
-                <div className="text-xs text-slate-500 dark:text-zinc-400">PNG/JPG. Maks 4MB.</div>
+                <div className="text-xs text-muted-foreground text-muted-foreground">PNG/JPG. Maks 4MB.</div>
               </div>
-              <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50 dark:border-zinc-700 dark:bg-zinc-900/40">
+              <div className="overflow-hidden rounded-xl border border-border bg-slate-50 border-border bg-background/40">
                 <div className="aspect-[4/3] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.2),rgba(255,255,255,0.04))]">
                   {draft.visiPhotoUrl ? (
                     <img src={draft.visiPhotoUrl} alt="Foto Visi" className="h-full w-full object-cover" />
                   ) : (
-                    <div className="flex h-full w-full items-center justify-center px-4 text-center text-xs text-slate-500 dark:text-zinc-300">
+                    <div className="flex h-full w-full items-center justify-center px-4 text-center text-xs text-muted-foreground dark:text-zinc-300">
                       Belum ada foto
                     </div>
                   )}
@@ -506,14 +506,14 @@ export default function PublicSiteProfile() {
                     </Button>
                   ) : null}
                 </div>
-                <div className="text-xs text-slate-500 dark:text-zinc-400">PNG/JPG. Maks 4MB.</div>
+                <div className="text-xs text-muted-foreground text-muted-foreground">PNG/JPG. Maks 4MB.</div>
               </div>
-              <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50 dark:border-zinc-700 dark:bg-zinc-900/40">
+              <div className="overflow-hidden rounded-xl border border-border bg-slate-50 border-border bg-background/40">
                 <div className="aspect-[4/3] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.2),rgba(255,255,255,0.04))]">
                   {draft.misiPhotoUrl ? (
                     <img src={draft.misiPhotoUrl} alt="Foto Misi" className="h-full w-full object-cover" />
                   ) : (
-                    <div className="flex h-full w-full items-center justify-center px-4 text-center text-xs text-slate-500 dark:text-zinc-300">
+                    <div className="flex h-full w-full items-center justify-center px-4 text-center text-xs text-muted-foreground dark:text-zinc-300">
                       Belum ada foto
                     </div>
                   )}

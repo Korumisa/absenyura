@@ -15,17 +15,17 @@ export function CmsTabNav<T extends string>({
   ariaLabel?: string;
 }) {
   return (
-    <nav aria-label={ariaLabel} className="flex flex-wrap gap-2 border-b border-slate-200 pb-3 dark:border-zinc-800">
+    <nav aria-label={ariaLabel} className="flex flex-wrap gap-2 border-b border-border pb-3 border-border">
       {tabs.map((tab) => (
         <button
           key={tab.id}
           type="button"
           onClick={() => onChange(tab.id)}
           className={cn(
-            'min-h-11 rounded-full px-4 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2',
+            'min-h-11 rounded-full px-4 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2',
             value === tab.id
-              ? 'bg-indigo-600 text-white'
-              : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700',
+              ? 'bg-brand text-white'
+              : 'bg-slate-100 text-muted-foreground hover:bg-slate-200 bg-muted dark:text-zinc-300 dark:hover:bg-zinc-700',
           )}
           aria-current={value === tab.id ? 'true' : undefined}
         >

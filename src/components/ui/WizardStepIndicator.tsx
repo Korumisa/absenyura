@@ -12,7 +12,7 @@ export function WizardStepIndicator({
   className?: string;
 }) {
   return (
-    <nav aria-label="Progres langkah" className={cn('border-b border-slate-200 pb-4 dark:border-zinc-800', className)}>
+    <nav aria-label="Progres langkah" className={cn('border-b border-border pb-4 border-border', className)}>
       <ol className="flex flex-wrap items-center gap-2 sm:gap-0">
         {labels.map((label, i) => {
           const step = i + 1;
@@ -23,9 +23,9 @@ export function WizardStepIndicator({
               <div
                 className={cn(
                   'flex items-center gap-2 rounded-full px-3 py-2 text-sm font-medium',
-                  active && 'bg-indigo-600 text-white',
-                  done && 'text-indigo-600 dark:text-indigo-400',
-                  !active && !done && 'text-slate-500 dark:text-zinc-400',
+                  active && 'bg-brand text-white',
+                  done && 'text-brand text-brand',
+                  !active && !done && 'text-muted-foreground text-muted-foreground',
                 )}
                 aria-current={active ? 'step' : undefined}
               >
@@ -34,7 +34,7 @@ export function WizardStepIndicator({
                     'flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold',
                     active && 'bg-white/20 text-white',
                     done && 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300',
-                    !active && !done && 'bg-slate-100 text-slate-500 dark:bg-zinc-800 dark:text-zinc-400',
+                    !active && !done && 'bg-slate-100 text-muted-foreground bg-muted text-muted-foreground',
                   )}
                   aria-hidden="true"
                 >
@@ -44,13 +44,13 @@ export function WizardStepIndicator({
                 <span className="sm:hidden">{step}</span>
               </div>
               {i < labels.length - 1 ? (
-                <span className="mx-1 hidden h-px w-6 bg-slate-200 sm:inline-block dark:bg-zinc-700" aria-hidden="true" />
+                <span className="mx-1 hidden h-px w-6 bg-slate-200 sm:inline-block bg-muted" aria-hidden="true" />
               ) : null}
             </li>
           );
         })}
       </ol>
-      <p className="mt-2 text-xs text-slate-500 dark:text-zinc-400">
+      <p className="mt-2 text-xs text-muted-foreground text-muted-foreground">
         Langkah {currentStep} dari {labels.length} — gunakan tombol Sebelumnya / Lanjut di bawah untuk berpindah.
       </p>
     </nav>

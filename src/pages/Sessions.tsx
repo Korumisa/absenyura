@@ -7,6 +7,8 @@ import { Plus, Search, Edit2, Trash2, X, QrCode, MapPin, Clock, Calendar } from 
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { toast } from 'sonner';
+import { toastErrorMessage } from '@/lib/toastMessage';
+import { sessionStatusLabel } from '@/lib/statusLabel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -19,15 +21,71 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import AdminPageShell from '@/components/AdminPageShell';
+import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
+import { CardSkeletonList } from '@/components/admin/CardSkeleton';
 
 import type { Location, Session } from '@/types/session';
 import { formatClassLabel } from '@/lib/classLabel';
 import { MobileTableHint } from '@/components/ui/MobileTableHint';
 import { WizardStepIndicator } from '@/components/ui/WizardStepIndicator';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
+import { useClientPagination } from '@/hooks/useClientPagination';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
+import { TablePagination } from '@/components/ui/TablePagination';
 
 const WIZARD_LABELS = ['Info & Lokasi', 'Jadwal', 'Aturan Absen', 'Kelas'] as const;
+
+type FormFieldKey =
+  | 'title'
+  | 'description'
+  | 'location_id'
+  | 'qr_mode'
+  | 'session_start'
+  | 'session_end'
+  | 'check_in_open_at'
+  | 'check_in_close_at'
+  | 'late_threshold_minutes'
+  | 'status'
+  | 'class_ids';
+
+type FormFieldErrors = Partial<Record<FormFieldKey, string>>;
+
+function qrModeLabel(mode: string): string {
+  if (mode === 'NONE') return 'Tanpa QR (GPS saja)';
+  if (mode === 'DYNAMIC') return 'QR Dinamis';
+  if (mode === 'STATIC') return 'QR Statis';
+  return mode;
+}
+
+function sessionClassNames(session: Session): string {
+  const names = (session.session_classes ?? [])
+    .map((x) => formatClassLabel(x?.class))
+    .filter(Boolean);
+  if (names.length) return names.join(', ');
+  return session.class ? formatClassLabel(session.class) : 'Semua Mahasiswa';
+}
+
+function sessionStatusBadgeVariant(status: string): 'success' | 'outline' | 'secondary' {
+  if (status === 'ACTIVE') return 'success';
+  if (status === 'UPCOMING') return 'outline';
+  return 'secondary';
+}
+
+function applyValidationErrors(err: unknown, setFormErrors: (e: FormFieldErrors) => void): boolean {
+  const status = (err as { response?: { status?: number } })?.response?.status;
+  const data = (err as { response?: { data?: { errors?: Record<string, unknown> } } })?.response?.data;
+  if (status !== 422 || !data?.errors || typeof data.errors !== 'object') return false;
+
+  const mapped: FormFieldErrors = {};
+  for (const [key, val] of Object.entries(data.errors)) {
+    const field = key as FormFieldKey;
+    const msg = Array.isArray(val) ? val[0] : typeof val === 'string' ? val : null;
+    if (msg) mapped[field] = String(msg);
+  }
+  if (Object.keys(mapped).length === 0) return false;
+  setFormErrors(mapped);
+  return true;
+}
 
 export default function Sessions() {
   const navigate = useNavigate();
@@ -52,7 +110,8 @@ export default function Sessions() {
     check_in_open_at: '', check_in_close_at: '', 
     late_threshold_minutes: 15, require_checkout: false, status: 'UPCOMING'
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [formErrors, setFormErrors] = useState<FormFieldErrors>({});
 
   // Delete Session Confirmation Modal
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -61,7 +120,14 @@ export default function Sessions() {
 
   const fetcher = (url: string) => api.get(url).then(res => res.data.data);
   const swr = useSWR<Session[]>('/sessions', fetcher, { revalidateOnFocus: false });
-  const { data: sessions = [], isInitialLoading: loading, isError, retry, mutate } = useSwrPageState(swr);
+  const { data: sessions = [], isInitialLoading: loading, isError, isSlowLoading, retry, mutate } =
+    useSwrPageState(swr);
+
+  const hasFilters =
+    Boolean(searchTerm.trim()) ||
+    Boolean(filterDate) ||
+    filterLocation !== 'ALL' ||
+    filterClass !== 'ALL';
 
   const canProceedWizard = (step: number) => {
     if (step === 1) return Boolean(formData.title.trim() && formData.location_id);
@@ -135,6 +201,7 @@ export default function Sessions() {
       });
     }
     setWizardStep(1);
+    setFormErrors({});
     setIsModalOpen(true);
   };
 
@@ -147,8 +214,9 @@ export default function Sessions() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isSubmitting) return;
-    setIsSubmitting(true);
+    if (saving) return;
+    setSaving(true);
+    setFormErrors({});
 
     try {
       const payload = {
@@ -157,9 +225,9 @@ export default function Sessions() {
         session_end: new Date(formData.session_end).toISOString(),
         check_in_open_at: new Date(formData.check_in_open_at).toISOString(),
         check_in_close_at: new Date(formData.check_in_close_at).toISOString(),
-        class_ids: formData.class_ids
+        class_ids: formData.class_ids,
       };
-      
+
       if (editingSession) {
         await api.put(`/sessions/${editingSession.id}`, payload);
         toast.success('Sesi berhasil diperbarui');
@@ -167,13 +235,28 @@ export default function Sessions() {
         await api.post('/sessions', payload);
         toast.success('Sesi berhasil dibuat');
       }
+      setIsSaveConfirmOpen(false);
       setIsModalOpen(false);
       mutate();
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Terjadi kesalahan');
+    } catch (error: unknown) {
+      if (!applyValidationErrors(error, setFormErrors)) {
+        toast.error(toastErrorMessage(error, 'Gagal menyimpan sesi'));
+      }
     } finally {
-      setIsSubmitting(false);
+      setSaving(false);
     }
+  };
+
+  const fieldError = (key: FormFieldKey) =>
+    formErrors[key] ? <p className="text-sm text-destructive">{formErrors[key]}</p> : null;
+
+  const clearFieldError = (key: FormFieldKey) => {
+    if (!formErrors[key]) return;
+    setFormErrors((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
   };
 
   const openDeleteConfirm = (id: string) => {
@@ -215,6 +298,15 @@ export default function Sessions() {
     return matchSearch && matchLocation && matchClass && matchDate;
   });
 
+  const {
+    paginatedItems: paginatedSessions,
+    meta: sessionsPaginationMeta,
+    setPage: setSessionsPage,
+  } = useClientPagination(filteredSessions, {
+    pageSize: 20,
+    resetDeps: [searchTerm, filterDate, filterLocation, filterClass],
+  });
+
   return (
     <AdminPageShell
       title="Sesi Kehadiran"
@@ -232,9 +324,16 @@ export default function Sessions() {
     >
       {isError ? (
         <ErrorWithRetry title="Gagal memuat sesi" error={swr.error} onRetry={retry} className="mb-6" />
+      ) : isSlowLoading ? (
+        <ErrorWithRetry
+          title="Memuat sesi terlalu lama"
+          error={new Error('Koneksi lambat atau server sibuk. Coba muat ulang.')}
+          onRetry={retry}
+          className="mb-6"
+        />
       ) : (
-      <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-800 overflow-hidden mb-6">
-        <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 border-b border-slate-200 dark:border-zinc-700">
+      <div className="bg-white bg-background rounded-xl shadow-sm border border-border border-border overflow-hidden mb-6">
+        <div className="grid grid-cols-1 gap-5 border-b border-border p-5 sm:grid-cols-2 lg:grid-cols-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
             <Input 
@@ -283,60 +382,134 @@ export default function Sessions() {
           </div>
         </div>
 
-        <ul className="space-y-3 md:hidden" aria-label="Daftar sesi">
-          {loading
-            ? Array.from({ length: 3 }).map((_, i) => (
-                <li key={i} className="rounded-2xl border border-slate-200 p-4 dark:border-zinc-800 dark:bg-zinc-900">
-                  <Skeleton className="mb-2 h-5 w-48" />
-                  <Skeleton className="h-4 w-32" />
-                </li>
-              ))
-            : filteredSessions.length === 0
-              ? (
-                  <li className="py-8 text-center text-slate-500">Tidak ada sesi.</li>
-                )
-              : filteredSessions.map((session) => (
-                  <li key={session.id} className="rounded-2xl border border-slate-200 p-4 dark:border-zinc-800 dark:bg-zinc-900">
-                    <p className="font-bold text-slate-900 dark:text-white">{session.title}</p>
-                    <p className="text-sm text-slate-500">{session.location?.name}</p>
-                    <p className="mt-1 text-sm text-slate-600">
-                      {format(new Date(session.session_start), 'dd MMM yyyy · HH:mm', { locale: id })} WIB
+        <ul className="space-y-4 p-5 md:hidden" aria-label="Daftar sesi">
+          {loading ? (
+            <li>
+              <CardSkeletonList count={3} />
+            </li>
+          ) : filteredSessions.length === 0 ? (
+            <li>
+              <AdminEmptyState
+                compact
+                icon={Calendar}
+                hasFilters={hasFilters}
+                title={hasFilters ? 'Tidak ada hasil' : 'Belum ada sesi'}
+                description={
+                  hasFilters
+                    ? 'Ubah filter pencarian, tanggal, lokasi, atau kelas.'
+                    : 'Buat sesi kehadiran untuk memulai absensi.'
+                }
+                action={
+                  !hasFilters && currentUser?.role !== 'USER' ? (
+                    <Button onClick={() => handleOpenModal()}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Buat Sesi
+                    </Button>
+                  ) : undefined
+                }
+              />
+            </li>
+          ) : (
+            paginatedSessions.map((session) => {
+              const attendances = (session as Session & { attendances?: { id: string; check_out_time: string | null }[] })
+                .attendances;
+              return (
+                <li
+                  key={session.id}
+                  className="rounded-2xl border border-border bg-card p-5 shadow-sm"
+                >
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <p className="text-base font-bold leading-snug text-foreground">{session.title}</p>
+                      <Badge variant={sessionStatusBadgeVariant(session.status)}>
+                        {sessionStatusLabel(session.status)}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{session.location?.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {format(new Date(session.session_start), 'dd MMM yyyy · HH:mm', { locale: id })} –{' '}
+                      {format(new Date(session.session_end), 'HH:mm')} WIB
                     </p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {session.qr_mode !== 'NONE' && session.status !== 'CLOSED' && (
+                    <p className="text-sm text-muted-foreground">{sessionClassNames(session)}</p>
+                    <p className="text-xs text-muted-foreground">{qrModeLabel(session.qr_mode)}</p>
+                    <p className="text-xs text-muted-foreground">Dibuat oleh: {session.creator?.name}</p>
+                  </div>
+                  <div className="mt-5 flex flex-wrap gap-3 border-t border-border pt-4">
+                    {session.qr_mode !== 'NONE' && session.status !== 'CLOSED' && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="min-h-11"
+                        onClick={() => window.open(`/sessions/${session.id}/qr`, '_blank')}
+                        aria-label={`Tampilkan QR untuk ${session.title}`}
+                      >
+                        QR
+                      </Button>
+                    )}
+                    {(currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN') && (
+                      <>
                         <Button
                           variant="outline"
                           size="sm"
                           className="min-h-11"
-                          onClick={() => window.open(`/sessions/${session.id}/qr`, '_blank')}
+                          onClick={() => handleOpenModal(session)}
+                          aria-label={`Edit sesi ${session.title}`}
                         >
-                          QR
+                          Edit
                         </Button>
-                      )}
-                      {(currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN') && (
-                        <>
-                          <Button variant="outline" size="sm" className="min-h-11" onClick={() => handleOpenModal(session)}>
-                            Edit
-                          </Button>
-                          <Button variant="destructive" size="sm" className="min-h-11" onClick={() => openDeleteConfirm(session.id)}>
-                            Hapus
-                          </Button>
-                        </>
-                      )}
-                      {currentUser?.role === 'USER' && session.status === 'ACTIVE' && (
-                        <Button className="min-h-11 flex-1" onClick={() => navigate(`/attend?session=${session.id}`)}>
-                          Absen
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          className="min-h-11"
+                          onClick={() => openDeleteConfirm(session.id)}
+                          aria-label={`Hapus sesi ${session.title}`}
+                        >
+                          Hapus
                         </Button>
-                      )}
-                    </div>
-                  </li>
-                ))}
+                      </>
+                    )}
+                    {currentUser?.role === 'USER' && session.status === 'ACTIVE' && (
+                      <>
+                        {attendances && attendances.length > 0 ? (
+                          attendances[0].check_out_time || !session.require_checkout ? (
+                            <Badge variant="success" className="min-h-11 px-3 py-2">
+                              Sudah Absen
+                            </Badge>
+                          ) : (
+                            <Button
+                              className="min-h-11 flex-1 bg-amber-500 hover:bg-amber-600"
+                              onClick={() =>
+                                navigate(
+                                  `/attend?session=${session.id}&checkout=true&attendance=${attendances[0].id}`,
+                                )
+                              }
+                            >
+                              Check-out
+                            </Button>
+                          )
+                        ) : (
+                          <Button
+                            className="min-h-11 flex-1"
+                            onClick={() => navigate(`/attend?session=${session.id}`)}
+                          >
+                            Hadir
+                          </Button>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </li>
+              );
+            })
+          )}
         </ul>
 
-        <MobileTableHint />
+        <div className="hidden md:block">
+          <MobileTableHint />
+        </div>
         <div className="hidden overflow-x-auto md:block">
           <Table>
-          <TableHeader className="bg-slate-50 dark:bg-zinc-950/50">
+          <TableHeader className="bg-slate-50 bg-card/50">
             <TableRow>
               <TableHead>Informasi Kelas/Event</TableHead>
               <TableHead>Jadwal Sesi</TableHead>
@@ -374,38 +547,51 @@ export default function Sessions() {
               ))
             ) : filteredSessions.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-slate-500 dark:text-zinc-400">
-                  Tidak ada sesi yang ditemukan.
+                <TableCell colSpan={6} className="p-0">
+                  <AdminEmptyState
+                    compact
+                    icon={Calendar}
+                    hasFilters={hasFilters}
+                    title={hasFilters ? 'Tidak ada hasil' : 'Belum ada sesi'}
+                    description={
+                      hasFilters
+                        ? 'Ubah filter pencarian, tanggal, lokasi, atau kelas.'
+                        : 'Buat sesi kehadiran untuk memulai absensi.'
+                    }
+                    action={
+                      !hasFilters && currentUser?.role !== 'USER' ? (
+                        <Button onClick={() => handleOpenModal()}>
+                          <Plus className="mr-2 h-4 w-4" />
+                          Buat Sesi
+                        </Button>
+                      ) : undefined
+                    }
+                    className="border-0 shadow-none"
+                  />
                 </TableCell>
               </TableRow>
             ) : (
-              filteredSessions.map((session) => (
+              paginatedSessions.map((session) => (
                 <TableRow key={session.id}>
                   <TableCell>
                     <div className="font-bold text-slate-900 dark:text-white text-base">{session.title}</div>
-                    <div className="text-sm text-slate-500 dark:text-zinc-400 flex items-center gap-1 mt-1">
+                    <div className="text-sm text-muted-foreground text-muted-foreground flex items-center gap-1 mt-1">
                       <MapPin size={14} className="text-indigo-500" />
                       {session.location?.name}
                     </div>
-                    <div className="text-xs text-slate-400 dark:text-zinc-500 mt-1">Dibuat oleh: {session.creator?.name}</div>
+                    <div className="text-xs text-slate-400 text-muted-foreground mt-1">Dibuat oleh: {session.creator?.name}</div>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1.5 text-slate-700 dark:text-zinc-300 mb-1">
                       <Clock size={14} className="text-indigo-500" />
                       <span className="font-medium">{format(new Date(session.session_start), 'dd MMM yyyy', { locale: id })}</span>
                     </div>
-                    <div className="text-xs text-slate-500 dark:text-zinc-400">
+                    <div className="text-xs text-muted-foreground text-muted-foreground">
                       {format(new Date(session.session_start), 'HH:mm')} - {format(new Date(session.session_end), 'HH:mm')} WIB
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="font-medium text-slate-700 dark:text-zinc-300">
-                      {(() => {
-                        const names = (session.session_classes ?? []).map((x: any) => formatClassLabel(x?.class)).filter(Boolean);
-                        if (names.length) return names.join(', ');
-                        return session.class ? formatClassLabel(session.class) : 'Semua Mahasiswa';
-                      })()}
-                    </div>
+                    <div className="font-medium text-slate-700 dark:text-zinc-300">{sessionClassNames(session)}</div>
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col gap-2">
@@ -413,28 +599,16 @@ export default function Sessions() {
                         <MapPin size={14} className="text-emerald-500 shrink-0" />
                         <span className="font-medium text-sm line-clamp-1">{session.location?.name || 'Lokasi tidak diketahui'}</span>
                       </div>
-                      <div className="text-xs text-slate-500 dark:text-zinc-400 flex items-center gap-1.5">
-                        <QrCode size={14} className="text-slate-400" /> 
-                        <span className="font-medium">{session.qr_mode === 'NONE' ? 'Tanpa QR (Hanya GPS)' : session.qr_mode === 'DYNAMIC' ? 'QR Dinamis' : 'QR Statis'}</span>
+                      <div className="text-xs text-muted-foreground flex items-center gap-1.5">
+                        <QrCode size={14} className="text-slate-400" />
+                        <span className="font-medium">{qrModeLabel(session.qr_mode)}</span>
                       </div>
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-2">
-                      <span className="relative flex h-2.5 w-2.5">
-                        {session.status === 'ACTIVE' && (
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                        )}
-                        <span className={`relative inline-flex rounded-full h-2.5 w-2.5 
-                          ${session.status === 'ACTIVE' ? 'bg-green-500' : 
-                            session.status === 'UPCOMING' ? 'bg-blue-500' : 'bg-slate-400'}`}>
-                        </span>
-                      </span>
-                      <span className="text-sm font-medium text-slate-700 dark:text-zinc-300">
-                        {session.status === 'ACTIVE' ? 'Aktif (Berjalan)' : 
-                         session.status === 'UPCOMING' ? 'Akan Datang' : 'Selesai'}
-                      </span>
-                    </div>
+                    <Badge variant={sessionStatusBadgeVariant(session.status)}>
+                      {sessionStatusLabel(session.status)}
+                    </Badge>
                   </TableCell>
                   {(currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN') && (
                     <TableCell className="text-right">
@@ -444,8 +618,8 @@ export default function Sessions() {
                             variant="ghost" 
                             size="icon"
                             onClick={() => window.open(`/sessions/${session.id}/qr`, '_blank')}
-                            className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-900/50"
-                            aria-label="Tampilkan layar QR untuk dosen"
+                            className="text-brand hover:text-indigo-700 hover:bg-indigo-50 text-brand dark:hover:bg-indigo-900/50"
+                            aria-label={`Tampilkan QR untuk ${session.title}`}
                           >
                             <QrCode className="w-4 h-4" />
                           </Button>
@@ -454,8 +628,8 @@ export default function Sessions() {
                           variant="ghost" 
                           size="icon"
                           onClick={() => handleOpenModal(session)}
-                          className="text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:text-slate-400 dark:hover:bg-indigo-900/30"
-                          aria-label="Edit sesi"
+                          className="text-muted-foreground hover:text-brand hover:bg-indigo-50 dark:text-slate-400 dark:hover:bg-indigo-900/30"
+                          aria-label={`Edit sesi ${session.title}`}
                         >
                           <Edit2 className="w-4 h-4" />
                         </Button>
@@ -463,8 +637,8 @@ export default function Sessions() {
                           variant="ghost" 
                           size="icon"
                           onClick={() => openDeleteConfirm(session.id)}
-                          className="text-slate-500 hover:text-red-600 hover:bg-red-50 dark:text-slate-400 dark:hover:bg-red-900/30"
-                          aria-label="Hapus sesi"
+                          className="text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:text-slate-400 dark:hover:bg-red-900/30"
+                          aria-label={`Hapus sesi ${session.title}`}
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -477,7 +651,7 @@ export default function Sessions() {
                         <div className="flex gap-2 justify-end">
                           {(session as any).attendances && (session as any).attendances.length > 0 ? (
                             (session as any).attendances[0].check_out_time || (!session.require_checkout) ? (
-                              <Badge variant="success" className="px-3 py-1 bg-green-100 text-green-700">Sudah Absen</Badge>
+                              <Badge variant="success">Sudah Absen</Badge>
                             ) : (
                               <Button 
                                 onClick={() =>
@@ -508,12 +682,17 @@ export default function Sessions() {
           </TableBody>
         </Table>
         </div>
+        <TablePagination
+          meta={sessionsPaginationMeta}
+          onPageChange={setSessionsPage}
+          itemLabel="sesi"
+        />
       </div>
       )}
 
       <Dialog open={Boolean(isModalOpen && currentUser?.role !== 'USER')} onOpenChange={setIsModalOpen}>
         <DialogContent className="max-w-4xl p-0">
-          <div className="border-b border-slate-200 px-6 py-4 dark:border-zinc-800">
+          <div className="border-b border-border px-6 py-4 border-border">
             <DialogHeader>
               <DialogTitle className="text-xl font-bold text-slate-800 dark:text-white">
                 {editingSession ? 'Edit Sesi Kehadiran' : 'Buat Sesi Baru'}
@@ -530,13 +709,15 @@ export default function Sessions() {
                   <div className="space-y-2">
                     <Label>Judul / Mata Kuliah <span className="text-red-500">*</span></Label>
                     <Input 
-                      type="text" required value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})}
+                      type="text" required value={formData.title} onChange={e => { clearFieldError('title'); setFormData({...formData, title: e.target.value}); }}
                       placeholder="Pemrograman Web Lanjut (A)"
+                      aria-invalid={Boolean(formErrors.title)}
                     />
+                    {fieldError('title')}
                   </div>
                   <div className="space-y-2">
                     <Label>Lokasi Ruangan <span className="text-red-500">*</span></Label>
-                    <Select required value={formData.location_id} onValueChange={(value) => setFormData({...formData, location_id: value})}>
+                    <Select required value={formData.location_id} onValueChange={(value) => { clearFieldError('location_id'); setFormData({...formData, location_id: value}); }}>
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Pilih Lokasi Geofencing..." />
                       </SelectTrigger>
@@ -546,16 +727,19 @@ export default function Sessions() {
                         ))}
                       </SelectContent>
                     </Select>
+                    {fieldError('location_id')}
                   </div>
                   <div className="space-y-2">
                     <Label>Deskripsi</Label>
                     <Textarea 
-                      rows={3} value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})}
+                      rows={3} value={formData.description} onChange={e => { clearFieldError('description'); setFormData({...formData, description: e.target.value}); }}
+                      aria-invalid={Boolean(formErrors.description)}
                     />
+                    {fieldError('description')}
                   </div>
                   <div className="space-y-2">
                     <Label>Metode Validasi QR <span className="text-red-500">*</span></Label>
-                    <Select required value={formData.qr_mode} onValueChange={(value: string) => setFormData({...formData, qr_mode: value})}>
+                    <Select required value={formData.qr_mode} onValueChange={(value: string) => { clearFieldError('qr_mode'); setFormData({...formData, qr_mode: value}); }}>
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Pilih Metode Validasi QR" />
                       </SelectTrigger>
@@ -565,6 +749,7 @@ export default function Sessions() {
                         <SelectItem value="NONE">Tanpa QR (GPS saja)</SelectItem>
                       </SelectContent>
                     </Select>
+                    {fieldError('qr_mode')}
                   </div>
                 </div>
 
@@ -576,10 +761,12 @@ export default function Sessions() {
                         type="datetime-local"
                         required
                         value={formData.session_start}
-                        onChange={(e) => setFormData({ ...formData, session_start: e.target.value })}
+                        onChange={(e) => { clearFieldError('session_start'); setFormData({ ...formData, session_start: e.target.value }); }}
+                        aria-invalid={Boolean(formErrors.session_start)}
                       />
+                      {fieldError('session_start')}
                     </div>
-                    <span className="hidden shrink-0 px-1 pb-2 text-slate-500 sm:inline" aria-hidden="true">
+                    <span className="hidden shrink-0 px-1 pb-2 text-muted-foreground sm:inline" aria-hidden="true">
                       –
                     </span>
                     <div className="min-w-0 flex-1 space-y-2">
@@ -588,8 +775,10 @@ export default function Sessions() {
                         type="datetime-local"
                         required
                         value={formData.session_end}
-                        onChange={(e) => setFormData({ ...formData, session_end: e.target.value })}
+                        onChange={(e) => { clearFieldError('session_end'); setFormData({ ...formData, session_end: e.target.value }); }}
+                        aria-invalid={Boolean(formErrors.session_end)}
                       />
+                      {fieldError('session_end')}
                     </div>
                   </div>
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
@@ -599,10 +788,12 @@ export default function Sessions() {
                         type="datetime-local"
                         required
                         value={formData.check_in_open_at}
-                        onChange={(e) => setFormData({ ...formData, check_in_open_at: e.target.value })}
+                        onChange={(e) => { clearFieldError('check_in_open_at'); setFormData({ ...formData, check_in_open_at: e.target.value }); }}
+                        aria-invalid={Boolean(formErrors.check_in_open_at)}
                       />
+                      {fieldError('check_in_open_at')}
                     </div>
-                    <span className="hidden shrink-0 px-1 pb-2 text-slate-500 sm:inline" aria-hidden="true">
+                    <span className="hidden shrink-0 px-1 pb-2 text-muted-foreground sm:inline" aria-hidden="true">
                       –
                     </span>
                     <div className="min-w-0 flex-1 space-y-2">
@@ -611,8 +802,10 @@ export default function Sessions() {
                         type="datetime-local"
                         required
                         value={formData.check_in_close_at}
-                        onChange={(e) => setFormData({ ...formData, check_in_close_at: e.target.value })}
+                        onChange={(e) => { clearFieldError('check_in_close_at'); setFormData({ ...formData, check_in_close_at: e.target.value }); }}
+                        aria-invalid={Boolean(formErrors.check_in_close_at)}
                       />
+                      {fieldError('check_in_close_at')}
                     </div>
                   </div>
                 </div>
@@ -622,8 +815,10 @@ export default function Sessions() {
                     <div className="space-y-2">
                       <Label>Toleransi Terlambat (Menit) <span className="text-red-500">*</span></Label>
                       <Input 
-                        type="number" min="0" required value={formData.late_threshold_minutes} onChange={e => setFormData({...formData, late_threshold_minutes: parseInt(e.target.value)})}
+                        type="number" min="0" required value={formData.late_threshold_minutes} onChange={e => { clearFieldError('late_threshold_minutes'); setFormData({...formData, late_threshold_minutes: parseInt(e.target.value)}); }}
+                        aria-invalid={Boolean(formErrors.late_threshold_minutes)}
                       />
+                      {fieldError('late_threshold_minutes')}
                     </div>
                     <div className="flex items-center gap-2 pt-8">
                       <Checkbox checked={Boolean(formData.require_checkout)} onCheckedChange={(checked) => setFormData((p) => ({ ...p, require_checkout: Boolean(checked) }))} />
@@ -633,16 +828,17 @@ export default function Sessions() {
                   {editingSession && (
                     <div className="space-y-2">
                       <Label>Status Sesi (Override Manual)</Label>
-                      <Select value={formData.status} onValueChange={(value: any) => setFormData({...formData, status: value})}>
+                      <Select value={formData.status} onValueChange={(value: string) => { clearFieldError('status'); setFormData({...formData, status: value}); }}>
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Pilih Status" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="UPCOMING">UPCOMING</SelectItem>
-                          <SelectItem value="ACTIVE">ACTIVE</SelectItem>
-                          <SelectItem value="CLOSED">CLOSED</SelectItem>
+                          <SelectItem value="UPCOMING">{sessionStatusLabel('UPCOMING')}</SelectItem>
+                          <SelectItem value="ACTIVE">{sessionStatusLabel('ACTIVE')}</SelectItem>
+                          <SelectItem value="CLOSED">{sessionStatusLabel('CLOSED')}</SelectItem>
                         </SelectContent>
                       </Select>
+                      {fieldError('status')}
                     </div>
                   )}
                 </div>
@@ -663,7 +859,7 @@ export default function Sessions() {
                       />
                     </div>
 
-                    <div className="scrollbar-hide max-h-56 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 dark:border-zinc-800 dark:bg-zinc-950">
+                    <div className="scrollbar-hide max-h-56 overflow-y-auto rounded-xl border border-border bg-white p-2 border-border bg-card">
                       <Button
                         type="button"
                         variant="ghost"
@@ -678,7 +874,7 @@ export default function Sessions() {
                         <span className="font-medium">Semua Mahasiswa (Umum)</span>
                         {formData.class_ids.length === 0 ? <span className="text-xs font-semibold">Terpilih</span> : null}
                       </Button>
-                      <div className="my-2 h-px bg-slate-200/70 dark:bg-zinc-800/70" />
+                      <div className="my-2 h-px bg-slate-200/70 bg-muted/70" />
                       {classes
                         .filter((c) => c.name.toLowerCase().includes(classSearch.trim().toLowerCase()))
                         .map((c) => {
@@ -707,17 +903,17 @@ export default function Sessions() {
                               {selected ? (
                                 <span className="text-xs font-semibold">Terpilih</span>
                               ) : (
-                                <span className="text-xs text-slate-500 dark:text-zinc-400">Tambah</span>
+                                <span className="text-xs text-muted-foreground text-muted-foreground">Tambah</span>
                               )}
                             </Button>
                           );
                         })}
                       {classes.filter((c) => c.name.toLowerCase().includes(classSearch.trim().toLowerCase())).length === 0 ? (
-                        <div className="px-3 py-2 text-sm text-slate-500 dark:text-zinc-400">Tidak ada kelas.</div>
+                        <div className="px-3 py-2 text-sm text-muted-foreground text-muted-foreground">Tidak ada kelas.</div>
                       ) : null}
                     </div>
 
-                    <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3 dark:border-zinc-800 dark:bg-zinc-900/30">
+                    <div className="rounded-xl border border-border bg-slate-50/60 p-3 border-border bg-background/30">
                       <div className="text-sm font-semibold text-slate-800 dark:text-zinc-200">Kelas Terpilih:</div>
                       <div className="mt-2 flex flex-wrap gap-2">
                         {formData.class_ids.length === 0 ? (
@@ -747,13 +943,13 @@ export default function Sessions() {
                       </div>
                     </div>
 
-                    <div className="text-xs text-slate-500 dark:text-zinc-400">Kosong = semua mahasiswa.</div>
+                    <div className="text-xs text-muted-foreground text-muted-foreground">Kosong = semua mahasiswa.</div>
                   </div>
                 </div>
               </div>
               
-              <DialogFooter className="mt-2 flex flex-wrap gap-3 border-t border-slate-200 pt-8 dark:border-zinc-800">
-                <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)} disabled={isSubmitting} className="min-h-11">
+              <DialogFooter className="mt-2 flex flex-wrap gap-3 border-t border-border pt-8 border-border">
+                <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)} disabled={saving} className="min-h-11">
                   Batal
                 </Button>
                 {wizardStep > 1 ? (
@@ -773,11 +969,12 @@ export default function Sessions() {
                 ) : (
                   <Button
                     type="button"
-                    disabled={isSubmitting}
+                    disabled={saving}
+                    aria-busy={saving}
                     className="min-h-11"
                     onClick={() => setIsSaveConfirmOpen(true)}
                   >
-                    {editingSession ? 'Simpan Perubahan' : 'Buat Sesi'}
+                    {saving ? 'Menyimpan…' : editingSession ? 'Simpan Perubahan' : 'Buat Sesi'}
                   </Button>
                 )}
               </DialogFooter>
@@ -789,7 +986,6 @@ export default function Sessions() {
         isOpen={isSaveConfirmOpen}
         onClose={() => setIsSaveConfirmOpen(false)}
         onConfirm={() => {
-          setIsSaveConfirmOpen(false);
           void handleSubmit({ preventDefault: () => {} } as React.FormEvent);
         }}
         title={editingSession ? 'Simpan perubahan sesi?' : 'Buat sesi baru?'}

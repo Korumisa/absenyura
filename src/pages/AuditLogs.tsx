@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import AdminPageShell from '@/components/AdminPageShell';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
 import { MobileTableHint } from '@/components/ui/MobileTableHint';
+import { TablePagination } from '@/components/ui/TablePagination';
 import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
 import type { AuditLog } from '@/types/audit';
 import type { PaginationMeta } from '@/types/common';
@@ -84,8 +85,8 @@ export default function AuditLogs() {
         <p className="mt-2 text-sm font-medium text-slate-700 dark:text-zinc-300">
           {getAuditTableLabel(log.target_table)}
         </p>
-        {detail ? <p className="mt-1 text-sm text-slate-500">{detail}</p> : null}
-        <div className="mt-2 flex flex-wrap gap-3 text-xs text-slate-500">
+        {detail ? <p className="mt-1 text-sm text-muted-foreground">{detail}</p> : null}
+        <div className="mt-2 flex flex-wrap gap-3 text-xs text-muted-foreground">
           <span>{log.actor_id ? `Pengguna ${log.actor_id.slice(0, 8)}…` : 'Sistem'}</span>
           <span>{log.ip_address || '—'}</span>
           <span>{format(new Date(log.created_at), 'dd MMM yyyy HH:mm', { locale: id })}</span>
@@ -104,8 +105,8 @@ export default function AuditLogs() {
       {fetchError ? (
         <ErrorWithRetry title="Gagal memuat audit log" error={fetchError} onRetry={loadLogs} />
       ) : (
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <div className="border-b border-slate-200 p-4 dark:border-zinc-800">
+        <div className="overflow-hidden rounded-xl border border-border bg-white shadow-sm border-border bg-background">
+          <div className="border-b border-border p-4 border-border">
             <div className="relative max-w-md">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <Input
@@ -120,7 +121,7 @@ export default function AuditLogs() {
 
           <ul className="space-y-3 p-4 md:hidden" aria-label="Daftar audit log">
             {loading ? (
-              <li className="py-8 text-center text-slate-500">Memuat data...</li>
+              <li className="py-8 text-center text-muted-foreground">Memuat data...</li>
             ) : filteredLogs.length === 0 ? (
               <li>
                 <AdminEmptyState
@@ -138,7 +139,7 @@ export default function AuditLogs() {
               filteredLogs.map((log) => (
                 <li
                   key={log.id}
-                  className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950"
+                  className="rounded-2xl border border-border bg-white p-4 border-border bg-card"
                 >
                   {renderLogRow(log)}
                 </li>
@@ -149,7 +150,7 @@ export default function AuditLogs() {
           <MobileTableHint />
           <div className="hidden overflow-x-auto md:block">
             <Table>
-              <TableHeader className="bg-slate-50 dark:bg-zinc-950/50">
+              <TableHeader className="bg-slate-50 bg-card/50">
                 <TableRow>
                   <TableHead>Aktivitas</TableHead>
                   <TableHead>Target</TableHead>
@@ -162,7 +163,7 @@ export default function AuditLogs() {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center text-slate-500">
+                    <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
                       Memuat data...
                     </TableCell>
                   </TableRow>
@@ -216,7 +217,7 @@ export default function AuditLogs() {
                           ) : null}
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-zinc-300">
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground dark:text-zinc-300">
                             <User size={14} className="shrink-0 text-slate-400" />
                             {log.actor_id ? (
                               <span className="font-mono text-xs" title={log.actor_id}>
@@ -227,14 +228,14 @@ export default function AuditLogs() {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="max-w-[200px] text-sm text-slate-600 dark:text-zinc-400">
+                        <TableCell className="max-w-[200px] text-sm text-muted-foreground text-muted-foreground">
                           {detail ?? '—'}
                         </TableCell>
-                        <TableCell className="font-mono text-sm text-slate-500 dark:text-zinc-400">
+                        <TableCell className="font-mono text-sm text-muted-foreground text-muted-foreground">
                           {log.ip_address || '—'}
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-zinc-300">
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground dark:text-zinc-300">
                             <Calendar size={14} className="shrink-0 text-slate-400" />
                             <span>
                               {format(new Date(log.created_at), 'dd MMM yyyy', { locale: id })}
@@ -253,31 +254,8 @@ export default function AuditLogs() {
             </Table>
           </div>
 
-          {meta && meta.totalPages > 1 ? (
-            <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50 p-4 dark:border-zinc-700 dark:bg-zinc-800/50">
-              <span className="text-sm text-slate-500 dark:text-zinc-400">
-                Menampilkan {(meta.page - 1) * meta.limit + 1}–
-                {Math.min(meta.page * meta.limit, meta.total)} dari {meta.total} log
-              </span>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                >
-                  Sebelumnya
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage((p) => Math.min(meta.totalPages, p + 1))}
-                  disabled={page === meta.totalPages}
-                >
-                  Selanjutnya
-                </Button>
-              </div>
-            </div>
+          {meta ? (
+            <TablePagination meta={meta} onPageChange={setPage} itemLabel="log" />
           ) : null}
         </div>
       )}

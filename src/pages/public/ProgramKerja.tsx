@@ -100,7 +100,7 @@ export default function ProgramKerja() {
               ) : (
                 <>
                   <div className="flex flex-wrap items-center justify-between gap-4">
-                    <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">Geser untuk ganti divisi</div>
+                    <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Geser untuk ganti divisi</div>
                     <div className="flex items-center gap-2">
                       <button
                         type="button"

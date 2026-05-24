@@ -692,7 +692,7 @@ export default function Attend() {
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-lg flex-col items-center justify-center p-6 text-center">
         <AlertCircle className="mb-4 h-12 w-12 text-red-500" aria-hidden="true" />
         <h1 className="text-xl font-bold text-slate-900 dark:text-white">Gagal memuat sesi</h1>
-        <p className="mt-2 text-sm text-slate-600 dark:text-zinc-400" role="alert">
+        <p className="mt-2 text-sm text-muted-foreground text-muted-foreground" role="alert">
           {sessionLoadError}
         </p>
         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
@@ -731,10 +731,10 @@ export default function Attend() {
         <div className="mx-auto min-h-[calc(100vh-4rem)] max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
         <div className="mb-8 space-y-2">
           <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Check-out Kehadiran</h1>
-          <p className="text-slate-600 dark:text-zinc-400">Konfirmasi untuk menyelesaikan kehadiran di sesi ini.</p>
+          <p className="text-muted-foreground text-muted-foreground">Konfirmasi untuk menyelesaikan kehadiran di sesi ini.</p>
         </div>
 
-        <div className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-800">
+        <div className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-sm border-border bg-muted">
           {isOffline && (
             <div className="flex items-center justify-center gap-2 bg-amber-100 p-3 text-center text-sm font-medium text-amber-900" role="status">
               <WifiOff size={16} aria-hidden="true" />
@@ -745,7 +745,7 @@ export default function Attend() {
           {checkoutLoading || sessionLoading ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-3 p-10" aria-busy="true">
               <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600" />
-              <p className="text-sm text-slate-500">Memuat data…</p>
+              <p className="text-sm text-muted-foreground">Memuat data…</p>
             </div>
           ) : checkoutError || !myAttendance ? (
             <div className="p-6" role="alert">
@@ -759,12 +759,12 @@ export default function Attend() {
           ) : (
             <div className="flex flex-1 flex-col items-center gap-6 p-6 sm:p-8">
               <div className="w-full space-y-4 text-center">
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Kelas / Sesi</p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Kelas / Sesi</p>
                 <p className="text-lg font-bold text-slate-900 dark:text-white">
                   {sessionDetails?.title || myAttendance.session_title}
                 </p>
-                <p className="pt-2 text-xs font-semibold uppercase tracking-wider text-slate-500">Waktu check-in</p>
-                <p className="text-base font-medium text-indigo-600 dark:text-indigo-400">
+                <p className="pt-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Waktu check-in</p>
+                <p className="text-base font-medium text-brand text-brand">
                   {format(new Date(myAttendance.check_in_time), 'dd MMM yyyy · HH:mm', { locale: idLocale })} WIB
                 </p>
               </div>
@@ -802,10 +802,10 @@ export default function Attend() {
     <div className="mx-auto min-h-[calc(100vh-4rem)] max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
       <div className="mb-8 space-y-2">
         <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Check-in Kehadiran</h1>
-        <p className="text-slate-600 dark:text-zinc-400">Scan QR Code kelas dan pastikan Anda berada di lokasi.</p>
+        <p className="text-muted-foreground text-muted-foreground">Scan QR Code kelas dan pastikan Anda berada di lokasi.</p>
       </div>
 
-      <div className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-800">
+      <div className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-sm border-border bg-muted">
         {isOffline && (
           <div className="flex items-center justify-center gap-2 bg-amber-100 p-3 text-center text-sm font-medium text-amber-900" role="status">
             <WifiOff size={16} aria-hidden="true" />
@@ -843,31 +843,31 @@ export default function Attend() {
         )}
 
         {/* Status Indicators */}
-        <div className="grid grid-cols-2 divide-x divide-y border-b border-slate-200 bg-slate-50 dark:divide-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 md:grid-cols-4 md:divide-y-0">
+        <div className="grid grid-cols-2 divide-x divide-y border-b border-border bg-slate-50 dark:divide-zinc-700 border-border bg-background md:grid-cols-4 md:divide-y-0">
           <div className="flex flex-col items-center gap-2 p-5 text-center">
             <QrCode className={scanResult ? 'text-green-500' : 'text-slate-400'} size={24} />
-            <span className="text-xs font-medium text-slate-600 dark:text-zinc-400">QR Code</span>
+            <span className="text-xs font-medium text-muted-foreground text-muted-foreground">QR Code</span>
             <span className="text-xs font-bold text-slate-900 dark:text-white">
               {sessionDetails?.qr_mode === 'NONE' ? 'Tidak Perlu' : scanResult ? 'Terscan' : 'Menunggu'}
             </span>
           </div>
           <div className="flex flex-col items-center gap-2 p-5 text-center">
             <MapPin className={!location ? 'text-amber-500 animate-pulse' : isLocationValid() ? 'text-green-500' : 'text-red-500'} size={24} />
-            <span className="text-xs font-medium text-slate-600 dark:text-zinc-400">GPS Lokasi</span>
+            <span className="text-xs font-medium text-muted-foreground text-muted-foreground">GPS Lokasi</span>
             <span className="text-xs font-bold text-slate-900 dark:text-white">
               {!location ? (gpsError ? 'Error' : 'Mencari…') : isLocationValid() ? 'Akurat' : 'Di Luar Radius'}
             </span>
           </div>
           <div className="flex flex-col items-center gap-2 p-5 text-center">
             <ShieldAlert className={!ipAddress ? 'text-slate-400' : isIpValid() ? 'text-green-500' : 'text-red-500'} size={24} />
-            <span className="text-xs font-medium text-slate-600 dark:text-zinc-400">IP Validasi</span>
+            <span className="text-xs font-medium text-muted-foreground text-muted-foreground">IP Validasi</span>
             <span className="text-xs font-bold text-slate-900 dark:text-white">
               {ipStatusLabel()}
             </span>
           </div>
           <div className="flex flex-col items-center gap-2 p-5 text-center">
             <Camera className={photoBlob ? 'text-green-500' : cameraStarting ? 'text-indigo-500 animate-pulse' : 'text-amber-500'} size={24} />
-            <span className="text-xs font-medium text-slate-600 dark:text-zinc-400">Foto Bukti</span>
+            <span className="text-xs font-medium text-muted-foreground text-muted-foreground">Foto Bukti</span>
             <span className="text-xs font-bold text-slate-900 dark:text-white">
               {photoBlob ? 'Tersimpan' : cameraStarting ? 'Menyiapkan…' : 'Menunggu'}
             </span>
@@ -895,7 +895,7 @@ export default function Attend() {
 
         {!scanning && scanResult && (
           <div
-            className="mx-4 mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-zinc-700 dark:bg-zinc-900/50 sm:mx-6"
+            className="mx-4 mt-4 rounded-xl border border-border bg-slate-50 p-4 border-border bg-background/50 sm:mx-6"
             role="status"
             aria-live="polite"
           >
@@ -912,7 +912,7 @@ export default function Attend() {
                 {!photoBlob && !cameraStarting ? ' — ketuk Buka Kamera' : ''}
                 {cameraStarting ? ' — menyiapkan kamera…' : ''}
               </li>
-              <li className={checkInReady ? 'font-semibold text-emerald-800 dark:text-emerald-300' : 'text-slate-600 dark:text-zinc-400'}>
+              <li className={checkInReady ? 'font-semibold text-emerald-800 dark:text-emerald-300' : 'text-muted-foreground text-muted-foreground'}>
                 {checkInReady ? '✓ Siap dikirim' : '○ Belum siap dikirim'}
               </li>
             </ul>
@@ -921,7 +921,7 @@ export default function Attend() {
 
         <div className="flex flex-1 flex-col gap-8 p-5 sm:p-8">
           {location && sessionDetails?.location && (
-            <div className="z-0 h-52 w-full overflow-hidden rounded-xl border border-slate-200 shadow-inner dark:border-zinc-700">
+            <div className="z-0 h-52 w-full overflow-hidden rounded-xl border border-border shadow-inner border-border">
               <MapContainer 
                 center={[location.lat, location.lng]} 
                 zoom={16} 
@@ -951,7 +951,7 @@ export default function Attend() {
           <div className="flex flex-1 flex-col items-center justify-center">
             {scanning ? (
               <div className="w-full max-w-md">
-                <div className="relative overflow-hidden rounded-2xl border-4 border-slate-100 bg-slate-900 shadow-2xl dark:border-zinc-800">
+                <div className="relative overflow-hidden rounded-2xl border-4 border-border bg-slate-900 shadow-2xl border-border">
                   <div className="pointer-events-none absolute inset-0 z-10 m-8 rounded-xl border-[3px] border-dashed border-indigo-500/50" />
                   <div
                     id="qr-reader"
@@ -959,7 +959,7 @@ export default function Attend() {
                   />
                 </div>
                 <div className="mt-8 space-y-4 text-center">
-                  <p className="text-sm font-medium text-slate-600 dark:text-zinc-400">
+                  <p className="text-sm font-medium text-muted-foreground text-muted-foreground">
                     Arahkan kamera ke QR Code yang ditampilkan oleh Dosen.
                   </p>
                   <div className="flex justify-center">
@@ -974,7 +974,7 @@ export default function Attend() {
               <div className="flex w-full max-w-md animate-in flex-col items-center gap-6 duration-300 zoom-in">
                 <h2 className="text-center text-xl font-bold text-slate-800 dark:text-white">Ambil Foto Bukti Kehadiran</h2>
                 
-                <div className="relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-black shadow-inner dark:border-zinc-700">
+                <div className="relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-2xl border border-border bg-black shadow-inner border-border">
                   <video 
                     ref={videoRef} 
                     autoPlay 
@@ -984,7 +984,7 @@ export default function Attend() {
                   ></video>
                   
                   {!isCameraActive && (
-                    <div className="relative z-20 flex flex-col items-center justify-center gap-3 p-6 text-center text-slate-500">
+                    <div className="relative z-20 flex flex-col items-center justify-center gap-3 p-6 text-center text-muted-foreground">
                       {cameraStarting ? (
                         <Loader2 className="h-10 w-10 animate-spin text-indigo-500" aria-hidden="true" />
                       ) : (
@@ -1033,7 +1033,7 @@ export default function Attend() {
               </div>
             ) : (
               <div className="flex w-full max-w-md animate-in flex-col items-center gap-6 duration-300 zoom-in">
-                <div className="aspect-video w-full overflow-hidden rounded-2xl border border-slate-200 shadow-md dark:border-zinc-700">
+                <div className="aspect-video w-full overflow-hidden rounded-2xl border border-border shadow-md border-border">
                   <img 
                     src={photoPreview!} 
                     alt="Bukti Kehadiran" 
@@ -1043,7 +1043,7 @@ export default function Attend() {
                 
                 <div className="space-y-2 px-2 text-center">
                 <h2 className="text-xl font-bold text-slate-800 dark:text-white">Data Siap Dikirim</h2>
-                <p className="text-sm leading-relaxed text-slate-600 dark:text-zinc-400">
+                <p className="text-sm leading-relaxed text-muted-foreground text-muted-foreground">
                   Sistem telah mendapatkan token QR, lokasi GPS, foto bukti, dan informasi perangkat Anda.
                 </p>
                 </div>

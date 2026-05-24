@@ -159,7 +159,7 @@ export default function Berita() {
                   const date = p.date_label ? String(p.date_label) : '';
                   return (
                     <div key={p.id} className="grid gap-4 md:grid-cols-[96px_40px_1fr] md:items-start">
-                      <div className="hidden pt-2 text-right text-xs font-semibold text-slate-500 md:block">{date || '-'}</div>
+                      <div className="hidden pt-2 text-right text-xs font-semibold text-muted-foreground md:block">{date || '-'}</div>
                       <div className="relative hidden md:flex md:justify-center">
                         <div className="mt-3 h-4 w-4 rounded-full bg-white ring-2 ring-[var(--public-primary)]/55" />
                       </div>
@@ -174,7 +174,7 @@ export default function Berita() {
                             </div>
                           </div>
                           <div className="p-5">
-                            <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-widest text-slate-500">
+                            <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
                               <span>{p.category?.name ?? 'Berita'}</span>
                               {date ? <span className="text-slate-300">•</span> : null}
                               {date ? <span className="normal-case tracking-normal">{date}</span> : null}
@@ -183,7 +183,7 @@ export default function Berita() {
                             {p.excerpt ? (
                               <div className="mt-3 text-sm leading-relaxed text-slate-700 line-clamp-3">{p.excerpt}</div>
                             ) : (
-                              <div className="mt-3 text-sm text-slate-500 line-clamp-3">Ringkasan belum tersedia.</div>
+                              <div className="mt-3 text-sm text-muted-foreground line-clamp-3">Ringkasan belum tersedia.</div>
                             )}
                             <div className="mt-5 inline-flex items-center rounded-xl border border-[var(--public-primary)]/35 bg-white px-4 py-2 text-sm font-semibold text-[var(--public-primary)] transition group-hover:bg-[var(--public-primary)]/5">
                               Baca Selengkapnya

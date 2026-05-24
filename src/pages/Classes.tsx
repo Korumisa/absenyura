@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import useSWR from 'swr';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
+import { useClientPagination } from '@/hooks/useClientPagination';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
+import { TablePagination } from '@/components/ui/TablePagination';
 import { MobileTableHint } from '@/components/ui/MobileTableHint';
 import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
 import api from '@/services/api';
@@ -181,6 +183,15 @@ export default function Classes() {
     (c.course_code && c.course_code.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
+  const {
+    paginatedItems: paginatedClasses,
+    meta: classesPaginationMeta,
+    setPage: setClassesPage,
+  } = useClientPagination(filteredClasses, {
+    pageSize: 20,
+    resetDeps: [searchTerm],
+  });
+
   return (
     <AdminPageShell
       title="Manajemen Kelas"
@@ -199,8 +210,8 @@ export default function Classes() {
       {isError ? (
         <ErrorWithRetry title="Gagal memuat kelas" error={swr.error} onRetry={retry} />
       ) : (
-      <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-800 overflow-hidden">
-        <div className="p-4 border-b border-slate-200 dark:border-zinc-800">
+      <div className="bg-white bg-background rounded-xl shadow-sm border border-border border-border overflow-hidden">
+        <div className="p-4 border-b border-border border-border">
           <div className="relative max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
             <Input 
@@ -216,7 +227,7 @@ export default function Classes() {
         <ul className="space-y-3 p-4 md:hidden" aria-label="Daftar kelas">
           {loading
             ? Array.from({ length: 3 }).map((_, i) => (
-                <li key={i} className="rounded-2xl border border-slate-200 p-4 dark:border-zinc-800">
+                <li key={i} className="rounded-2xl border border-border p-4 border-border">
                   <Skeleton className="mb-2 h-5 w-48" />
                   <Skeleton className="h-4 w-32" />
                 </li>
@@ -235,14 +246,14 @@ export default function Classes() {
                   />
                 </li>
               )
-            : filteredClasses.map((c) => (
-                <li key={c.id} className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+            : paginatedClasses.map((c) => (
+                <li key={c.id} className="rounded-2xl border border-border bg-white p-4 border-border bg-background">
                   <div className="flex items-start gap-2">
                     <BookOpen size={18} className="mt-0.5 shrink-0 text-indigo-500" />
                     <div className="min-w-0 flex-1">
                       <p className="font-bold text-slate-900 dark:text-white">{c.name}</p>
-                      <p className="text-sm text-slate-500">{c.course_code || '—'} · Semester {c.semester}</p>
-                      <p className="mt-1 text-sm text-slate-600 dark:text-zinc-400">Dosen: {c.lecturer.name}</p>
+                      <p className="text-sm text-muted-foreground">{c.course_code || '—'} · Semester {c.semester}</p>
+                      <p className="mt-1 text-sm text-muted-foreground text-muted-foreground">Dosen: {c.lecturer.name}</p>
                       <div className="mt-2 flex flex-wrap gap-2">
                         <Badge variant="secondary">{c._count.enrollments} mahasiswa</Badge>
                         <Badge variant="outline">{c._count.sessions} sesi</Badge>
@@ -278,7 +289,7 @@ export default function Classes() {
         <MobileTableHint />
         <div className="hidden overflow-x-auto md:block">
           <Table>
-            <TableHeader className="bg-slate-50 dark:bg-zinc-950/50">
+            <TableHeader className="bg-slate-50 bg-card/50">
               <TableRow>
                 <TableHead>Mata Kuliah / Kelas</TableHead>
                 <TableHead>Dosen Pengampu</TableHead>
@@ -320,7 +331,7 @@ export default function Classes() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredClasses.map((c) => (
+                paginatedClasses.map((c) => (
                   <TableRow key={c.id}>
                     <TableCell>
                       <div className="flex items-center gap-2 font-medium text-slate-900 dark:text-white">
@@ -330,11 +341,11 @@ export default function Classes() {
                           Sem {c.semester}
                         </Badge>
                       </div>
-                      <div className="text-sm text-slate-500 dark:text-zinc-400 mt-1">
+                      <div className="text-sm text-muted-foreground text-muted-foreground mt-1">
                         {c.course_code || '-'}
                       </div>
                     </TableCell>
-                    <TableCell className="text-slate-600 dark:text-zinc-300">
+                    <TableCell className="text-muted-foreground dark:text-zinc-300">
                       {c.lecturer.name}
                     </TableCell>
                     <TableCell>
@@ -363,7 +374,7 @@ export default function Classes() {
                             variant="ghost" 
                             size="icon"
                             onClick={() => handleOpenModal(c)}
-                            className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/30"
+                            className="text-brand hover:text-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/30"
                             title="Edit"
                           >
                             <Edit2 className="w-4 h-4" />
@@ -390,13 +401,18 @@ export default function Classes() {
             </TableBody>
           </Table>
         </div>
+        <TablePagination
+          meta={classesPaginationMeta}
+          onPageChange={setClassesPage}
+          itemLabel="kelas"
+        />
       </div>
       )}
 
       {/* Modal Form */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="max-w-lg p-0">
-          <div className="border-b border-slate-200 px-6 py-4 dark:border-zinc-800">
+          <div className="border-b border-border px-6 py-4 border-border">
             <DialogHeader>
               <DialogTitle className="text-xl font-bold text-slate-800 dark:text-white">
                 {editingClass ? 'Edit Kelas' : 'Tambah Kelas Baru'}
@@ -446,7 +462,7 @@ export default function Classes() {
                   type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})}
                   placeholder="Contoh: Pemrograman Web (A)"
                 />
-                <p className="text-xs text-slate-500">Bisa diisi nama mata kuliah beserta grup/kelasnya (misal: Algoritma Kelas B).</p>
+                <p className="text-xs text-muted-foreground">Bisa diisi nama mata kuliah beserta grup/kelasnya (misal: Algoritma Kelas B).</p>
               </div>
               <div className="space-y-2">
                 <Label>Semester <span className="text-red-500">*</span></Label>
@@ -460,7 +476,7 @@ export default function Classes() {
                     setFormData((p) => ({ ...p, semester: Math.max(1, Math.min(14, Number.parseInt(e.target.value || '1', 10) || 1)) }))
                   }
                 />
-                <p className="text-xs text-slate-500">Digunakan sebagai label “Sem X” di semua pilihan kelas.</p>
+                <p className="text-xs text-muted-foreground">Digunakan sebagai label “Sem X” di semua pilihan kelas.</p>
               </div>
               <div className="space-y-2">
                 <Label>Deskripsi (Opsional)</Label>
@@ -485,7 +501,7 @@ export default function Classes() {
                 </Select>
               </div>
               
-              <DialogFooter className="mt-8 border-t border-slate-200 pt-4 dark:border-zinc-800">
+              <DialogFooter className="mt-8 border-t border-border pt-4 border-border">
                 <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
                   Batal
                 </Button>
@@ -506,7 +522,7 @@ export default function Classes() {
         }}
       >
         <DialogContent className="max-w-2xl p-0">
-          <div className="border-b border-slate-200 px-6 py-4 dark:border-zinc-800">
+          <div className="border-b border-border px-6 py-4 border-border">
             <DialogHeader>
               <DialogTitle className="text-xl font-bold text-slate-800 dark:text-white">Daftar Mahasiswa</DialogTitle>
               <DialogDescription className="sr-only">Kelola enrollment mahasiswa</DialogDescription>
@@ -537,9 +553,9 @@ export default function Classes() {
                 </div>
               )}
 
-              <div className="border border-slate-200 dark:border-zinc-800 rounded-lg overflow-y-auto flex-1 mt-4">
+              <div className="border border-border border-border rounded-lg overflow-y-auto flex-1 mt-4">
                 <Table>
-                  <TableHeader className="bg-slate-50 dark:bg-zinc-900 sticky top-0">
+                  <TableHeader className="bg-slate-50 bg-background sticky top-0">
                     <TableRow>
                       <TableHead>Nama Mahasiswa</TableHead>
                       <TableHead>NIM</TableHead>
@@ -549,13 +565,13 @@ export default function Classes() {
                   <TableBody>
                     {enrolledStudents.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={3} className="text-center py-8 text-slate-500">Belum ada mahasiswa di kelas ini.</TableCell>
+                        <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">Belum ada mahasiswa di kelas ini.</TableCell>
                       </TableRow>
                     ) : (
                       enrolledStudents.map(student => (
                         <TableRow key={student.id}>
                           <TableCell className="font-medium text-slate-800 dark:text-zinc-200">{student.name}</TableCell>
-                          <TableCell className="text-slate-500 dark:text-zinc-400">{student.nim_nip || '-'}</TableCell>
+                          <TableCell className="text-muted-foreground text-muted-foreground">{student.nim_nip || '-'}</TableCell>
                           <TableCell className="text-right">
                             {currentUser?.role !== 'USER' && (
                               <Button 

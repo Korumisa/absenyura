@@ -1,4 +1,6 @@
 import React from 'react';
+import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 
 export default function AdminCard({
   title,
@@ -14,17 +16,17 @@ export default function AdminCard({
   className?: string;
 }) {
   return (
-    <div className={`rounded-2xl border border-[#e6edf5] bg-white shadow-[0_1px_0_rgba(15,23,42,0.04)] dark:border-zinc-800 dark:bg-zinc-950/40 ${className || ''}`}>
+    <Card className={cn(className)}>
       {title || description || actions ? (
-        <div className="flex flex-col gap-3 border-b border-[#e6edf5] px-5 py-4 dark:border-zinc-800 sm:flex-row sm:items-start sm:justify-between">
+        <CardHeader className="flex flex-col gap-3 border-b border-border pb-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-1">
-            {title ? <div className="text-sm font-semibold text-slate-900 dark:text-white">{title}</div> : null}
-            {description ? <div className="text-sm text-slate-600 dark:text-zinc-300">{description}</div> : null}
+            {title ? <div className="text-sm font-semibold text-foreground">{title}</div> : null}
+            {description ? <CardDescription>{description}</CardDescription> : null}
           </div>
           {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
-        </div>
+        </CardHeader>
       ) : null}
-      <div className="p-5">{children}</div>
-    </div>
+      <CardContent className="p-5">{children}</CardContent>
+    </Card>
   );
 }

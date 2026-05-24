@@ -25,8 +25,8 @@ export class ErrorBoundary extends Component<Props, State> {
       const isStaleBundle = Boolean(chunkMsg);
 
       return (
-        <div className="min-h-screen bg-slate-50 dark:bg-zinc-950 flex flex-col items-center justify-center p-6">
-          <div className="bg-white dark:bg-zinc-900 max-w-md w-full rounded-2xl shadow-xl border border-slate-200 dark:border-zinc-800 p-8 flex flex-col items-center text-center">
+        <div className="min-h-screen bg-slate-50 bg-card flex flex-col items-center justify-center p-6">
+          <div className="bg-white bg-background max-w-md w-full rounded-2xl shadow-xl border border-border border-border p-8 flex flex-col items-center text-center">
             <div
               className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-6 ${
                 isStaleBundle
@@ -39,13 +39,13 @@ export class ErrorBoundary extends Component<Props, State> {
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
               {isStaleBundle ? 'Perlu Memuat Ulang' : 'Terjadi Kesalahan'}
             </h1>
-            <p className="text-slate-600 dark:text-zinc-400 mb-6 leading-relaxed">
+            <p className="text-muted-foreground text-muted-foreground mb-6 leading-relaxed">
               {chunkMsg ??
                 'Maaf, aplikasi mengalami masalah yang tidak terduga. Coba muat ulang halaman; jika masih terjadi, hubungi administrator.'}
             </p>
             {!isStaleBundle && import.meta.env.DEV && this.state.error?.message ? (
-              <details className="mb-6 w-full text-left rounded-lg border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-950 p-3">
-                <summary className="cursor-pointer text-xs font-medium text-slate-500">
+              <details className="mb-6 w-full text-left rounded-lg border border-border border-border bg-slate-50 bg-card p-3">
+                <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
                   Detail teknis (mode pengembang)
                 </summary>
                 <code className="mt-2 block text-xs text-red-600 dark:text-red-400 font-mono whitespace-pre-wrap break-all">

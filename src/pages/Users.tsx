@@ -4,7 +4,9 @@ import useSWR from 'swr';
 import { useAuthStore } from '@/stores/authStore';
 import { Plus, Search, Edit2, Trash2, X, Download, Upload, Smartphone, Users as UsersIcon } from 'lucide-react';
 import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
+import { CardSkeletonList } from '@/components/admin/CardSkeleton';
 import { userRoleLabel } from '@/lib/sessionStatusLabel';
+import { toastErrorMessage } from '@/lib/toastMessage';
 import * as ExcelJS from 'exceljs';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
@@ -18,9 +20,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import AdminPageShell from '@/components/AdminPageShell';
 import { MobileTableHint } from '@/components/ui/MobileTableHint';
+import { TablePagination } from '@/components/ui/TablePagination';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
-import { Skeleton } from '@/components/ui/skeleton';
 import type { User } from '@/types/user';
 import type { PaginationMeta } from '@/types/common';
 
@@ -134,8 +136,8 @@ export default function Users() {
       }
       setIsModalOpen(false);
       mutate();
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Terjadi kesalahan');
+    } catch (error: unknown) {
+      toast.error(toastErrorMessage(error, 'Terjadi kesalahan'));
     }
   };
 
@@ -157,9 +159,28 @@ export default function Users() {
     }
   };
 
-  const filteredUsers = users;
   const hasFilters =
     Boolean(debouncedSearch.trim()) || roleFilter !== 'ALL' || statusFilter !== 'ALL';
+
+  const roleBadgeProps = (role: string) => ({
+    variant: (role === 'SUPER_ADMIN'
+      ? 'default'
+      : role === 'ADMIN'
+        ? 'secondary'
+        : role === 'CONTENT_ADMIN'
+          ? 'warning'
+          : 'outline') as 'default' | 'secondary' | 'warning' | 'outline',
+    className:
+      role === 'SUPER_ADMIN'
+        ? 'bg-purple-600 hover:bg-purple-700'
+        : role === 'ADMIN'
+          ? 'bg-sky-600 text-white hover:bg-sky-700 dark:bg-sky-600'
+          : role === 'CONTENT_ADMIN'
+            ? 'bg-amber-500 hover:bg-amber-600'
+            : '',
+  });
+
+  const filteredUsers = users;
 
   const handleDownloadTemplate = async () => {
     const workbook = new ExcelJS.Workbook();
@@ -216,8 +237,8 @@ export default function Users() {
       setIsImportModalOpen(false);
       setImportFile(null);
       mutate(); // Refresh list
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Gagal mengimpor data Excel');
+    } catch (error: unknown) {
+      toast.error(toastErrorMessage(error, 'Gagal mengimpor data Excel'));
     } finally {
       setImporting(false);
     }
@@ -264,8 +285,8 @@ export default function Users() {
         </div>
       }
     >
-      <div className="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-700 overflow-hidden">
-        <div className="p-4 border-b border-slate-200 dark:border-zinc-700 flex flex-col md:flex-row gap-3 items-center justify-between">
+      <div className="bg-white bg-muted rounded-xl shadow-sm border border-border border-border overflow-hidden">
+        <div className="p-4 border-b border-border border-border flex flex-col md:flex-row gap-3 items-center justify-between">
           <div className="relative w-full md:max-w-md flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
             <Input
@@ -311,35 +332,41 @@ export default function Users() {
           <>
           {/* [UX] #11 — daftar kartu di mobile */}
           <ul className="space-y-3 md:hidden" aria-label="Daftar pengguna">
-            {loading
-              ? Array.from({ length: 4 }).map((_, i) => (
-                  <li key={i} className="rounded-2xl border border-slate-200 p-4 dark:border-zinc-800">
-                    <Skeleton className="mb-2 h-5 w-40" />
-                    <Skeleton className="h-4 w-56" />
-                    <Skeleton className="mt-3 h-9 w-full" />
-                  </li>
-                ))
-              : filteredUsers.length === 0 ? (
+            {loading ? (
+              <li>
+                <CardSkeletonList count={4} />
+              </li>
+            ) : filteredUsers.length === 0 ? (
                 <li>
                   <AdminEmptyState
                     compact
                     icon={UsersIcon}
-                    title={hasFilters ? 'Tidak ada hasil' : 'Belum ada pengguna'}
-                    description={
-                      hasFilters
-                        ? 'Ubah filter atau kata kunci pencarian.'
-                        : 'Tambahkan pengguna baru untuk memulai.'
-                    }
+                    hasFilters={hasFilters}
                   />
                 </li>
               )
               : filteredUsers.map((user) => (
-              <li key={user.id} className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+              <li key={user.id} className="rounded-2xl border border-border bg-background p-4">
                 <p className="font-bold text-slate-900 dark:text-white">{user.name}</p>
-                <p className="text-sm text-slate-500">{user.email}</p>
+                <p className="text-sm text-muted-foreground">{user.email}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{user.nim_nip || '—'}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {typeof user.department === 'object' && user.department !== null
+                    ? ((user.department as { name?: string; id?: string }).name || (user.department as { id?: string }).id)
+                    : (user.department || '—')}
+                  {user.role === 'USER' ? ` · Semester ${user.semester || 1}` : ''}
+                </p>
                 <div className="mt-2 flex flex-wrap gap-2">
-                  <Badge variant="secondary">{userRoleLabel(user.role)}</Badge>
+                  <Badge {...roleBadgeProps(user.role)}>{userRoleLabel(user.role)}</Badge>
                   <Badge variant={user.is_active ? 'success' : 'destructive'}>{user.is_active ? 'Aktif' : 'Nonaktif'}</Badge>
+                  {user.device_fingerprint ? (
+                    <Badge variant="success" className="gap-1.5">
+                      <Smartphone size={12} aria-hidden="true" />
+                      Terikat
+                    </Badge>
+                  ) : (
+                    <Badge variant="secondary">Bebas</Badge>
+                  )}
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {user.device_fingerprint ? (
@@ -388,14 +415,14 @@ export default function Users() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-10 text-center text-slate-500 dark:text-zinc-400">
+                  <TableCell colSpan={7} className="py-10 text-center text-muted-foreground text-muted-foreground">
                     Memuat data...
                   </TableCell>
                 </TableRow>
               ) : filteredUsers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-10 text-center text-slate-500 dark:text-zinc-400">
-                    Tidak ada data pengguna ditemukan.
+                  <TableCell colSpan={7} className="p-0">
+                    <AdminEmptyState compact icon={UsersIcon} hasFilters={hasFilters} className="border-0 shadow-none" />
                   </TableCell>
                 </TableRow>
               ) : (
@@ -403,38 +430,19 @@ export default function Users() {
                   <TableRow key={user.id}>
                     <TableCell>
                       <div className="font-medium text-slate-900 dark:text-white">{user.name}</div>
-                      <div className="text-sm text-slate-500 dark:text-zinc-400">{user.email}</div>
+                      <div className="text-sm text-muted-foreground text-muted-foreground">{user.email}</div>
                     </TableCell>
-                    <TableCell className="text-slate-600 dark:text-zinc-300">{user.nim_nip || '-'}</TableCell>
+                    <TableCell className="text-muted-foreground dark:text-zinc-300">{user.nim_nip || '-'}</TableCell>
                     <TableCell>
-                      <Badge
-                        variant={
-                          user.role === 'SUPER_ADMIN'
-                            ? 'default'
-                            : user.role === 'ADMIN'
-                              ? 'secondary'
-                              : user.role === 'CONTENT_ADMIN'
-                                ? 'warning'
-                                : 'outline'
-                        }
-                        className={
-                          user.role === 'SUPER_ADMIN'
-                            ? 'bg-purple-600 hover:bg-purple-700'
-                            : user.role === 'ADMIN'
-                              ? 'bg-sky-600 text-white hover:bg-sky-700 dark:bg-sky-600'
-                              : user.role === 'CONTENT_ADMIN'
-                                ? 'bg-amber-500 hover:bg-amber-600'
-                                : ''
-                        }
-                      >
-                        {typeof user.role === 'object' && user.role !== null ? ((user.role as any).name || (user.role as any).id) : user.role}
+                      <Badge {...roleBadgeProps(user.role)}>
+                        {userRoleLabel(user.role)}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <div className="text-slate-600 dark:text-zinc-300">
+                      <div className="text-muted-foreground dark:text-zinc-300">
                         {typeof user.department === 'object' && user.department !== null ? ((user.department as any).name || (user.department as any).id) : (user.department || '-')}
                       </div>
-                      {user.role === 'USER' ? <div className="mt-1 text-xs text-slate-500">Semester {user.semester || 1}</div> : null}
+                      {user.role === 'USER' ? <div className="mt-1 text-xs text-muted-foreground">Semester {user.semester || 1}</div> : null}
                     </TableCell>
                     <TableCell>
                       <Badge variant={user.is_active ? 'success' : 'destructive'}>
@@ -469,7 +477,7 @@ export default function Users() {
                           variant="ghost"
                           size="icon"
                           onClick={() => handleOpenModal(user)}
-                          className="text-slate-500 hover:bg-indigo-50 hover:text-indigo-600 dark:text-zinc-400 dark:hover:bg-indigo-900/30"
+                          className="text-muted-foreground hover:bg-indigo-50 hover:text-brand text-muted-foreground dark:hover:bg-indigo-900/30"
                           title="Edit"
                         >
                           <Edit2 size={16} />
@@ -479,7 +487,7 @@ export default function Users() {
                             variant="ghost"
                             size="icon"
                             onClick={() => openDeleteConfirm(user.id)}
-                            className="text-slate-500 hover:bg-red-50 hover:text-red-600 dark:text-zinc-400 dark:hover:bg-red-900/30"
+                            className="text-muted-foreground hover:bg-red-50 hover:text-red-600 text-muted-foreground dark:hover:bg-red-900/30"
                             title="Hapus"
                           >
                             <Trash2 size={16} />
@@ -496,36 +504,19 @@ export default function Users() {
           )}
         </div>
 
-        {meta && meta.totalPages > 1 && (
-          <div className="flex items-center justify-between p-4 border-t border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800/50">
-            <span className="text-sm text-slate-500 dark:text-zinc-400">
-              Menampilkan {((meta.page - 1) * meta.limit) + 1} - {Math.min(meta.page * meta.limit, meta.total)} dari {meta.total} pengguna
-            </span>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                disabled={page === 1 || isValidating}
-              >
-                Sebelumnya
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage(p => Math.min(meta.totalPages, p + 1))}
-                disabled={page === meta.totalPages || isValidating}
-              >
-                Selanjutnya
-              </Button>
-            </div>
-          </div>
-        )}
+        {meta ? (
+          <TablePagination
+            meta={meta}
+            onPageChange={setPage}
+            disabled={isValidating}
+            itemLabel="pengguna"
+          />
+        ) : null}
       </div>
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="max-w-2xl p-0">
-          <div className="border-b border-slate-200 px-6 py-4 dark:border-zinc-800">
+          <div className="border-b border-border px-6 py-4 border-border">
             <DialogHeader>
               <DialogTitle className="text-xl font-bold text-slate-800 dark:text-white">
                 {editingUser ? 'Edit Pengguna' : 'Tambah Pengguna Baru'}
@@ -616,7 +607,7 @@ export default function Users() {
               ) : null}
             </div>
 
-            <DialogFooter className="mt-8 border-t border-slate-200 pt-4 dark:border-zinc-800">
+            <DialogFooter className="mt-8 border-t border-border pt-4 border-border">
               <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
                 Batal
               </Button>
@@ -639,7 +630,7 @@ export default function Users() {
               Unduh Template Excel
             </Button>
 
-            <div className="h-px bg-slate-200 dark:bg-zinc-800" />
+            <div className="h-px bg-slate-200 bg-muted" />
 
             <form onSubmit={handleImportSubmit} className="space-y-4">
               <div className="space-y-2">

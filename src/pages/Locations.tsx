@@ -7,7 +7,9 @@ import 'leaflet/dist/leaflet.css';
 import { MapResizeOnOpen } from '@/components/MapResizeOnOpen';
 import useSWR from 'swr';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
+import { useClientPagination } from '@/hooks/useClientPagination';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
+import { TablePagination } from '@/components/ui/TablePagination';
 import { MobileTableHint } from '@/components/ui/MobileTableHint';
 import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -224,6 +226,15 @@ export default function Locations() {
     return true;
   });
 
+  const {
+    paginatedItems: paginatedLocations,
+    meta: locationsPaginationMeta,
+    setPage: setLocationsPage,
+  } = useClientPagination(filteredLocations, {
+    pageSize: 20,
+    resetDeps: [searchTerm, wifiFilter],
+  });
+
   return (
     <AdminPageShell
       title="Manajemen Lokasi"
@@ -240,8 +251,8 @@ export default function Locations() {
       {isError ? (
         <ErrorWithRetry title="Gagal memuat lokasi" error={swr.error} onRetry={retry} />
       ) : (
-      <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-800 overflow-hidden">
-        <div className="p-4 border-b border-slate-200 dark:border-zinc-800 flex flex-col sm:flex-row gap-4">
+      <div className="bg-white bg-background rounded-xl shadow-sm border border-border border-border overflow-hidden">
+        <div className="p-4 border-b border-border border-border flex flex-col sm:flex-row gap-4">
           <div className="relative max-w-md flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
             <Input 
@@ -267,7 +278,7 @@ export default function Locations() {
         <ul className="space-y-3 p-4 md:hidden" aria-label="Daftar lokasi">
           {loading
             ? Array.from({ length: 3 }).map((_, i) => (
-                <li key={i} className="rounded-2xl border border-slate-200 p-4 dark:border-zinc-800">
+                <li key={i} className="rounded-2xl border border-border p-4 border-border">
                   <Skeleton className="mb-2 h-5 w-40" />
                   <Skeleton className="h-4 w-full" />
                 </li>
@@ -286,17 +297,17 @@ export default function Locations() {
                   />
                 </li>
               )
-            : filteredLocations.map((loc) => (
-                <li key={loc.id} className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+            : paginatedLocations.map((loc) => (
+                <li key={loc.id} className="rounded-2xl border border-border bg-white p-4 border-border bg-background">
                   <div className="flex items-start gap-2">
                     <MapPin size={18} className="mt-0.5 shrink-0 text-indigo-500" />
                     <div className="min-w-0 flex-1">
                       <p className="font-bold text-slate-900 dark:text-white">{loc.name}</p>
-                      <p className="mt-1 truncate text-sm text-slate-500">{loc.address || 'Tanpa alamat'}</p>
-                      <p className="mt-2 font-mono text-xs text-slate-500">
+                      <p className="mt-1 truncate text-sm text-muted-foreground">{loc.address || 'Tanpa alamat'}</p>
+                      <p className="mt-2 font-mono text-xs text-muted-foreground">
                         {loc.latitude.toFixed(5)}, {loc.longitude.toFixed(5)} · {loc.radius} m
                       </p>
-                      <p className="mt-1 text-xs text-slate-500">
+                      <p className="mt-1 text-xs text-muted-foreground">
                         WiFi/IP: {loc.wifi_bssid.length > 0 ? `${loc.wifi_bssid.length} aturan` : 'Tanpa batasan'}
                       </p>
                     </div>
@@ -322,7 +333,7 @@ export default function Locations() {
         <MobileTableHint />
         <div className="hidden overflow-x-auto md:block">
           <Table>
-            <TableHeader className="bg-slate-50 dark:bg-zinc-950/50">
+            <TableHeader className="bg-slate-50 bg-card/50">
               <TableRow>
                 <TableHead>Nama Lokasi</TableHead>
                 <TableHead>Alamat</TableHead>
@@ -335,7 +346,7 @@ export default function Locations() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center text-slate-500 dark:text-zinc-400">
+                  <TableCell colSpan={6} className="h-24 text-center text-muted-foreground text-muted-foreground">
                     Memuat data...
                   </TableCell>
                 </TableRow>
@@ -356,7 +367,7 @@ export default function Locations() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredLocations.map((loc) => (
+                paginatedLocations.map((loc) => (
                   <TableRow key={loc.id}>
                     <TableCell className="font-medium text-slate-900 dark:text-white">
                       <div className="flex items-center gap-2">
@@ -364,20 +375,20 @@ export default function Locations() {
                         {loc.name}
                       </div>
                     </TableCell>
-                    <TableCell className="text-slate-600 dark:text-zinc-300 max-w-xs truncate" title={loc.address || ''}>
+                    <TableCell className="text-muted-foreground dark:text-zinc-300 max-w-xs truncate" title={loc.address || ''}>
                       {loc.address || '-'}
                     </TableCell>
-                    <TableCell className="text-slate-600 dark:text-zinc-300 font-mono text-sm">
+                    <TableCell className="text-muted-foreground dark:text-zinc-300 font-mono text-sm">
                       {loc.latitude.toFixed(5)}, {loc.longitude.toFixed(5)}
                     </TableCell>
-                    <TableCell className="text-slate-600 dark:text-zinc-300">
+                    <TableCell className="text-muted-foreground dark:text-zinc-300">
                       {loc.radius} meter
                     </TableCell>
-                    <TableCell className="text-slate-600 dark:text-zinc-300">
+                    <TableCell className="text-muted-foreground dark:text-zinc-300">
                       {loc.wifi_bssid.length > 0 ? (
                         <div className="flex flex-wrap gap-1">
                           {loc.wifi_bssid.map((ip, i) => (
-                            <span key={i} className="bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 px-2 py-0.5 rounded text-xs">
+                            <span key={i} className="bg-slate-100 bg-muted border border-border border-border px-2 py-0.5 rounded text-xs">
                               {ip}
                             </span>
                           ))}
@@ -390,7 +401,7 @@ export default function Locations() {
                           variant="ghost" 
                           size="icon"
                           onClick={() => handleOpenModal(loc)}
-                          className="text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:text-slate-400 dark:hover:bg-indigo-900/30"
+                          className="text-muted-foreground hover:text-brand hover:bg-indigo-50 dark:text-slate-400 dark:hover:bg-indigo-900/30"
                           title="Edit"
                         >
                           <Edit2 className="w-4 h-4" />
@@ -399,7 +410,7 @@ export default function Locations() {
                           variant="ghost" 
                           size="icon"
                           onClick={() => openDeleteConfirm(loc.id)}
-                          className="text-slate-500 hover:text-red-600 hover:bg-red-50 dark:text-slate-400 dark:hover:bg-red-900/30"
+                          className="text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:text-slate-400 dark:hover:bg-red-900/30"
                           title="Hapus"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -412,13 +423,18 @@ export default function Locations() {
             </TableBody>
           </Table>
         </div>
+        <TablePagination
+          meta={locationsPaginationMeta}
+          onPageChange={setLocationsPage}
+          itemLabel="lokasi"
+        />
       </div>
       )}
 
       {/* Modal Form */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="max-w-4xl p-0">
-          <div className="border-b border-slate-200 px-6 py-4 dark:border-zinc-800">
+          <div className="border-b border-border px-6 py-4 border-border">
             <DialogHeader>
               <DialogTitle className="text-xl font-bold text-slate-800 dark:text-white">
                 {editingLocation ? 'Edit Lokasi' : 'Tambah Lokasi Baru'}
@@ -428,7 +444,7 @@ export default function Locations() {
           </div>
 
           <form onSubmit={handleSubmit} className="flex flex-col overflow-hidden md:flex-row md:items-stretch">
-              <div className="relative z-10 shrink-0 space-y-4 overflow-y-auto border-r border-slate-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950 md:w-1/2 md:max-h-[min(72vh,680px)]">
+              <div className="relative z-10 shrink-0 space-y-4 overflow-y-auto border-r border-border bg-white p-6 border-border bg-card md:w-1/2 md:max-h-[min(72vh,680px)]">
                 <div className="space-y-2">
                   <Label>Nama Lokasi <span className="text-red-500">*</span></Label>
                   <Input 
@@ -475,7 +491,7 @@ export default function Locations() {
                       type="range" min="10" max="1000" step="10" value={formData.radius} onChange={e => setFormData({...formData, radius: parseInt(e.target.value)})}
                       className="flex-1 accent-indigo-600"
                     />
-                    <span className="font-mono text-sm bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 px-2 py-1 rounded w-16 text-center text-slate-800 dark:text-zinc-200">
+                    <span className="font-mono text-sm bg-slate-100 bg-muted border border-border border-border px-2 py-1 rounded w-16 text-center text-slate-800 dark:text-zinc-200">
                       {formData.radius}m
                     </span>
                   </div>
@@ -487,12 +503,12 @@ export default function Locations() {
                     placeholder="192.168.1.1, 10.0.0.0/24"
                     className="font-mono"
                   />
-                  <p className="text-xs text-slate-500 dark:text-zinc-400">Kosongkan jika tidak ada batasan IP</p>
+                  <p className="text-xs text-muted-foreground text-muted-foreground">Kosongkan jika tidak ada batasan IP</p>
                 </div>
               </div>
               
               <div className="flex min-h-[360px] flex-1 flex-col md:w-1/2">
-                <div className="location-map-panel relative isolate z-0 min-h-[320px] flex-1 overflow-hidden bg-slate-100 dark:bg-zinc-900 md:min-h-[480px]">
+                <div className="location-map-panel relative isolate z-0 min-h-[320px] flex-1 overflow-hidden bg-slate-100 bg-background md:min-h-[480px]">
                   {isModalOpen ? (
                   <MapContainer 
                     key={editingLocation?.id ?? 'new-location'}
@@ -530,12 +546,12 @@ export default function Locations() {
                   </Button>
 
                   <div className="absolute bottom-2 left-2 right-2 z-[1000] pointer-events-none">
-                    <div className="bg-white/90 dark:bg-zinc-950/90 backdrop-blur text-xs px-3 py-2 rounded shadow border border-slate-200 dark:border-zinc-800 text-slate-700 dark:text-zinc-300 pointer-events-auto">
+                    <div className="bg-white/90 bg-card/90 backdrop-blur text-xs px-3 py-2 rounded shadow border border-border border-border text-slate-700 dark:text-zinc-300 pointer-events-auto">
                       Klik pada peta untuk mengubah koordinat secara otomatis.
                     </div>
                   </div>
                 </div>
-                <div className="flex shrink-0 justify-end gap-3 border-t border-slate-200 p-5 dark:border-zinc-800">
+                <div className="flex shrink-0 justify-end gap-3 border-t border-border p-5 border-border">
                   <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
                     Batal
                   </Button>

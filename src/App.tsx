@@ -169,7 +169,15 @@ export default function App() {
   return (
     <ThemeProvider defaultTheme="light" storageKey="absensyura-theme">
       <ErrorBoundary>
-        <Toaster position="top-right" richColors />
+        <Toaster
+          position="top-right"
+          richColors
+          toastOptions={{
+            duration: 4000,
+            classNames: { error: 'sonner-error', success: 'sonner-success' },
+          }}
+          closeButton
+        />
         <PublicLoadingOverlay show={isMaintenance} label={maintenanceReason || 'Menghubungkan ke server...'} />
         <Router>
         <ScrollToTop />

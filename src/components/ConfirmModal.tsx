@@ -25,7 +25,7 @@ export function ConfirmModal({
       ? 'bg-rose-600 hover:bg-rose-700'
       : variant === 'warning'
         ? 'bg-orange-600 hover:bg-orange-700'
-        : 'bg-indigo-600 hover:bg-indigo-700'
+        : 'bg-brand hover:bg-brand/90'
 
   return (
     <AlertDialog open={isOpen} onOpenChange={(open) => (!open ? onClose() : undefined)}>

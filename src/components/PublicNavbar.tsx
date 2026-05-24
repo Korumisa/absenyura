@@ -101,7 +101,7 @@ export default function PublicNavbar() {
             <div className="text-sm font-extrabold tracking-tight text-slate-900">
               {isLoadingProfile ? 'Memuat...' : profile?.org_name ? profile.org_name : 'Profil belum diatur'}
             </div>
-            <div className="text-xs font-medium text-slate-600">
+            <div className="text-xs font-medium text-muted-foreground">
               {isLoadingProfile ? '' : profile?.campus_name ? profile.campus_name : 'Konten Website'}
             </div>
           </div>

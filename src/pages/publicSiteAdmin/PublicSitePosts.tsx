@@ -248,10 +248,10 @@ export default function PublicSitePosts() {
                 {categories.length > 0 ? (
                   <ul className="mt-4 space-y-2 text-sm" aria-label="Daftar kategori">
                     {categories.map((c) => (
-                      <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 px-3 py-2 dark:border-zinc-700">
+                      <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border px-3 py-2 border-border">
                         <span>
                           <span className="font-medium text-slate-900 dark:text-white">{c.name}</span>
-                          <span className="text-slate-500"> · {c.slug}</span>
+                          <span className="text-muted-foreground"> · {c.slug}</span>
                         </span>
                         <span className="flex gap-1">
                           <Button variant="ghost" size="sm" type="button" onClick={() => setCategoryForm({ id: c.id, name: c.name, slug: c.slug })}>
@@ -274,7 +274,7 @@ export default function PublicSitePosts() {
             >
               <form onSubmit={upsertPost} className="space-y-4">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-slate-500">Jenis:</span>
+                  <span className="text-sm text-muted-foreground">Jenis:</span>
                   <Badge variant="secondary">{typeLabel}</Badge>
                 </div>
                 <div className="space-y-2">
@@ -360,7 +360,7 @@ export default function PublicSitePosts() {
                     }}
                   />
                 </div>
-                <div className="flex flex-col-reverse gap-2 border-t border-slate-100 pt-4 dark:border-zinc-800 sm:flex-row sm:justify-end">
+                <div className="flex flex-col-reverse gap-2 border-t border-border pt-4 border-border sm:flex-row sm:justify-end">
                   <Button type="button" variant="outline" className="min-h-11" onClick={() => setContentTab('list')}>
                     Kembali ke daftar
                   </Button>
@@ -390,12 +390,12 @@ export default function PublicSitePosts() {
             />
         <ul className="space-y-3 md:hidden" aria-label="Daftar konten">
           {posts.length === 0 ? (
-            <li className="py-8 text-center text-sm text-slate-500">Belum ada konten.</li>
+            <li className="py-8 text-center text-sm text-muted-foreground">Belum ada konten.</li>
           ) : null}
           {posts.map((p) => (
-            <li key={p.id} className="rounded-2xl border border-slate-200 p-4 dark:border-zinc-800">
+            <li key={p.id} className="rounded-2xl border border-border p-4 border-border">
               <p className="font-bold text-slate-900 dark:text-white">{p.title}</p>
-              <p className="text-sm text-slate-500">{p.category?.name ?? p.type}</p>
+              <p className="text-sm text-muted-foreground">{p.category?.name ?? p.type}</p>
               <Badge className="mt-2" variant={p.is_published ? 'success' : 'secondary'}>
                 {p.is_published ? 'Publik' : 'Draft'}
               </Badge>
@@ -425,7 +425,7 @@ export default function PublicSitePosts() {
           <TableBody>
             {posts.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="py-10 text-center text-slate-500">
+                <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
                   Belum ada konten.
                 </TableCell>
               </TableRow>

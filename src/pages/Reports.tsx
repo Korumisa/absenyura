@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import api from '@/services/api';
 import useSWR from 'swr';
-import { Download, FileText, Search, CheckCircle2, Clock, XCircle, Edit3, X, ChevronDown, Loader2 } from 'lucide-react';
+import { Download, FileText, Search, CheckCircle2, Clock, XCircle, Edit3, ChevronDown, Loader2, Smartphone, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, isValid } from 'date-fns';
 import { id } from 'date-fns/locale';
@@ -23,11 +23,15 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import type { Report } from '@/types/report';
 import type { PaginationMeta } from '@/types/common';
 import AdminPageShell from '@/components/AdminPageShell';
+import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
+import { CardSkeletonList } from '@/components/admin/CardSkeleton';
 import { formatClassLabel } from '@/lib/classLabel';
 import { MobileTableHint } from '@/components/ui/MobileTableHint';
+import { TablePagination } from '@/components/ui/TablePagination';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
-import { attendanceStatusLabel } from '@/lib/sessionStatusLabel';
+import { attendanceBadgeVariant, attendanceStatusLabel } from '@/lib/statusLabel';
+import { toastErrorMessage } from '@/lib/toastMessage';
 
 const fetcher = (url: string) => api.get(url).then(res => res.data);
 
@@ -116,6 +120,13 @@ export default function Reports() {
         return matchStatus && matchSearch;
       });
   }, [reports, statusFilter, searchTerm]);
+
+  const hasFilters =
+    Boolean(searchTerm.trim()) ||
+    statusFilter !== 'ALL' ||
+    Boolean(startDate) ||
+    Boolean(endDate) ||
+    sessionId !== 'ALL';
 
   // Override Modal State
   const [isOverrideModalOpen, setIsOverrideModalOpen] = useState(false);
@@ -306,8 +317,8 @@ export default function Reports() {
         return;
       }
       await exportExcelMatrix(filteredReports, 'Semua');
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || 'Gagal export Excel');
+    } catch (err: unknown) {
+      toast.error(toastErrorMessage(err, 'Gagal export Excel'));
     } finally {
       setExporting('none');
     }
@@ -326,8 +337,8 @@ export default function Reports() {
         return;
       }
       await exportPdfList(filteredReports, 'Semua');
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || 'Gagal export PDF');
+    } catch (err: unknown) {
+      toast.error(toastErrorMessage(err, 'Gagal export PDF'));
     } finally {
       setExporting('none');
     }
@@ -359,8 +370,7 @@ export default function Reports() {
       // Refresh reports
       mutate();
     } catch (error: unknown) {
-      const err = error as { response?: { data?: { error?: string } } };
-      toast.error(err.response?.data?.error || 'Gagal mengubah status');
+      toast.error(toastErrorMessage(error, 'Gagal mengubah status'));
     } finally {
       setOverrideSubmitting(false);
     }
@@ -399,11 +409,11 @@ export default function Reports() {
       {isError ? (
         <ErrorWithRetry title="Gagal memuat rekap" error={swr.error} onRetry={retry} />
       ) : (
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-        <div className="shrink-0 border-b border-slate-200 p-4 sm:p-5 dark:border-zinc-800">
+      <div className="overflow-hidden rounded-xl border border-border bg-white shadow-sm border-border bg-background">
+        <div className="shrink-0 border-b border-border p-4 sm:p-5 border-border">
           <button
             type="button"
-            className="mb-3 flex min-h-11 w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 md:hidden"
+            className="mb-3 flex min-h-11 w-full items-center justify-between rounded-xl border border-border bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800 border-border bg-background dark:text-zinc-200 md:hidden"
             aria-expanded={filtersOpen}
             onClick={() => setFiltersOpen((v) => !v)}
           >
@@ -429,7 +439,7 @@ export default function Reports() {
               onChange={(e) => setStartDate(e.target.value)}
               className="w-full sm:w-[150px]"
             />
-            <span className="flex h-10 shrink-0 items-center px-0.5 text-slate-500" aria-hidden="true">
+            <span className="flex h-10 shrink-0 items-center px-0.5 text-muted-foreground" aria-hidden="true">
               –
             </span>
             <Input
@@ -470,41 +480,87 @@ export default function Reports() {
             </SelectContent>
           </Select>
         </div>
-        <p id="reports-search-hint" className="mt-3 text-xs text-slate-500 dark:text-zinc-400">
+        <p id="reports-search-hint" className="mt-3 text-xs text-muted-foreground text-muted-foreground">
           Pencarian memfilter data di halaman ini ({filteredReports.length} baris).
         </p>
         </div>
 
         <ul className="space-y-4 p-4 sm:p-5 md:hidden" aria-label="Daftar laporan kehadiran">
-          {loading
-            ? Array.from({ length: 4 }).map((_, i) => (
-                <li key={i} className="rounded-2xl border border-slate-200 p-4 dark:border-zinc-800">
-                  <Skeleton className="mb-2 h-5 w-40" />
-                  <Skeleton className="h-4 w-full" />
-                </li>
-              ))
-            : filteredReports.length === 0
-              ? (
-                  <li className="py-8 text-center text-slate-500">Tidak ada data.</li>
-                )
-              : filteredReports.map((report: Report, idx) => (
-                  <li key={report.id ?? idx} className="space-y-2 rounded-2xl border border-slate-200 p-5 dark:border-zinc-800">
+          {loading ? (
+            <li>
+              <CardSkeletonList count={4} />
+            </li>
+          ) : filteredReports.length === 0 ? (
+            <li>
+              <AdminEmptyState compact icon={FileText} hasFilters={hasFilters} />
+            </li>
+          ) : (
+            filteredReports.map((report: Report, idx) => (
+              <li key={report.id ?? idx} className="space-y-3 rounded-2xl border border-border p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
                     <p className="font-bold text-slate-900 dark:text-white">{report.user_name}</p>
-                    <p className="text-sm text-slate-500">{report.nim_nip}</p>
-                    <p className="text-xs font-medium text-slate-600 dark:text-zinc-400">Kelas: {reportClassLabel(report)}</p>
-                    <p className="text-sm font-medium text-indigo-600">{report.session_title}</p>
-                    <p className="text-xs text-slate-500">{safeFormat(report.check_in_time, 'dd MMM yyyy · HH:mm')}</p>
-                    <Badge className="mt-2" variant={report.status === 'PRESENT' ? 'success' : report.status === 'LATE' ? 'warning' : 'secondary'}>
-                      {attendanceStatusLabel(report.status)}
-                    </Badge>
-                  </li>
-                ))}
+                    <p className="text-sm text-muted-foreground">{report.nim_nip}</p>
+                  </div>
+                  <Badge variant={attendanceBadgeVariant(report.status)} className="shrink-0 gap-1">
+                    {report.status === 'PRESENT' && <CheckCircle2 className="h-3 w-3" />}
+                    {report.status === 'LATE' && <Clock className="h-3 w-3" />}
+                    {(report.status === 'SICK' || report.status === 'EXCUSED') && <FileText className="h-3 w-3" />}
+                    {report.status === 'ABSENT' && <XCircle className="h-3 w-3" />}
+                    {attendanceStatusLabel(report.status)}
+                  </Badge>
+                </div>
+                <p className="text-xs font-medium text-muted-foreground">Kelas: {reportClassLabel(report)}</p>
+                <p className="text-sm font-medium text-brand">{report.session_title}</p>
+                <p className="text-xs text-muted-foreground">
+                  {safeFormat(report.session_date, 'dd MMM yyyy')} · {safeFormat(report.check_in_time, 'HH:mm:ss')}
+                </p>
+                <div className="flex items-start gap-3">
+                  {report.photo_url ? (
+                    <a href={report.photo_url} target="_blank" rel="noreferrer" className="shrink-0 hover:opacity-80">
+                      <img
+                        src={report.photo_url}
+                        alt="Bukti hadir"
+                        className="h-12 w-12 rounded-md border border-border object-cover"
+                      />
+                    </a>
+                  ) : (
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-muted text-xs text-muted-foreground">
+                      —
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1 space-y-1 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-1.5">
+                      <MapPin size={12} className="shrink-0" aria-hidden="true" />
+                      <span className="font-mono">IP: {report.ip || '—'}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Smartphone size={12} className="shrink-0" aria-hidden="true" />
+                      <span className="truncate" title={report.device || undefined}>{report.device || '—'}</span>
+                    </div>
+                  </div>
+                </div>
+                {user?.role !== 'USER' ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="min-h-11 w-full"
+                    onClick={() => report?.id && handleOpenOverride(report)}
+                  >
+                    <Edit3 className="mr-2 h-4 w-4" aria-hidden="true" />
+                    Override status
+                  </Button>
+                ) : null}
+              </li>
+            ))
+          )}
         </ul>
 
         <MobileTableHint />
         <div className="hidden max-h-[calc(100vh-18rem)] overflow-auto md:block">
           <Table className="min-w-[800px]">
-            <TableHeader className="sticky top-0 z-10 bg-slate-50 dark:bg-zinc-950">
+            <TableHeader className="sticky top-0 z-10 bg-slate-50 bg-card">
               <TableRow>
                 <TableHead>Peserta</TableHead>
                 <TableHead>Sesi / Kelas</TableHead>
@@ -543,7 +599,9 @@ export default function Reports() {
                 ))
               ) : filteredReports.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-24 text-center text-slate-500">Tidak ada data ditemukan.</TableCell>
+                  <TableCell colSpan={user?.role !== 'USER' ? 7 : 6} className="p-0">
+                    <AdminEmptyState compact icon={FileText} hasFilters={hasFilters} className="border-0 shadow-none" />
+                  </TableCell>
                 </TableRow>
               ) : (
                 (filteredReports ?? [])
@@ -552,43 +610,43 @@ export default function Reports() {
                   <TableRow key={String(report?.id ?? idx)}>
                     <TableCell>
                       <div className="font-medium text-slate-900 dark:text-white">{String(report?.user_name ?? '-')}</div>
-                      <div className="text-sm text-slate-500 dark:text-zinc-400">{String(report?.nim_nip ?? '-') || '-'}</div>
+                      <div className="text-sm text-muted-foreground text-muted-foreground">{String(report?.nim_nip ?? '-') || '-'}</div>
                     </TableCell>
                     <TableCell>
                       <div className="font-medium text-slate-800 dark:text-zinc-200">{String(report?.session_title ?? '-')}</div>
-                      {report?.class_name && <div className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 mt-0.5">{typeof report.class_name === 'object' && report.class_name !== null ? ((report.class_name as any).name || (report.class_name as any).id) : report.class_name}</div>}
-                      <div className="text-xs text-slate-500 dark:text-zinc-400 mt-1">
+                      {report?.class_name && <div className="text-xs font-semibold text-brand text-brand mt-0.5">{typeof report.class_name === 'object' && report.class_name !== null ? ((report.class_name as any).name || (report.class_name as any).id) : report.class_name}</div>}
+                      <div className="text-xs text-muted-foreground text-muted-foreground mt-1">
                         {safeFormat(report.session_date, 'dd MMMM yyyy')}
                       </div>
                     </TableCell>
-                    <TableCell className="text-slate-600 dark:text-zinc-300 font-medium">
+                    <TableCell className="text-muted-foreground dark:text-zinc-300 font-medium">
                       {safeFormat(report.check_in_time, 'HH:mm:ss')}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={report.status === 'PRESENT' ? 'success' : report.status === 'LATE' ? 'warning' : report.status === 'SICK' || report.status === 'EXCUSED' ? 'secondary' : 'destructive'}>
+                      <Badge variant={attendanceBadgeVariant(report.status)} className="gap-1">
                         {report.status === 'PRESENT' && <CheckCircle2 className="w-3 h-3 mr-1" />}
                         {report.status === 'LATE' && <Clock className="w-3 h-3 mr-1" />}
                         {(report.status === 'SICK' || report.status === 'EXCUSED') && <FileText className="w-3 h-3 mr-1" />}
                         {report.status === 'ABSENT' && <XCircle className="w-3 h-3 mr-1" />}
-                        {report.status === 'PRESENT' ? 'Hadir' : report.status === 'LATE' ? 'Terlambat' : report.status === 'SICK' ? 'Sakit' : report.status === 'EXCUSED' ? 'Izin' : report.status === 'ABSENT' ? 'Tidak Hadir' : report.status}
+                        {attendanceStatusLabel(report.status)}
                       </Badge>
                     </TableCell>
                     <TableCell>
                       {report.photo_url ? (
                         <a href={report.photo_url} target="_blank" rel="noreferrer" className="inline-block hover:opacity-80 transition-opacity">
-                          <img src={report.photo_url} alt="Bukti Hadir" className="w-10 h-10 object-cover rounded-md shadow-sm border border-slate-200 dark:border-zinc-700" />
+                          <img src={report.photo_url} alt="Bukti Hadir" className="w-10 h-10 object-cover rounded-md shadow-sm border border-border border-border" />
                         </a>
                       ) : (
-                        <div className="w-10 h-10 bg-slate-100 dark:bg-zinc-800 rounded-md flex items-center justify-center text-xs text-slate-400 dark:text-zinc-500">
+                        <div className="w-10 h-10 bg-slate-100 bg-muted rounded-md flex items-center justify-center text-xs text-slate-400 text-muted-foreground">
                           -
                         </div>
                       )}
                     </TableCell>
                     <TableCell>
-                      <div className="text-xs text-slate-500 dark:text-zinc-400 font-mono mb-1">
+                      <div className="text-xs text-muted-foreground text-muted-foreground font-mono mb-1">
                         IP: {report.ip || '-'}
                       </div>
-                      <div className="text-xs text-slate-400 dark:text-zinc-500 max-w-[150px] truncate" title={report.device || '-'}>
+                      <div className="text-xs text-slate-400 text-muted-foreground max-w-[150px] truncate" title={report.device || '-'}>
                         {report.device || '-'}
                       </div>
                     </TableCell>
@@ -598,7 +656,7 @@ export default function Reports() {
                           variant="ghost"
                           size="icon"
                           onClick={() => report?.id && handleOpenOverride(report)}
-                          className="text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:text-slate-400 dark:hover:bg-indigo-900/30"
+                          className="text-muted-foreground hover:text-brand hover:bg-indigo-50 dark:text-slate-400 dark:hover:bg-indigo-900/30"
                           title="Override Status"
                         >
                           <Edit3 className="w-4 h-4" />
@@ -612,38 +670,16 @@ export default function Reports() {
           </Table>
         </div>
         
-        {meta && meta.totalPages > 1 && (
-          <div className="flex items-center justify-between p-4 border-t border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800/50">
-            <span className="text-sm text-slate-500 dark:text-zinc-400">
-              Menampilkan {((meta.page - 1) * meta.limit) + 1} - {Math.min(meta.page * meta.limit, meta.total)} dari {meta.total} laporan
-            </span>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                disabled={page === 1}
-              >
-                Sebelumnya
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage(p => Math.min(meta.totalPages, p + 1))}
-                disabled={page === meta.totalPages}
-              >
-                Selanjutnya
-              </Button>
-            </div>
-          </div>
-        )}
+        {meta ? (
+          <TablePagination meta={meta} onPageChange={setPage} itemLabel="laporan" />
+        ) : null}
       </div>
       )}
 
       {/* Override Modal */}
       <Dialog open={Boolean(isOverrideModalOpen && selectedReport)} onOpenChange={setIsOverrideModalOpen}>
         <DialogContent className="max-w-md p-0">
-          <div className="border-b border-slate-200 px-6 py-4 dark:border-zinc-800">
+          <div className="border-b border-border px-6 py-4 border-border">
             <DialogHeader>
               <DialogTitle className="text-xl font-bold text-slate-800 dark:text-white">Ubah Status Manual</DialogTitle>
               <DialogDescription className="sr-only">Override status kehadiran</DialogDescription>

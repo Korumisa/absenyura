@@ -3,6 +3,9 @@ import { useAuthStore } from '@/stores/authStore';
 import api from '@/services/api';
 import useSWR from 'swr';
 import { toast } from 'sonner';
+import { ErrorWithRetry } from '@/components/ErrorWithRetry';
+import { toastErrorMessage } from '@/lib/toastMessage';
+import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { Building2, BookOpen, Trash2, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,16 +28,26 @@ export default function MasterData() {
 
   const fetcher = (url: string) => api.get(url).then((res) => res.data.data);
 
-  const { data: serverFaculties } = useSWR(
+  const facultiesSwr = useSWR(
     user?.role === 'SUPER_ADMIN' ? '/settings/departments' : null,
     fetcher,
     { revalidateOnFocus: false },
   );
-  const { data: serverSubjects } = useSWR(
+  const subjectsSwr = useSWR(
     user?.role === 'SUPER_ADMIN' ? '/settings/subjects' : null,
     fetcher,
     { revalidateOnFocus: false },
   );
+  const facultiesState = useSwrPageState(facultiesSwr);
+  const subjectsState = useSwrPageState(subjectsSwr);
+  const { data: serverFaculties } = facultiesSwr;
+  const { data: serverSubjects } = subjectsSwr;
+  const isLoadError = facultiesState.isError || subjectsState.isError;
+  const loadError = facultiesSwr.error ?? subjectsSwr.error;
+  const retryLoad = () => {
+    facultiesState.retry();
+    subjectsState.retry();
+  };
 
   useEffect(() => {
     if (serverFaculties) setFaculties(serverFaculties);
@@ -48,8 +61,8 @@ export default function MasterData() {
     try {
       await api.post('/settings/departments', { data: faculties });
       toast.success('Data Fakultas & Prodi berhasil disimpan');
-    } catch {
-      toast.error('Gagal menyimpan Fakultas & Prodi');
+    } catch (err) {
+      toast.error(toastErrorMessage(err, 'Gagal menyimpan Fakultas & Prodi'));
     }
   };
 
@@ -57,15 +70,15 @@ export default function MasterData() {
     try {
       await api.post('/settings/subjects', { data: subjects });
       toast.success('Data Mata Kuliah berhasil disimpan');
-    } catch {
-      toast.error('Gagal menyimpan Mata Kuliah');
+    } catch (err) {
+      toast.error(toastErrorMessage(err, 'Gagal menyimpan Mata Kuliah'));
     }
   };
 
   if (user?.role !== 'SUPER_ADMIN') {
     return (
       <AdminPageShell title="Master Data" description="Halaman ini hanya untuk Super Admin." variant="plain">
-        <p className="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-500 dark:border-zinc-800 dark:bg-zinc-900">
+        <p className="rounded-xl border border-border bg-white p-8 text-center text-muted-foreground border-border bg-background">
           Anda tidak memiliki akses ke halaman ini.
         </p>
       </AdminPageShell>
@@ -80,8 +93,8 @@ export default function MasterData() {
       className={cn(
         'w-full justify-start min-h-11',
         activeTab === id
-          ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400'
-          : 'text-slate-600 dark:text-slate-400',
+          ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 text-brand'
+          : 'text-muted-foreground dark:text-slate-400',
       )}
     >
       <Icon className="mr-3 h-5 w-5" />
@@ -98,14 +111,16 @@ export default function MasterData() {
     >
       <div className="flex flex-col gap-6 lg:flex-row">
         <aside className="w-full shrink-0 lg:w-56">
-          <div className="flex flex-row gap-1 rounded-xl border border-slate-200 bg-white p-2 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 lg:flex-col">
+          <div className="flex flex-row gap-1 rounded-xl border border-border bg-white p-2 shadow-sm border-border bg-background lg:flex-col">
             {tabBtn('departments', 'Fakultas & Prodi', Building2)}
             {tabBtn('subjects', 'Mata Kuliah', BookOpen)}
           </div>
         </aside>
 
         <div className="min-w-0 flex-1">
-          {activeTab === 'departments' ? (
+          {isLoadError ? (
+            <ErrorWithRetry title="Gagal memuat master data" error={loadError} onRetry={retryLoad} />
+          ) : activeTab === 'departments' ? (
             <AdminCard
               title="Manajemen Fakultas & Prodi"
               description="Atur hierarki fakultas dan program studi untuk profil pengguna."
@@ -134,7 +149,7 @@ export default function MasterData() {
                   return (
                     <div
                       key={index}
-                      className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 dark:border-zinc-700 dark:bg-zinc-900/50"
+                      className="rounded-xl border border-border bg-slate-50/80 p-4 border-border bg-background/50"
                     >
                       <div className="mb-4 flex items-center justify-between gap-2">
                         <h3 className="flex items-center gap-2 font-bold text-slate-800 dark:text-white">
@@ -162,7 +177,7 @@ export default function MasterData() {
                           return (
                             <div
                               key={dIndex}
-                              className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800"
+                              className="flex items-center justify-between rounded-lg border border-border bg-white px-3 py-2 border-border bg-muted"
                             >
                               <span className="text-sm text-slate-700 dark:text-zinc-300">{deptName}</span>
                               <Button
@@ -223,7 +238,7 @@ export default function MasterData() {
                   );
                 })}
 
-                <div className="flex flex-col gap-2 border-t border-slate-200 pt-4 dark:border-zinc-700 sm:flex-row">
+                <div className="flex flex-col gap-2 border-t border-border pt-4 border-border sm:flex-row">
                   <Input
                     placeholder="Nama fakultas baru…"
                     value={newFaculty}
@@ -266,10 +281,10 @@ export default function MasterData() {
                 {subjects.map((subject, index) => (
                   <div
                     key={index}
-                    className="flex items-center justify-between rounded-lg border border-slate-200 p-3 dark:border-zinc-700"
+                    className="flex items-center justify-between rounded-lg border border-border p-3 border-border"
                   >
                     <div>
-                      <span className="mr-2 font-mono text-sm font-semibold text-indigo-600 dark:text-indigo-400">
+                      <span className="mr-2 font-mono text-sm font-semibold text-brand text-brand">
                         {subject.code}
                       </span>
                       <span className="text-slate-800 dark:text-white">{subject.name}</span>
@@ -286,7 +301,7 @@ export default function MasterData() {
                   </div>
                 ))}
 
-                <div className="flex flex-col gap-2 border-t border-slate-200 pt-4 dark:border-zinc-700 sm:flex-row">
+                <div className="flex flex-col gap-2 border-t border-border pt-4 border-border sm:flex-row">
                   <Input
                     placeholder="Kode MK"
                     className="sm:w-32"

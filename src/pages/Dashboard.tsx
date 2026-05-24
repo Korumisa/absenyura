@@ -62,7 +62,7 @@ export default function Dashboard() {
       description={
         <>
           Selamat datang kembali,{' '}
-          <span className="font-medium text-indigo-600 dark:text-indigo-400">{user?.name}</span>!
+          <span className="font-medium text-brand text-brand">{user?.name}</span>!
         </>
       }
       icon={<BarChart3 className="h-5 w-5" />}
@@ -116,35 +116,35 @@ export default function Dashboard() {
 
           {/* Stats Grid */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            <div className="bg-white dark:bg-zinc-900 p-4 sm:p-6 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm hover:shadow-md transition-shadow group">
-              <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 mb-4 group-hover:scale-110 transition-transform">
+            <div className="bg-white bg-background p-4 sm:p-6 rounded-3xl border border-border border-border shadow-sm hover:shadow-md transition-shadow group">
+              <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center text-brand text-brand mb-4 group-hover:scale-110 transition-transform">
                 <Calendar size={24} />
               </div>
-              <p className="text-sm text-slate-500 dark:text-zinc-400 font-medium mb-1">Total Sesi</p>
+              <p className="text-sm text-muted-foreground text-muted-foreground font-medium mb-1">Total Sesi</p>
               <p className="text-3xl font-extrabold text-slate-800 dark:text-white">{data?.stats.total}</p>
             </div>
-            <div className="bg-white dark:bg-zinc-900 p-4 sm:p-6 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm hover:shadow-md transition-shadow group">
+            <div className="bg-white bg-background p-4 sm:p-6 rounded-3xl border border-border border-border shadow-sm hover:shadow-md transition-shadow group">
               <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-900/30 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 mb-4 group-hover:scale-110 transition-transform">
                 <CheckCircle2 size={24} />
               </div>
-              <p className="text-sm text-slate-500 dark:text-zinc-400 font-medium mb-1">Hadir Tepat Waktu</p>
+              <p className="text-sm text-muted-foreground text-muted-foreground font-medium mb-1">Hadir Tepat Waktu</p>
               <p className="text-3xl font-extrabold text-slate-800 dark:text-white">{data?.stats.present}</p>
             </div>
-            <div className="bg-white dark:bg-zinc-900 p-4 sm:p-6 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm hover:shadow-md transition-shadow group">
+            <div className="bg-white bg-background p-4 sm:p-6 rounded-3xl border border-border border-border shadow-sm hover:shadow-md transition-shadow group">
               <div className="w-12 h-12 bg-amber-50 dark:bg-amber-900/30 rounded-2xl flex items-center justify-center text-amber-600 dark:text-amber-400 mb-4 group-hover:scale-110 transition-transform">
                 <FileText size={24} />
               </div>
-              <p className="text-sm text-slate-500 dark:text-zinc-400 font-medium mb-1">Total Izin / Sakit</p>
+              <p className="text-sm text-muted-foreground text-muted-foreground font-medium mb-1">Total Izin / Sakit</p>
               <h3 className="text-3xl font-extrabold text-slate-800 dark:text-white">
                 {(data?.stats.sick || 0) + (data?.stats.excused || 0)}
               </h3>
             </div>
 
-            <div className="bg-white dark:bg-zinc-900 p-4 sm:p-6 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm hover:shadow-md transition-shadow group">
+            <div className="bg-white bg-background p-4 sm:p-6 rounded-3xl border border-border border-border shadow-sm hover:shadow-md transition-shadow group">
               <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center text-blue-600 dark:text-blue-400 mb-4 group-hover:scale-110 transition-transform">
                 <BarChart3 size={24} />
               </div>
-              <p className="text-sm text-slate-500 dark:text-zinc-400 font-medium mb-1">Rasio Kehadiran</p>
+              <p className="text-sm text-muted-foreground text-muted-foreground font-medium mb-1">Rasio Kehadiran</p>
               <div className="flex items-end gap-2">
                 <p className="text-3xl font-extrabold text-slate-800 dark:text-white">{data?.stats.percentage}%</p>
                 <span className={`text-xs font-bold mb-1.5 ${data?.stats.percentage >= 80 ? 'text-green-500' : 'text-red-500'}`}>
@@ -154,10 +154,10 @@ export default function Dashboard() {
             </div>
           </div>
 
-            <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm overflow-hidden">
-              <div className="px-8 py-6 border-b border-slate-200 dark:border-zinc-800 flex items-center justify-between">
+            <div className="bg-white bg-background rounded-3xl border border-border border-border shadow-sm overflow-hidden">
+              <div className="px-8 py-6 border-b border-border border-border flex items-center justify-between">
                 <h2 className="text-xl font-bold text-slate-800 dark:text-white">Jadwal Sesi Terdekat</h2>
-                <span className="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 py-1 px-3 rounded-full text-xs font-bold">
+                <span className="bg-indigo-50 dark:bg-indigo-900/30 text-brand text-brand py-1 px-3 rounded-full text-xs font-bold">
                   {data?.recent_sessions?.length || 0} Sesi
                 </span>
               </div>
@@ -165,22 +165,22 @@ export default function Dashboard() {
               {/* [UX] D-01 — kartu mobile jadwal sesi */}
               <ul className="space-y-3 p-4 md:hidden" aria-label="Jadwal sesi terdekat">
                 {!data?.recent_sessions?.length ? (
-                  <li className="py-8 text-center text-slate-500">Belum ada sesi terdekat.</li>
+                  <li className="py-8 text-center text-muted-foreground">Belum ada sesi terdekat.</li>
                 ) : (
                   data.recent_sessions.map((session: any) => (
-                    <li key={session.id} className="rounded-2xl border border-slate-200 p-4 dark:border-zinc-800">
+                    <li key={session.id} className="rounded-2xl border border-border p-4 border-border">
                       <p className="font-bold text-slate-900 dark:text-white">{session.title}</p>
-                      <p className="text-sm text-indigo-600 dark:text-indigo-400">
+                      <p className="text-sm text-brand text-brand">
                         {(() => {
                           const labels = (session.session_classes ?? []).map((x: any) => formatClassLabel(x?.class)).filter(Boolean);
                           if (labels.length) return labels.join(', ');
                           return session.class ? formatClassLabel(session.class) : 'Semua Mahasiswa';
                         })()}
                       </p>
-                      <p className="mt-2 text-sm text-slate-600 dark:text-zinc-400">
+                      <p className="mt-2 text-sm text-muted-foreground text-muted-foreground">
                         {format(new Date(session.session_start), 'dd MMM yyyy · HH:mm', { locale: id })} WIB
                       </p>
-                      <p className="text-xs text-slate-500 truncate">
+                      <p className="text-xs text-muted-foreground truncate">
                         {typeof session.location === 'object' ? session.location?.name : session.location || '-'}
                       </p>
                       <div className="mt-3">
@@ -216,7 +216,7 @@ export default function Dashboard() {
 
               <div className="hidden overflow-x-auto md:block">
                 <Table>
-                  <TableHeader className="bg-slate-50 dark:bg-zinc-950/50">
+                  <TableHeader className="bg-slate-50 bg-card/50">
                     <TableRow>
                       <TableHead>Kelas & Sesi</TableHead>
                       <TableHead>Jadwal</TableHead>
@@ -227,7 +227,7 @@ export default function Dashboard() {
                   <TableBody>
                     {data?.recent_sessions?.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={4} className="text-center py-8 text-slate-500">
+                        <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
                           <div className="flex flex-col items-center justify-center">
                             <Calendar size={48} className="mb-4 opacity-50" />
                             <p className="font-medium">Hore! Tidak ada kelas dalam waktu dekat.</p>
@@ -241,7 +241,7 @@ export default function Dashboard() {
                             <div className="font-bold text-slate-900 dark:text-white text-base">
                               {typeof session.title === 'object' && session.title !== null ? ((session.title as any).name || (session.title as any).id) : session.title}
                             </div>
-                            <p className="text-sm font-semibold text-indigo-600 dark:text-indigo-400 mt-0.5">
+                            <p className="text-sm font-semibold text-brand text-brand mt-0.5">
                               {(() => {
                                 const labels = (session.session_classes ?? []).map((x: any) => formatClassLabel(x?.class)).filter(Boolean);
                                 if (labels.length) return labels.join(', ');
@@ -261,14 +261,14 @@ export default function Dashboard() {
                                 <Calendar size={14} className="text-indigo-500" />
                                 <span className="font-medium">{format(new Date(session.session_start), 'dd MMM yyyy', { locale: id })}</span>
                               </div>
-                              <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-zinc-400">
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground text-muted-foreground">
                                 <Clock size={14} />
                                 {format(new Date(session.session_start), 'HH:mm')} - {format(new Date(session.session_end), 'HH:mm')} WIB
                               </div>
                             </div>
                           </TableCell>
                           <TableCell>
-                            <div className="flex items-center gap-1.5 mt-1 text-slate-500 dark:text-zinc-400">
+                            <div className="flex items-center gap-1.5 mt-1 text-muted-foreground text-muted-foreground">
                                 <MapPin size={14} className="shrink-0" />
                                 <span className="truncate max-w-[200px]">{typeof session.location === 'object' && session.location !== null ? ((session.location as any).name || (session.location as any).id) : (session.location?.name || session.location || '-')}</span>
                               </div>
@@ -278,7 +278,7 @@ export default function Dashboard() {
                                 <div className="flex gap-2 justify-end">
                                   {session.attendances && session.attendances.length > 0 ? (
                                     session.attendances[0].check_out_time || (!session.require_checkout) ? (
-                                      <Badge variant="success" className="px-3 py-1 bg-green-100 text-green-700">Sudah Absen</Badge>
+                                      <Badge variant="success" className="px-3 py-1">Sudah Absen</Badge>
                                     ) : (
                                       <Button 
                                         onClick={() =>
@@ -294,7 +294,7 @@ export default function Dashboard() {
                                   ) : (
                                     <Button 
                                       onClick={() => navigate(`/attend?session=${session.id}`)}
-                                      className="h-auto min-h-11 bg-indigo-600 px-3 py-1.5 text-xs text-white shadow-lg shadow-indigo-600/20 hover:bg-indigo-700"
+                                      className="h-auto min-h-11 bg-brand px-3 py-1.5 text-xs text-white shadow-lg shadow-indigo-600/20 hover:bg-brand/90"
                                     >
                                       Scan QR Absen
                                     </Button>
@@ -328,59 +328,59 @@ export default function Dashboard() {
 
           {/* Stats Grid Admin */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            <div className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm hover:shadow-md transition-shadow group">
+            <div className="bg-white bg-background p-6 rounded-3xl border border-border border-border shadow-sm hover:shadow-md transition-shadow group">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-medium text-slate-500 dark:text-zinc-400">Total Pengguna</h3>
-                <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition-transform">
+                <h3 className="text-sm font-medium text-muted-foreground text-muted-foreground">Total Pengguna</h3>
+                <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center text-brand text-brand group-hover:scale-110 transition-transform">
                   <Users size={24} />
                 </div>
               </div>
               <p className="text-3xl font-extrabold text-slate-800 dark:text-white">{data?.stats.total_users}</p>
-              <p className="text-xs text-slate-400 dark:text-zinc-500 mt-2 font-medium">Mahasiswa terdaftar</p>
+              <p className="text-xs text-slate-400 text-muted-foreground mt-2 font-medium">Mahasiswa terdaftar</p>
             </div>
             
-            <div className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm hover:shadow-md transition-shadow group">
+            <div className="bg-white bg-background p-6 rounded-3xl border border-border border-border shadow-sm hover:shadow-md transition-shadow group">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-medium text-slate-500 dark:text-zinc-400">Total Sesi</h3>
+                <h3 className="text-sm font-medium text-muted-foreground text-muted-foreground">Total Sesi</h3>
                 <div className="w-12 h-12 bg-purple-50 dark:bg-purple-900/30 rounded-2xl flex items-center justify-center text-purple-600 dark:text-purple-400 group-hover:scale-110 transition-transform">
                   <Calendar size={24} />
                 </div>
               </div>
               <p className="text-3xl font-extrabold text-slate-800 dark:text-white">{data?.stats.total_sessions}</p>
-              <p className="text-xs text-slate-400 dark:text-zinc-500 mt-2 font-medium">Sesi kelas dibuat</p>
+              <p className="text-xs text-slate-400 text-muted-foreground mt-2 font-medium">Sesi kelas dibuat</p>
             </div>
 
-            <div className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm hover:shadow-md transition-shadow group">
+            <div className="bg-white bg-background p-6 rounded-3xl border border-border border-border shadow-sm hover:shadow-md transition-shadow group">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-medium text-slate-500 dark:text-zinc-400">Hadir Hari Ini</h3>
+                <h3 className="text-sm font-medium text-muted-foreground text-muted-foreground">Hadir Hari Ini</h3>
                 <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-900/30 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform">
                   <CheckCircle2 size={24} />
                 </div>
               </div>
               <p className="text-3xl font-extrabold text-slate-800 dark:text-white">{data?.stats.today_present}</p>
-              <p className="text-xs text-slate-400 dark:text-zinc-500 mt-2 font-medium">Peserta tepat waktu</p>
+              <p className="text-xs text-slate-400 text-muted-foreground mt-2 font-medium">Peserta tepat waktu</p>
             </div>
 
-            <div className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm hover:shadow-md transition-shadow group">
+            <div className="bg-white bg-background p-6 rounded-3xl border border-border border-border shadow-sm hover:shadow-md transition-shadow group">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-medium text-slate-500 dark:text-zinc-400">Terlambat Hari Ini</h3>
+                <h3 className="text-sm font-medium text-muted-foreground text-muted-foreground">Terlambat Hari Ini</h3>
                 <div className="w-12 h-12 bg-amber-50 dark:bg-amber-900/30 rounded-2xl flex items-center justify-center text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform">
                   <Clock size={24} />
                 </div>
               </div>
               <p className="text-3xl font-extrabold text-slate-800 dark:text-white">{data?.stats.today_late}</p>
-              <p className="text-xs text-slate-400 dark:text-zinc-500 mt-2 font-medium">Peserta terlambat</p>
+              <p className="text-xs text-slate-400 text-muted-foreground mt-2 font-medium">Peserta terlambat</p>
             </div>
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
             {/* Chart Section */}
-            <div className="xl:col-span-2 bg-white dark:bg-zinc-900 p-4 sm:p-6 lg:p-8 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm">
+            <div className="xl:col-span-2 bg-white bg-background p-4 sm:p-6 lg:p-8 rounded-3xl border border-border border-border shadow-sm">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
                 <h2 className="text-xl font-bold text-slate-800 dark:text-white">Tren Kehadiran</h2>
                 <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
                   <Select value={dateRange} onValueChange={setDateRange}>
-                    <SelectTrigger className="w-full bg-slate-50 dark:bg-zinc-800 sm:w-[140px]">
+                    <SelectTrigger className="w-full bg-slate-50 bg-muted sm:w-[140px]">
                       <SelectValue placeholder="Rentang Waktu" />
                     </SelectTrigger>
                     <SelectContent>
@@ -390,7 +390,7 @@ export default function Dashboard() {
                     </SelectContent>
                   </Select>
                   <Select value={chartFilter} onValueChange={setChartFilter}>
-                    <SelectTrigger className="w-full bg-slate-50 dark:bg-zinc-800 sm:w-[180px]">
+                    <SelectTrigger className="w-full bg-slate-50 bg-muted sm:w-[180px]">
                       <SelectValue placeholder="Pilih Filter Data" />
                     </SelectTrigger>
                     <SelectContent>
@@ -406,12 +406,12 @@ export default function Dashboard() {
               
               <div className="relative min-h-[320px] w-full min-w-0" aria-busy={isValidating}>
                 {isValidating ? (
-                  <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-white/60 dark:bg-zinc-900/60">
-                    <p className="text-sm font-medium text-slate-600 dark:text-zinc-300">Memperbarui grafik…</p>
+                  <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-white/60 bg-background/60">
+                    <p className="text-sm font-medium text-muted-foreground dark:text-zinc-300">Memperbarui grafik…</p>
                   </div>
                 ) : null}
                 {chartData.length === 0 ? (
-                  <div className="flex h-[320px] items-center justify-center text-sm text-slate-500 dark:text-zinc-400">
+                  <div className="flex h-[320px] items-center justify-center text-sm text-muted-foreground text-muted-foreground">
                     Belum ada data grafik untuk rentang ini.
                   </div>
                 ) : (
@@ -507,19 +507,19 @@ export default function Dashboard() {
             </div>
 
             {/* Recent Sessions List Admin */}
-            <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm flex flex-col overflow-hidden">
-              <div className="px-8 py-6 border-b border-slate-200 dark:border-zinc-800">
+            <div className="bg-white bg-background rounded-3xl border border-border border-border shadow-sm flex flex-col overflow-hidden">
+              <div className="px-8 py-6 border-b border-border border-border">
                 <h2 className="text-xl font-bold text-slate-800 dark:text-white">Aktivitas Sesi Terbaru</h2>
               </div>
 
               <ul className="space-y-3 p-4 md:hidden" aria-label="Sesi terbaru">
                 {data?.recent_sessions?.length === 0 ? (
-                  <li className="py-6 text-center text-sm text-slate-500">Belum ada sesi kelas yang dibuat.</li>
+                  <li className="py-6 text-center text-sm text-muted-foreground">Belum ada sesi kelas yang dibuat.</li>
                 ) : (
                   data?.recent_sessions?.map((session: any) => (
                     <li
                       key={session.id}
-                      className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950"
+                      className="rounded-2xl border border-border bg-white p-4 border-border bg-card"
                     >
                       <p className="font-bold text-slate-900 dark:text-white">
                         {typeof session.title === 'object' && session.title !== null
@@ -528,17 +528,17 @@ export default function Dashboard() {
                           : session.title}
                       </p>
                       {session.location?.name ? (
-                        <p className="mt-1 flex items-center gap-1 text-sm text-slate-500">
+                        <p className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
                           <MapPin size={14} />
                           {session.location.name}
                         </p>
                       ) : null}
                       <div className="mt-2 flex flex-wrap items-center gap-2">
                         <Badge variant="outline">{sessionStatusLabel(session.status)}</Badge>
-                        <span className="text-xs text-slate-500">
+                        <span className="text-xs text-muted-foreground">
                           {format(new Date(session.session_start), 'dd MMM yyyy HH:mm', { locale: id })}
                         </span>
-                        <span className="text-xs text-slate-500">
+                        <span className="text-xs text-muted-foreground">
                           · {session._count?.attendances || 0} hadir
                         </span>
                       </div>
@@ -550,7 +550,7 @@ export default function Dashboard() {
               
               <div className="hidden flex-1 overflow-x-auto md:block">
                 <Table>
-                  <TableHeader className="bg-slate-50 dark:bg-zinc-950/50">
+                  <TableHeader className="bg-slate-50 bg-card/50">
                     <TableRow>
                       <TableHead>Sesi & Kelas</TableHead>
                       <TableHead>Jadwal</TableHead>
@@ -560,7 +560,7 @@ export default function Dashboard() {
                   <TableBody>
                     {data?.recent_sessions?.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={3} className="text-center py-8 text-slate-500">
+                        <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
                           <div className="flex flex-col items-center">
                             <Calendar size={40} className="mb-3 opacity-50" />
                             <p className="text-sm font-medium">Belum ada sesi kelas yang dibuat.</p>
@@ -577,7 +577,7 @@ export default function Dashboard() {
                                   {typeof session.title === 'object' && session.title !== null ? ((session.title as any).name || (session.title as any).id) : session.title}
                                 </h4>
                                 {session.class && (
-                                    <p className="mt-0.5 text-xs text-slate-500 dark:text-zinc-400">
+                                    <p className="mt-0.5 text-xs text-muted-foreground text-muted-foreground">
                                       {typeof session.class === 'object' && session.class !== null ? ((session.class as any).name || (session.class as any).id) : (session.class?.name || session.class || '-')}
                                     </p>
                                   )}
@@ -589,14 +589,14 @@ export default function Dashboard() {
                                 className={`text-[10px] uppercase tracking-wider px-2 py-0.5 
                                 ${session.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800' : 
                                   session.status === 'UPCOMING' ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800' : 
-                                  'bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'}`}
+                                  'bg-slate-50 text-muted-foreground border-border dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'}`}
                               >
                                 {sessionStatusLabel(session.status)}
                               </Badge>
                             </div>
                           </TableCell>
                           <TableCell>
-                            <div className="flex flex-col gap-1.5 text-xs text-slate-500 dark:text-zinc-400 font-medium">
+                            <div className="flex flex-col gap-1.5 text-xs text-muted-foreground text-muted-foreground font-medium">
                               <div className="flex items-center gap-1.5">
                                 <Calendar size={14} className="text-indigo-400" /> 
                                 {format(new Date(session.session_start), 'dd MMM yyyy')}

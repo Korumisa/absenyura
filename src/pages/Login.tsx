@@ -3,7 +3,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/stores/authStore';
 import api from '@/services/api';
-import { ArrowRight, Eye, EyeOff, LogIn } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff, Loader2, LogIn } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -108,7 +108,7 @@ export default function Login() {
                     <div className="text-sm font-extrabold tracking-tight text-slate-900">
                       {profile?.org_name ? profile.org_name : 'Profil belum diatur'}
                     </div>
-                    <div className="text-xs font-medium text-slate-500">
+                    <div className="text-xs font-medium text-muted-foreground">
                       {profile?.campus_name ? profile.campus_name : 'Konten Website'}
                     </div>
                   </div>
@@ -146,7 +146,7 @@ export default function Login() {
                 </div>
                 <div>
                   <div className="text-lg font-extrabold tracking-tight text-slate-900">Masuk Akun</div>
-                  <div className="text-sm text-slate-600">Gunakan email/NIM dan kata sandi.</div>
+                  <div className="text-sm text-muted-foreground">Gunakan email/NIM dan kata sandi.</div>
                 </div>
               </div>
 
@@ -171,7 +171,7 @@ export default function Login() {
                     id="email"
                     type="text"
                     name="email"
-                    autoComplete="username"
+                    autoComplete="email"
                     spellCheck={false}
                     required
                     placeholder="email@kampus.ac.id atau NIM Anda"
@@ -197,7 +197,7 @@ export default function Login() {
                     <button
                       type="button"
                       aria-label={showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-50 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/35"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-slate-50 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/35"
                       onClick={() => setShowPassword((v) => !v)}
                     >
                       {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -217,9 +217,17 @@ export default function Login() {
                 <Button
                   type="submit"
                   disabled={loading}
+                  aria-busy={loading}
                   className="h-11 w-full bg-[var(--public-primary)] text-white shadow-[0_16px_32px_rgba(37,99,235,0.35)] hover:brightness-110"
                 >
-                  {loading ? 'Memverifikasi…' : 'Masuk'}
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+                      Memverifikasi…
+                    </>
+                  ) : (
+                    'Masuk'
+                  )}
                 </Button>
               </form>
             </div>

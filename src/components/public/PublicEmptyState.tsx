@@ -24,7 +24,7 @@ export function PublicEmptyState({
     return (
       <div
         className={cn(
-          'mt-6 rounded-2xl border border-dashed border-black/15 bg-white/60 p-8 text-sm text-slate-600',
+          'mt-6 rounded-2xl border border-dashed border-black/15 bg-white/60 p-8 text-sm text-muted-foreground',
           className,
         )}
         role="status"
@@ -38,7 +38,7 @@ export function PublicEmptyState({
   return (
     <div
       className={cn(
-        'relative mt-6 overflow-hidden rounded-2xl border border-dashed border-black/15 bg-white/60 p-6 text-left text-sm text-slate-600 sm:p-10',
+        'relative mt-6 overflow-hidden rounded-2xl border border-dashed border-black/15 bg-white/60 p-6 text-left text-sm text-muted-foreground sm:p-10',
         className,
       )}
       role="status"

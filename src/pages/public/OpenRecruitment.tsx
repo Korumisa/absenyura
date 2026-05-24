@@ -126,7 +126,7 @@ export default function OpenRecruitment() {
                   </div>
                   <div className="p-5">
                     <div className="text-base font-extrabold tracking-tight text-slate-900 line-clamp-2">{r.title}</div>
-                    <div className="mt-2 text-xs font-semibold uppercase tracking-widest text-slate-500">{r.date_range ?? '-'}</div>
+                    <div className="mt-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground">{r.date_range ?? '-'}</div>
                     {r.description ? <div className="mt-3 line-clamp-3 text-sm leading-relaxed text-slate-700">{r.description}</div> : null}
                     <div className="mt-5 flex items-center justify-between gap-3">
                       <div className="inline-flex items-center rounded-xl border border-black/10 bg-white px-4 py-2 text-xs font-semibold text-slate-700 transition group-hover:border-[var(--public-primary)]/25">
@@ -168,9 +168,9 @@ export default function OpenRecruitment() {
               <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(37,99,235,0.16),rgba(56,189,248,0.08),transparent_60%)]" />
               <div className="relative flex items-start justify-between gap-4 border-b border-black/10 px-5 py-5 sm:px-7">
                 <div className="min-w-0">
-                  <div className="text-xs font-semibold uppercase tracking-widest text-slate-500">Open Recruitment</div>
+                  <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Open Recruitment</div>
                   <div className="mt-2 truncate text-lg font-extrabold tracking-tight text-slate-900 sm:text-xl">{selected.title}</div>
-                  <div className="mt-1 text-sm font-semibold text-slate-600">{selected.date_range ?? '-'}</div>
+                  <div className="mt-1 text-sm font-semibold text-muted-foreground">{selected.date_range ?? '-'}</div>
                 </div>
                 <button
                   type="button"
@@ -209,7 +209,7 @@ export default function OpenRecruitment() {
                     <div className="rounded-3xl border border-black/10 bg-white p-5 shadow-[0_18px_45px_-42px_rgba(15,23,42,0.25)]">
                       <div className="flex items-center justify-between gap-4">
                         <div className="text-sm font-extrabold tracking-tight text-slate-900">Contact Person</div>
-                        <div className="text-xs font-semibold uppercase tracking-widest text-slate-500">{selected.contacts.length} kontak</div>
+                        <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{selected.contacts.length} kontak</div>
                       </div>
                       <div className="mt-4 grid gap-3 sm:grid-cols-2">
                         {selected.contacts.map((c) => (
@@ -221,7 +221,7 @@ export default function OpenRecruitment() {
                             className="rounded-2xl border border-black/10 bg-white p-4 text-left transition hover:border-[var(--public-primary)]/30 hover:bg-[var(--public-primary)]/5"
                           >
                             <div className="text-sm font-semibold text-slate-900">{c.name}</div>
-                            <div className="mt-1 text-sm text-slate-600">{c.contact}</div>
+                            <div className="mt-1 text-sm text-muted-foreground">{c.contact}</div>
                           </a>
                         ))}
                       </div>
@@ -232,13 +232,13 @@ export default function OpenRecruitment() {
                     <div className="rounded-3xl border border-black/10 bg-white p-5 shadow-[0_18px_45px_-42px_rgba(15,23,42,0.25)]">
                       <div className="flex items-center justify-between gap-4">
                         <div className="text-sm font-extrabold tracking-tight text-slate-900">Panitia / Posisi</div>
-                        <div className="text-xs font-semibold uppercase tracking-widest text-slate-500">{selected.committee.length} orang</div>
+                        <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{selected.committee.length} orang</div>
                       </div>
                       <div className="mt-4 grid gap-3 sm:grid-cols-2">
                         {selected.committee.map((p) => (
                           <div key={p.id} className="rounded-2xl border border-black/10 bg-white p-4">
                             <div className="text-sm font-semibold text-slate-900">{p.name}</div>
-                            <div className="text-sm text-slate-600">{p.role}</div>
+                            <div className="text-sm text-muted-foreground">{p.role}</div>
                           </div>
                         ))}
                       </div>
@@ -286,7 +286,7 @@ export default function OpenRecruitment() {
                         )}
                       </div>
                     ) : (
-                      <div className="mt-3 text-sm text-slate-600">Link pendaftaran belum diatur.</div>
+                      <div className="mt-3 text-sm text-muted-foreground">Link pendaftaran belum diatur.</div>
                     )}
                   </div>
                 </div>

@@ -177,13 +177,13 @@ export default function PublicSiteStructure() {
       >
 
         {groups.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm text-slate-600 dark:border-zinc-800 dark:bg-zinc-900/40 dark:text-zinc-300">
+          <div className="rounded-2xl border border-dashed border-border bg-slate-50 p-6 text-sm text-muted-foreground border-border bg-background/40 dark:text-zinc-300">
             Belum ada struktur. Klik “Tambah Grup” untuk mulai.
           </div>
         ) : (
           <div className="space-y-4">
             {groups.map((g, gi) => (
-              <div key={gi} className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950/40">
+              <div key={gi} className="rounded-2xl border border-border bg-white p-4 border-border bg-card/40">
                 <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                   <div className="w-full space-y-2">
                     <Label>Nama Grup</Label>
@@ -243,18 +243,18 @@ export default function PublicSiteStructure() {
 
                 <div className="mt-4 space-y-3">
                   <div className="hidden grid gap-3 md:grid-cols-4 md:grid">
-                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-zinc-400">Foto</div>
-                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-zinc-400">Nama</div>
-                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-zinc-400">Jabatan</div>
-                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-zinc-400">Spotlight</div>
+                    <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground text-muted-foreground">Foto</div>
+                    <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground text-muted-foreground">Nama</div>
+                    <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground text-muted-foreground">Jabatan</div>
+                    <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground text-muted-foreground">Spotlight</div>
                   </div>
                   {g.people.map((p, pi) => (
                     <div
                       key={pi}
-                      className="grid gap-3 rounded-2xl border border-slate-200/70 bg-slate-50/60 p-3 dark:border-zinc-800/70 dark:bg-zinc-900/30 md:grid-cols-4 md:border-0 md:bg-transparent md:p-0"
+                      className="grid gap-3 rounded-2xl border border-border/70 bg-slate-50/60 p-3 border-border/70 bg-background/30 md:grid-cols-4 md:border-0 md:bg-transparent md:p-0"
                     >
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                        <div className="h-12 w-12 overflow-hidden rounded-full border border-slate-200 bg-slate-100 dark:border-zinc-700 dark:bg-zinc-900">
+                        <div className="h-12 w-12 overflow-hidden rounded-full border border-border bg-slate-100 border-border bg-background">
                           {p.photoUrl ? <img src={p.photoUrl} alt="Foto" className="h-full w-full object-cover" /> : null}
                         </div>
                         <Input

@@ -100,7 +100,7 @@ export default function ProgramKerjaDetail() {
           </div>
 
           {!program ? (
-            <div className="relative mt-8 overflow-hidden rounded-2xl border border-dashed border-black/15 bg-white/60 p-6 text-left text-sm text-slate-600 sm:p-10">
+            <div className="relative mt-8 overflow-hidden rounded-2xl border border-dashed border-black/15 bg-white/60 p-6 text-left text-sm text-muted-foreground sm:p-10">
               <div className="pointer-events-none absolute -left-16 -top-16 h-52 w-52 rounded-[48%_52%_58%_42%/44%_43%_57%_56%] bg-[var(--public-primary)]/12 blur-3xl" />
               <div className="pointer-events-none absolute -right-16 -bottom-16 h-56 w-56 rounded-[53%_47%_45%_55%/48%_56%_44%_52%] bg-sky-400/10 blur-3xl" />
               <div className="relative">
@@ -112,14 +112,14 @@ export default function ProgramKerjaDetail() {
             <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_360px]">
               <div className="overflow-hidden rounded-3xl border border-black/10 bg-white shadow-[0_22px_56px_-48px_rgba(15,23,42,0.45)]">
                 <div className="border-b border-black/10 px-4 py-5 sm:px-6">
-                  <div className="text-xs font-semibold uppercase tracking-widest text-slate-500">{program.date_range ?? '-'}</div>
+                  <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{program.date_range ?? '-'}</div>
                   <div className="mt-2 text-2xl font-extrabold tracking-tight text-slate-900">{program.title}</div>
                 </div>
                 <div className="p-4 sm:p-6">
                   {parsed.body ? (
                     <div className="whitespace-pre-wrap text-sm leading-relaxed text-slate-700">{parsed.body}</div>
                   ) : (
-                    <div className="text-sm text-slate-500">Deskripsi belum diisi.</div>
+                    <div className="text-sm text-muted-foreground">Deskripsi belum diisi.</div>
                   )}
                 </div>
               </div>
@@ -127,26 +127,26 @@ export default function ProgramKerjaDetail() {
               <div className="overflow-hidden rounded-3xl border border-black/10 bg-white shadow-[0_22px_56px_-48px_rgba(15,23,42,0.45)]">
                 <div className="border-b border-black/10 px-4 py-5 sm:px-6">
                   <div className="text-sm font-extrabold tracking-tight text-slate-900">Rincian</div>
-                  <div className="mt-1 text-sm text-slate-600">Ditampilkan dari data yang diatur di admin panel.</div>
+                  <div className="mt-1 text-sm text-muted-foreground">Ditampilkan dari data yang diatur di admin panel.</div>
                 </div>
                 <div className="p-4 sm:p-6">
                   <div className="space-y-4">
                     <div className="rounded-2xl border border-black/10 bg-slate-50 px-4 py-3">
-                      <div className="text-xs font-semibold uppercase tracking-widest text-slate-500">Tanggal</div>
+                      <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Tanggal</div>
                       <div className="mt-1 text-sm font-semibold text-slate-900">{program.date_range ?? '-'}</div>
                     </div>
                     {parsed.fields.length > 0 ? (
                       <div className="space-y-3">
                         {parsed.fields.map((f) => (
                           <div key={`${f.label}-${f.value}`} className="rounded-2xl border border-black/10 bg-white px-4 py-3">
-                            <div className="text-xs font-semibold uppercase tracking-widest text-slate-500">{f.label}</div>
+                            <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{f.label}</div>
                             <div className="mt-1 text-sm font-semibold text-slate-900">{f.value}</div>
                           </div>
                         ))}
                       </div>
                     ) : null}
                     {parsed.fields.length === 0 ? (
-                      <div className="rounded-2xl border border-dashed border-black/15 bg-white/70 px-4 py-4 text-sm text-slate-600">
+                      <div className="rounded-2xl border border-dashed border-black/15 bg-white/70 px-4 py-4 text-sm text-muted-foreground">
                         Untuk menampilkan rincian seperti sumber dana/target/lokasi, admin bisa menulis format: “Sumber Dana: …” pada Deskripsi.
                       </div>
                     ) : null}

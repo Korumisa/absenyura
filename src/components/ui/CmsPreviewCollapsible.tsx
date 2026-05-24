@@ -24,7 +24,7 @@ export function CmsPreviewCollapsible({
     <div className={cn('xl:contents', className)}>
       <button
         type="button"
-        className="mb-3 flex min-h-11 w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 xl:hidden"
+        className="mb-3 flex min-h-11 w-full items-center justify-between rounded-xl border border-border bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800 border-border bg-background dark:text-zinc-200 xl:hidden"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
       >

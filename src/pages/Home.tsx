@@ -192,7 +192,7 @@ export default function Home() {
               >
                 <div className="mb-5 flex flex-wrap items-center gap-3 text-[12px] font-bold uppercase tracking-widest">
                   <span className="rounded-full bg-cyan-500/15 px-3 py-1 text-cyan-200">{item.tag}</span>
-                  <span className="text-slate-500">{item.tanggal}</span>
+                  <span className="text-muted-foreground">{item.tanggal}</span>
                 </div>
                 <h3 className="mb-3 text-lg font-bold leading-snug text-white">{item.judul}</h3>
                 <p className="mt-auto leading-relaxed text-slate-400">{item.ringkas}</p>

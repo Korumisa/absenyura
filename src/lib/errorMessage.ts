@@ -79,7 +79,7 @@ export function getErrorMessage(err: any, fallback: string) {
     }
   }
   if (status === 401) return 'Sesi masuk Anda telah berakhir demi kenyamanan dan keamanan. Mari masuk kembali ke akun Anda.';
-  if (status === 403) return 'Kode QR ini bukan untuk kelas Anda. Pastikan Anda memindai kode yang benar.';
+  if (status === 403) return 'Anda tidak memiliki akses.';
   if (status === 404) return 'Data tidak ditemukan.';
   if (status === 413) return 'File terlalu besar. Maksimal 5MB.';
   if (status === 429) return 'Terlalu banyak percobaan dalam waktu singkat. Tunggu 1–2 menit lalu coba lagi.';

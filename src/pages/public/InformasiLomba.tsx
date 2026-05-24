@@ -136,7 +136,7 @@ export default function InformasiLomba() {
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <div className="text-lg font-extrabold tracking-tight text-slate-900 line-clamp-2">{l.title}</div>
-                        <div className="mt-2 text-sm font-semibold text-slate-600">
+                        <div className="mt-2 text-sm font-semibold text-muted-foreground">
                           {l.date_label ? `Batas Pendaftaran : ${l.date_label}` : 'Batas Pendaftaran : -'}
                         </div>
                       </div>
@@ -188,7 +188,7 @@ export default function InformasiLomba() {
             <div className="flex items-center justify-between gap-4 border-b border-black/10 bg-white px-4 py-4 sm:px-6">
               <div className="min-w-0">
                 <div className="truncate text-base font-semibold text-slate-900">{selected.title}</div>
-                <div className="mt-1 text-sm text-slate-600">{selected.date_label ?? '-'}</div>
+                <div className="mt-1 text-sm text-muted-foreground">{selected.date_label ?? '-'}</div>
               </div>
               <div className="flex items-center gap-3">
                 <button

@@ -5,16 +5,16 @@ export default function MaintenancePage(props: { reason?: string; onRetry?: () =
   const reason = props.reason || 'Layanan sedang mengalami gangguan atau dalam pemeliharaan.';
 
   return (
-    <div className="min-h-screen bg-[#f5f7fb] flex items-center justify-center p-6">
-      <div className="w-full max-w-lg rounded-3xl border border-[#e6edf5] bg-white shadow-[0_20px_60px_rgba(15,23,42,0.10)]">
+    <div className="min-h-screen bg-sidebar flex items-center justify-center p-6">
+      <div className="w-full max-w-lg rounded-3xl border border-sidebar-border bg-white shadow-[0_20px_60px_rgba(15,23,42,0.10)]">
         <div className="p-8 sm:p-10 text-center">
-          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#eef5ff] text-[#2f80ed]">
+          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-brand/10 text-brand">
             <Wrench size={30} />
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
             Maintenance
           </h1>
-          <p className="mt-3 text-sm sm:text-base text-slate-600">
+          <p className="mt-3 text-sm sm:text-base text-muted-foreground">
             {reason}
           </p>
           <div className="mt-8 flex flex-col sm:flex-row gap-3">
@@ -29,7 +29,7 @@ export default function MaintenancePage(props: { reason?: string; onRetry?: () =
               Refresh Halaman
             </Button>
           </div>
-          <p className="mt-6 text-xs text-slate-500">
+          <p className="mt-6 text-xs text-muted-foreground">
             Jika masalah berlanjut, coba beberapa saat lagi.
           </p>
         </div>

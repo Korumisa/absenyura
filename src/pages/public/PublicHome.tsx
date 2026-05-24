@@ -156,7 +156,7 @@ function DivisionRail({
                 <span className="text-[var(--public-primary)]">{activeTitle}</span>
               </div>
               <div className="relative mx-auto mt-4 h-px w-full max-w-5xl bg-gradient-to-r from-transparent via-[var(--public-primary)]/35 to-transparent" />
-              <p className="mt-3 text-sm font-medium text-slate-600">{tagline}</p>
+              <p className="mt-3 text-sm font-medium text-muted-foreground">{tagline}</p>
             </>
           ) : (
             <>
@@ -180,7 +180,7 @@ function DivisionRail({
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -8 }}
                   transition={fadeTransition(false)}
-                  className="mt-3 text-sm font-medium text-slate-600"
+                  className="mt-3 text-sm font-medium text-muted-foreground"
                 >
                   {tagline}
                 </motion.div>
@@ -429,13 +429,13 @@ export default function PublicHome() {
                   <div className="mt-1 text-5xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] md:text-7xl">
                     {heroKabinetName}
                   </div>
-                  {kabinetPeriod ? <div className="mt-2 text-sm font-semibold tracking-wide text-slate-600">{kabinetPeriod}</div> : null}
+                  {kabinetPeriod ? <div className="mt-2 text-sm font-semibold tracking-wide text-muted-foreground">{kabinetPeriod}</div> : null}
                   <div className="mt-5 max-w-md text-sm font-medium text-slate-700 md:text-base">
                     {orgName}
-                    <div className="text-slate-500">{campusName}</div>
+                    <div className="text-muted-foreground">{campusName}</div>
                   </div>
                   {heroSubtitle ? (
-                    <div className="mt-4 max-w-xl text-sm text-slate-600 md:text-base">{heroSubtitle}</div>
+                    <div className="mt-4 max-w-xl text-sm text-muted-foreground md:text-base">{heroSubtitle}</div>
                   ) : null}
 
                   <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
@@ -464,7 +464,7 @@ export default function PublicHome() {
                       <PublicCoverImage url={profile.home_image_url} alt="Foto Anggota" />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center p-8">
-                        <div className="w-full rounded-2xl border border-dashed border-black/20 bg-white/60 p-8 text-center text-sm text-slate-600">
+                        <div className="w-full rounded-2xl border border-dashed border-black/20 bg-white/60 p-8 text-center text-sm text-muted-foreground">
                           <div className="text-base font-extrabold tracking-tight text-slate-900">Tempat Foto Anggota</div>
                           <div className="mt-2">Upload lewat admin: Konten Website → Profil → Upload Foto Anggota.</div>
                         </div>
@@ -509,7 +509,7 @@ export default function PublicHome() {
                     ))}
                   </div>
                 ) : (
-                  <div className="rounded-2xl border border-dashed border-black/15 bg-white/60 p-6 text-sm text-slate-600">
+                  <div className="rounded-2xl border border-dashed border-black/15 bg-white/60 p-6 text-sm text-muted-foreground">
                     Konten “Tentang” belum diatur. Admin bisa isi dari menu Konten Website.
                   </div>
                 )}
@@ -543,7 +543,7 @@ export default function PublicHome() {
                 <div className="mt-6 text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">{orgName || 'Profil Organisasi'}</div>
                 <div className="mx-auto mt-8 grid max-w-5xl gap-6 text-left md:grid-cols-2">
                   <div className="rounded-2xl border border-black/10 bg-white/70 p-6 shadow-[0_18px_40px_-42px_rgba(15,23,42,0.30)]">
-                    <div className="text-xs font-semibold uppercase tracking-widest text-slate-500">
+                    <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
                       {homeCardLeftTitle || `Tentang ${orgName || 'Organisasi'}`}
                     </div>
                     <div className="mt-3 text-sm leading-relaxed text-slate-700">
@@ -553,7 +553,7 @@ export default function PublicHome() {
                     </div>
                   </div>
                   <div className="rounded-2xl border border-black/10 bg-white/70 p-6 shadow-[0_18px_40px_-42px_rgba(15,23,42,0.30)]">
-                    <div className="text-xs font-semibold uppercase tracking-widest text-slate-500">
+                    <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
                       {homeCardRightTitle || `Kepengurusan ${kabinetPeriod || 'Tahun Ini'}`}
                     </div>
                     <div className="mt-3 text-sm leading-relaxed text-slate-700">
@@ -592,7 +592,7 @@ export default function PublicHome() {
                     <div className="mt-4">
                       <div className="h-px w-full bg-[var(--public-primary)]" />
                       <div className="mt-3 text-center">
-                        <div className="text-[11px] font-semibold uppercase tracking-widest text-slate-500">
+                        <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
                           {visiRole || ketua?.role || 'Ketua'}
                         </div>
                         <div className="mt-1 text-sm font-extrabold tracking-tight text-slate-900">{visiName || ketua?.name || '-'}</div>
@@ -616,7 +616,7 @@ export default function PublicHome() {
                       <div className="mt-4">
                         <div className="h-px w-full bg-[var(--public-primary)]" />
                         <div className="mt-3 text-center">
-                          <div className="text-[11px] font-semibold uppercase tracking-widest text-slate-500">
+                          <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
                             {misiRole || wakil?.role || 'Wakil Ketua'}
                           </div>
                           <div className="mt-1 text-sm font-extrabold tracking-tight text-slate-900">{misiName || wakil?.name || '-'}</div>
@@ -644,7 +644,7 @@ export default function PublicHome() {
                         ))}
                       </div>
                     ) : (
-                      <div className="mt-5 rounded-2xl border border-dashed border-black/15 bg-white/60 p-6 text-sm text-slate-600">
+                      <div className="mt-5 rounded-2xl border border-dashed border-black/15 bg-white/60 p-6 text-sm text-muted-foreground">
                         Misi belum diatur. Admin bisa isi dari menu Konten Website → Profil.
                       </div>
                     )}
@@ -675,7 +675,7 @@ export default function PublicHome() {
             {isLoadingPrograms ? (
               <div className="h-40" />
             ) : programs.length === 0 ? (
-              <div className="relative overflow-hidden rounded-2xl border border-dashed border-black/15 bg-white/60 p-6 text-left text-sm text-slate-600 sm:p-10">
+              <div className="relative overflow-hidden rounded-2xl border border-dashed border-black/15 bg-white/60 p-6 text-left text-sm text-muted-foreground sm:p-10">
                 <div className="pointer-events-none absolute -left-16 -top-16 h-52 w-52 rounded-[48%_52%_58%_42%/44%_43%_57%_56%] bg-[var(--public-primary)]/14 blur-3xl" />
                 <div className="pointer-events-none absolute -right-16 -bottom-16 h-56 w-56 rounded-[53%_47%_45%_55%/48%_56%_44%_52%] bg-sky-400/10 blur-3xl" />
                 <div className="relative">
@@ -745,7 +745,7 @@ export default function PublicHome() {
           {isLoadingRecruitments ? (
             <div className="mt-10 h-40" />
           ) : recruitments.length === 0 ? (
-            <div className="mt-10 rounded-2xl border border-dashed border-black/15 bg-white/60 p-8 text-sm text-slate-600">
+            <div className="mt-10 rounded-2xl border border-dashed border-black/15 bg-white/60 p-8 text-sm text-muted-foreground">
               Belum ada open recruitment yang dipublikasikan.
             </div>
           ) : (
@@ -769,12 +769,12 @@ export default function PublicHome() {
                         <PublicCoverImage url={r.poster_image_url} alt={r.title} imgClassName="object-cover" />
                       </div>
                       <div className="flex flex-1 flex-col p-5">
-                        <div className="text-xs font-semibold uppercase tracking-widest text-slate-500">{r.date_range ?? '-'}</div>
+                        <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{r.date_range ?? '-'}</div>
                         <div className="mt-2 text-lg font-extrabold tracking-tight text-slate-900 line-clamp-2">{r.title}</div>
                         {r.description ? (
                           <div className="mt-3 text-sm text-slate-700 line-clamp-2">{r.description}</div>
                         ) : (
-                          <div className="mt-3 text-sm text-slate-500 line-clamp-2">Informasi singkat belum tersedia.</div>
+                          <div className="mt-3 text-sm text-muted-foreground line-clamp-2">Informasi singkat belum tersedia.</div>
                         )}
                         <div className="mt-auto pt-5">
                           <div className="flex items-center justify-between gap-3">
@@ -831,7 +831,7 @@ export default function PublicHome() {
           {isLoadingStructure ? (
             <div className="mt-12 h-40" />
           ) : structure.length === 0 ? (
-            <div className="relative mt-12 overflow-hidden rounded-2xl border border-dashed border-black/15 bg-white/60 p-6 text-left text-sm text-slate-600 sm:p-10">
+            <div className="relative mt-12 overflow-hidden rounded-2xl border border-dashed border-black/15 bg-white/60 p-6 text-left text-sm text-muted-foreground sm:p-10">
               <div className="pointer-events-none absolute -left-16 -top-16 h-52 w-52 rounded-[48%_52%_58%_42%/44%_43%_57%_56%] bg-[var(--public-primary)]/12 blur-3xl" />
               <div className="pointer-events-none absolute -right-16 -bottom-16 h-56 w-56 rounded-[53%_47%_45%_55%/48%_56%_44%_52%] bg-sky-400/10 blur-3xl" />
               <div className="relative">
@@ -897,7 +897,7 @@ export default function PublicHome() {
           {isLoadingLomba ? (
             <div className="mt-10 h-40" />
           ) : lomba.length === 0 ? (
-            <div className="mt-10 rounded-2xl border border-dashed border-black/15 bg-white/60 p-8 text-sm text-slate-600">
+            <div className="mt-10 rounded-2xl border border-dashed border-black/15 bg-white/60 p-8 text-sm text-muted-foreground">
               Belum ada informasi lomba yang dipublikasikan.
             </div>
           ) : (
@@ -920,13 +920,13 @@ export default function PublicHome() {
                       </div>
                       <div className="flex flex-1 flex-col p-5">
                         <div className="text-lg font-extrabold tracking-tight text-slate-900 line-clamp-2">{l.title}</div>
-                        <div className="mt-2 text-sm font-semibold text-slate-600">
+                        <div className="mt-2 text-sm font-semibold text-muted-foreground">
                           {l.date_label ? `Batas Pendaftaran : ${l.date_label}` : 'Batas Pendaftaran : -'}
                         </div>
                         {l.excerpt ? (
                           <div className="mt-4 text-sm leading-relaxed text-slate-700 line-clamp-3">{l.excerpt}</div>
                         ) : (
-                          <div className="mt-4 text-sm text-slate-500 line-clamp-3">Ringkasan belum tersedia.</div>
+                          <div className="mt-4 text-sm text-muted-foreground line-clamp-3">Ringkasan belum tersedia.</div>
                         )}
                         <div className="mt-6">
                           <div className="flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--public-primary)]/45 bg-white px-5 py-3 text-sm font-semibold text-[var(--public-primary)] transition group-hover:bg-[var(--public-primary)]/5">
@@ -965,7 +965,7 @@ export default function PublicHome() {
           {isLoadingGalleries ? (
             <div className="mt-10 h-40" />
           ) : galleries.length === 0 ? (
-            <div className="mt-10 rounded-2xl border border-dashed border-black/15 bg-white/60 p-8 text-sm text-slate-600">
+            <div className="mt-10 rounded-2xl border border-dashed border-black/15 bg-white/60 p-8 text-sm text-muted-foreground">
               Belum ada album galeri yang dipublikasikan.
             </div>
           ) : (
@@ -996,7 +996,7 @@ export default function PublicHome() {
                             {a.description ? (
                               <div className="mt-2 text-sm text-slate-700 line-clamp-2">{a.description}</div>
                             ) : (
-                              <div className="mt-2 text-sm text-slate-500 line-clamp-2">Dokumentasi akan ditampilkan setelah diisi.</div>
+                              <div className="mt-2 text-sm text-muted-foreground line-clamp-2">Dokumentasi akan ditampilkan setelah diisi.</div>
                             )}
                           </div>
                           <div className="inline-flex shrink-0 items-center gap-2 rounded-full bg-[var(--public-primary)]/10 px-3 py-1 text-xs font-semibold text-[var(--public-primary)]">
@@ -1035,7 +1035,7 @@ export default function PublicHome() {
           {isLoadingLatest ? (
             <div className="mt-10 h-40" />
           ) : posts.length === 0 ? (
-            <div className="mt-10 rounded-2xl border border-dashed border-black/15 bg-white/60 p-8 text-sm text-slate-600">
+            <div className="mt-10 rounded-2xl border border-dashed border-black/15 bg-white/60 p-8 text-sm text-muted-foreground">
               Belum ada berita yang dipublikasikan.
             </div>
           ) : (
@@ -1060,7 +1060,7 @@ export default function PublicHome() {
                         <PublicCoverImage url={p.cover_image_url} alt={p.title} imgClassName="object-cover transition duration-700 group-hover:scale-[1.01]" />
                       </div>
                       <div className="flex flex-1 flex-col p-5">
-                        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-slate-500">
+                        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
                           <span>{p.category?.name ?? 'Berita'}</span>
                           {p.date_label ? <span className="text-slate-300">•</span> : null}
                           {p.date_label ? <span className="normal-case tracking-normal">{p.date_label}</span> : null}
@@ -1073,7 +1073,7 @@ export default function PublicHome() {
                             {p.excerpt}
                           </div>
                         ) : (
-                          <div className="mt-3 text-sm leading-relaxed text-slate-500 line-clamp-3">
+                          <div className="mt-3 text-sm leading-relaxed text-muted-foreground line-clamp-3">
                             Ringkasan belum tersedia.
                           </div>
                         )}

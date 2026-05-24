@@ -46,12 +46,12 @@ export default function PublicFooter() {
           <div className="md:col-span-1">
             <div className="text-sm font-extrabold tracking-tight text-slate-900">
               {orgName || 'Profil belum diatur'}
-              <div className="mt-1 font-medium text-slate-600">{campusName || 'Silakan atur melalui Konten Website'}</div>
+              <div className="mt-1 font-medium text-muted-foreground">{campusName || 'Silakan atur melalui Konten Website'}</div>
             </div>
             {footerTagline ? (
-              <div className="mt-4 text-sm leading-relaxed text-slate-600">{footerTagline}</div>
+              <div className="mt-4 text-sm leading-relaxed text-muted-foreground">{footerTagline}</div>
             ) : (
-              <div className="mt-4 text-sm leading-relaxed text-slate-600">
+              <div className="mt-4 text-sm leading-relaxed text-muted-foreground">
                 Deskripsi singkat belum diatur.
               </div>
             )}
@@ -118,25 +118,25 @@ export default function PublicFooter() {
               {phone ? (
                 <a href={`tel:${phone}`} className="text-sm text-slate-700 hover:text-[var(--public-primary)]">{phone}</a>
               ) : (
-                <div className="text-sm text-slate-600">Belum diatur</div>
+                <div className="text-sm text-muted-foreground">Belum diatur</div>
               )}
             </div>
             <div>
               <div className="mb-2 text-sm font-extrabold tracking-tight text-slate-900">Alamat</div>
-              <div className="text-sm text-slate-600">{address ?? 'Belum diatur'}</div>
+              <div className="text-sm text-muted-foreground">{address ?? 'Belum diatur'}</div>
             </div>
             <div>
               <div className="mb-2 text-sm font-extrabold tracking-tight text-slate-900">Email</div>
               {email ? (
                 <a href={`mailto:${email}`} className="text-sm text-slate-700 hover:text-[var(--public-primary)]">{email}</a>
               ) : (
-                <div className="text-sm text-slate-600">Belum diatur</div>
+                <div className="text-sm text-muted-foreground">Belum diatur</div>
               )}
             </div>
           </div>
         </div>
 
-        <div className="mt-10 border-t border-black/10 pt-6 text-center text-sm text-slate-600">
+        <div className="mt-10 border-t border-black/10 pt-6 text-center text-sm text-muted-foreground">
           © {new Date().getFullYear()} {kabinetName ? kabinetName : orgName}
         </div>
       </div>

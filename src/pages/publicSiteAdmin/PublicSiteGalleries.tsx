@@ -180,14 +180,14 @@ export default function PublicSiteGalleries() {
                 </div>
 
                 {(form.items ?? []).length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-600 dark:border-zinc-700 dark:bg-zinc-900/40 dark:text-zinc-300">
+                  <div className="rounded-xl border border-dashed border-border bg-slate-50 p-4 text-sm text-muted-foreground border-border bg-background/40 dark:text-zinc-300">
                     Belum ada foto. Upload atau klik “Tambah Manual”.
                   </div>
                 ) : (
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {(form.items ?? []).map((it, idx) => (
-                      <div key={idx} className="rounded-xl border border-slate-200 bg-white p-3 dark:border-zinc-700 dark:bg-zinc-950/40">
-                        <div className="aspect-video w-full overflow-hidden rounded-lg bg-slate-100 dark:bg-zinc-900">
+                      <div key={idx} className="rounded-xl border border-border bg-white p-3 border-border bg-card/40">
+                        <div className="aspect-video w-full overflow-hidden rounded-lg bg-slate-100 bg-background">
                           {it.imageUrl ? <img src={it.imageUrl} alt="Foto" className="h-full w-full object-cover" loading="lazy" /> : null}
                         </div>
                         <div className="mt-3 space-y-2">
@@ -225,7 +225,7 @@ export default function PublicSiteGalleries() {
                   </div>
                 )}
               </div>
-              <div className="flex flex-col-reverse gap-2 border-t border-slate-100 pt-4 dark:border-zinc-800 sm:flex-row sm:justify-end">
+              <div className="flex flex-col-reverse gap-2 border-t border-border pt-4 border-border sm:flex-row sm:justify-end">
                 <Button type="button" variant="outline" className="min-h-11" onClick={() => setPageTab('list')}>
                   Kembali ke daftar
                 </Button>
@@ -255,12 +255,12 @@ export default function PublicSiteGalleries() {
           />
           <ul className="space-y-3 md:hidden" aria-label="Daftar album">
             {galleries.length === 0 ? (
-              <li className="py-8 text-center text-sm text-slate-500">Belum ada album.</li>
+              <li className="py-8 text-center text-sm text-muted-foreground">Belum ada album.</li>
             ) : null}
             {galleries.map((g) => (
-              <li key={g.id} className="rounded-2xl border border-slate-200 p-4 dark:border-zinc-800">
+              <li key={g.id} className="rounded-2xl border border-border p-4 border-border">
                 <p className="font-bold text-slate-900 dark:text-white">{g.title}</p>
-                <p className="text-sm text-slate-500">{g.items?.length ?? 0} foto</p>
+                <p className="text-sm text-muted-foreground">{g.items?.length ?? 0} foto</p>
                 <Badge className="mt-2" variant={g.is_published ? 'success' : 'secondary'}>
                   {g.is_published ? 'Publik' : 'Draft'}
                 </Badge>
@@ -304,7 +304,7 @@ export default function PublicSiteGalleries() {
               <TableBody>
                 {galleries.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="py-10 text-center text-slate-500">
+                    <TableCell colSpan={4} className="py-10 text-center text-muted-foreground">
                       Belum ada album.
                     </TableCell>
                   </TableRow>

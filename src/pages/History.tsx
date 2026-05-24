@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import api from '@/services/api';
 import useSWR from 'swr';
 import { Calendar, CheckCircle2, Clock, XCircle, MapPin, Smartphone, Camera, History as HistoryIcon, FileText } from 'lucide-react';
@@ -9,18 +9,30 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import AdminPageShell from '@/components/AdminPageShell';
+import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
+import { CardSkeletonList } from '@/components/admin/CardSkeleton';
 import type { AttendanceHistory } from '@/types/report';
+import type { PaginationMeta } from '@/types/common';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
-import { attendanceStatusLabel } from '@/lib/sessionStatusLabel';
+import { TablePagination } from '@/components/ui/TablePagination';
+import { attendanceBadgeVariant, attendanceStatusLabel } from '@/lib/statusLabel';
 
-const fetcher = (url: string) => api.get(url).then(res => res.data.data);
+const fetcher = (url: string) => api.get(url).then(res => res.data);
 
 export default function HistoryPage() {
   const [filter, setFilter] = useState('ALL');
+  const [page, setPage] = useState(1);
 
-  const swr = useSWR<AttendanceHistory[]>('/reports', fetcher, { revalidateOnFocus: false });
-  const { data: history = [], isInitialLoading: loading, isError, retry } = useSwrPageState(swr);
+  useEffect(() => {
+    setPage(1);
+  }, [filter]);
+
+  const swr = useSWR(`/reports?page=${page}&limit=20`, fetcher, { revalidateOnFocus: false });
+  const { isInitialLoading: loading, isError, isSlowLoading, retry } = useSwrPageState(swr);
+  const history: AttendanceHistory[] = Array.isArray(swr.data?.data) ? swr.data.data : [];
+  const meta: PaginationMeta | null = swr.data?.meta ?? null;
+  const hasFilters = filter !== 'ALL';
 
   const filteredHistory = history.filter(h => {
     if (filter === 'ALL') return true;
@@ -51,13 +63,21 @@ export default function HistoryPage() {
         ))}
       </div>
 
-      {isError ? (
-        <ErrorWithRetry title="Gagal memuat riwayat" error={swr.error} onRetry={retry} />
+      {isError || isSlowLoading ? (
+        <ErrorWithRetry
+          title={isSlowLoading ? 'Memuat terlalu lama' : 'Gagal memuat riwayat'}
+          error={swr.error ?? 'Permintaan membutuhkan waktu lebih lama dari biasanya.'}
+          onRetry={retry}
+        />
       ) : loading ? (
-        <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-800 overflow-hidden">
-          <div className="overflow-auto">
-            <Table className="min-w-[800px]">
-              <TableHeader className="bg-slate-50 dark:bg-zinc-950/50">
+        <>
+          <div className="md:hidden">
+            <CardSkeletonList count={4} />
+          </div>
+          <div className="hidden overflow-hidden rounded-xl border border-border bg-background shadow-sm md:block">
+            <div className="overflow-auto">
+              <Table className="min-w-[800px]">
+                <TableHeader className="bg-card/50">
                 <TableRow>
                   <TableHead>Kelas / Sesi</TableHead>
                   <TableHead>Jadwal (Waktu Check-in)</TableHead>
@@ -70,68 +90,84 @@ export default function HistoryPage() {
                 {Array.from({ length: 5 }).map((_, idx) => (
                   <TableRow key={idx}>
                     <TableCell>
-                      <Skeleton className="h-5 w-40 mb-2" />
-                      <Skeleton className="h-4 w-24" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-4 w-32 mb-2" />
-                      <Skeleton className="h-4 w-24" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-4 w-24 mb-2" />
-                      <Skeleton className="h-4 w-20" />
-                    </TableCell>
-                    <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                    <TableCell className="text-right"><Skeleton className="h-6 w-24 ml-auto rounded-full" /></TableCell>
+                        <Skeleton className="mb-2 h-5 w-40" />
+                        <Skeleton className="h-4 w-24" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="mb-2 h-4 w-32" />
+                        <Skeleton className="h-4 w-24" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="mb-2 h-4 w-24" />
+                        <Skeleton className="h-4 w-20" />
+                      </TableCell>
+                      <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                      <TableCell className="text-right"><Skeleton className="ml-auto h-6 w-24 rounded-full" /></TableCell>
                   </TableRow>
                 ))}
               </TableBody>
-            </Table>
+              </Table>
+            </div>
           </div>
-        </div>
+        </>
       ) : filteredHistory.length === 0 ? (
-        <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-zinc-800 p-12 text-center flex flex-col items-center">
-          <Calendar size={48} className="text-slate-300 dark:text-zinc-600 mb-4" />
-          <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-2">Belum Ada Riwayat</h3>
-          <p className="text-slate-500 dark:text-zinc-400">
-            {filter === 'ALL' ? 'Kamu belum mengikuti sesi kelas apa pun.' : 'Tidak ada data untuk status ini.'}
-          </p>
-        </div>
+        <AdminEmptyState
+          compact
+          icon={HistoryIcon}
+          hasFilters={hasFilters}
+          title={hasFilters ? undefined : 'Belum Ada Riwayat'}
+          description={hasFilters ? undefined : 'Kamu belum mengikuti sesi kelas apa pun.'}
+        />
       ) : (
-        <>
+        <div className="overflow-hidden rounded-xl border border-border bg-background shadow-sm">
         {/* [UX] #18 — kartu mobile */}
-        <ul className="space-y-3 md:hidden" aria-label="Riwayat kehadiran">
+        <ul className="space-y-3 p-4 md:hidden" aria-label="Riwayat kehadiran">
           {filteredHistory.map((item) => (
-            <li key={item.id} className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+            <li key={item.id} className="rounded-2xl border border-border bg-white p-4 border-border bg-background">
               <p className="font-bold text-slate-900 dark:text-white">{item.session_title}</p>
-              <p className="text-sm text-indigo-600 dark:text-indigo-400">{item.class_name || 'Umum'}</p>
-              <p className="mt-2 text-sm text-slate-600 dark:text-zinc-400">
-                {format(new Date(item.check_in_time), 'dd MMM yyyy · HH:mm', { locale: id })}
-              </p>
-              <div className="mt-2 flex flex-col gap-1 text-xs text-slate-500 dark:text-zinc-400">
+              <p className="text-sm text-brand">{item.class_name || 'Umum'}</p>
+              <div className="mt-2 flex flex-col gap-1 text-sm text-muted-foreground">
+                <div className="flex items-center gap-1.5">
+                  <Calendar size={14} className="shrink-0 text-indigo-500" aria-hidden="true" />
+                  <span>{format(new Date(item.session_date), 'dd MMM yyyy', { locale: id })}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Clock size={14} className="shrink-0" aria-hidden="true" />
+                  <span>{format(new Date(item.check_in_time), 'HH:mm:ss')} WIB</span>
+                </div>
+              </div>
+              <div className="mt-2 flex flex-col gap-1 text-xs text-muted-foreground">
                 <div className="flex items-center gap-1.5">
                   <Smartphone size={14} className="shrink-0" aria-hidden="true" />
                   <span className="truncate" title={item.device}>{item.device || 'Perangkat tidak diketahui'}</span>
                 </div>
+                <div className="flex items-center gap-1.5">
+                  <MapPin size={14} className="shrink-0" aria-hidden="true" />
+                  <span className="font-mono">{item.ip || 'N/A'}</span>
+                </div>
                 {item.photo_url ? (
-                  <a href={item.photo_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-indigo-600 dark:text-indigo-400">
+                  <a href={item.photo_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-brand">
                     <Camera size={14} aria-hidden="true" /> Lihat bukti foto
                   </a>
                 ) : null}
               </div>
               <div className="mt-3 flex justify-end">
-                <Badge variant={item.status === 'PRESENT' ? 'success' : item.status === 'LATE' ? 'warning' : 'secondary'}>
+                <Badge variant={attendanceBadgeVariant(item.status)} className="gap-1.5 px-3 py-1">
+                  {item.status === 'PRESENT' && <CheckCircle2 className="h-3.5 w-3.5" />}
+                  {item.status === 'LATE' && <Clock className="h-3.5 w-3.5" />}
+                  {(item.status === 'SICK' || item.status === 'EXCUSED') && <FileText className="h-3.5 w-3.5" />}
+                  {item.status === 'ABSENT' && <XCircle className="h-3.5 w-3.5" />}
                   {attendanceStatusLabel(item.status)}
                 </Badge>
               </div>
             </li>
           ))}
         </ul>
-        <div className="hidden bg-white dark:bg-zinc-900 md:block rounded-xl shadow-sm border border-slate-200 dark:border-zinc-800 overflow-hidden">
+        <div className="hidden md:block">
           <div className="overflow-auto">
             <p className="sr-only">Tabel riwayat — geser horizontal jika perlu</p>
             <Table className="min-w-[800px]">
-              <TableHeader className="sticky top-0 z-10 bg-slate-50 dark:bg-zinc-950/50">
+              <TableHeader className="sticky top-0 z-10 bg-slate-50 bg-card/50">
                 <TableRow>
                   <TableHead>Kelas / Sesi</TableHead>
                   <TableHead>Jadwal (Waktu Check-in)</TableHead>
@@ -146,7 +182,7 @@ export default function HistoryPage() {
                     <TableCell>
                       <div className="font-bold text-slate-900 dark:text-white text-base">{item.session_title}</div>
                       {item.class_name && (
-                        <p className="text-sm font-semibold text-indigo-600 dark:text-indigo-400 mt-0.5">{typeof item.class_name === 'object' && item.class_name !== null ? ((item.class_name as any).name || (item.class_name as any).id) : item.class_name}</p>
+                        <p className="text-sm font-semibold text-brand text-brand mt-0.5">{typeof item.class_name === 'object' && item.class_name !== null ? ((item.class_name as any).name || (item.class_name as any).id) : item.class_name}</p>
                       )}
                     </TableCell>
                     <TableCell>
@@ -155,14 +191,14 @@ export default function HistoryPage() {
                           <Calendar size={14} className="text-indigo-500" />
                           <span className="font-medium">{format(new Date(item.session_date), 'dd MMM yyyy', { locale: id })}</span>
                         </div>
-                        <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-zinc-400">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground text-muted-foreground">
                           <Clock size={14} />
                           {format(new Date(item.check_in_time), 'HH:mm:ss')} WIB
                         </div>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex flex-col gap-1 text-xs text-slate-500 dark:text-zinc-400">
+                      <div className="flex flex-col gap-1 text-xs text-muted-foreground text-muted-foreground">
                         <div className="flex items-center gap-1.5">
                           <Smartphone size={14} className="text-slate-400 shrink-0" />
                           <span className="truncate max-w-[150px]" title={item.device}>{item.device || 'Perangkat tidak diketahui'}</span>
@@ -175,7 +211,7 @@ export default function HistoryPage() {
                     </TableCell>
                     <TableCell>
                       {item.photo_url ? (
-                        <a href={item.photo_url} target="_blank" rel="noreferrer" className="text-indigo-600 hover:text-indigo-700 hover:underline flex items-center gap-1.5 text-sm font-medium">
+                        <a href={item.photo_url} target="_blank" rel="noreferrer" className="text-brand hover:text-indigo-700 hover:underline flex items-center gap-1.5 text-sm font-medium">
                           <Camera size={14} /> Lihat Foto
                         </a>
                       ) : (
@@ -183,10 +219,7 @@ export default function HistoryPage() {
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Badge 
-                        variant={item.status === 'PRESENT' ? 'success' : item.status === 'LATE' ? 'warning' : item.status === 'SICK' || item.status === 'EXCUSED' ? 'secondary' : 'destructive'}
-                        className="gap-1.5 px-3 py-1"
-                      >
+                      <Badge variant={attendanceBadgeVariant(item.status)} className="gap-1.5 px-3 py-1">
                         {item.status === 'PRESENT' && <CheckCircle2 className="w-3.5 h-3.5" />}
                         {item.status === 'LATE' && <Clock className="w-3.5 h-3.5" />}
                         {(item.status === 'SICK' || item.status === 'EXCUSED') && <FileText className="w-3.5 h-3.5" />}
@@ -200,7 +233,10 @@ export default function HistoryPage() {
             </Table>
           </div>
         </div>
-        </>
+        {meta ? (
+          <TablePagination meta={meta} onPageChange={setPage} itemLabel="riwayat" />
+        ) : null}
+        </div>
       )}
     </AdminPageShell>
   );

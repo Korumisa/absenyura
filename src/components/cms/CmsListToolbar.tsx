@@ -14,8 +14,8 @@ export function CmsListToolbar({
   countLabel?: string;
 }) {
   return (
-    <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4 dark:border-zinc-800">
-      <p className="text-sm text-slate-500 dark:text-zinc-400">
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4 border-border">
+      <p className="text-sm text-muted-foreground text-muted-foreground">
         {count !== undefined ? (
           <>
             <span className="font-semibold text-slate-800 dark:text-zinc-200">{count}</span> {countLabel}

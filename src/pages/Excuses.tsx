@@ -20,9 +20,12 @@ import AdminPageShell from '@/components/AdminPageShell';
 import { MobileTableHint } from '@/components/ui/MobileTableHint';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
-import { excuseStatusLabel } from '@/lib/sessionStatusLabel';
+import { excuseStatusLabel } from '@/lib/statusLabel';
+import { toastErrorMessage } from '@/lib/toastMessage';
 import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
+import { useClientPagination } from '@/hooks/useClientPagination';
+import { TablePagination } from '@/components/ui/TablePagination';
 import { FileText as FileTextIcon } from 'lucide-react';
 import ActionLoadingOverlay from '@/components/ActionLoadingOverlay';
 
@@ -128,8 +131,8 @@ export default function Excuses() {
       setFormData({ session_id: '', reason: 'SICK', description: '' });
       clearFile();
       mutate();
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Terjadi kesalahan saat mengajukan izin');
+    } catch (error: unknown) {
+      toast.error(toastErrorMessage(error, 'Terjadi kesalahan saat mengajukan izin'));
     } finally {
       setSubmitting(false);
     }
@@ -142,8 +145,8 @@ export default function Excuses() {
       await api.put(`/excuses/${id}/review`, { status });
       toast.success(`Pengajuan izin ${status === 'APPROVED' ? 'disetujui' : 'ditolak'}`);
       mutate();
-    } catch (error) {
-      toast.error('Gagal mereview pengajuan izin');
+    } catch (error: unknown) {
+      toast.error(toastErrorMessage(error, 'Gagal mereview pengajuan izin'));
     } finally {
       setReviewingId(null);
     }
@@ -164,6 +167,15 @@ export default function Excuses() {
     if (reasonFilter !== 'ALL' && ex.reason !== reasonFilter) return false;
 
     return true;
+  });
+
+  const {
+    paginatedItems: paginatedExcuses,
+    meta: excusesPaginationMeta,
+    setPage: setExcusesPage,
+  } = useClientPagination(filteredExcuses, {
+    pageSize: 20,
+    resetDeps: [searchTerm, statusFilter, reasonFilter],
   });
 
   const exportCsv = () => {
@@ -262,8 +274,8 @@ export default function Excuses() {
           onRetry={retry}
         />
       ) : (
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-        <div className="p-4 border-b border-slate-200 dark:border-zinc-800 flex flex-col sm:flex-row gap-4">
+      <div className="overflow-hidden rounded-xl border border-border bg-white shadow-sm border-border bg-background">
+        <div className="p-4 border-b border-border border-border flex flex-col sm:flex-row gap-4">
           <div className="relative max-w-md flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
             <Input 
@@ -300,7 +312,7 @@ export default function Excuses() {
         <ul className="space-y-3 p-4 md:hidden" aria-label="Daftar pengajuan izin">
           {loading
             ? Array.from({ length: 3 }).map((_, i) => (
-                <li key={i} className="rounded-2xl border border-slate-200 p-4 dark:border-zinc-700">
+                <li key={i} className="rounded-2xl border border-border p-4 border-border">
                   <Skeleton className="mb-2 h-5 w-40" />
                   <Skeleton className="h-4 w-32" />
                   <Skeleton className="mt-3 h-9 w-full" />
@@ -320,17 +332,33 @@ export default function Excuses() {
                   />
                 </li>
               )
-            : filteredExcuses.map((excuse) => {
+            : paginatedExcuses.map((excuse) => {
                 const proofHref = resolveProofUrl(excuse.proof_url);
+                const classLabel = (() => {
+                  const labels = (excuse.session.session_classes ?? [])
+                    .map((x) => formatClassLabel(x?.class))
+                    .filter(Boolean);
+                  if (labels.length) return labels.join(', ');
+                  return excuse.session.class ? formatClassLabel(excuse.session.class) : 'Umum';
+                })();
                 return (
-                <li key={excuse.id} className="rounded-2xl border border-slate-200 p-4 dark:border-zinc-700">
+                <li key={excuse.id} className="rounded-2xl border border-border p-4 border-border">
                   {currentUser?.role !== 'USER' && (
-                    <p className="font-bold text-slate-900 dark:text-white">{excuse.user.name}</p>
+                    <>
+                      <p className="font-bold text-slate-900 dark:text-white">{excuse.user.name}</p>
+                      <p className="text-xs text-muted-foreground">{excuse.user.nim_nip || '-'}</p>
+                    </>
                   )}
-                  <p className="text-sm font-medium text-indigo-600">{excuse.session.title}</p>
-                  <p className="mt-1 text-xs text-slate-500">
+                  <p className="mt-1 text-sm font-medium text-brand">{excuse.session.title}</p>
+                  <p className="text-xs font-semibold text-brand">{classLabel}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
                     {format(new Date(excuse.session.session_start), 'dd MMM yyyy HH:mm', { locale: id })}
                   </p>
+                  {excuse.description ? (
+                    <p className="mt-2 text-xs text-muted-foreground line-clamp-2" title={excuse.description}>
+                      {excuse.description}
+                    </p>
+                  ) : null}
                   <div className="mt-2 flex items-center justify-between">
                     <Badge variant={excuse.reason === 'SICK' ? 'destructive' : 'warning'}>
                       {excuse.reason === 'SICK' ? 'Sakit' : 'Izin'}
@@ -343,12 +371,15 @@ export default function Excuses() {
                       {excuseStatusLabel(excuse.status)}
                     </Badge>
                   </div>
+                  {excuse.reviewer ? (
+                    <p className="mt-2 text-[10px] text-muted-foreground">Oleh: {excuse.reviewer.name}</p>
+                  ) : null}
                   {proofHref ? (
                     <a
                       href={proofHref}
                       target="_blank"
                       rel="noreferrer"
-                      className="mt-2 inline-flex items-center gap-1 text-sm text-indigo-600 dark:text-indigo-400"
+                      className="mt-2 inline-flex items-center gap-1 text-sm text-brand text-brand"
                     >
                       <Download className="h-4 w-4" />
                       Lihat bukti
@@ -385,7 +416,7 @@ export default function Excuses() {
         <MobileTableHint />
         <div className="hidden overflow-x-auto md:block">
           <Table>
-            <TableHeader className="bg-slate-50 dark:bg-zinc-950/50">
+            <TableHeader className="bg-slate-50 bg-card/50">
               <TableRow>
                 {currentUser?.role !== 'USER' && <TableHead>Mahasiswa</TableHead>}
                 <TableHead>Kelas / Sesi</TableHead>
@@ -398,31 +429,42 @@ export default function Excuses() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center text-slate-500">Memuat data...</TableCell>
+                  <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">Memuat data...</TableCell>
                 </TableRow>
               ) : filteredExcuses.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center text-slate-500">Tidak ada data pengajuan izin.</TableCell>
+                  <TableCell colSpan={currentUser?.role !== 'USER' ? 6 : 5} className="p-0">
+                    <AdminEmptyState
+                      compact
+                      icon={FileTextIcon}
+                      title={hasFilters ? 'Tidak ada hasil' : 'Belum ada pengajuan'}
+                      description={
+                        hasFilters
+                          ? 'Ubah filter atau kata kunci pencarian.'
+                          : 'Pengajuan izin dan sakit akan muncul di sini.'
+                      }
+                    />
+                  </TableCell>
                 </TableRow>
               ) : (
-                filteredExcuses.map((excuse) => (
+                paginatedExcuses.map((excuse) => (
                   <TableRow key={excuse.id}>
                     {currentUser?.role !== 'USER' && (
                       <TableCell>
                         <div className="font-medium text-slate-900 dark:text-white">{excuse.user.name}</div>
-                        <div className="text-xs text-slate-500">{excuse.user.nim_nip}</div>
+                        <div className="text-xs text-muted-foreground">{excuse.user.nim_nip}</div>
                       </TableCell>
                     )}
                     <TableCell>
                       <div className="font-medium text-slate-800 dark:text-zinc-200">{excuse.session.title}</div>
-                      <div className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 mt-0.5">
+                      <div className="text-xs font-semibold text-brand text-brand mt-0.5">
                         {(() => {
                           const labels = (excuse.session.session_classes ?? []).map((x: any) => formatClassLabel(x?.class)).filter(Boolean);
                           if (labels.length) return labels.join(', ');
                           return excuse.session.class ? formatClassLabel(excuse.session.class) : 'Umum';
                         })()}
                       </div>
-                      <div className="text-xs text-slate-500 mt-1">
+                      <div className="text-xs text-muted-foreground mt-1">
                         {format(new Date(excuse.session.session_start), 'dd MMM yyyy HH:mm', { locale: id })}
                       </div>
                     </TableCell>
@@ -430,13 +472,13 @@ export default function Excuses() {
                       <Badge variant={excuse.reason === 'SICK' ? 'destructive' : 'warning'}>
                         {excuse.reason === 'SICK' ? 'Sakit' : 'Izin'}
                       </Badge>
-                      <p className="text-xs mt-1 max-w-xs truncate text-slate-600 dark:text-zinc-400" title={excuse.description}>
+                      <p className="text-xs mt-1 max-w-xs truncate text-muted-foreground text-muted-foreground" title={excuse.description}>
                         {excuse.description || '-'}
                       </p>
                     </TableCell>
                     <TableCell>
                       {excuse.proof_url ? (
-                        <a href={excuse.proof_url?.startsWith('http') || excuse.proof_url?.startsWith('data:') ? excuse.proof_url : `${import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, '')}${excuse.proof_url}`} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline flex items-center gap-1 text-sm">
+                        <a href={excuse.proof_url?.startsWith('http') || excuse.proof_url?.startsWith('data:') ? excuse.proof_url : `${import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, '')}${excuse.proof_url}`} target="_blank" rel="noreferrer" className="text-brand hover:underline flex items-center gap-1 text-sm">
                           <FileText size={14} /> Lihat Bukti
                         </a>
                       ) : '-'}
@@ -485,6 +527,11 @@ export default function Excuses() {
             </TableBody>
           </Table>
         </div>
+        <TablePagination
+          meta={excusesPaginationMeta}
+          onPageChange={setExcusesPage}
+          itemLabel="pengajuan"
+        />
       </div>
       )}
 
@@ -497,7 +544,7 @@ export default function Excuses() {
         }}
       >
         <DialogContent className="max-w-lg p-0">
-          <div className="border-b border-slate-200 px-6 py-5 dark:border-zinc-800">
+          <div className="border-b border-border px-6 py-5 border-border">
             <DialogHeader>
               <DialogTitle className="text-xl font-bold text-slate-800 dark:text-white">Buat Pengajuan Izin Baru</DialogTitle>
               <DialogDescription className="sr-only">Form pengajuan izin</DialogDescription>
@@ -587,30 +634,30 @@ export default function Excuses() {
                   }}
                   className={cn(
                     'flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed px-5 py-8 text-center transition-colors',
-                    'border-slate-300 hover:bg-slate-50 dark:border-zinc-700 dark:hover:bg-zinc-900/40',
+                    'border-border hover:bg-slate-50 border-border dark:hover:bg-zinc-900/40',
                     isDragging && 'border-indigo-500 bg-indigo-50/60 dark:bg-indigo-950/20',
                     file && 'py-4',
                   )}
                 >
                   {!file ? (
                     <>
-                      <UploadCloud className="h-5 w-5 text-slate-500" />
+                      <UploadCloud className="h-5 w-5 text-muted-foreground" />
                       <div className="text-sm font-medium text-slate-800 dark:text-zinc-200">
                         Drag & drop file di sini, atau klik untuk upload
                       </div>
-                      <div className="text-xs text-slate-500 dark:text-zinc-400">Gambar atau PDF</div>
+                      <div className="text-xs text-muted-foreground text-muted-foreground">Gambar atau PDF</div>
                     </>
                   ) : (
                     <div className="flex w-full flex-col gap-3">
                       {filePreviewUrl ? (
                         <img src={filePreviewUrl} alt="Pratinjau bukti" className="mx-auto max-h-40 rounded-lg object-contain" />
                       ) : file.type === 'application/pdf' ? (
-                        <p className="text-sm text-slate-600 dark:text-zinc-400">Pratinjau PDF: buka setelah upload untuk memastikan isi dokumen benar.</p>
+                        <p className="text-sm text-muted-foreground text-muted-foreground">Pratinjau PDF: buka setelah upload untuk memastikan isi dokumen benar.</p>
                       ) : null}
                     <div className="flex w-full items-center justify-between gap-3">
                       <div className="min-w-0">
                         <div className="truncate text-sm font-medium text-slate-800 dark:text-zinc-200">{file.name}</div>
-                        <div className="text-xs text-slate-500 dark:text-zinc-400">{(file.size / 1024 / 1024).toFixed(2)} MB</div>
+                        <div className="text-xs text-muted-foreground text-muted-foreground">{(file.size / 1024 / 1024).toFixed(2)} MB</div>
                       </div>
                       <Button
                         type="button"
@@ -631,7 +678,7 @@ export default function Excuses() {
                 </div>
               </div>
               
-              <DialogFooter className="mt-2 gap-3 border-t border-slate-200 pt-6 dark:border-zinc-800 sm:gap-4">
+              <DialogFooter className="mt-2 gap-3 border-t border-border pt-6 border-border sm:gap-4">
                 <Button type="button" variant="outline" className="min-h-11" disabled={submitting} onClick={() => setIsModalOpen(false)}>
                   Batal
                 </Button>

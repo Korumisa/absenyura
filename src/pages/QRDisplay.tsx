@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '@/services/api';
 import QRCode from 'qrcode';
 import { toast } from 'sonner';
+import { ErrorWithRetry } from '@/components/ErrorWithRetry';
+import { toastErrorMessage } from '@/lib/toastMessage';
 import { Users, Clock, ArrowLeft, CheckCircle2, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
@@ -20,6 +22,8 @@ export default function QRDisplay() {
   const { id: sessionId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [session, setSession] = useState<Pick<Session, 'id' | 'title' | 'qr_mode' | 'status' | 'class' | 'session_classes'> | null>(null);
+  const [sessionLoading, setSessionLoading] = useState(true);
+  const [sessionError, setSessionError] = useState<unknown>(null);
   const [qrData, setQrData] = useState('');
   const [countdown, setCountdown] = useState(15);
   const [attendees, setAttendees] = useState<Attendee[]>([]);
@@ -27,11 +31,17 @@ export default function QRDisplay() {
 
   const fetchSession = useCallback(async () => {
     if (!sessionId) return;
+    setSessionLoading(true);
+    setSessionError(null);
     try {
       const res = await api.get(`/sessions/${sessionId}`);
       setSession(res.data.data);
-    } catch {
-      toast.error('Gagal mengambil data sesi');
+    } catch (err) {
+      setSessionError(err);
+      setSession(null);
+      toast.error(toastErrorMessage(err, 'Gagal mengambil data sesi'));
+    } finally {
+      setSessionLoading(false);
     }
   }, [sessionId]);
 
@@ -68,8 +78,7 @@ export default function QRDisplay() {
       const url = `${window.location.origin}/attend?session=${sessionId}&token=${encodeURIComponent(token)}`;
       setQrData(url);
     } catch (error: unknown) {
-      const err = error as { response?: { data?: { error?: string } } };
-      toast.error(err.response?.data?.error || 'Gagal menghasilkan QR');
+      toast.error(toastErrorMessage(error, 'Gagal menghasilkan QR'));
     }
   }, [sessionId]);
 
@@ -158,10 +167,29 @@ export default function QRDisplay() {
     toast.success('QR Code berhasil diunduh');
   };
 
-  if (!session) {
+  if (sessionError) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-100 p-6">
+        <div className="w-full max-w-md">
+          <ErrorWithRetry
+            title="Gagal memuat sesi"
+            error={sessionError}
+            onRetry={() => void fetchSession()}
+          />
+          <div className="mt-4 text-center">
+            <Button type="button" variant="outline" className="min-h-11" onClick={() => navigate('/sessions')}>
+              Kembali ke daftar sesi
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (sessionLoading || !session) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-100" aria-busy="true" aria-label="Memuat sesi">
-        <p className="text-slate-600">Memuat sesi…</p>
+        <p className="text-muted-foreground">Memuat sesi…</p>
       </div>
     );
   }
@@ -176,7 +204,7 @@ export default function QRDisplay() {
 
   return (
     <div className="min-h-screen bg-slate-100">
-      <header className="border-b border-slate-200 bg-white shadow-sm">
+      <header className="border-b border-border bg-white shadow-sm">
         <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-6">
           <div className="flex min-w-0 items-start gap-3">
             <Button
@@ -191,10 +219,10 @@ export default function QRDisplay() {
             </Button>
             <div className="min-w-0 flex-1 space-y-1">
               <h1 className="text-xl font-bold leading-tight text-slate-900 sm:text-2xl">{session.title}</h1>
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-muted-foreground">
                 Kelas: <span className="font-medium text-slate-800">{classesLabel}</span>
               </p>
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-muted-foreground">
                 QR {session.qr_mode === 'DYNAMIC' ? 'Dinamis' : session.qr_mode === 'STATIC' ? 'Statis' : 'Nonaktif'}
                 {' · '}
                 <span className={isActive ? 'font-medium text-emerald-600' : 'font-medium text-amber-600'}>
@@ -205,12 +233,12 @@ export default function QRDisplay() {
           </div>
 
           <p
-            className="flex items-center gap-2 text-sm text-slate-600 sm:shrink-0"
+            className="flex items-center gap-2 text-sm text-muted-foreground sm:shrink-0"
             role="status"
             aria-live="polite"
             aria-label={`${attendees.length} mahasiswa sudah absen`}
           >
-            <Users className="h-5 w-5 text-slate-500" aria-hidden="true" />
+            <Users className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
             <span>
               Sudah absen:{' '}
               <strong className="text-base font-semibold tabular-nums text-slate-900">{attendees.length}</strong>
@@ -220,7 +248,7 @@ export default function QRDisplay() {
       </header>
 
       <main className="mx-auto grid max-w-6xl grid-cols-1 gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-stretch">
-        <section className="flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:min-h-[min(72vh,680px)]">
+        <section className="flex flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-sm lg:min-h-[min(72vh,680px)]">
           <div className="flex flex-1 flex-col items-center justify-center p-6 sm:p-8 lg:p-10">
           {isActive ? (
             <>
@@ -229,7 +257,7 @@ export default function QRDisplay() {
               </div>
 
               <h2 className="mt-8 text-center text-2xl font-bold text-slate-900">Scan untuk absen</h2>
-              <p className="mt-2 max-w-md text-center text-sm leading-relaxed text-slate-500 sm:text-base">
+              <p className="mt-2 max-w-md text-center text-sm leading-relaxed text-muted-foreground sm:text-base">
                 Arahkan kamera HP mahasiswa ke layar ini. Pastikan layar tidak redup dan tidak silau.
               </p>
 
@@ -255,32 +283,32 @@ export default function QRDisplay() {
             <div className="py-16 text-center">
               <Clock size={48} className="mx-auto mb-4 text-slate-300" aria-hidden="true" />
               <h2 className="text-xl font-bold text-slate-800">Sesi belum aktif</h2>
-              <p className="mt-2 text-slate-500">QR hanya ditampilkan saat status sesi ACTIVE.</p>
+              <p className="mt-2 text-muted-foreground">QR hanya ditampilkan saat status sesi ACTIVE.</p>
             </div>
           )}
           </div>
         </section>
 
-        <aside className="flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:min-h-[min(72vh,680px)]">
-          <div className="flex shrink-0 items-center justify-between border-b border-slate-100 bg-slate-50 px-5 py-4">
+        <aside className="flex flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-sm lg:min-h-[min(72vh,680px)]">
+          <div className="flex shrink-0 items-center justify-between border-b border-border bg-slate-50 px-5 py-4">
             <h2 className="font-bold text-slate-800">Kehadiran live</h2>
             <span className="relative flex h-2.5 w-2.5" aria-hidden="true">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
             </span>
           </div>
-          <div className="flex min-h-0 flex-1 flex-col justify-center space-y-3 overflow-y-auto p-5">
+          <div className="flex min-h-0 flex-1 flex-col justify-start space-y-3 overflow-y-auto p-5">
             {attendees.length === 0 ? (
-              <p className="py-8 text-center text-sm text-slate-500">Belum ada yang absen</p>
+              <p className="py-6 text-center text-sm text-muted-foreground">Belum ada yang absen</p>
             ) : (
               attendees.map((att) => (
                 <div
                   key={att.id}
-                  className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 p-4"
+                  className="flex items-center gap-3 rounded-xl border border-border bg-slate-50 p-4"
                 >
                   <div
                     className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
-                      att.check_out_time ? 'bg-emerald-100 text-emerald-600' : 'bg-indigo-100 text-indigo-600'
+                      att.check_out_time ? 'bg-emerald-100 text-emerald-600' : 'bg-indigo-100 text-brand'
                     }`}
                   >
                     {att.check_out_time ? (
@@ -291,7 +319,7 @@ export default function QRDisplay() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold text-slate-900">{att.user_name}</p>
-                    <p className="text-xs text-slate-500">{att.nim_nip || '-'}</p>
+                    <p className="text-xs text-muted-foreground">{att.nim_nip || '-'}</p>
                   </div>
                   <Badge variant="secondary" className="shrink-0 tabular-nums">
                     {format(new Date(att.check_out_time || att.check_in_time), 'HH:mm', { locale: idLocale })}

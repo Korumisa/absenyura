@@ -62,7 +62,7 @@ export default function PublicProgramCard({ program, index = 0, className }: Pub
           <div className="min-w-0">
             <div className="inline-flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-[var(--public-primary)]" />
-              <span className="text-xs font-semibold uppercase tracking-widest text-slate-500">
+              <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
                 {program.date_range ?? '-'}
               </span>
             </div>
@@ -71,7 +71,7 @@ export default function PublicProgramCard({ program, index = 0, className }: Pub
             </div>
           </div>
 
-          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-black/10 bg-white/70 text-slate-600 opacity-0 shadow-sm transition group-hover:opacity-100">
+          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-black/10 bg-white/70 text-muted-foreground opacity-0 shadow-sm transition group-hover:opacity-100">
             <ArrowUpRight size={18} />
           </div>
         </div>
@@ -81,7 +81,7 @@ export default function PublicProgramCard({ program, index = 0, className }: Pub
             {summary}
           </div>
         ) : (
-          <div className="mt-3 text-sm text-slate-500">Deskripsi singkat belum diisi.</div>
+          <div className="mt-3 text-sm text-muted-foreground">Deskripsi singkat belum diisi.</div>
         )}
       </div>
     </Link>

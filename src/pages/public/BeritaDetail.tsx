@@ -49,7 +49,7 @@ export default function BeritaDetail() {
             </div>
           </div>
         ) : !post ? (
-          <div className="mt-10 rounded-2xl border border-dashed border-black/15 bg-white/60 p-6 text-sm text-slate-600 sm:p-8">
+          <div className="mt-10 rounded-2xl border border-dashed border-black/15 bg-white/60 p-6 text-sm text-muted-foreground sm:p-8">
             Konten tidak ditemukan atau belum dipublikasikan.
           </div>
         ) : (
@@ -64,7 +64,7 @@ export default function BeritaDetail() {
                 <span className="text-[var(--public-primary)]">{post.category?.name ?? 'Berita'}</span>
               </div>
               {post.date_label ? (
-                <div className="mt-3 text-sm text-slate-500">{post.date_label}</div>
+                <div className="mt-3 text-sm text-muted-foreground">{post.date_label}</div>
               ) : null}
             </header>
 
@@ -75,7 +75,7 @@ export default function BeritaDetail() {
             </div>
 
             {post.excerpt ? (
-              <div className="mt-3 text-sm leading-relaxed text-slate-600">
+              <div className="mt-3 text-sm leading-relaxed text-muted-foreground">
                 {post.excerpt}
               </div>
             ) : null}
@@ -85,11 +85,11 @@ export default function BeritaDetail() {
                 {post.content}
               </div>
             ) : (
-              <div className="mt-8 text-sm text-slate-500">Konten detail belum diisi.</div>
+              <div className="mt-8 text-sm text-muted-foreground">Konten detail belum diisi.</div>
             )}
 
             <div className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-black/10 pt-6">
-              <div className="text-sm text-slate-500">
+              <div className="text-sm text-muted-foreground">
                 Baca berita lainnya untuk update terbaru {orgName || 'organisasi'}.
               </div>
               <Link

@@ -90,7 +90,7 @@ export default function Fungsionaris() {
           <PublicCoverImage url={p.photo_url} alt={p.name ?? 'Anggota'} imgClassName="object-cover" />
         </div>
         <div className="mt-3 text-sm font-extrabold tracking-tight text-slate-900">{p.name ?? '-'}</div>
-        <div className="mt-1 text-xs font-semibold text-slate-600">{p.role ?? '-'}</div>
+        <div className="mt-1 text-xs font-semibold text-muted-foreground">{p.role ?? '-'}</div>
       </div>
     );
   };

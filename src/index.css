@@ -4,10 +4,16 @@
 
 @layer base {
   :root {
-    /* Design tokens — admin & publik (#10) */
-    --brand-primary: 47 96% 53%;
+    /* [TOKEN] Design tokens — admin & publik */
+    --brand-primary: 214 84% 56%;
     --brand-primary-hex: #2f80ed;
-    --radius-card: 1rem;
+  /* Radius: control=rounded-md (--radius) | card=rounded-lg (--radius-card) | modal=rounded-xl */
+    --radius-card: 0.5rem;
+
+    /* [TOKEN] Admin shell */
+    --sidebar-bg: 220 33% 97%;
+    --sidebar-border: 214 32% 91%;
+    --nav-active-bg: 214 100% 97%;
 
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
@@ -41,10 +47,15 @@
   }
 
   .dark {
+    /* [TOKEN] Admin shell dark */
+    --sidebar-bg: 222.2 47% 6%;
+    --sidebar-border: 217.2 32.6% 17.5%;
+    --nav-active-bg: 214 84% 56% / 0.15;
+
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
 
-    --card: 222.2 84% 4.9%;
+    --card: 217.2 32.6% 12%;
     --card-foreground: 210 40% 98%;
 
     --popover: 222.2 84% 4.9%;

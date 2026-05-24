@@ -22,11 +22,11 @@ export default function PublicSiteProfilePreview({ draft }: { draft: DraftPrevie
 
   return (
     <aside
-      className="sticky top-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950"
+      className="sticky top-4 overflow-hidden rounded-2xl border border-border bg-white shadow-sm border-border bg-card"
       aria-label="Pratinjau tampilan website"
     >
-      <div className="border-b border-slate-200 px-4 py-3 dark:border-zinc-800">
-        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Pratinjau beranda</p>
+      <div className="border-b border-border px-4 py-3 border-border">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Pratinjau beranda</p>
       </div>
       <div
         className="p-4"
@@ -40,7 +40,7 @@ export default function PublicSiteProfilePreview({ draft }: { draft: DraftPrevie
           )}
           <div className="min-w-0">
             <p className="truncate text-sm font-extrabold text-slate-900">{draft.orgName || 'Nama organisasi'}</p>
-            <p className="truncate text-xs text-slate-600">{draft.campusName || 'Nama kampus'}</p>
+            <p className="truncate text-xs text-muted-foreground">{draft.campusName || 'Nama kampus'}</p>
           </div>
         </div>
 
@@ -57,24 +57,24 @@ export default function PublicSiteProfilePreview({ draft }: { draft: DraftPrevie
         ) : null}
 
         <div className="mt-4 grid gap-2 sm:grid-cols-2">
-          <div className="rounded-xl border border-slate-200 p-3 dark:border-zinc-700">
+          <div className="rounded-xl border border-border p-3 border-border">
             <p className="text-xs font-bold text-[var(--public-primary)]">{draft.homeCardLeftTitle || 'Kartu kiri'}</p>
-            <p className="mt-1 line-clamp-3 text-xs text-slate-600">{draft.homeCardLeftBody || '…'}</p>
+            <p className="mt-1 line-clamp-3 text-xs text-muted-foreground">{draft.homeCardLeftBody || '…'}</p>
           </div>
-          <div className="rounded-xl border border-slate-200 p-3 dark:border-zinc-700">
+          <div className="rounded-xl border border-border p-3 border-border">
             <p className="text-xs font-bold text-[var(--public-primary)]">{draft.homeCardRightTitle || 'Kartu kanan'}</p>
-            <p className="mt-1 line-clamp-3 text-xs text-slate-600">{draft.homeCardRightBody || '…'}</p>
+            <p className="mt-1 line-clamp-3 text-xs text-muted-foreground">{draft.homeCardRightBody || '…'}</p>
           </div>
         </div>
 
-        <div className="mt-4 space-y-2 rounded-xl bg-slate-50 p-3 dark:bg-zinc-900">
+        <div className="mt-4 space-y-2 rounded-xl bg-slate-50 p-3 bg-background">
           <p className="text-xs font-bold text-slate-800 dark:text-white">Visi</p>
-          <p className="line-clamp-2 text-xs text-slate-600 dark:text-zinc-400">{draft.vision || '—'}</p>
+          <p className="line-clamp-2 text-xs text-muted-foreground text-muted-foreground">{draft.vision || '—'}</p>
           <p className="text-xs font-bold text-slate-800 dark:text-white">Misi</p>
-          <p className="line-clamp-3 whitespace-pre-line text-xs text-slate-600 dark:text-zinc-400">{draft.mission || '—'}</p>
+          <p className="line-clamp-3 whitespace-pre-line text-xs text-muted-foreground text-muted-foreground">{draft.mission || '—'}</p>
         </div>
 
-        <p className="mt-4 text-center text-[10px] text-slate-500">{draft.footerTagline || 'Footer tagline'}</p>
+        <p className="mt-4 text-center text-[10px] text-muted-foreground">{draft.footerTagline || 'Footer tagline'}</p>
       </div>
     </aside>
   );

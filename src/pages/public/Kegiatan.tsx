@@ -141,8 +141,8 @@ export default function Kegiatan() {
                   </div>
                   <div className="p-5">
                     <div className="flex items-center justify-between gap-3">
-                      <div className="text-xs font-semibold uppercase tracking-widest text-slate-500">{e.type}</div>
-                      <div className="text-xs font-semibold text-slate-500">{e.date_label ?? '-'}</div>
+                      <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{e.type}</div>
+                      <div className="text-xs font-semibold text-muted-foreground">{e.date_label ?? '-'}</div>
                     </div>
                     <div className="mt-3 text-base font-extrabold tracking-tight text-slate-900 line-clamp-2">{e.title}</div>
                     {e.excerpt ? <div className="mt-3 line-clamp-3 text-sm leading-relaxed text-slate-700">{e.excerpt}</div> : null}
@@ -185,7 +185,7 @@ export default function Kegiatan() {
             <div className="flex items-center justify-between gap-4 border-b border-black/10 bg-white px-4 py-3 sm:px-6">
               <div className="min-w-0">
                 <div className="truncate text-base font-extrabold tracking-tight text-slate-900">{selected.title}</div>
-                <div className="mt-1 text-sm text-slate-600">{selected.date_label ?? '-'}</div>
+                <div className="mt-1 text-sm text-muted-foreground">{selected.date_label ?? '-'}</div>
               </div>
               <button
                 type="button"

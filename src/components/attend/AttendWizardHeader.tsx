@@ -20,7 +20,7 @@ export function AttendWizardHeader({
   const currentIndex = STEPS.findIndex((s) => s.id === current)
 
   return (
-    <nav aria-label="Langkah absensi" className="border-b border-slate-200 bg-white px-4 py-4 dark:border-zinc-700 dark:bg-zinc-900">
+    <nav aria-label="Langkah absensi" className="border-b border-border bg-white px-4 py-4 border-border bg-background">
       <ol className="flex items-center justify-between gap-2">
         {STEPS.map((step, index) => {
           const done = index < currentIndex
@@ -33,21 +33,21 @@ export function AttendWizardHeader({
                 className={cn(
                   'flex h-11 w-11 items-center justify-center rounded-full border-2 text-sm font-bold transition-colors',
                   done && 'border-emerald-500 bg-emerald-500 text-white',
-                  active && !done && 'border-indigo-600 bg-indigo-600 text-white',
-                  !done && !active && 'border-slate-200 bg-slate-50 text-slate-400 dark:border-zinc-600 dark:bg-zinc-800',
+                  active && !done && 'border-indigo-600 bg-brand text-white',
+                  !done && !active && 'border-border bg-slate-50 text-slate-400 dark:border-zinc-600 bg-muted',
                 )}
                 aria-current={active ? 'step' : undefined}
               >
                 <Icon className="h-5 w-5" aria-hidden="true" />
               </div>
-              <span className={cn('text-center text-[11px] font-semibold sm:text-xs', active ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-500')}>
+              <span className={cn('text-center text-[11px] font-semibold sm:text-xs', active ? 'text-brand text-brand' : 'text-muted-foreground')}>
                 {step.id === 'scan' && qrSkipped ? 'Tanpa QR' : step.label}
               </span>
             </li>
           )
         })}
       </ol>
-      <p className="mt-2 text-center text-xs text-slate-500 dark:text-zinc-400" aria-live="polite">
+      <p className="mt-2 text-center text-xs text-muted-foreground text-muted-foreground" aria-live="polite">
         Langkah {currentIndex + 1} dari {STEPS.length}
       </p>
     </nav>
