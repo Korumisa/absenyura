@@ -16,6 +16,7 @@ import type { PaginationMeta } from '@/types/common';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
 import { TablePagination } from '@/components/ui/TablePagination';
+import { MobileTableHint } from '@/components/ui/MobileTableHint';
 import { attendanceBadgeVariant, attendanceStatusLabel } from '@/lib/statusLabel';
 
 const fetcher = (url: string) => api.get(url).then(res => res.data);
@@ -74,10 +75,11 @@ export default function HistoryPage() {
           <div className="md:hidden">
             <CardSkeletonList count={4} />
           </div>
-          <div className="hidden overflow-hidden rounded-xl border border-border bg-background shadow-sm md:block">
-            <div className="overflow-auto">
+          <div className="hidden overflow-hidden rounded-xl border border-border bg-card shadow-card dark:shadow-none dark:ring-1 dark:ring-white/10 md:block">
+            <MobileTableHint />
+            <div className="overflow-x-auto">
               <Table className="min-w-[800px]">
-                <TableHeader className="bg-card/50">
+                <TableHeader className="sticky top-0 z-10 bg-muted/50 [&_tr]:border-b">
                 <TableRow>
                   <TableHead>Kelas / Sesi</TableHead>
                   <TableHead>Jadwal (Waktu Check-in)</TableHead>
@@ -119,9 +121,9 @@ export default function HistoryPage() {
           description={hasFilters ? undefined : 'Kamu belum mengikuti sesi kelas apa pun.'}
         />
       ) : (
-        <div className="overflow-hidden rounded-xl border border-border bg-background shadow-sm">
+        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-card dark:shadow-none dark:ring-1 dark:ring-white/10">
         {/* [UX] #18 — kartu mobile */}
-        <ul className="space-y-3 p-4 md:hidden" aria-label="Riwayat kehadiran">
+        <ul className="space-y-3 p-5 md:hidden" aria-label="Riwayat kehadiran">
           {filteredHistory.map((item) => (
             <li key={item.id} className="rounded-2xl border border-border bg-white p-4 border-border bg-background">
               <p className="font-bold text-slate-900 dark:text-white">{item.session_title}</p>
@@ -164,10 +166,10 @@ export default function HistoryPage() {
           ))}
         </ul>
         <div className="hidden md:block">
-          <div className="overflow-auto">
-            <p className="sr-only">Tabel riwayat — geser horizontal jika perlu</p>
+          <MobileTableHint />
+          <div className="overflow-x-auto">
             <Table className="min-w-[800px]">
-              <TableHeader className="sticky top-0 z-10 bg-slate-50 bg-card/50">
+              <TableHeader className="sticky top-0 z-10 bg-muted/50 [&_tr]:border-b">
                 <TableRow>
                   <TableHead>Kelas / Sesi</TableHead>
                   <TableHead>Jadwal (Waktu Check-in)</TableHead>

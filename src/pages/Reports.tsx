@@ -409,8 +409,8 @@ export default function Reports() {
       {isError ? (
         <ErrorWithRetry title="Gagal memuat rekap" error={swr.error} onRetry={retry} />
       ) : (
-      <div className="overflow-hidden rounded-xl border border-border bg-white shadow-sm border-border bg-background">
-        <div className="shrink-0 border-b border-border p-4 sm:p-5 border-border">
+      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-card dark:shadow-none dark:ring-1 dark:ring-white/10">
+        <div className="shrink-0 border-b border-border p-5">
           <button
             type="button"
             className="mb-3 flex min-h-11 w-full items-center justify-between rounded-xl border border-border bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800 border-border bg-background dark:text-zinc-200 md:hidden"
@@ -485,7 +485,7 @@ export default function Reports() {
         </p>
         </div>
 
-        <ul className="space-y-4 p-4 sm:p-5 md:hidden" aria-label="Daftar laporan kehadiran">
+        <ul className="space-y-4 p-5 md:hidden" aria-label="Daftar laporan kehadiran">
           {loading ? (
             <li>
               <CardSkeletonList count={4} />
@@ -558,9 +558,9 @@ export default function Reports() {
         </ul>
 
         <MobileTableHint />
-        <div className="hidden max-h-[calc(100vh-18rem)] overflow-auto md:block">
+        <div className="hidden overflow-x-auto md:block">
           <Table className="min-w-[800px]">
-            <TableHeader className="sticky top-0 z-10 bg-slate-50 bg-card">
+            <TableHeader className="sticky top-0 z-10 bg-muted/50 [&_tr]:border-b">
               <TableRow>
                 <TableHead>Peserta</TableHead>
                 <TableHead>Sesi / Kelas</TableHead>

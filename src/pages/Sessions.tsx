@@ -332,7 +332,7 @@ export default function Sessions() {
           className="mb-6"
         />
       ) : (
-      <div className="bg-white bg-background rounded-xl shadow-sm border border-border border-border overflow-hidden mb-6">
+      <div className="mb-6 overflow-hidden rounded-xl border border-border bg-card shadow-card dark:shadow-none dark:ring-1 dark:ring-white/10">
         <div className="grid grid-cols-1 gap-5 border-b border-border p-5 sm:grid-cols-2 lg:grid-cols-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
@@ -509,7 +509,7 @@ export default function Sessions() {
         </div>
         <div className="hidden overflow-x-auto md:block">
           <Table>
-          <TableHeader className="bg-slate-50 bg-card/50">
+          <TableHeader className="sticky top-0 z-10 bg-muted/50 [&_tr]:border-b">
             <TableRow>
               <TableHead>Informasi Kelas/Event</TableHead>
               <TableHead>Jadwal Sesi</TableHead>

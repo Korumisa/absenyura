@@ -251,8 +251,8 @@ export default function Locations() {
       {isError ? (
         <ErrorWithRetry title="Gagal memuat lokasi" error={swr.error} onRetry={retry} />
       ) : (
-      <div className="bg-white bg-background rounded-xl shadow-sm border border-border border-border overflow-hidden">
-        <div className="p-4 border-b border-border border-border flex flex-col sm:flex-row gap-4">
+      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-card dark:shadow-none dark:ring-1 dark:ring-white/10">
+        <div className="flex flex-col gap-5 border-b border-border p-5 sm:flex-row">
           <div className="relative max-w-md flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
             <Input 
@@ -275,7 +275,7 @@ export default function Locations() {
           </Select>
         </div>
 
-        <ul className="space-y-3 p-4 md:hidden" aria-label="Daftar lokasi">
+        <ul className="space-y-3 p-5 md:hidden" aria-label="Daftar lokasi">
           {loading
             ? Array.from({ length: 3 }).map((_, i) => (
                 <li key={i} className="rounded-2xl border border-border p-4 border-border">
@@ -333,7 +333,7 @@ export default function Locations() {
         <MobileTableHint />
         <div className="hidden overflow-x-auto md:block">
           <Table>
-            <TableHeader className="bg-slate-50 bg-card/50">
+            <TableHeader className="sticky top-0 z-10 bg-muted/50 [&_tr]:border-b">
               <TableRow>
                 <TableHead>Nama Lokasi</TableHead>
                 <TableHead>Alamat</TableHead>

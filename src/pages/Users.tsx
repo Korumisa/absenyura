@@ -285,8 +285,11 @@ export default function Users() {
         </div>
       }
     >
-      <div className="bg-white bg-muted rounded-xl shadow-sm border border-border border-border overflow-hidden">
-        <div className="p-4 border-b border-border border-border flex flex-col md:flex-row gap-3 items-center justify-between">
+      {isError ? (
+        <ErrorWithRetry title="Gagal memuat pengguna" error={swr.error} onRetry={retry} />
+      ) : (
+      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-card dark:shadow-none dark:ring-1 dark:ring-white/10">
+        <div className="flex flex-col items-center justify-between gap-3 border-b border-border p-5 md:flex-row">
           <div className="relative w-full md:max-w-md flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
             <Input
@@ -325,13 +328,8 @@ export default function Users() {
           </div>
         </div>
 
-        <div className="p-4">
-          {isError ? (
-            <ErrorWithRetry title="Gagal memuat pengguna" error={swr.error} onRetry={retry} />
-          ) : (
-          <>
-          {/* [UX] #11 — daftar kartu di mobile */}
-          <ul className="space-y-3 md:hidden" aria-label="Daftar pengguna">
+        {/* [UX] #11 — daftar kartu di mobile */}
+        <ul className="space-y-3 p-5 md:hidden" aria-label="Daftar pengguna">
             {loading ? (
               <li>
                 <CardSkeletonList count={4} />
@@ -397,11 +395,14 @@ export default function Users() {
                 </div>
               </li>
             ))}
-          </ul>
+        </ul>
 
+        <div className="hidden md:block">
           <MobileTableHint />
-          <Table className="hidden md:table">
-            <TableHeader>
+        </div>
+        <div className="hidden overflow-x-auto md:block">
+          <Table>
+            <TableHeader className="sticky top-0 z-10 bg-muted/50 [&_tr]:border-b">
               <TableRow>
                 <TableHead>Nama &amp; Email</TableHead>
                 <TableHead>NIM/NIP</TableHead>
@@ -500,8 +501,6 @@ export default function Users() {
               )}
             </TableBody>
           </Table>
-          </>
-          )}
         </div>
 
         {meta ? (
@@ -513,6 +512,7 @@ export default function Users() {
           />
         ) : null}
       </div>
+      )}
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="max-w-2xl p-0">

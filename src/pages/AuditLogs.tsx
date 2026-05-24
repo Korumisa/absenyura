@@ -105,8 +105,8 @@ export default function AuditLogs() {
       {fetchError ? (
         <ErrorWithRetry title="Gagal memuat audit log" error={fetchError} onRetry={loadLogs} />
       ) : (
-        <div className="overflow-hidden rounded-xl border border-border bg-white shadow-sm border-border bg-background">
-          <div className="border-b border-border p-4 border-border">
+        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-card dark:shadow-none dark:ring-1 dark:ring-white/10">
+          <div className="border-b border-border p-5">
             <div className="relative max-w-md">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <Input
@@ -119,7 +119,7 @@ export default function AuditLogs() {
             </div>
           </div>
 
-          <ul className="space-y-3 p-4 md:hidden" aria-label="Daftar audit log">
+          <ul className="space-y-3 p-5 md:hidden" aria-label="Daftar audit log">
             {loading ? (
               <li className="py-8 text-center text-muted-foreground">Memuat data...</li>
             ) : filteredLogs.length === 0 ? (
@@ -150,7 +150,7 @@ export default function AuditLogs() {
           <MobileTableHint />
           <div className="hidden overflow-x-auto md:block">
             <Table>
-              <TableHeader className="bg-slate-50 bg-card/50">
+              <TableHeader className="sticky top-0 z-10 bg-muted/50 [&_tr]:border-b">
                 <TableRow>
                   <TableHead>Aktivitas</TableHead>
                   <TableHead>Target</TableHead>

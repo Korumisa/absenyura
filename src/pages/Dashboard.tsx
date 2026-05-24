@@ -154,8 +154,8 @@ export default function Dashboard() {
             </div>
           </div>
 
-            <div className="bg-white bg-background rounded-3xl border border-border border-border shadow-sm overflow-hidden">
-              <div className="px-8 py-6 border-b border-border border-border flex items-center justify-between">
+            <div className="overflow-hidden rounded-xl border border-border bg-card shadow-card dark:shadow-none dark:ring-1 dark:ring-white/10">
+              <div className="flex items-center justify-between border-b border-border px-6 py-5">
                 <h2 className="text-xl font-bold text-slate-800 dark:text-white">Jadwal Sesi Terdekat</h2>
                 <span className="bg-indigo-50 dark:bg-indigo-900/30 text-brand text-brand py-1 px-3 rounded-full text-xs font-bold">
                   {data?.recent_sessions?.length || 0} Sesi
@@ -163,7 +163,7 @@ export default function Dashboard() {
               </div>
               
               {/* [UX] D-01 — kartu mobile jadwal sesi */}
-              <ul className="space-y-3 p-4 md:hidden" aria-label="Jadwal sesi terdekat">
+              <ul className="space-y-3 p-5 md:hidden" aria-label="Jadwal sesi terdekat">
                 {!data?.recent_sessions?.length ? (
                   <li className="py-8 text-center text-muted-foreground">Belum ada sesi terdekat.</li>
                 ) : (
@@ -214,9 +214,10 @@ export default function Dashboard() {
                 )}
               </ul>
 
+              <MobileTableHint />
               <div className="hidden overflow-x-auto md:block">
-                <Table>
-                  <TableHeader className="bg-slate-50 bg-card/50">
+                <Table className="min-w-[720px]">
+                  <TableHeader className="sticky top-0 z-10 bg-muted/50 [&_tr]:border-b">
                     <TableRow>
                       <TableHead>Kelas & Sesi</TableHead>
                       <TableHead>Jadwal</TableHead>
@@ -507,12 +508,12 @@ export default function Dashboard() {
             </div>
 
             {/* Recent Sessions List Admin */}
-            <div className="bg-white bg-background rounded-3xl border border-border border-border shadow-sm flex flex-col overflow-hidden">
-              <div className="px-8 py-6 border-b border-border border-border">
+            <div className="flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-card dark:shadow-none dark:ring-1 dark:ring-white/10">
+              <div className="border-b border-border px-6 py-5">
                 <h2 className="text-xl font-bold text-slate-800 dark:text-white">Aktivitas Sesi Terbaru</h2>
               </div>
 
-              <ul className="space-y-3 p-4 md:hidden" aria-label="Sesi terbaru">
+              <ul className="space-y-3 p-5 md:hidden" aria-label="Sesi terbaru">
                 {data?.recent_sessions?.length === 0 ? (
                   <li className="py-6 text-center text-sm text-muted-foreground">Belum ada sesi kelas yang dibuat.</li>
                 ) : (
@@ -549,8 +550,8 @@ export default function Dashboard() {
               <MobileTableHint />
               
               <div className="hidden flex-1 overflow-x-auto md:block">
-                <Table>
-                  <TableHeader className="bg-slate-50 bg-card/50">
+                <Table className="min-w-[720px]">
+                  <TableHeader className="sticky top-0 z-10 bg-muted/50 [&_tr]:border-b">
                     <TableRow>
                       <TableHead>Sesi & Kelas</TableHead>
                       <TableHead>Jadwal</TableHead>
