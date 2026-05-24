@@ -12,6 +12,8 @@ import PublicCoverImage from '@/components/PublicCoverImage';
 import PublicProgramCard from '@/components/PublicProgramCard';
 import useHorizontalWheelScroll from '@/lib/useHorizontalWheelScroll';
 import { AnimatePresence, motion } from 'framer-motion';
+import { useReducedMotion } from '@/lib/useReducedMotion';
+import { fadeTransition } from '@/lib/motionPresets';
 
 function HorizontalSnapRail({
   children,
@@ -88,6 +90,7 @@ function DivisionRail({
   const offsets = useRef<number[]>([]);
   const rafScroll = useRef<number | null>(null);
   const [activeTitle, setActiveTitle] = useState(() => getDivisionDisplayTitle(ordered[0]?.title ?? ''));
+  const reducedMotion = useReducedMotion();
 
   const recalc = () => {
     offsets.current = groupRefs.current.map((el) => el?.offsetLeft ?? 0);
@@ -145,31 +148,43 @@ function DivisionRail({
           {label}
         </div>
         <div className="mt-5">
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.div
-              key={activeTitle}
-              initial={{ opacity: 0, y: 10, filter: 'blur(6px)' }}
-              animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-              exit={{ opacity: 0, y: -10, filter: 'blur(6px)' }}
-              transition={{ duration: 0.18, ease: 'easeOut' }}
-              className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl"
-            >
-              <span className="text-[var(--public-primary)]">{activeTitle}</span>
-            </motion.div>
-          </AnimatePresence>
-          <div className="relative mx-auto mt-4 h-px w-full max-w-5xl bg-gradient-to-r from-transparent via-[var(--public-primary)]/35 to-transparent" />
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.div
-              key={tagline}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.18, ease: 'easeOut' }}
-              className="mt-3 text-sm font-medium text-slate-600"
-            >
-              {tagline}
-            </motion.div>
-          </AnimatePresence>
+          {reducedMotion ? (
+            <>
+              <div className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">
+                <span className="text-[var(--public-primary)]">{activeTitle}</span>
+              </div>
+              <div className="relative mx-auto mt-4 h-px w-full max-w-5xl bg-gradient-to-r from-transparent via-[var(--public-primary)]/35 to-transparent" />
+              <p className="mt-3 text-sm font-medium text-slate-600">{tagline}</p>
+            </>
+          ) : (
+            <>
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div
+                  key={activeTitle}
+                  initial={{ opacity: 0, y: 10, filter: 'blur(6px)' }}
+                  animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                  exit={{ opacity: 0, y: -10, filter: 'blur(6px)' }}
+                  transition={fadeTransition(false)}
+                  className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl"
+                >
+                  <span className="text-[var(--public-primary)]">{activeTitle}</span>
+                </motion.div>
+              </AnimatePresence>
+              <div className="relative mx-auto mt-4 h-px w-full max-w-5xl bg-gradient-to-r from-transparent via-[var(--public-primary)]/35 to-transparent" />
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div
+                  key={tagline}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={fadeTransition(false)}
+                  className="mt-3 text-sm font-medium text-slate-600"
+                >
+                  {tagline}
+                </motion.div>
+              </AnimatePresence>
+            </>
+          )}
         </div>
       </div>
 
@@ -393,7 +408,10 @@ export default function PublicHome() {
     <PublicLayout>
       <div className="relative">
         <div className={`transition-opacity duration-200 ${showLoadingOverlay ? 'pointer-events-none select-none opacity-75' : ''}`}>
-          <section className="relative overflow-hidden bg-[radial-gradient(circle_at_20%_20%,rgba(37,99,235,0.18),transparent_50%),radial-gradient(circle_at_70%_10%,rgba(59,130,246,0.14),transparent_55%),linear-gradient(180deg,rgba(15,23,42,0.02),transparent)]">
+          <section
+            aria-label="Beranda organisasi"
+            className="relative overflow-hidden bg-[radial-gradient(circle_at_20%_20%,rgba(37,99,235,0.18),transparent_50%),radial-gradient(circle_at_70%_10%,rgba(59,130,246,0.14),transparent_55%),linear-gradient(180deg,rgba(15,23,42,0.02),transparent)]"
+          >
             <div className="pointer-events-none absolute inset-0 opacity-70 [background:radial-gradient(circle_at_18%_15%,rgba(37,99,235,0.10),transparent_56%),radial-gradient(circle_at_78%_10%,rgba(56,189,248,0.08),transparent_60%)]" />
             <PublicEnter className="mx-auto grid max-w-7xl items-center gap-12 px-4 py-16 sm:px-6 md:grid-cols-2 md:py-24">
               <div className="flex items-start gap-6">
@@ -412,20 +430,20 @@ export default function PublicHome() {
                     <div className="mt-4 max-w-xl text-sm text-slate-600 md:text-base">{heroSubtitle}</div>
                   ) : null}
 
-                  <div className="mt-10 flex flex-wrap items-center gap-4">
+                  <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
                     <Link
                       to="/struktur-organisasi"
-                      className="inline-flex items-center gap-2 rounded-xl bg-[var(--public-primary)] px-6 py-3 text-sm font-semibold text-white shadow-[0_16px_32px_rgba(37,99,235,0.35)] transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/45"
+                      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[var(--public-primary)] px-6 py-3 text-sm font-semibold text-white shadow-[0_16px_32px_rgba(37,99,235,0.35)] transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/45"
                     >
                       Struktur Organisasi
-                      <ArrowRight size={18} />
+                      <ArrowRight size={18} aria-hidden="true" />
                     </Link>
                     <Link
-                      to="/informasi"
-                      className="inline-flex items-center gap-2 rounded-xl border border-black/10 bg-white/70 px-6 py-3 text-sm font-semibold text-slate-900 backdrop-blur transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/45"
+                      to="/berita"
+                      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-black/10 bg-white/70 px-6 py-3 text-sm font-semibold text-slate-900 backdrop-blur transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/45"
                     >
-                      Informasi Terbaru
-                      <ArrowRight size={18} />
+                      Berita &amp; Kegiatan
+                      <ArrowRight size={18} aria-hidden="true" />
                     </Link>
                   </div>
                 </div>
@@ -515,7 +533,6 @@ export default function PublicHome() {
                   <div className="h-px flex-1 bg-slate-200" />
                 </div>
                 <div className="mt-6 text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">{orgName || 'Profil Organisasi'}</div>
-                {heroSubtitle ? <div className="mt-2 text-sm text-slate-600">{heroSubtitle}</div> : null}
                 <div className="mx-auto mt-8 grid max-w-5xl gap-6 text-left md:grid-cols-2">
                   <div className="rounded-2xl border border-black/10 bg-white/70 p-6 shadow-[0_18px_40px_-42px_rgba(15,23,42,0.30)]">
                     <div className="text-xs font-semibold uppercase tracking-widest text-slate-500">
@@ -999,7 +1016,7 @@ export default function PublicHome() {
               </div>
             </div>
             <Link
-              to="/informasi"
+              to="/berita"
               className="inline-flex items-center gap-2 rounded-xl border border-black/10 bg-white px-6 py-3 text-sm font-semibold text-slate-900 transition hover:border-[var(--public-primary)]/40"
             >
               Lihat Semua

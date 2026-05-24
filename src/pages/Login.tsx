@@ -4,6 +4,8 @@ import { toast } from 'sonner';
 import { useAuthStore } from '@/stores/authStore';
 import api from '@/services/api';
 import { ArrowRight, Eye, EyeOff, LogIn } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -19,15 +21,18 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [forgotOpen, setForgotOpen] = useState(false);
   const setAuth = useAuthStore((state) => state.setAuth);
   const navigate = useNavigate();
   const location = useLocation();
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
-  const { data: profile } = useSWR<PublicProfile | null>('/public-site/profile', fetcher, { revalidateOnFocus: false });
+  const { data: profile, isLoading: profileLoading } = useSWR<PublicProfile | null>('/public-site/profile', fetcher, { revalidateOnFocus: false });
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setLoginError(null);
     try {
       // Simulating device fingerprint using a simple random string stored in localStorage
       let device_fingerprint = localStorage.getItem('device_fingerprint');
@@ -43,15 +48,16 @@ export default function Login() {
       
       let target = location.state?.from?.pathname;
       if (!target || target === '/dashboard') {
-        if (user.role === 'SUPER_ADMIN') target = '/dashboard';
-        else if (user.role === 'ADMIN') target = '/sessions';
-        else if (user.role === 'CONTENT_ADMIN') target = '/public-site';
-        else if (user.role === 'USER') target = '/dashboard';
+        // [IA] #10 — redirect konsisten ke dashboard (kecuali content admin)
+        if (user.role === 'CONTENT_ADMIN') target = '/public-site/profile';
+        else target = '/dashboard';
       }
 
       navigate(target, { replace: true });
     } catch (err: any) {
-      toast.error(getErrorMessage(err, 'Gagal masuk. Periksa email/NIM dan kata sandi Anda.'));
+      const msg = getErrorMessage(err, 'Gagal masuk. Periksa email/NIM dan kata sandi Anda.');
+      setLoginError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -68,19 +74,31 @@ export default function Login() {
           <div className="relative mx-auto grid w-full max-w-5xl items-stretch gap-8 md:grid-cols-2">
           <div className="flex flex-col justify-center">
             <div className="inline-flex items-center gap-3">
-              <img
-                src={profile?.logo_light_url || '/3.%20HM%20SDP.png'}
-                alt="Logo"
-                className="h-14 w-14 rounded-2xl bg-white/70 p-2 ring-1 ring-black/10 dark:bg-white/10 dark:ring-white/10"
-              />
-              <div>
-                <div className="text-sm font-extrabold tracking-tight text-slate-900 dark:text-white">
-                  {profile?.org_name ? profile.org_name : 'Profil belum diatur'}
-                </div>
-                <div className="text-xs font-medium text-slate-500 dark:text-slate-300">
-                  {profile?.campus_name ? profile.campus_name : 'Konten Website'}
-                </div>
-              </div>
+              {profileLoading ? (
+                <>
+                  <Skeleton className="h-14 w-14 rounded-2xl" />
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-36" />
+                    <Skeleton className="h-3 w-28" />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <img
+                    src={profile?.logo_light_url || '/3.%20HM%20SDP.png'}
+                    alt="Logo"
+                    className="h-14 w-14 rounded-2xl bg-white/70 p-2 ring-1 ring-black/10 dark:bg-white/10 dark:ring-white/10"
+                  />
+                  <div>
+                    <div className="text-sm font-extrabold tracking-tight text-slate-900 dark:text-white">
+                      {profile?.org_name ? profile.org_name : 'Profil belum diatur'}
+                    </div>
+                    <div className="text-xs font-medium text-slate-500 dark:text-slate-300">
+                      {profile?.campus_name ? profile.campus_name : 'Konten Website'}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="mt-6 font-display text-4xl italic tracking-tight text-slate-900 dark:text-white md:text-5xl">Masuk</div>
@@ -117,7 +135,21 @@ export default function Login() {
                 </div>
               </div>
 
-              <form onSubmit={handleLogin} className="mt-8 space-y-5">
+              <form onSubmit={handleLogin} className="mt-8 space-y-5" aria-busy={loading}>
+                {loginError ? (
+                  <div
+                    className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-100"
+                    role="alert"
+                  >
+                    {loginError}
+                  </div>
+                ) : null}
+                <div
+                  className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-100"
+                  role="note"
+                >
+                  Akun dibuat oleh admin kampus. Belum punya akun? Hubungi pengurus HM atau bagian akademik fakultas Anda.
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">Email atau NIM</Label>
                   <Input
@@ -159,7 +191,7 @@ export default function Login() {
                   <div className="flex justify-end">
                     <button
                       type="button"
-                      onClick={() => toast.info('Silakan hubungi Admin untuk reset kata sandi.')}
+                      onClick={() => setForgotOpen(true)}
                       className="text-sm font-semibold text-[var(--public-primary)] hover:brightness-110"
                     >
                       Lupa kata sandi?
@@ -180,6 +212,43 @@ export default function Login() {
           </div>
         </section>
       </PublicEnter>
+
+      <Dialog open={forgotOpen} onOpenChange={setForgotOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Lupa kata sandi?</DialogTitle>
+            <DialogDescription>
+              Reset kata sandi dilakukan oleh admin. Hubungi kontak berikut dengan email/NIM Anda.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 text-sm text-slate-700 dark:text-zinc-300">
+            {profile?.email ? (
+              <p>
+                Email:{' '}
+                <a href={`mailto:${profile.email}`} className="font-semibold text-[var(--public-primary)]">
+                  {profile.email}
+                </a>
+              </p>
+            ) : null}
+            {profile?.phone ? (
+              <p>
+                Telepon:{' '}
+                <a href={`tel:${profile.phone}`} className="font-semibold text-[var(--public-primary)]">
+                  {profile.phone}
+                </a>
+              </p>
+            ) : null}
+            {!profile?.email && !profile?.phone ? (
+              <p>Kontak admin belum diatur di profil situs publik. Silakan hubungi pengurus HM langsung.</p>
+            ) : null}
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setForgotOpen(false)}>
+              Tutup
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PublicLayout>
   );
 }

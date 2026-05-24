@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { useReducedMotion } from '@/lib/useReducedMotion';
 
 export default function PublicPageHero({
   top,
@@ -14,19 +15,36 @@ export default function PublicPageHero({
   children?: React.ReactNode;
   compact?: boolean;
 }) {
+  const reducedMotion = useReducedMotion();
+  const blobClassLeft =
+    'pointer-events-none absolute -left-24 top-10 h-72 w-72 rounded-[48%_52%_58%_42%/44%_43%_57%_56%] bg-[var(--public-primary)]/14 blur-3xl';
+  const blobClassRight =
+    'pointer-events-none absolute -right-28 bottom-6 h-80 w-80 rounded-[53%_47%_45%_55%/48%_56%_44%_52%] bg-sky-400/12 blur-3xl';
+
   return (
     <section className={`relative overflow-hidden bg-white ${compact ? 'py-7 sm:py-8' : 'py-12 sm:py-14'}`}>
       <div className="pointer-events-none absolute inset-0 opacity-70 [background:radial-gradient(circle_at_18%_15%,rgba(37,99,235,0.14),transparent_56%),radial-gradient(circle_at_78%_10%,rgba(56,189,248,0.10),transparent_60%)]" />
-      <motion.div
-        className="pointer-events-none absolute -left-24 top-10 h-72 w-72 rounded-[48%_52%_58%_42%/44%_43%_57%_56%] bg-[var(--public-primary)]/14 blur-3xl"
-        animate={{ y: [0, -10, 0] }}
-        transition={{ duration: 6, ease: 'easeInOut', repeat: Infinity }}
-      />
-      <motion.div
-        className="pointer-events-none absolute -right-28 bottom-6 h-80 w-80 rounded-[53%_47%_45%_55%/48%_56%_44%_52%] bg-sky-400/12 blur-3xl"
-        animate={{ y: [0, 12, 0] }}
-        transition={{ duration: 7.5, ease: 'easeInOut', repeat: Infinity }}
-      />
+      {reducedMotion ? (
+        <>
+          <div className={blobClassLeft} aria-hidden="true" />
+          <div className={blobClassRight} aria-hidden="true" />
+        </>
+      ) : (
+        <>
+          <motion.div
+            className={blobClassLeft}
+            aria-hidden="true"
+            animate={{ y: [0, -10, 0] }}
+            transition={{ duration: 6, ease: 'easeInOut', repeat: Infinity }}
+          />
+          <motion.div
+            className={blobClassRight}
+            aria-hidden="true"
+            animate={{ y: [0, 12, 0] }}
+            transition={{ duration: 7.5, ease: 'easeInOut', repeat: Infinity }}
+          />
+        </>
+      )}
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
         <div

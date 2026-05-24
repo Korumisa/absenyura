@@ -3,7 +3,13 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Html5Qrcode, Html5QrcodeScanner, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import api from '@/services/api';
 import { toast } from 'sonner';
-import { MapPin, QrCode, ShieldAlert, Camera, RefreshCw, CheckCircle2, XCircle, WifiOff } from 'lucide-react';
+import { MapPin, QrCode, ShieldAlert, Camera, RefreshCw, WifiOff, AlertCircle, LogOut } from 'lucide-react';
+import { format } from 'date-fns';
+import { id as idLocale } from 'date-fns/locale';
+import type { Report } from '@/types/report';
+import { AttendWizardHeader, type AttendStep } from '@/components/attend/AttendWizardHeader';
+import { AttendStepPanel } from '@/components/attend/AttendStepPanel';
+import { getErrorMessage } from '@/lib/errorMessage';
 import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -46,6 +52,8 @@ export default function Attend() {
   const navigate = useNavigate();
   const sessionParam = searchParams.get('session');
   const tokenParam = searchParams.get('token');
+  const isCheckoutMode = searchParams.get('checkout') === 'true'; // [UX] A-01, D-02
+  const attendanceParam = searchParams.get('attendance');
   const NO_QR_TOKEN = 'NO_QR_REQUIRED';
 
   const [scanResult, setScanResult] = useState<string | null>(tokenParam);
@@ -78,6 +86,8 @@ export default function Attend() {
   const isSubmittingRef = React.useRef(false);
   const [qrFacingMode, setQrFacingMode] = useState<'user' | 'environment'>('environment');
   const [qrCameraId, setQrCameraId] = useState<string | null>(null);
+  const [attendStep, setAttendStep] = useState<AttendStep>(tokenParam ? 'verify' : 'scan');
+  const [submitError, setSubmitError] = useState<{ message: string; hint?: string } | null>(null);
 
   const loadQrCamera = useCallback(async (preferRear: boolean) => {
     try {
@@ -124,32 +134,109 @@ export default function Attend() {
   const { sid: derivedSessionId, tkn: parsedToken } = extractSessionIdAndToken(scanResult);
 
   const [sessionDetails, setSessionDetails] = useState<any>(null);
+  const [sessionLoading, setSessionLoading] = useState(Boolean(sessionParam && !tokenParam));
+  const [sessionLoadError, setSessionLoadError] = useState<string | null>(null); // [UX] A-03
+  const [myAttendance, setMyAttendance] = useState<Pick<Report, 'id' | 'check_in_time' | 'session_title'> | null>(null);
+  const [checkoutLoading, setCheckoutLoading] = useState(isCheckoutMode);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [checkoutSubmitting, setCheckoutSubmitting] = useState(false);
+
+  const sessionIdForLoad = isCheckoutMode ? sessionParam : derivedSessionId;
 
   useEffect(() => {
-    if (!derivedSessionId || derivedSessionId === NO_QR_TOKEN) return;
-    
-    if (isOffline) {
-      // In offline mode, we can't fetch session details. Allow scanning to proceed.
-      toast.info('Mode Offline: Mengumpulkan data absen lokal');
+    if (!sessionIdForLoad || sessionIdForLoad === NO_QR_TOKEN) {
+      setSessionLoading(false);
       return;
     }
 
-    api.get(`/sessions/${derivedSessionId}`)
-      .then(res => {
+    if (isOffline && !isCheckoutMode) {
+      toast.info('Mode Offline: Mengumpulkan data absen lokal');
+      setSessionLoading(false);
+      return;
+    }
+
+    setSessionLoading(true);
+    setSessionLoadError(null);
+
+    api
+      .get(`/sessions/${sessionIdForLoad}`)
+      .then((res) => {
         const s = res.data.data;
         setSessionDetails(s);
-        if (s.qr_mode === 'NONE') {
+        if (!isCheckoutMode && s.qr_mode === 'NONE') {
           setScanning(false);
           setScanResult(NO_QR_TOKEN);
+          setAttendStep('verify');
         }
       })
-      .catch(err => {
-        console.error('Gagal mengambil data sesi', err);
-        if (sessionParam) {
-          toast.error('Gagal mengambil detail sesi absensi.');
+      .catch((err) => {
+        const msg = getErrorMessage(err, 'Gagal memuat data sesi absensi.');
+        setSessionLoadError(msg);
+        setSessionDetails(null);
+      })
+      .finally(() => setSessionLoading(false));
+  }, [sessionIdForLoad, isCheckoutMode, isOffline]);
+
+  // [UX] A-01 — muat data check-in untuk mode checkout (tanpa QR/foto)
+  useEffect(() => {
+    if (!isCheckoutMode || !sessionParam) return;
+
+    let cancelled = false;
+    setCheckoutLoading(true);
+    setCheckoutError(null);
+
+    const load = async () => {
+      try {
+        const res = await api.get('/reports', { params: { sessionId: sessionParam, limit: 5 } });
+        const rows: Report[] = res.data?.data ?? [];
+        const match =
+          rows.find((r) => r.id === attendanceParam) ??
+          rows.find((r) => r.session_id === sessionParam) ??
+          null;
+
+        if (cancelled) return;
+
+        if (!match) {
+          setCheckoutError('Data check-in tidak ditemukan. Pastikan Anda sudah absen di sesi ini.');
+          setMyAttendance(null);
+          return;
         }
-      });
-  }, [derivedSessionId, sessionParam, isOffline]);
+        setMyAttendance({
+          id: match.id,
+          check_in_time: match.check_in_time,
+          session_title: match.session_title,
+        });
+      } catch (err) {
+        if (!cancelled) {
+          setCheckoutError(getErrorMessage(err, 'Gagal memuat data kehadiran Anda.'));
+        }
+      } finally {
+        if (!cancelled) setCheckoutLoading(false);
+      }
+    };
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [isCheckoutMode, sessionParam, attendanceParam]);
+
+  const handleCheckOut = async () => {
+    if (!myAttendance?.id || checkoutSubmitting) return;
+    setCheckoutSubmitting(true);
+    setCheckoutError(null);
+    try {
+      const res = await api.put(`/attendance/${myAttendance.id}/check-out`);
+      toast.success(res.data?.message || 'Check-out berhasil!');
+      navigate('/dashboard');
+    } catch (err) {
+      const msg = getErrorMessage(err, 'Check-out gagal. Coba lagi.');
+      setCheckoutError(msg);
+      toast.error(msg);
+    } finally {
+      setCheckoutSubmitting(false);
+    }
+  };
 
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
   const [cameraPermissionError, setCameraPermissionError] = useState<string | null>(null);
@@ -277,6 +364,7 @@ export default function Attend() {
           scannerRef.current = null;
           setScanResult(decodedText);
           setScanning(false);
+          setAttendStep('verify'); // [IA] lanjut ke verifikasi lokasi setelah QR valid
         },
         (err) => {
           // Ignore scan failures, they happen constantly until a code is found
@@ -479,6 +567,7 @@ export default function Attend() {
 
     isSubmittingRef.current = true;
     setLoading(true);
+    setSubmitError(null); // [UX] bersihkan error sebelum percobaan baru
     try {
       let sessionId = derivedSessionId;
       const qrToken = parsedToken;
@@ -546,12 +635,28 @@ export default function Attend() {
       
       toast.success(res.data.message || 'Check-in berhasil!');
       navigate('/dashboard');
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || error.message || 'Check-in gagal');
-      setScanResult(null);
-      setScanning(true);
-      setPhotoBlob(null);
-      setPhotoPreview(null);
+    } catch (error: unknown) {
+      const apiMsg = getErrorMessage(error, 'Absensi gagal dikirim');
+      const lower = apiMsg.toLowerCase();
+      const isQrError = lower.includes('qr') || lower.includes('token') || lower.includes('kadaluarsa');
+      // [UX] #1 — jangan reset seluruh alur; pertahankan QR & foto kecuali error QR
+      if (isQrError) {
+        setScanResult(null);
+        setScanning(true);
+        setAttendStep('scan');
+        setPhotoBlob(null);
+        setPhotoPreview(null);
+        setSubmitError({
+          message: apiMsg,
+          hint: 'Scan ulang QR Code dari layar dosen, lalu lanjutkan langkah berikutnya.',
+        });
+      } else {
+        setSubmitError({
+          message: apiMsg,
+          hint: 'Periksa koneksi internet atau lokasi GPS, lalu tekan "Coba kirim lagi" tanpa mengulang dari awal.',
+        });
+      }
+      toast.error(apiMsg);
     } finally {
       setLoading(false);
       isSubmittingRef.current = false;
@@ -567,18 +672,149 @@ export default function Attend() {
     return dist <= sessionDetails.location.radius;
   };
 
-  return (
-    <div className="p-6 max-w-3xl mx-auto min-h-[calc(100vh-4rem)] flex flex-col">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">Check-in Kehadiran</h1>
-        <p className="text-slate-600 dark:text-zinc-400">Scan QR Code kelas dan pastikan Anda berada di lokasi.</p>
-      </div>
+  const qrSkipped = sessionDetails?.qr_mode === 'NONE' || scanResult === NO_QR_TOKEN;
 
-      <div className="bg-white dark:bg-zinc-800 rounded-2xl shadow-sm border border-slate-200 dark:border-zinc-700 overflow-hidden flex-1 flex flex-col mb-8">
-        
+  const ipStatusLabel = () => {
+    if (!ipAddress) return 'Memuat…';
+    if (!sessionDetails?.location?.wifi_bssid) return 'Tidak diwajibkan';
+    return isIpValid() ? 'Terverifikasi' : 'Di luar jaringan kampus';
+  };
+
+  // [UX] A-03 — halaman error penuh saat sesi gagal dimuat
+  if (sessionLoadError && (sessionParam || isCheckoutMode)) {
+    return (
+      <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-lg flex-col items-center justify-center p-6 text-center">
+        <AlertCircle className="mb-4 h-12 w-12 text-red-500" aria-hidden="true" />
+        <h1 className="text-xl font-bold text-slate-900 dark:text-white">Gagal memuat sesi</h1>
+        <p className="mt-2 text-sm text-slate-600 dark:text-zinc-400" role="alert">
+          {sessionLoadError}
+        </p>
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+          <Button
+            type="button"
+            className="min-h-11"
+            onClick={() => {
+              setSessionLoadError(null);
+              setSessionLoading(true);
+              const sid = sessionIdForLoad;
+              if (!sid) return;
+              api
+                .get(`/sessions/${sid}`)
+                .then((res) => {
+                  setSessionDetails(res.data.data);
+                  setSessionLoadError(null);
+                })
+                .catch((err) => setSessionLoadError(getErrorMessage(err, 'Gagal memuat data sesi absensi.')))
+                .finally(() => setSessionLoading(false));
+            }}
+          >
+            Muat ulang
+          </Button>
+          <Button type="button" variant="outline" className="min-h-11" onClick={() => navigate('/dashboard')}>
+            Kembali ke dashboard
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // [UX] A-01 — mode checkout: konfirmasi tanpa QR/foto
+  if (isCheckoutMode) {
+    return (
+      <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-lg flex-col p-4 sm:p-6">
+        <header className="mb-6">
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Konfirmasi check-out</h1>
+          <p className="mt-1 text-sm text-slate-600 dark:text-zinc-400">
+            Anda sudah check-in. Konfirmasi untuk menyelesaikan kehadiran di sesi ini.
+          </p>
+        </header>
+
+        {checkoutLoading || sessionLoading ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-3" aria-busy="true" aria-label="Memuat data check-out">
+            <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600" />
+            <p className="text-sm text-slate-500">Memuat data…</p>
+          </div>
+        ) : checkoutError || !myAttendance ? (
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-6 dark:border-red-900/50 dark:bg-red-950/40" role="alert">
+            <p className="font-semibold text-red-800 dark:text-red-300">
+              {checkoutError || 'Data check-in tidak ditemukan.'}
+            </p>
+            <Button type="button" variant="outline" className="mt-4 min-h-11 w-full" onClick={() => navigate('/dashboard')}>
+              Kembali ke dashboard
+            </Button>
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-zinc-700 dark:bg-zinc-800">
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Kelas / Sesi</p>
+            <p className="mt-1 text-lg font-bold text-slate-900 dark:text-white">
+              {sessionDetails?.title || myAttendance.session_title}
+            </p>
+            <p className="mt-4 text-xs font-semibold uppercase tracking-wider text-slate-500">Waktu check-in</p>
+            <p className="mt-1 text-base font-medium text-indigo-600 dark:text-indigo-400">
+              {format(new Date(myAttendance.check_in_time), 'dd MMM yyyy · HH:mm', { locale: idLocale })} WIB
+            </p>
+            <Button
+              type="button"
+              className="mt-8 min-h-12 w-full gap-2 text-lg font-bold"
+              onClick={() => void handleCheckOut()}
+              disabled={checkoutSubmitting}
+              aria-busy={checkoutSubmitting}
+            >
+              <LogOut size={20} aria-hidden="true" />
+              {checkoutSubmitting ? 'Memproses…' : 'Konfirmasi check-out'}
+            </Button>
+            <Button type="button" variant="outline" className="mt-3 min-h-11 w-full" onClick={() => navigate('/dashboard')}>
+              Batal
+            </Button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-3xl flex-col p-4 sm:p-6">
+      <header className="mb-4">
+        <h1 className="mb-1 text-2xl font-bold text-slate-800 dark:text-white">Check-in Kehadiran</h1>
+        <p className="text-sm text-slate-600 dark:text-zinc-400">Ikuti 3 langkah: scan QR, pastikan lokasi, lalu foto bukti.</p>
+      </header>
+
+      <div className="mb-20 flex flex-1 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-800 sm:mb-8">
+        <AttendWizardHeader current={attendStep} qrSkipped={qrSkipped} />
+
         {isOffline && (
-          <div className="bg-amber-100 text-amber-800 p-3 text-center text-sm font-medium flex items-center justify-center gap-2">
-            <WifiOff size={16} /> Mode Offline Aktif: Data akan disimpan di perangkat lokal.
+          <div className="flex items-center justify-center gap-2 bg-amber-100 p-3 text-center text-sm font-medium text-amber-900" role="status">
+            <WifiOff size={16} aria-hidden="true" />
+            Mode offline: data absensi akan dikirim otomatis saat internet kembali.
+          </div>
+        )}
+
+        {submitError && (
+          <div
+            className="mx-4 mt-4 rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-900/50 dark:bg-red-950/40"
+            role="alert"
+            aria-live="assertive"
+          >
+            <div className="flex gap-3">
+              <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-600" aria-hidden="true" />
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold text-red-800 dark:text-red-300">{submitError.message}</p>
+                {submitError.hint ? <p className="mt-1 text-sm text-red-700 dark:text-red-400">{submitError.hint}</p> : null}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-3 min-h-11 border-red-300"
+                  onClick={() => {
+                    setSubmitError(null);
+                    void handleCheckIn();
+                  }}
+                  disabled={loading}
+                >
+                  Coba kirim lagi
+                </Button>
+              </div>
+            </div>
           </div>
         )}
 
@@ -602,7 +838,7 @@ export default function Attend() {
             <ShieldAlert className={!ipAddress ? 'text-slate-400' : isIpValid() ? 'text-green-500' : 'text-red-500'} size={24} />
             <span className="text-xs font-medium text-slate-600 dark:text-zinc-400">IP Validasi</span>
             <span className="text-xs font-bold text-slate-900 dark:text-white">
-              {!ipAddress ? 'Menunggu' : isIpValid() ? ipAddress : `${ipAddress} (Tidak Valid)`}
+              {ipStatusLabel()}
             </span>
           </div>
           <div className="p-4 flex flex-col items-center text-center gap-2">
@@ -614,10 +850,9 @@ export default function Attend() {
           </div>
         </div>
 
-        <div className="flex-1 flex flex-col p-6 gap-6">
-          
-          {/* Map Preview */}
-          {location && sessionDetails?.location && (
+        <div className="flex flex-1 flex-col gap-6 p-4 sm:p-6">
+          {/* Map Preview — langkah verify */}
+          {attendStep !== 'scan' && location && sessionDetails?.location && (
             <div className="w-full h-48 rounded-xl overflow-hidden border border-slate-200 dark:border-zinc-700 shadow-inner z-0">
               <MapContainer 
                 center={[location.lat, location.lng]} 
@@ -645,14 +880,12 @@ export default function Attend() {
             </div>
           )}
 
-          <div className="flex-1 flex flex-col items-center justify-center">
-            {scanning ? (
-              <div className="w-full max-w-md animate-in fade-in duration-500">
-                <div className="bg-slate-900 rounded-2xl overflow-hidden shadow-2xl border-4 border-slate-100 dark:border-zinc-800 relative">
-                  <div className="absolute inset-0 z-10 border-[3px] border-dashed border-indigo-500/50 m-8 rounded-xl pointer-events-none"></div>
-                  <div className="absolute top-0 left-0 w-full h-1 bg-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.8)] animate-[scan_2s_ease-in-out_infinite] z-20 pointer-events-none"></div>
-                  
-                  <div id="qr-reader" className="w-full bg-black [&>div]:border-none [&>div]:shadow-none [&_video]:object-cover [&_video]:w-full [&_video]:h-full min-h-[300px] flex flex-col"></div>
+          <AttendStepPanel step={attendStep}>
+            {attendStep === 'scan' && scanning ? (
+              <div className="attend-qr-root w-full max-w-md">
+                <div className="relative overflow-hidden rounded-2xl border-4 border-slate-100 bg-slate-900 shadow-2xl dark:border-zinc-800">
+                  <div className="pointer-events-none absolute inset-0 z-10 m-8 rounded-xl border-[3px] border-dashed border-indigo-500/50" />
+                  <div id="qr-reader" className="flex min-h-[300px] w-full flex-col bg-black [&>div]:border-none [&>div]:shadow-none [&_video]:h-full [&_video]:w-full [&_video]:object-cover" />
                 </div>
                 <div className="text-center mt-6 mb-6">
                   <p className="text-sm font-medium text-slate-600 dark:text-zinc-400">
@@ -665,6 +898,29 @@ export default function Attend() {
                     </Button>
                   </div>
                 </div>
+              </div>
+            ) : attendStep === 'verify' ? (
+              <div className="w-full max-w-md space-y-4 text-center">
+                <h2 className="text-lg font-bold text-slate-800 dark:text-white">Verifikasi lokasi</h2>
+                <p className="text-sm text-slate-600 dark:text-zinc-400">
+                  Pastikan Anda berada di area kampus yang ditentukan. Jika GPS belum akurat, pindah ke tempat terbuka lalu tunggu beberapa detik.
+                </p>
+                {gpsError ? (
+                  <p className="text-sm font-medium text-red-600" role="alert">{gpsError}</p>
+                ) : null}
+                <Button
+                  type="button"
+                  className="min-h-11 w-full"
+                  disabled={!location || !!gpsError}
+                  onClick={() => setAttendStep('photo')}
+                >
+                  Lanjut ambil foto
+                </Button>
+                {!qrSkipped && (
+                  <Button type="button" variant="outline" className="min-h-11 w-full" onClick={() => { setAttendStep('scan'); setScanning(true); }}>
+                    Scan ulang QR
+                  </Button>
+                )}
               </div>
             ) : !photoBlob ? (
               <div className="w-full max-w-md flex flex-col items-center animate-in zoom-in duration-300">
@@ -690,41 +946,20 @@ export default function Attend() {
                 
                 <div className="mt-6 flex flex-col sm:flex-row gap-3 w-full justify-center relative z-10 px-4">
                   {!isCameraActive ? (
-                    <button 
-                      type="button"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        startCamera();
-                      }}
-                      className="flex items-center justify-center gap-2 py-3 px-6 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium shadow-lg transition-colors cursor-pointer w-full sm:w-auto"
-                    >
-                      <Camera size={20} />
-                      <span>Buka Kamera</span>
-                    </button>
+                    <Button type="button" className="min-h-11 w-full gap-2 sm:w-auto" onClick={() => startCamera()}>
+                      <Camera size={20} aria-hidden="true" />
+                      Buka Kamera
+                    </Button>
                   ) : (
                     <>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          switchCamera();
-                        }}
-                        className="flex items-center justify-center gap-2 py-3 px-4 bg-slate-700 hover:bg-slate-800 text-white rounded-xl font-medium shadow-lg transition-colors cursor-pointer w-full sm:w-auto"
-                      >
-                        <RefreshCw size={20} />
-                        <span>Kamera {facingMode === 'user' ? 'Depan' : 'Belakang'}</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          takePhoto();
-                        }}
-                        className="flex items-center justify-center gap-2 py-3 px-6 bg-green-600 hover:bg-green-700 text-white rounded-xl font-medium shadow-lg transition-colors cursor-pointer w-full sm:w-auto"
-                      >
-                        <Camera size={20} />
-                        <span>Ambil Foto</span>
-                      </button>
+                      <Button type="button" variant="secondary" className="min-h-11 w-full gap-2 sm:w-auto" onClick={() => switchCamera()}>
+                        <RefreshCw size={20} aria-hidden="true" />
+                        Kamera {facingMode === 'user' ? 'Depan' : 'Belakang'}
+                      </Button>
+                      <Button type="button" className="min-h-11 w-full gap-2 bg-emerald-600 hover:bg-emerald-700 sm:w-auto" onClick={() => takePhoto()}>
+                        <Camera size={20} aria-hidden="true" />
+                        Ambil Foto
+                      </Button>
                     </>
                   )}
                 </div>
@@ -745,14 +980,7 @@ export default function Attend() {
                 </p>
                 
                 <div className="w-full space-y-3">
-                  <Button
-                    size="lg"
-                    onClick={handleCheckIn}
-                    disabled={loading || !location || !!gpsError}
-                    className="w-full py-6 font-bold text-lg shadow-lg shadow-indigo-200 dark:shadow-indigo-900/20"
-                  >
-                    {loading ? 'Memproses...' : 'Kirim Data Absensi'}
-                  </Button>
+                  {/* [UX] A-02 — CTA kirim hanya di sticky footer mobile/desktop */}
                   <div className="grid grid-cols-2 gap-3">
                     <Button
                       variant="outline"
@@ -786,8 +1014,23 @@ export default function Attend() {
                 </div>
               </div>
             )}
-          </div>
+          </AttendStepPanel>
         </div>
+
+        {/* [IxD] A-02 — satu CTA kirim utama (sticky mobile, inline desktop) */}
+        {attendStep === 'photo' && photoBlob && (
+          <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white/95 p-4 backdrop-blur dark:border-zinc-700 dark:bg-zinc-900/95 sm:static sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
+            <Button
+              size="lg"
+              onClick={handleCheckIn}
+              disabled={loading || !location || !!gpsError}
+              className="min-h-12 w-full py-6 text-lg font-bold shadow-lg"
+              aria-busy={loading}
+            >
+              {loading ? 'Memproses…' : 'Kirim absensi'}
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

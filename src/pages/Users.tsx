@@ -15,6 +15,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import AdminPageShell from '@/components/AdminPageShell';
+import { MobileTableHint } from '@/components/ui/MobileTableHint';
+import { useSwrPageState } from '@/hooks/useSwrPageState';
+import { ErrorWithRetry } from '@/components/ErrorWithRetry';
+import { Skeleton } from '@/components/ui/skeleton';
 import type { User } from '@/types/user';
 import type { PaginationMeta } from '@/types/common';
 
@@ -71,7 +75,9 @@ export default function Users() {
     status: statusFilter
   });
 
-  const { data, error, isLoading: loading, isValidating, mutate } = useSWR(`/users?${queryParams.toString()}`, fetcher, { revalidateOnFocus: false });
+  const swr = useSWR(`/users?${queryParams.toString()}`, fetcher, { revalidateOnFocus: false });
+  const { isInitialLoading: loading, isError, retry } = useSwrPageState(swr);
+  const { data, mutate, isValidating } = swr;
 
   const users: User[] = Array.isArray(data?.data) ? data.data : [];
   const meta: PaginationMeta | null = data?.meta || null;
@@ -295,7 +301,61 @@ export default function Users() {
         </div>
 
         <div className="p-4">
-          <Table>
+          {isError ? (
+            <ErrorWithRetry title="Gagal memuat pengguna" error={swr.error} onRetry={retry} />
+          ) : (
+          <>
+          {/* [UX] #11 — daftar kartu di mobile */}
+          <ul className="space-y-3 md:hidden" aria-label="Daftar pengguna">
+            {loading
+              ? Array.from({ length: 4 }).map((_, i) => (
+                  <li key={i} className="rounded-2xl border border-slate-200 p-4 dark:border-zinc-800">
+                    <Skeleton className="mb-2 h-5 w-40" />
+                    <Skeleton className="h-4 w-56" />
+                    <Skeleton className="mt-3 h-9 w-full" />
+                  </li>
+                ))
+              : filteredUsers.map((user) => (
+              <li key={user.id} className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+                <p className="font-bold text-slate-900 dark:text-white">{user.name}</p>
+                <p className="text-sm text-slate-500">{user.email}</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <Badge variant="secondary">{user.role}</Badge>
+                  <Badge variant={user.is_active ? 'success' : 'destructive'}>{user.is_active ? 'Aktif' : 'Nonaktif'}</Badge>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {user.device_fingerprint ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="min-h-11 flex-1 border-orange-200 text-orange-600"
+                      onClick={() => openResetConfirm(user.id)}
+                    >
+                      Reset perangkat
+                    </Button>
+                  ) : null}
+                  <Button type="button" size="sm" variant="outline" className="min-h-11 flex-1" onClick={() => handleOpenModal(user)}>
+                    Edit
+                  </Button>
+                  {currentUser?.role === 'SUPER_ADMIN' && currentUser?.id !== user.id ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="destructive"
+                      className="min-h-11 flex-1"
+                      onClick={() => openDeleteConfirm(user.id)}
+                    >
+                      Hapus
+                    </Button>
+                  ) : null}
+                </div>
+              </li>
+            ))}
+          </ul>
+
+          <MobileTableHint />
+          <Table className="hidden md:table">
             <TableHeader>
               <TableRow>
                 <TableHead>Nama &amp; Email</TableHead>
@@ -414,6 +474,8 @@ export default function Users() {
               )}
             </TableBody>
           </Table>
+          </>
+          )}
         </div>
 
         {meta && meta.totalPages > 1 && (

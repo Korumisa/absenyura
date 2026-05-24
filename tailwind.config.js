@@ -15,6 +15,10 @@ export default {
         display: ['"Cormorant Garamond"', 'serif'],
       },
       colors: {
+        brand: {
+          DEFAULT: 'var(--brand-primary-hex)',
+          foreground: '#ffffff',
+        },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -50,6 +54,7 @@ export default {
         },
       },
       borderRadius: {
+        card: 'var(--radius-card)',
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",

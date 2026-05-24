@@ -16,6 +16,10 @@ import type { Excuse } from '@/types/excuse';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { formatClassLabel } from '@/lib/classLabel';
+import AdminPageShell from '@/components/AdminPageShell';
+import { MobileTableHint } from '@/components/ui/MobileTableHint';
+import { Skeleton } from '@/components/ui/skeleton';
+import { excuseStatusLabel } from '@/lib/sessionStatusLabel';
 
 export default function Excuses() {
   const { user: currentUser } = useAuthStore();
@@ -35,6 +39,7 @@ export default function Excuses() {
     description: '',
   });
   const [file, setFile] = useState<File | null>(null);
+  const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -46,12 +51,20 @@ export default function Excuses() {
       return;
     }
     setFile(f);
+    if (filePreviewUrl) URL.revokeObjectURL(filePreviewUrl);
+    setFilePreviewUrl(f.type.startsWith('image/') ? URL.createObjectURL(f) : null);
   };
 
   const clearFile = () => {
     setFile(null);
+    if (filePreviewUrl) URL.revokeObjectURL(filePreviewUrl);
+    setFilePreviewUrl(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
+
+  useEffect(() => () => {
+    if (filePreviewUrl) URL.revokeObjectURL(filePreviewUrl);
+  }, [filePreviewUrl]);
 
   const fetcher = (url: string) => api.get(url).then(res => res.data.data);
   const { data: excuses = [], error, isLoading: loading, mutate } = useSWR<Excuse[]>('/excuses', fetcher, { revalidateOnFocus: false });
@@ -189,26 +202,29 @@ export default function Excuses() {
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-        <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Pengajuan Izin & Sakit</h1>
-        <div className="flex flex-wrap items-center gap-3">
+    <AdminPageShell
+      title="Pengajuan Izin & Sakit"
+      description={currentUser?.role === 'USER' ? 'Ajukan izin atau sakit untuk sesi yang Anda lewatkan.' : 'Tinjau dan setujui pengajuan mahasiswa.'}
+      variant="plain"
+      icon={<FileText className="h-5 w-5" />}
+      actions={
+        <div className="flex flex-wrap gap-2">
           {currentUser?.role !== 'USER' ? (
-            <Button variant="outline" onClick={exportCsv} disabled={loading || filteredExcuses.length === 0}>
-              <Download className="w-4 h-4 mr-2" />
+            <Button variant="outline" className="min-h-11" onClick={exportCsv} disabled={loading || filteredExcuses.length === 0}>
+              <Download className="mr-2 h-4 w-4" aria-hidden="true" />
               Export CSV
             </Button>
           ) : null}
           {currentUser?.role === 'USER' ? (
-            <Button onClick={() => setIsModalOpen(true)}>
-              <Plus className="w-4 h-4 mr-2" />
-              Buat Pengajuan Baru
+            <Button className="min-h-11" onClick={() => setIsModalOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
+              Pengajuan baru
             </Button>
           ) : null}
         </div>
-      </div>
-
-      <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-800 overflow-hidden">
+      }
+    >
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
         <div className="p-4 border-b border-slate-200 dark:border-zinc-800 flex flex-col sm:flex-row gap-4">
           <div className="relative max-w-md flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
@@ -243,7 +259,61 @@ export default function Excuses() {
           </Select>
         </div>
 
-        <div className="overflow-x-auto">
+        <ul className="space-y-3 p-4 md:hidden" aria-label="Daftar pengajuan izin">
+          {loading
+            ? Array.from({ length: 3 }).map((_, i) => (
+                <li key={i} className="rounded-2xl border border-slate-200 p-4 dark:border-zinc-700">
+                  <Skeleton className="mb-2 h-5 w-40" />
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="mt-3 h-9 w-full" />
+                </li>
+              ))
+            : filteredExcuses.map((excuse) => (
+                <li key={excuse.id} className="rounded-2xl border border-slate-200 p-4 dark:border-zinc-700">
+                  {currentUser?.role !== 'USER' && (
+                    <p className="font-bold text-slate-900 dark:text-white">{excuse.user.name}</p>
+                  )}
+                  <p className="text-sm font-medium text-indigo-600">{excuse.session.title}</p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {format(new Date(excuse.session.session_start), 'dd MMM yyyy HH:mm', { locale: id })}
+                  </p>
+                  <div className="mt-2 flex items-center justify-between">
+                    <Badge variant={excuse.reason === 'SICK' ? 'destructive' : 'warning'}>
+                      {excuse.reason === 'SICK' ? 'Sakit' : 'Izin'}
+                    </Badge>
+                    <Badge
+                      variant={
+                        excuse.status === 'APPROVED' ? 'success' : excuse.status === 'REJECTED' ? 'destructive' : 'secondary'
+                      }
+                    >
+                      {excuseStatusLabel(excuse.status)}
+                    </Badge>
+                  </div>
+                  {currentUser?.role !== 'USER' && excuse.status === 'PENDING' ? (
+                    <div className="mt-3 flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="min-h-11 flex-1 border-emerald-200 text-emerald-700"
+                        onClick={() => handleReview(excuse.id, 'APPROVED')}
+                      >
+                        Terima
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="min-h-11 flex-1 border-red-200 text-red-700"
+                        onClick={() => handleReview(excuse.id, 'REJECTED')}
+                      >
+                        Tolak
+                      </Button>
+                    </div>
+                  ) : null}
+                </li>
+              ))}
+        </ul>
+
+        <div className="hidden overflow-x-auto md:block">
           <Table>
             <TableHeader className="bg-slate-50 dark:bg-zinc-950/50">
               <TableRow>
@@ -306,7 +376,7 @@ export default function Excuses() {
                         {excuse.status === 'APPROVED' && <CheckCircle2 size={12} />}
                         {excuse.status === 'REJECTED' && <XCircle size={12} />}
                         {excuse.status === 'PENDING' && <Clock size={12} />}
-                        {excuse.status}
+                        {excuseStatusLabel(excuse.status)}
                       </Badge>
                       {excuse.reviewer && (
                         <div className="text-[10px] text-slate-400 mt-1">Oleh: {excuse.reviewer.name}</div>
@@ -441,6 +511,12 @@ export default function Excuses() {
                       <div className="text-xs text-slate-500 dark:text-zinc-400">Gambar atau PDF</div>
                     </>
                   ) : (
+                    <div className="flex w-full flex-col gap-3">
+                      {filePreviewUrl ? (
+                        <img src={filePreviewUrl} alt="Pratinjau bukti" className="mx-auto max-h-40 rounded-lg object-contain" />
+                      ) : file.type === 'application/pdf' ? (
+                        <p className="text-sm text-slate-600 dark:text-zinc-400">Pratinjau PDF: buka setelah upload untuk memastikan isi dokumen benar.</p>
+                      ) : null}
                     <div className="flex w-full items-center justify-between gap-3">
                       <div className="min-w-0">
                         <div className="truncate text-sm font-medium text-slate-800 dark:text-zinc-200">{file.name}</div>
@@ -460,6 +536,7 @@ export default function Excuses() {
                         <X className="h-4 w-4" />
                       </Button>
                     </div>
+                    </div>
                   )}
                 </div>
               </div>
@@ -475,6 +552,6 @@ export default function Excuses() {
           </form>
         </DialogContent>
       </Dialog>
-    </div>
+    </AdminPageShell>
   );
 }

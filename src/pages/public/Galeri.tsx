@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 import PublicLayout from '@/components/PublicLayout';
 import useSWR from 'swr';
 import api from '@/services/api';
@@ -23,6 +24,8 @@ export default function Galeri() {
 
   const [activeAlbumId, setActiveAlbumId] = useState<string | null>(null);
   const [lightbox, setLightbox] = useState<{ albumId: string; index: number } | null>(null);
+  const lightboxDialogRef = useRef<HTMLDivElement>(null);
+  useDialogA11y(Boolean(lightbox), () => setLightbox(null), { containerRef: lightboxDialogRef }); // [A11y] P-02
   useLockBodyScroll(Boolean(lightbox));
 
   useEffect(() => {
@@ -156,7 +159,13 @@ export default function Galeri() {
             className="absolute inset-0 bg-black/70 backdrop-blur-[2px]"
             onClick={() => setLightbox(null)}
           />
-          <div role="dialog" aria-modal="true" className="relative w-full max-w-5xl overflow-hidden rounded-2xl bg-white shadow-[0_30px_80px_-45px_rgba(15,23,42,0.65)]">
+          <div
+            ref={lightboxDialogRef}
+            role="dialog"
+            aria-modal="true"
+            tabIndex={-1}
+            className="relative w-full max-w-5xl overflow-hidden rounded-2xl bg-white shadow-[0_30px_80px_-45px_rgba(15,23,42,0.65)] outline-none"
+          >
             <div className="flex items-center justify-between gap-4 border-b border-black/10 bg-white px-4 py-3 sm:px-6">
               <div className="min-w-0">
                 <div className="truncate text-sm font-extrabold tracking-tight text-slate-900">{lightboxAlbum.title}</div>

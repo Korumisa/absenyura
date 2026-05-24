@@ -148,11 +148,8 @@ export default function App() {
   }, [clearMaintenance, setMaintenance]);
 
   const getDefaultRoute = () => {
-    if (user?.role === 'SUPER_ADMIN') return '/dashboard';
-    if (user?.role === 'ADMIN') return '/dashboard';
     if (user?.role === 'CONTENT_ADMIN') return '/public-site/profile';
-    if (user?.role === 'USER') return '/dashboard';
-    return '/dashboard';
+    return '/dashboard'; // [IA] #10 — semua role akademik ke dashboard
   };
 
   return (

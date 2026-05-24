@@ -15,7 +15,6 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
   const primary = profile?.primary_color || '#2563eb';
   const location = useLocation();
   const showChat = location.pathname !== '/login';
-  const [prefetching, setPrefetching] = React.useState(false);
   const [showBootOverlay, setShowBootOverlay] = React.useState(false);
   const bootShownAt = React.useRef<number | null>(null);
   const rawPhone = String(profile?.phone ?? '').trim();
@@ -23,10 +22,10 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
   const waNumber = digits ? (digits.startsWith('0') ? `62${digits.slice(1)}` : digits) : '';
   const waUrl = waNumber ? `https://wa.me/${waNumber}` : '';
 
+  // [UX] overlay hanya saat profil pertama kali load — prefetch tidak memblokir UI
   React.useEffect(() => {
-    const raw = Boolean(prefetching || isLoadingProfile);
-    const minMs = 550;
-    if (raw) {
+    const needsOverlay = isLoadingProfile && !profile;
+    if (needsOverlay) {
       if (!showBootOverlay) {
         bootShownAt.current = Date.now();
         setShowBootOverlay(true);
@@ -34,19 +33,16 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
       return;
     }
     if (!showBootOverlay) return;
-    const startedAt = bootShownAt.current ?? Date.now();
-    const elapsed = Date.now() - startedAt;
-    const wait = Math.max(0, minMs - elapsed);
-    const t = window.setTimeout(() => setShowBootOverlay(false), wait);
+    const elapsed = Date.now() - (bootShownAt.current ?? Date.now());
+    const t = window.setTimeout(() => setShowBootOverlay(false), Math.max(0, 150 - elapsed));
     return () => window.clearTimeout(t);
-  }, [prefetching, isLoadingProfile, showBootOverlay]);
+  }, [isLoadingProfile, profile, showBootOverlay]);
 
   React.useEffect(() => {
     if (typeof window === 'undefined') return;
     const key = 'public-prefetch-v1';
     if (window.sessionStorage.getItem(key) === '1') return;
     window.sessionStorage.setItem(key, '1');
-    setPrefetching(true);
 
     const urls = [
       '/public-site/profile',
@@ -59,11 +55,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
       '/public-site/posts?type=LOMBA&page=1&pageSize=6',
       '/public-site/posts?type=KEGIATAN&page=1&pageSize=9',
     ];
-
-    const minDelay = new Promise((r) => setTimeout(r, 450));
-    Promise.allSettled(urls.map((url) => mutate(url, fetcher(url), { revalidate: false })))
-      .then(() => minDelay)
-      .finally(() => setPrefetching(false));
+    void Promise.allSettled(urls.map((url) => mutate(url, fetcher(url), { revalidate: false })));
   }, [mutate]);
 
   return (
@@ -71,8 +63,14 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
       className="flex min-h-screen flex-col overflow-x-hidden bg-white font-sans text-slate-900 selection:bg-blue-200/60 selection:text-slate-900"
       style={{ ['--public-primary' as any]: primary }}
     >
+      <a
+        href="#public-main"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-[var(--public-primary)]"
+      >
+        Lewati ke konten utama
+      </a>
       <PublicNavbar />
-      <main className="flex flex-1 flex-col pt-[4.25rem]">
+      <main id="public-main" className="flex flex-1 flex-col pt-[4.25rem]">
         {children}
       </main>
       <PublicFooter />

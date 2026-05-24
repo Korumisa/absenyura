@@ -4,6 +4,11 @@
 
 @layer base {
   :root {
+    /* Design tokens — admin & publik (#10) */
+    --brand-primary: 47 96% 53%;
+    --brand-primary-hex: #2f80ed;
+    --radius-card: 1rem;
+
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
 
@@ -70,8 +75,7 @@
   html {
     scroll-behavior: smooth;
     overflow-x: hidden;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
+    /* [A11y] #17 — jangan sembunyikan scrollbar global */
   }
 
   * {
@@ -80,14 +84,13 @@
   body {
     @apply bg-background text-foreground;
     overflow-x: hidden;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
   }
-}
 
-html::-webkit-scrollbar,
-body::-webkit-scrollbar {
-  display: none;
+  /* [A11y] focus ring konsisten */
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
 }
 
 @layer utilities {
@@ -100,27 +103,24 @@ body::-webkit-scrollbar {
   }
 }
 
-/* Custom Scanner Styles */
-#qr-reader {
+/* [UX] #5 — scope QR scanner styles ke halaman Attend saja */
+.attend-qr-root #qr-reader {
   display: flex !important;
   flex-direction: column !important;
 }
-/* Memaksa wrapper dashboard pertama untuk pindah ke bawah */
-#qr-reader > div:first-child {
+.attend-qr-root #qr-reader > div:first-child {
   order: 2 !important;
 }
-/* Memaksa wrapper video (scan region) untuk pindah ke atas */
-#qr-reader > div:nth-child(2) {
+.attend-qr-root #qr-reader > div:nth-child(2) {
   order: 1 !important;
 }
-
-#qr-reader__scan_region {
+.attend-qr-root #qr-reader__scan_region {
   order: 1 !important;
   position: relative;
   z-index: 1;
   height: 100% !important;
 }
-#qr-reader__dashboard {
+.attend-qr-root #qr-reader__dashboard {
   order: 2 !important;
   display: flex !important;
   flex-direction: column !important;
@@ -131,13 +131,13 @@ body::-webkit-scrollbar {
   position: relative;
   z-index: 10;
 }
-#qr-reader__dashboard_section_csr {
+.attend-qr-root #qr-reader__dashboard_section_csr {
   padding: 0 !important;
   background-color: transparent !important;
   border: none !important;
   color: inherit !important;
 }
-#qr-reader__dashboard_section_csr span button {
+.attend-qr-root #qr-reader__dashboard_section_csr span button {
   background-color: #4f46e5 !important;
   color: white !important;
   border: none !important;
@@ -147,11 +147,12 @@ body::-webkit-scrollbar {
   cursor: pointer !important;
   font-weight: 600 !important;
   width: 100% !important;
+  min-height: 44px;
 }
-#qr-reader__dashboard_section_csr span button:hover {
+.attend-qr-root #qr-reader__dashboard_section_csr span button:hover {
   background-color: #4338ca !important;
 }
-#qr-reader__dashboard_section_swaplink {
+.attend-qr-root #qr-reader__dashboard_section_swaplink {
   color: #ffffff !important;
   background-color: #334155 !important;
   text-decoration: none !important;
@@ -161,11 +162,12 @@ body::-webkit-scrollbar {
   padding: 10px !important;
   border-radius: 8px !important;
   font-weight: 600 !important;
+  min-height: 44px;
 }
-#qr-reader__dashboard_section_swaplink:hover {
+.attend-qr-root #qr-reader__dashboard_section_swaplink:hover {
   background-color: #475569 !important;
 }
-select#qr-reader__dashboard_section_csr_select {
+.attend-qr-root select#qr-reader__dashboard_section_csr_select {
   width: 100%;
   padding: 8px;
   border-radius: 6px;
@@ -173,4 +175,16 @@ select#qr-reader__dashboard_section_csr_select {
   color: white;
   border: 1px solid #475569;
   margin-bottom: 10px;
+}
+
+/* [A11y] P2 — hormati prefers-reduced-motion untuk transisi CSS global */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

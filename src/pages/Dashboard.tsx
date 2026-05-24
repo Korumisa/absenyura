@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useMemo, useState } from "react";
+import { useNavigate } from 'react-router-dom';
 import useSWR from 'swr';
 import { useAuthStore } from '@/stores/authStore';
 import api from '@/services/api';
-import { Users, Calendar, CheckCircle2, Clock, MapPin, FileText, BarChart3 } from 'lucide-react';
+import { Users, Calendar, CheckCircle2, Clock, MapPin, FileText, BarChart3, QrCode, RefreshCw, AlertCircle } from 'lucide-react';
+import { getErrorMessage } from '@/lib/errorMessage';
 import {
   BarChart,
   Bar,
@@ -19,6 +21,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { formatClassLabel } from '@/lib/classLabel';
+import { sessionStatusLabel } from '@/lib/sessionStatusLabel';
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -27,14 +30,20 @@ const COLORS = ['#4f46e5', '#f59e0b', '#ef4444'];
 
 export default function Dashboard() {
   const user = useAuthStore((state) => state.user);
+  const navigate = useNavigate();
   const [chartFilter, setChartFilter] = useState('ALL');
 
   const [dateRange, setDateRange] = useState('30');
 
   const fetcher = (url: string) => api.get(url).then(res => res.data.data);
-  const { data, error, isLoading: loading } = useSWR(user?.id ? `/dashboard?range=${dateRange}` : null, fetcher, { revalidateOnFocus: false });
+  const { data, error, isLoading: loading, isValidating, mutate } = useSWR(user?.id ? `/dashboard?range=${dateRange}` : null, fetcher, { revalidateOnFocus: false });
 
-  if (loading || !data) {
+  const activeSession = useMemo(() => {
+    const sessions = data?.recent_sessions ?? [];
+    return sessions.find((s: { status?: string }) => s.status === 'ACTIVE') ?? null;
+  }, [data?.recent_sessions]);
+
+  if (loading && !data) {
     return (
       <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-8">
         <div className="mb-8">
@@ -61,6 +70,25 @@ export default function Dashboard() {
     );
   }
 
+  // [UX] #6 — error state, bukan skeleton tanpa akhir
+  if (error || !data) {
+    return (
+      <div className="mx-auto max-w-lg p-6 sm:p-8" role="alert">
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-center dark:border-red-900/50 dark:bg-red-950/30">
+          <AlertCircle className="mx-auto mb-4 h-12 w-12 text-red-500" aria-hidden="true" />
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white">Gagal memuat dashboard</h2>
+          <p className="mt-2 text-sm text-slate-600 dark:text-zinc-400">
+            {getErrorMessage(error, 'Periksa koneksi internet Anda lalu coba lagi.')}
+          </p>
+          <Button type="button" className="mt-6 min-h-11" onClick={() => mutate()}>
+            <RefreshCw className="mr-2 h-4 w-4" aria-hidden="true" />
+            Muat ulang
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   const isUser = user?.role === 'USER';
 
   return (
@@ -75,16 +103,34 @@ export default function Dashboard() {
       {isUser ? (
         // ================= USER DASHBOARD (Modern & Clean) =================
         <div className="space-y-8">
-          {/* Welcome Banner */}
-          <div className="bg-gradient-to-r from-indigo-600 to-violet-600 rounded-3xl p-6 sm:p-10 text-white shadow-xl relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 blur-[80px] rounded-full pointer-events-none"></div>
-            <div className="relative z-10">
-              <h2 className="text-3xl sm:text-4xl font-extrabold mb-2">Halo, {user?.name}! 👋</h2>
-              <p className="text-indigo-100 text-lg max-w-xl">
-                Ini adalah ringkasan kehadiranmu. Pertahankan terus persentase kehadiranmu untuk hasil yang maksimal di akhir semester.
+          {/* [UX] quick action — sesi aktif */}
+          {activeSession ? (
+            <section className="rounded-3xl border-2 border-indigo-500 bg-gradient-to-r from-indigo-600 to-violet-600 p-6 text-white shadow-xl sm:p-8" aria-label="Sesi absensi aktif">
+              <p className="text-sm font-semibold uppercase tracking-wide text-indigo-100">Sesi berlangsung sekarang</p>
+              <h2 className="mt-1 text-2xl font-extrabold sm:text-3xl">{activeSession.title}</h2>
+              <p className="mt-2 text-indigo-100">
+                {format(new Date(activeSession.session_start), 'EEEE, dd MMM · HH:mm', { locale: id })} WIB
               </p>
+              <Button
+                type="button"
+                size="lg"
+                className="mt-6 min-h-12 w-full bg-white font-bold text-indigo-700 hover:bg-indigo-50 sm:w-auto"
+                onClick={() => navigate(`/attend?session=${activeSession.id}`)}
+              >
+                <QrCode className="mr-2 h-5 w-5" aria-hidden="true" />
+                Absen sekarang
+              </Button>
+            </section>
+          ) : (
+            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-indigo-600 to-violet-600 p-6 text-white shadow-xl sm:p-10">
+              <div className="relative z-10">
+                <h2 className="mb-2 text-3xl font-extrabold sm:text-4xl">Halo, {user?.name}!</h2>
+                <p className="max-w-xl text-lg text-indigo-100">
+                  Ringkasan kehadiranmu. Pertahankan persentase kehadiran untuk hasil maksimal di akhir semester.
+                </p>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Stats Grid */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
@@ -120,7 +166,7 @@ export default function Dashboard() {
               <div className="flex items-end gap-2">
                 <p className="text-3xl font-extrabold text-slate-800 dark:text-white">{data?.stats.percentage}%</p>
                 <span className={`text-xs font-bold mb-1.5 ${data?.stats.percentage >= 80 ? 'text-green-500' : 'text-red-500'}`}>
-                  {data?.stats.percentage >= 80 ? 'Aman' : 'Bahaya'}
+                  {data?.stats.percentage >= 80 ? 'Aman' : 'Perlu perhatian'}
                 </span>
               </div>
             </div>
@@ -134,7 +180,59 @@ export default function Dashboard() {
                 </span>
               </div>
               
-              <div className="overflow-x-auto">
+              {/* [UX] D-01 — kartu mobile jadwal sesi */}
+              <ul className="space-y-3 p-4 md:hidden" aria-label="Jadwal sesi terdekat">
+                {!data?.recent_sessions?.length ? (
+                  <li className="py-8 text-center text-slate-500">Belum ada sesi terdekat.</li>
+                ) : (
+                  data.recent_sessions.map((session: any) => (
+                    <li key={session.id} className="rounded-2xl border border-slate-200 p-4 dark:border-zinc-800">
+                      <p className="font-bold text-slate-900 dark:text-white">{session.title}</p>
+                      <p className="text-sm text-indigo-600 dark:text-indigo-400">
+                        {(() => {
+                          const labels = (session.session_classes ?? []).map((x: any) => formatClassLabel(x?.class)).filter(Boolean);
+                          if (labels.length) return labels.join(', ');
+                          return session.class ? formatClassLabel(session.class) : 'Semua Mahasiswa';
+                        })()}
+                      </p>
+                      <p className="mt-2 text-sm text-slate-600 dark:text-zinc-400">
+                        {format(new Date(session.session_start), 'dd MMM yyyy · HH:mm', { locale: id })} WIB
+                      </p>
+                      <p className="text-xs text-slate-500 truncate">
+                        {typeof session.location === 'object' ? session.location?.name : session.location || '-'}
+                      </p>
+                      <div className="mt-3">
+                        {session.status === 'ACTIVE' ? (
+                          session.attendances?.length > 0 ? (
+                            session.attendances[0].check_out_time || !session.require_checkout ? (
+                              <Badge variant="success">Sudah absen</Badge>
+                            ) : (
+                              <Button
+                                className="min-h-11 w-full bg-amber-500 hover:bg-amber-600"
+                                onClick={() =>
+                                  navigate(
+                                    `/attend?session=${session.id}&checkout=true&attendance=${session.attendances[0].id}`,
+                                  )
+                                }
+                              >
+                                Check-out
+                              </Button>
+                            )
+                          ) : (
+                            <Button className="min-h-11 w-full" onClick={() => navigate(`/attend?session=${session.id}`)}>
+                              Scan QR absen
+                            </Button>
+                          )
+                        ) : (
+                          <Badge variant="secondary">Belum mulai</Badge>
+                        )}
+                      </div>
+                    </li>
+                  ))
+                )}
+              </ul>
+
+              <div className="hidden overflow-x-auto md:block">
                 <Table>
                   <TableHeader className="bg-slate-50 dark:bg-zinc-950/50">
                     <TableRow>
@@ -201,16 +299,20 @@ export default function Dashboard() {
                                       <Badge variant="success" className="px-3 py-1 bg-green-100 text-green-700">Sudah Absen</Badge>
                                     ) : (
                                       <Button 
-                                        onClick={() => window.location.href = `/attend?session=${session.id}&checkout=true`}
-                                        className="shadow-lg shadow-amber-600/20 bg-amber-500 hover:bg-amber-600 text-white text-xs px-3 py-1.5 h-auto"
+                                        onClick={() =>
+                                          navigate(
+                                            `/attend?session=${session.id}&checkout=true&attendance=${session.attendances[0].id}`,
+                                          )
+                                        }
+                                        className="h-auto min-h-11 bg-amber-500 px-3 py-1.5 text-xs text-white shadow-lg shadow-amber-600/20 hover:bg-amber-600"
                                       >
                                         Checkout
                                       </Button>
                                     )
                                   ) : (
                                     <Button 
-                                      onClick={() => window.location.href = `/attend?session=${session.id}`}
-                                      className="shadow-lg shadow-indigo-600/20 bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3 py-1.5 h-auto"
+                                      onClick={() => navigate(`/attend?session=${session.id}`)}
+                                      className="h-auto min-h-11 bg-indigo-600 px-3 py-1.5 text-xs text-white shadow-lg shadow-indigo-600/20 hover:bg-indigo-700"
                                     >
                                       Scan QR Absen
                                     </Button>
@@ -320,7 +422,12 @@ export default function Dashboard() {
                 </div>
               </div>
               
-              <div className="h-80 w-full min-h-[320px]">
+              <div className="relative h-80 w-full min-h-[320px]" aria-busy={isValidating}>
+                {isValidating ? (
+                  <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-white/60 dark:bg-zinc-900/60">
+                    <p className="text-sm font-medium text-slate-600 dark:text-zinc-300">Memperbarui grafik…</p>
+                  </div>
+                ) : null}
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={data?.chart_data} margin={{ top: 5, right: 12, left: 0, bottom: 8 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" opacity={0.5} />
@@ -412,7 +519,7 @@ export default function Dashboard() {
                                   session.status === 'UPCOMING' ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800' : 
                                   'bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'}`}
                               >
-                                {session.status}
+                                {sessionStatusLabel(session.status)}
                               </Badge>
                             </div>
                           </TableCell>

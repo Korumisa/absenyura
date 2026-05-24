@@ -5,6 +5,8 @@ import useSWR from 'swr';
 import api from '@/services/api';
 import type { PublicProfile } from '@/types/publicSite';
 import { AnimatePresence, motion } from 'framer-motion';
+import { useReducedMotion } from '@/lib/useReducedMotion';
+import { fadeTransition } from '@/lib/motionPresets';
 
 type NavItem = { label: string; to: string };
 type NavGroup = { label: string; items: NavItem[] };
@@ -13,6 +15,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Info',
     items: [
+      { label: 'Berita', to: '/berita' },
       { label: 'Informasi Umum', to: '/informasi' },
       { label: 'Informasi Lomba', to: '/informasi-lomba' },
     ],
@@ -26,30 +29,34 @@ const NAV_GROUPS: NavGroup[] = [
   },
   {
     label: 'Media',
-    items: [
-      { label: 'Galeri', to: '/galeri' },
-    ],
+    items: [{ label: 'Galeri', to: '/galeri' }],
   },
   {
     label: 'Recruitment',
-    items: [
-      { label: 'Open Recruitment', to: '/open-recruitment' },
-    ],
+    items: [{ label: 'Open Recruitment', to: '/open-recruitment' }],
   },
 ] as const;
 
 const NAV_ITEMS: NavItem[] = NAV_GROUPS.flatMap((g) => g.items);
+
+/** [IA] #12 — menu mobile datar, tanpa accordion bertingkat */
+const MOBILE_NAV: NavItem[] = [
+  { label: 'Beranda', to: '/' },
+  { label: 'Berita', to: '/berita' },
+  { label: 'Informasi Umum', to: '/informasi' },
+  { label: 'Informasi Lomba', to: '/informasi-lomba' },
+  { label: 'Struktur Organisasi', to: '/struktur-organisasi' },
+  { label: 'Program Kerja', to: '/program-kerja' },
+  { label: 'Galeri', to: '/galeri' },
+  { label: 'Open Recruitment', to: '/open-recruitment' },
+];
 
 function BrandMark() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
   const { data: profile } = useSWR<PublicProfile | null>('/public-site/profile', fetcher, { revalidateOnFocus: false });
   const src = profile?.logo_light_url || profile?.logo_dark_url || '/3.%20HM%20SDP.png';
   return (
-    <img
-      src={src}
-      alt="Logo"
-      className="h-10 w-10 object-contain"
-    />
+    <img src={src} alt="Logo organisasi" className="h-10 w-10 object-contain" />
   );
 }
 
@@ -59,6 +66,7 @@ export default function PublicNavbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const location = useLocation();
+  const reducedMotion = useReducedMotion();
 
   React.useEffect(() => {
     setIsMobileMenuOpen(false);
@@ -80,11 +88,9 @@ export default function PublicNavbar() {
   const loginCta = useMemo(() => ({ to: '/login', label: 'Login' }), []);
 
   return (
-    <nav
-      className="fixed left-0 top-0 z-50 w-full border-b border-black/10 bg-white/85 shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] backdrop-blur-xl"
-    >
+    <nav className="fixed left-0 top-0 z-50 w-full border-b border-black/10 bg-white/85 shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] backdrop-blur-xl">
       <div className="mx-auto flex h-[4.25rem] max-w-7xl items-center justify-between px-4 sm:px-6">
-        <Link to="/" className="flex items-center gap-3">
+        <Link to="/" className="flex min-h-11 min-w-11 items-center gap-3">
           <BrandMark />
           <div className="hidden flex-col leading-tight md:flex">
             <div className="text-sm font-extrabold tracking-tight text-slate-900">
@@ -99,7 +105,7 @@ export default function PublicNavbar() {
         <div className="hidden items-center gap-8 md:flex">
           <Link
             to="/"
-            className={`rounded-full px-4 py-2 text-[15px] font-semibold transition ${
+            className={`min-h-11 rounded-full px-4 py-2 text-[15px] font-semibold transition ${
               location.pathname === '/'
                 ? 'bg-[var(--public-primary)]/10 text-[var(--public-primary)]'
                 : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
@@ -121,7 +127,7 @@ export default function PublicNavbar() {
                 <button
                   type="button"
                   onClick={() => setOpenGroup((x) => (x === g.label ? null : g.label))}
-                  className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[15px] font-semibold transition ${
+                  className={`inline-flex min-h-11 items-center gap-1.5 rounded-full px-4 py-2 text-[15px] font-semibold transition ${
                     isActive
                       ? 'bg-[var(--public-primary)]/10 text-[var(--public-primary)]'
                       : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
@@ -129,7 +135,7 @@ export default function PublicNavbar() {
                   aria-expanded={isOpen}
                 >
                   {g.label}
-                  <ChevronDown size={16} className={`transition-transform duration-200 ease-out ${isOpen ? 'rotate-180' : ''}`} />
+                  <ChevronDown size={16} className={`transition-transform duration-200 ease-out ${isOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
                 </button>
 
                 {isOpen ? (
@@ -141,14 +147,13 @@ export default function PublicNavbar() {
                           <Link
                             key={it.to}
                             to={it.to}
-                            className={`flex items-center justify-between rounded-xl px-3 py-2 text-sm font-semibold transition ${
+                            className={`flex min-h-11 items-center justify-between rounded-xl px-3 py-2 text-sm font-semibold transition ${
                               active
                                 ? 'bg-[var(--public-primary)]/10 text-[var(--public-primary)]'
                                 : 'text-slate-700 hover:bg-slate-50'
                             }`}
                           >
                             <span>{it.label}</span>
-                            <span className="text-xs font-bold opacity-50">{active ? '•' : ''}</span>
                           </Link>
                         );
                       })}
@@ -163,7 +168,7 @@ export default function PublicNavbar() {
         <div className="hidden items-center gap-4 md:flex">
           <Link
             to={loginCta.to}
-            className="rounded-full bg-[var(--public-primary)] px-6 py-2.5 text-sm font-semibold text-white shadow-[0_14px_26px_rgba(37,99,235,0.35)] transition hover:brightness-110"
+            className="min-h-11 rounded-full bg-[var(--public-primary)] px-6 py-2.5 text-sm font-semibold text-white shadow-[0_14px_26px_rgba(37,99,235,0.35)] transition hover:brightness-110"
           >
             {loginCta.label}
           </Link>
@@ -171,99 +176,113 @@ export default function PublicNavbar() {
 
         <button
           type="button"
-          className="inline-flex items-center justify-center rounded-lg p-2 text-slate-800 md:hidden"
+          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg p-2 text-slate-800 md:hidden"
           aria-expanded={isMobileMenuOpen}
+          aria-controls="public-mobile-nav"
           aria-label={isMobileMenuOpen ? 'Tutup menu' : 'Buka menu'}
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         >
-          <AnimatePresence initial={false} mode="wait">
-            {isMobileMenuOpen ? (
-              <motion.span
-                key="close"
-                initial={{ opacity: 0, rotate: -90, scale: 0.92 }}
-                animate={{ opacity: 1, rotate: 0, scale: 1 }}
-                exit={{ opacity: 0, rotate: 90, scale: 0.92 }}
-                transition={{ duration: 0.18, ease: 'easeOut' }}
-                className="inline-flex"
-              >
-                <X size={26} />
-              </motion.span>
-            ) : (
-              <motion.span
-                key="open"
-                initial={{ opacity: 0, rotate: 90, scale: 0.92 }}
-                animate={{ opacity: 1, rotate: 0, scale: 1 }}
-                exit={{ opacity: 0, rotate: -90, scale: 0.92 }}
-                transition={{ duration: 0.18, ease: 'easeOut' }}
-                className="inline-flex"
-              >
-                <Menu size={26} />
-              </motion.span>
-            )}
-          </AnimatePresence>
+          {reducedMotion ? (
+            isMobileMenuOpen ? <X size={26} aria-hidden="true" /> : <Menu size={26} aria-hidden="true" />
+          ) : (
+            <AnimatePresence initial={false} mode="wait">
+              {isMobileMenuOpen ? (
+                <motion.span
+                  key="close"
+                  initial={{ opacity: 0, rotate: -90 }}
+                  animate={{ opacity: 1, rotate: 0 }}
+                  exit={{ opacity: 0, rotate: 90 }}
+                  transition={fadeTransition(false)}
+                  className="inline-flex"
+                >
+                  <X size={26} aria-hidden="true" />
+                </motion.span>
+              ) : (
+                <motion.span
+                  key="open"
+                  initial={{ opacity: 0, rotate: 90 }}
+                  animate={{ opacity: 1, rotate: 0 }}
+                  exit={{ opacity: 0, rotate: -90 }}
+                  transition={fadeTransition(false)}
+                  className="inline-flex"
+                >
+                  <Menu size={26} aria-hidden="true" />
+                </motion.span>
+              )}
+            </AnimatePresence>
+          )}
         </button>
       </div>
 
-      <AnimatePresence>
-        {isMobileMenuOpen ? (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ type: 'spring', stiffness: 520, damping: 42, mass: 0.8 }}
-            className="absolute left-0 top-[4.25rem] flex max-h-[min(560px,calc(100vh-4.25rem))] w-full flex-col gap-6 overflow-y-auto border-t border-black/10 bg-white px-4 py-8 sm:px-6 md:hidden"
+      {reducedMotion ? (
+        isMobileMenuOpen ? (
+          <div
+            id="public-mobile-nav"
+            className="absolute left-0 top-[4.25rem] flex max-h-[min(70vh,calc(100vh-4.25rem))] w-full flex-col gap-1 overflow-y-auto border-t border-black/10 bg-white px-2 py-3 shadow-lg md:hidden"
+            role="dialog"
+            aria-label="Menu navigasi"
           >
-            <Link to="/" className="text-lg font-semibold tracking-tight text-slate-900">
-              Beranda
-            </Link>
-            {NAV_GROUPS.map((g) => {
-              const isOpen = openGroup === g.label;
+            {MOBILE_NAV.map((item) => {
+              const active = location.pathname === item.to || (item.to !== '/' && location.pathname.startsWith(item.to));
               return (
-                <div key={g.label} className="space-y-3">
-                  <button
-                    type="button"
-                    className="flex w-full items-center justify-between text-lg font-semibold tracking-tight text-slate-900"
-                    onClick={() => setOpenGroup((x) => (x === g.label ? null : g.label))}
-                    aria-expanded={isOpen}
-                  >
-                    <span>{g.label}</span>
-                    <ChevronDown size={20} className={`transition-transform duration-200 ease-out ${isOpen ? 'rotate-180' : ''}`} />
-                  </button>
-                  <AnimatePresence initial={false}>
-                    {isOpen ? (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.22, ease: 'easeOut' }}
-                        className="overflow-hidden"
-                      >
-                        <div className="grid gap-2 rounded-2xl border border-black/10 bg-white/70 p-3 backdrop-blur">
-                          {g.items.map((it) => (
-                            <Link
-                              key={it.to}
-                              to={it.to}
-                              className="rounded-xl px-3 py-2 text-sm font-semibold text-slate-700"
-                            >
-                              {it.label}
-                            </Link>
-                          ))}
-                        </div>
-                      </motion.div>
-                    ) : null}
-                  </AnimatePresence>
-                </div>
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  className={`flex min-h-11 items-center rounded-xl px-4 text-base font-semibold ${
+                    active ? 'bg-[var(--public-primary)]/10 text-[var(--public-primary)]' : 'text-slate-800'
+                  }`}
+                >
+                  {item.label}
+                </Link>
               );
             })}
-            <div className="h-px w-full bg-black/10" />
-            <div className="flex items-center justify-between">
-              <Link to={loginCta.to} className="rounded-full bg-[var(--public-primary)] px-5 py-2.5 text-sm font-semibold text-white">
+            <div className="my-2 h-px bg-black/10" />
+            <Link
+              to={loginCta.to}
+              className="mx-2 flex min-h-11 items-center justify-center rounded-full bg-[var(--public-primary)] px-5 text-sm font-semibold text-white"
+            >
+              {loginCta.label}
+            </Link>
+          </div>
+        ) : null
+      ) : (
+        <AnimatePresence>
+          {isMobileMenuOpen ? (
+            <motion.div
+              id="public-mobile-nav"
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={fadeTransition(false, 0.2)}
+              className="absolute left-0 top-[4.25rem] flex max-h-[min(70vh,calc(100vh-4.25rem))] w-full flex-col gap-1 overflow-y-auto border-t border-black/10 bg-white px-2 py-3 shadow-lg md:hidden"
+              role="dialog"
+              aria-label="Menu navigasi"
+            >
+              {MOBILE_NAV.map((item) => {
+                const active = location.pathname === item.to || (item.to !== '/' && location.pathname.startsWith(item.to));
+                return (
+                  <Link
+                    key={item.to}
+                    to={item.to}
+                    className={`flex min-h-11 items-center rounded-xl px-4 text-base font-semibold ${
+                      active ? 'bg-[var(--public-primary)]/10 text-[var(--public-primary)]' : 'text-slate-800'
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              })}
+              <div className="my-2 h-px bg-black/10" />
+              <Link
+                to={loginCta.to}
+                className="mx-2 flex min-h-11 items-center justify-center rounded-full bg-[var(--public-primary)] px-5 text-sm font-semibold text-white"
+              >
                 {loginCta.label}
               </Link>
-            </div>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+      )}
     </nav>
   );
 }

@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { PublicCategory, PublicPost, PublicPostType } from '@/types/publicSite';
 import { getErrorMessage } from '@/lib/errorMessage';
@@ -15,11 +16,31 @@ import { prepareImageForUpload } from '@/lib/imageUpload';
 import AdminPageShell from '@/components/AdminPageShell';
 import AdminCard from '@/components/AdminCard';
 import { Newspaper } from 'lucide-react';
+import { CmsTabNav, type CmsTabItem } from '@/components/ui/CmsTabNav';
+import { CmsPublishTabs } from '@/components/ui/CmsPublishTabs';
+import { MobileTableHint } from '@/components/ui/MobileTableHint';
+import PublicSitePostPreview from '@/components/publicSiteAdmin/PublicSitePostPreview';
+import { CmsViewSiteLink } from '@/components/cms/CmsViewSiteLink';
+import { CmsPreviewCollapsible } from '@/components/ui/CmsPreviewCollapsible';
+
+const POST_TYPE_TABS: readonly CmsTabItem<PublicPostType>[] = [
+  { id: 'BERITA', label: 'Berita' },
+  { id: 'KEGIATAN', label: 'Kegiatan' },
+  { id: 'LOMBA', label: 'Lomba' },
+  { id: 'PENGUMUMAN', label: 'Pengumuman' },
+];
+
+type ContentTab = 'edit' | 'list';
+const CONTENT_TABS: readonly CmsTabItem<ContentTab>[] = [
+  { id: 'edit', label: 'Tulis Konten' },
+  { id: 'list', label: 'Daftar' },
+];
 
 export default function PublicSitePosts() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
   const { data: categories = [], mutate: mutateCategories } = useSWR<PublicCategory[]>('/public-site/admin/categories', fetcher, { revalidateOnFocus: false });
   const [postType, setPostType] = useState<PublicPostType>('BERITA');
+  const [contentTab, setContentTab] = useState<ContentTab>('edit');
   const { data: posts = [], mutate: mutatePosts } = useSWR<PublicPost[]>(`/public-site/admin/posts?type=${postType}`, fetcher, { revalidateOnFocus: false });
 
   const [categoryForm, setCategoryForm] = useState<{ id?: string; name?: string; slug?: string }>({});
@@ -124,10 +145,29 @@ export default function PublicSitePosts() {
         toast.success('Konten ditambahkan');
       }
       resetPostForm();
+      setContentTab('list');
       mutatePosts();
     } catch (err: any) {
       toast.error(getErrorMessage(err, 'Gagal menyimpan konten'));
     }
+  };
+
+  const loadPostForEdit = (p: PublicPost) => {
+    setPostForm({
+      id: p.id,
+      type: p.type,
+      title: p.title,
+      slug: p.slug,
+      dateLabel: p.date_label ?? '',
+      status: p.status ?? '',
+      formUrl: p.form_url ?? '',
+      excerpt: p.excerpt ?? '',
+      content: p.content ?? '',
+      coverImageUrl: p.cover_image_url ?? '',
+      categoryId: p.category_id ?? p.category?.id,
+      isPublished: p.is_published,
+    });
+    setContentTab('edit');
   };
 
   const typeLabel = useMemo(() => {
@@ -141,31 +181,44 @@ export default function PublicSitePosts() {
     )[postType];
   }, [postType]);
 
+  const publicViewLink = useMemo(() => {
+    const map: Record<PublicPostType, { href: string; label: string }> = {
+      BERITA: { href: '/berita', label: 'Lihat berita publik' },
+      KEGIATAN: { href: '/kegiatan', label: 'Lihat kegiatan publik' },
+      LOMBA: { href: '/informasi-lomba', label: 'Lihat lomba publik' },
+      PENGUMUMAN: { href: '/berita', label: 'Lihat pengumuman publik' },
+    };
+    return map[postType];
+  }, [postType]);
+
   return (
     <AdminPageShell
       title="Konten Publik"
       description="Kelola konten untuk halaman publik."
       variant="plain"
       icon={<Newspaper size={22} />}
-      actions={
-        <div className="w-full sm:w-[260px]">
-          <Label>Jenis Konten</Label>
-          <Select value={postType} onValueChange={(v) => setPostType(v as PublicPostType)}>
-            <SelectTrigger className="mt-2">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="BERITA">Berita</SelectItem>
-              <SelectItem value="KEGIATAN">Kegiatan</SelectItem>
-              <SelectItem value="LOMBA">Informasi Lomba</SelectItem>
-              <SelectItem value="PENGUMUMAN">Pengumuman</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      }
+      actions={<CmsViewSiteLink href={publicViewLink.href} label={publicViewLink.label} />}
     >
+      <CmsTabNav<PublicPostType>
+        tabs={POST_TYPE_TABS}
+        value={postType}
+        onChange={setPostType}
+        ariaLabel="Jenis konten publik"
+      />
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <CmsTabNav<ContentTab>
+        tabs={CONTENT_TABS}
+        value={contentTab}
+        onChange={setContentTab}
+        ariaLabel="Bagian konten"
+      />
+      <p className="text-sm text-slate-500 dark:text-zinc-400" aria-live="polite">
+        Langkah: {contentTab === 'edit' ? '1 — Tulis konten' : '2 — Kelola daftar'}
+      </p>
+
+      {contentTab === 'edit' ? (
+      <div className="grid gap-6 xl:grid-cols-[1fr_minmax(280px,340px)]">
+      <div className="grid min-w-0 gap-6 lg:grid-cols-2">
         {postType === 'BERITA' || postType === 'KEGIATAN' ? (
           <AdminCard title="Kategori" description="Dipakai untuk Berita dan Kegiatan.">
             <form onSubmit={upsertCategory} className="grid gap-4">
@@ -187,7 +240,24 @@ export default function PublicSitePosts() {
               </div>
             </form>
 
-            <div className="mt-5 overflow-hidden rounded-lg border border-slate-200 dark:border-zinc-700">
+            <ul className="mt-5 space-y-3 md:hidden" aria-label="Daftar kategori">
+              {categories.map((c) => (
+                <li key={c.id} className="rounded-xl border border-slate-200 p-4 dark:border-zinc-700">
+                  <p className="font-semibold text-slate-900 dark:text-white">{c.name}</p>
+                  <p className="text-sm text-slate-500">{c.slug}</p>
+                  <div className="mt-3 flex gap-2">
+                    <Button variant="outline" size="sm" type="button" className="min-h-11 flex-1" onClick={() => setCategoryForm({ id: c.id, name: c.name, slug: c.slug })}>
+                      Edit
+                    </Button>
+                    <Button variant="destructive" size="sm" type="button" className="min-h-11 flex-1" onClick={() => openDelete('categories', c.id)}>
+                      Hapus
+                    </Button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+
+            <div className="mt-5 hidden overflow-hidden rounded-lg border border-slate-200 dark:border-zinc-700 md:block">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -284,17 +354,9 @@ export default function PublicSitePosts() {
                 />
               </div>
             ) : null}
-            <div className="space-y-2">
-              <Label>Publik</Label>
-              <Select value={(postForm.isPublished ?? false) ? 'true' : 'false'} onValueChange={(v) => setPostForm((p) => ({ ...p, isPublished: v === 'true' }))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="false">Draft</SelectItem>
-                  <SelectItem value="true">Publish</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="space-y-2 md:col-span-2">
+              <Label>Status publikasi</Label>
+              <CmsPublishTabs published={postForm.isPublished ?? false} onChange={(v) => setPostForm((p) => ({ ...p, isPublished: v }))} />
             </div>
             <div className="space-y-2 md:col-span-2">
               <Label>Ringkas</Label>
@@ -340,8 +402,41 @@ export default function PublicSitePosts() {
         </AdminCard>
       </div>
 
-      <AdminCard title="Daftar Konten" description="Klik Edit untuk mengisi form dari data yang sudah ada.">
-        <Table>
+      <CmsPreviewCollapsible>
+        <PublicSitePostPreview
+          type={(postForm.type ?? postType) as PublicPostType}
+          title={postForm.title}
+          excerpt={postForm.excerpt}
+          dateLabel={postForm.dateLabel}
+          coverImageUrl={postForm.coverImageUrl}
+          isPublished={postForm.isPublished}
+        />
+      </CmsPreviewCollapsible>
+      </div>
+      ) : (
+      <AdminCard title={`Daftar ${typeLabel}`} description="Klik Edit untuk mengisi form dari data yang sudah ada.">
+        <ul className="space-y-3 md:hidden" aria-label="Daftar konten">
+          {posts.map((p) => (
+            <li key={p.id} className="rounded-2xl border border-slate-200 p-4 dark:border-zinc-800">
+              <p className="font-bold text-slate-900 dark:text-white">{p.title}</p>
+              <p className="text-sm text-slate-500">{p.category?.name ?? p.type}</p>
+              <Badge className="mt-2" variant={p.is_published ? 'success' : 'secondary'}>
+                {p.is_published ? 'Publik' : 'Draft'}
+              </Badge>
+              <div className="mt-3 flex gap-2">
+                <Button variant="outline" size="sm" className="min-h-11 flex-1" type="button" onClick={() => loadPostForEdit(p)}>
+                  Edit
+                </Button>
+                <Button variant="destructive" size="sm" className="min-h-11" type="button" onClick={() => openDelete('posts', p.id)}>
+                  Hapus
+                </Button>
+              </div>
+            </li>
+          ))}
+        </ul>
+        <MobileTableHint />
+        <div className="hidden overflow-x-auto md:block">
+        <Table className="min-w-[640px]">
           <TableHeader>
             <TableRow>
               <TableHead>Judul</TableHead>
@@ -359,29 +454,11 @@ export default function PublicSitePosts() {
                 <TableCell>{p.type}</TableCell>
                 <TableCell>{p.category?.name ?? '-'}</TableCell>
                 <TableCell>{p.date_label ?? '-'}</TableCell>
-                <TableCell>{p.is_published ? 'Publish' : 'Draft'}</TableCell>
+                <TableCell>
+                  <Badge variant={p.is_published ? 'success' : 'secondary'}>{p.is_published ? 'Publik' : 'Draft'}</Badge>
+                </TableCell>
                 <TableCell className="text-right space-x-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    type="button"
-                    onClick={() => {
-                      setPostForm({
-                        id: p.id,
-                        type: p.type,
-                        title: p.title,
-                        slug: p.slug,
-                        dateLabel: p.date_label ?? '',
-                        status: p.status ?? '',
-                        formUrl: p.form_url ?? '',
-                        excerpt: p.excerpt ?? '',
-                        content: p.content ?? '',
-                        coverImageUrl: p.cover_image_url ?? '',
-                        categoryId: p.category_id ?? undefined,
-                        isPublished: p.is_published,
-                      });
-                    }}
-                  >
+                  <Button variant="outline" size="sm" type="button" onClick={() => loadPostForEdit(p)}>
                     Edit
                   </Button>
                   <Button variant="destructive" size="sm" type="button" onClick={() => openDelete('posts', p.id)}>
@@ -392,7 +469,9 @@ export default function PublicSitePosts() {
             ))}
           </TableBody>
         </Table>
+        </div>
       </AdminCard>
+      )}
 
       <ConfirmModal
         isOpen={isDeleteOpen}

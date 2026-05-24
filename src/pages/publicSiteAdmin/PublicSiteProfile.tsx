@@ -12,7 +12,21 @@ import { prepareImageForUpload } from '@/lib/imageUpload';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import AdminPageShell from '@/components/AdminPageShell';
 import AdminCard from '@/components/AdminCard';
+import PublicSiteProfilePreview from '@/components/publicSiteAdmin/PublicSiteProfilePreview';
 import { Globe } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { CmsTabNav, type CmsTabItem } from '@/components/ui/CmsTabNav';
+import { CmsPreviewCollapsible } from '@/components/ui/CmsPreviewCollapsible';
+import { CmsViewSiteLink } from '@/components/cms/CmsViewSiteLink';
+
+type ProfileTab = 'identity' | 'home' | 'visimisi' | 'contact';
+
+const PROFILE_TABS: readonly CmsTabItem<ProfileTab>[] = [
+  { id: 'identity', label: 'Identitas' },
+  { id: 'home', label: 'Beranda' },
+  { id: 'visimisi', label: 'Visi & Misi' },
+  { id: 'contact', label: 'Kontak & Sosial' },
+];
 
 export default function PublicSiteProfile() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
@@ -93,6 +107,12 @@ export default function PublicSiteProfile() {
     primaryColor: '#2563eb',
   });
 
+  const [dirty, setDirty] = useState(false);
+  const updateDraft = (updater: React.SetStateAction<Draft>) => {
+    setDirty(true);
+    setDraft(updater);
+  };
+
   useEffect(() => {
     if (!profile) return;
     setDraft({
@@ -128,6 +148,7 @@ export default function PublicSiteProfile() {
       homeImageUrl: profile.home_image_url ?? '',
       primaryColor: normalizeHexColor(profile.primary_color ?? ''),
     });
+    setDirty(false);
   }, [profile]);
 
   const [saving, setSaving] = useState(false);
@@ -139,6 +160,7 @@ export default function PublicSiteProfile() {
     misi: false,
   });
   const [isResetOpen, setIsResetOpen] = useState(false);
+  const [profileTab, setProfileTab] = useState<ProfileTab>('identity');
 
   const uploadImage = async (file: File) => {
     const prepared = await prepareImageForUpload(file, { maxBytes: 4 * 1024 * 1024, maxWidth: 1920, quality: 0.82 });
@@ -153,6 +175,7 @@ export default function PublicSiteProfile() {
     try {
       await api.put('/public-site/admin/profile', { data: draft });
       toast.success('Profil publik tersimpan');
+      setDirty(false);
       mutate();
     } catch (e: any) {
       toast.error(getErrorMessage(e, 'Gagal menyimpan'));
@@ -196,10 +219,17 @@ export default function PublicSiteProfile() {
       homeImageUrl: profile.home_image_url ?? '',
       primaryColor: normalizeHexColor(profile.primary_color ?? ''),
     });
+    setDirty(false);
   };
 
   return (
-    <AdminPageShell title="Profil Publik" description="Atur identitas, deskripsi, logo, dan tautan sosial media." variant="plain" icon={<Globe size={22} />}>
+    <AdminPageShell
+      title="Profil Publik"
+      description="Atur identitas, deskripsi, logo, dan tautan sosial media."
+      variant="plain"
+      icon={<Globe size={22} />}
+      actions={<CmsViewSiteLink href="/" />}
+    >
       <ConfirmModal
         isOpen={isResetOpen}
         onClose={() => setIsResetOpen(false)}
@@ -215,22 +245,26 @@ export default function PublicSiteProfile() {
       />
 
       <AdminCard title="Pengaturan Profil" description="Data ini dipakai untuk halaman public, termasuk tombol WhatsApp." className="">
-        <div className="grid gap-5 md:grid-cols-2">
+        <div className="grid gap-6 xl:grid-cols-[1fr_minmax(280px,340px)]">
+          <div className="min-w-0 space-y-5">
+            <CmsTabNav<ProfileTab> tabs={PROFILE_TABS} value={profileTab} onChange={setProfileTab} ariaLabel="Bagian profil" />
+
+        <div className={cn('grid gap-5 md:grid-cols-2', profileTab !== 'identity' && 'hidden')}>
           <div className="space-y-2">
             <Label>Nama Organisasi</Label>
-            <Input value={draft.orgName} onChange={(e) => setDraft((p) => ({ ...p, orgName: e.target.value }))} />
+            <Input value={draft.orgName} onChange={(e) => updateDraft((p) => ({ ...p, orgName: e.target.value }))} />
           </div>
           <div className="space-y-2">
             <Label>Nama Kampus</Label>
-            <Input value={draft.campusName} onChange={(e) => setDraft((p) => ({ ...p, campusName: e.target.value }))} />
+            <Input value={draft.campusName} onChange={(e) => updateDraft((p) => ({ ...p, campusName: e.target.value }))} />
           </div>
           <div className="space-y-2">
             <Label>Nama Kabinet</Label>
-            <Input value={draft.kabinetName} onChange={(e) => setDraft((p) => ({ ...p, kabinetName: e.target.value }))} placeholder="Contoh: Aksara Muda" />
+            <Input value={draft.kabinetName} onChange={(e) => updateDraft((p) => ({ ...p, kabinetName: e.target.value }))} placeholder="Contoh: Aksara Muda" />
           </div>
           <div className="space-y-2">
             <Label>Periode Kabinet</Label>
-            <Input value={draft.kabinetPeriod} onChange={(e) => setDraft((p) => ({ ...p, kabinetPeriod: e.target.value }))} placeholder="Contoh: 2026/2027" />
+            <Input value={draft.kabinetPeriod} onChange={(e) => updateDraft((p) => ({ ...p, kabinetPeriod: e.target.value }))} placeholder="Contoh: 2026/2027" />
           </div>
           <div className="space-y-2">
             <Label>Warna Utama</Label>
@@ -238,35 +272,38 @@ export default function PublicSiteProfile() {
               <Input
                 type="color"
                 value={normalizeHexColor(draft.primaryColor)}
-                onChange={(e) => setDraft((p) => ({ ...p, primaryColor: e.target.value }))}
+                onChange={(e) => updateDraft((p) => ({ ...p, primaryColor: e.target.value }))}
                 className="h-10 w-14 p-1"
               />
               <Input
                 value={draft.primaryColor}
-                onChange={(e) => setDraft((p) => ({ ...p, primaryColor: e.target.value }))}
+                onChange={(e) => updateDraft((p) => ({ ...p, primaryColor: e.target.value }))}
                 placeholder="#2563eb"
               />
             </div>
           </div>
           <div className="space-y-2 md:col-span-2">
             <Label>Hero Subtitle</Label>
-            <Textarea value={draft.heroSubtitle} onChange={(e) => setDraft((p) => ({ ...p, heroSubtitle: e.target.value }))} />
+            <Textarea value={draft.heroSubtitle} onChange={(e) => updateDraft((p) => ({ ...p, heroSubtitle: e.target.value }))} />
           </div>
           <div className="space-y-2 md:col-span-2">
             <Label>Embed URL (YouTube / TikTok / Instagram)</Label>
             <Input
               value={draft.youtubeEmbedUrl}
-              onChange={(e) => setDraft((p) => ({ ...p, youtubeEmbedUrl: e.target.value }))}
+              onChange={(e) => updateDraft((p) => ({ ...p, youtubeEmbedUrl: e.target.value }))}
               placeholder="Link post / link embed"
             />
           </div>
+        </div>
+
+        <div className={cn('grid gap-5 md:grid-cols-2', profileTab !== 'home' && 'hidden')}>
           <div className="space-y-2 md:col-span-2">
             <Label>Judul “Tentang”</Label>
-            <Input value={draft.aboutTitle} onChange={(e) => setDraft((p) => ({ ...p, aboutTitle: e.target.value }))} />
+            <Input value={draft.aboutTitle} onChange={(e) => updateDraft((p) => ({ ...p, aboutTitle: e.target.value }))} />
           </div>
           <div className="space-y-2 md:col-span-2">
             <Label>Konten “Tentang”</Label>
-            <Textarea value={draft.aboutContent} onChange={(e) => setDraft((p) => ({ ...p, aboutContent: e.target.value }))} />
+            <Textarea value={draft.aboutContent} onChange={(e) => updateDraft((p) => ({ ...p, aboutContent: e.target.value }))} />
             <div className="text-xs text-slate-500 dark:text-zinc-400">Pisahkan paragraf dengan baris baru (Enter).</div>
           </div>
           <div className="space-y-2 md:col-span-2">
@@ -274,23 +311,23 @@ export default function PublicSiteProfile() {
             <div className="grid gap-3 md:grid-cols-2">
               <Input
                 value={draft.homeCardLeftTitle}
-                onChange={(e) => setDraft((p) => ({ ...p, homeCardLeftTitle: e.target.value }))}
+                onChange={(e) => updateDraft((p) => ({ ...p, homeCardLeftTitle: e.target.value }))}
                 placeholder="Judul paragraf kiri"
               />
               <Input
                 value={draft.homeCardRightTitle}
-                onChange={(e) => setDraft((p) => ({ ...p, homeCardRightTitle: e.target.value }))}
+                onChange={(e) => updateDraft((p) => ({ ...p, homeCardRightTitle: e.target.value }))}
                 placeholder="Judul paragraf kanan"
               />
               <Textarea
                 value={draft.homeCardLeftBody}
-                onChange={(e) => setDraft((p) => ({ ...p, homeCardLeftBody: e.target.value }))}
+                onChange={(e) => updateDraft((p) => ({ ...p, homeCardLeftBody: e.target.value }))}
                 placeholder="Isi paragraf kiri"
                 className="min-h-[110px]"
               />
               <Textarea
                 value={draft.homeCardRightBody}
-                onChange={(e) => setDraft((p) => ({ ...p, homeCardRightBody: e.target.value }))}
+                onChange={(e) => updateDraft((p) => ({ ...p, homeCardRightBody: e.target.value }))}
                 placeholder="Isi paragraf kanan"
                 className="min-h-[110px]"
               />
@@ -298,22 +335,72 @@ export default function PublicSiteProfile() {
             <div className="text-xs text-slate-500 dark:text-zinc-400">Ini akan tampil sebagai 2 kartu paragraf di beranda.</div>
           </div>
           <div className="space-y-2 md:col-span-2">
+            <Label>Foto Anggota (URL)</Label>
+            <Input value={draft.homeImageUrl} onChange={(e) => updateDraft((p) => ({ ...p, homeImageUrl: e.target.value }))} placeholder="https://..." />
+          </div>
+          <div className="space-y-2 md:col-span-2">
+            <Label>Upload Foto Anggota</Label>
+            <div className="grid gap-3 md:grid-cols-[1fr_220px]">
+              <div className="space-y-2">
+                <Input
+                  id="profile-home-image"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  disabled={uploading.home || uploading.light || uploading.dark}
+                  onChange={async (e) => {
+                    const file = e.currentTarget.files?.[0];
+                    if (!file) return;
+                    setUploading((x) => ({ ...x, home: true }));
+                    try {
+                      const url = await uploadImage(file);
+                      updateDraft((p) => ({ ...p, homeImageUrl: url }));
+                      toast.success('Upload foto anggota berhasil');
+                    } catch (err: any) {
+                      toast.error(String(getErrorMessage(err, 'Gagal upload')));
+                    } finally {
+                      setUploading((x) => ({ ...x, home: false }));
+                      e.currentTarget.value = '';
+                    }
+                  }}
+                />
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button asChild variant="outline" disabled={uploading.home || uploading.light || uploading.dark || uploading.visi || uploading.misi}>
+                    <Label htmlFor="profile-home-image" className="cursor-pointer">
+                      {uploading.home ? 'Uploading...' : draft.homeImageUrl ? 'Ganti Foto' : 'Upload Foto'}
+                    </Label>
+                  </Button>
+                </div>
+              </div>
+              <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50 dark:border-zinc-700">
+                {draft.homeImageUrl ? (
+                  <img src={draft.homeImageUrl} alt="Pratinjau foto anggota" className="aspect-[4/3] w-full object-cover" />
+                ) : (
+                  <div className="flex aspect-[4/3] items-center justify-center text-xs text-slate-500">Belum ada foto</div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className={cn('grid gap-5 md:grid-cols-2', profileTab !== 'visimisi' && 'hidden')}>
+          <div className="space-y-2 md:col-span-2">
             <Label>Visi</Label>
-            <Textarea value={draft.vision} onChange={(e) => setDraft((p) => ({ ...p, vision: e.target.value }))} />
+            <Textarea value={draft.vision} onChange={(e) => updateDraft((p) => ({ ...p, vision: e.target.value }))} />
             <div className="text-xs text-slate-500 dark:text-zinc-400">Gunakan paragraf singkat, bisa dipisah dengan baris baru.</div>
           </div>
           <div className="space-y-2 md:col-span-2">
             <Label>Misi</Label>
-            <Textarea value={draft.mission} onChange={(e) => setDraft((p) => ({ ...p, mission: e.target.value }))} />
+            <Textarea value={draft.mission} onChange={(e) => updateDraft((p) => ({ ...p, mission: e.target.value }))} />
             <div className="text-xs text-slate-500 dark:text-zinc-400">Satu baris = satu poin misi.</div>
           </div>
           <div className="space-y-3 md:col-span-2">
             <Label>Beranda: Foto Visi</Label>
             <div className="grid gap-3 md:grid-cols-[1fr_220px]">
               <div className="space-y-3">
-                <Input value={draft.visiRole} onChange={(e) => setDraft((p) => ({ ...p, visiRole: e.target.value }))} placeholder="Jabatan (contoh: Ketua Umum)" />
-                <Input value={draft.visiName} onChange={(e) => setDraft((p) => ({ ...p, visiName: e.target.value }))} placeholder="Nama" />
-                <Input value={draft.visiPhotoUrl} onChange={(e) => setDraft((p) => ({ ...p, visiPhotoUrl: e.target.value }))} placeholder="URL Foto" />
+                <Input value={draft.visiRole} onChange={(e) => updateDraft((p) => ({ ...p, visiRole: e.target.value }))} placeholder="Jabatan (contoh: Ketua Umum)" />
+                <Input value={draft.visiName} onChange={(e) => updateDraft((p) => ({ ...p, visiName: e.target.value }))} placeholder="Nama" />
+                <Input value={draft.visiPhotoUrl} onChange={(e) => updateDraft((p) => ({ ...p, visiPhotoUrl: e.target.value }))} placeholder="URL Foto" />
                 <Input
                   id="profile-visi-photo"
                   type="file"
@@ -326,7 +413,7 @@ export default function PublicSiteProfile() {
                     setUploading((x) => ({ ...x, visi: true }));
                     try {
                       const url = await uploadImage(file);
-                      setDraft((p) => ({ ...p, visiPhotoUrl: url }));
+                      updateDraft((p) => ({ ...p, visiPhotoUrl: url }));
                       toast.success('Upload foto visi berhasil');
                     } catch (err: any) {
                       toast.error(String(getErrorMessage(err, 'Gagal upload')));
@@ -346,7 +433,7 @@ export default function PublicSiteProfile() {
                     <Button
                       type="button"
                       variant="ghost"
-                      onClick={() => setDraft((p) => ({ ...p, visiPhotoUrl: '' }))}
+                      onClick={() => updateDraft((p) => ({ ...p, visiPhotoUrl: '' }))}
                       disabled={uploading.visi || uploading.home || uploading.light || uploading.dark || uploading.misi}
                     >
                       Hapus
@@ -372,9 +459,9 @@ export default function PublicSiteProfile() {
             <Label>Beranda: Foto Misi</Label>
             <div className="grid gap-3 md:grid-cols-[1fr_220px]">
               <div className="space-y-3">
-                <Input value={draft.misiRole} onChange={(e) => setDraft((p) => ({ ...p, misiRole: e.target.value }))} placeholder="Jabatan (contoh: Wakil Ketua)" />
-                <Input value={draft.misiName} onChange={(e) => setDraft((p) => ({ ...p, misiName: e.target.value }))} placeholder="Nama" />
-                <Input value={draft.misiPhotoUrl} onChange={(e) => setDraft((p) => ({ ...p, misiPhotoUrl: e.target.value }))} placeholder="URL Foto" />
+                <Input value={draft.misiRole} onChange={(e) => updateDraft((p) => ({ ...p, misiRole: e.target.value }))} placeholder="Jabatan (contoh: Wakil Ketua)" />
+                <Input value={draft.misiName} onChange={(e) => updateDraft((p) => ({ ...p, misiName: e.target.value }))} placeholder="Nama" />
+                <Input value={draft.misiPhotoUrl} onChange={(e) => updateDraft((p) => ({ ...p, misiPhotoUrl: e.target.value }))} placeholder="URL Foto" />
                 <Input
                   id="profile-misi-photo"
                   type="file"
@@ -387,7 +474,7 @@ export default function PublicSiteProfile() {
                     setUploading((x) => ({ ...x, misi: true }));
                     try {
                       const url = await uploadImage(file);
-                      setDraft((p) => ({ ...p, misiPhotoUrl: url }));
+                      updateDraft((p) => ({ ...p, misiPhotoUrl: url }));
                       toast.success('Upload foto misi berhasil');
                     } catch (err: any) {
                       toast.error(String(getErrorMessage(err, 'Gagal upload')));
@@ -407,7 +494,7 @@ export default function PublicSiteProfile() {
                     <Button
                       type="button"
                       variant="ghost"
-                      onClick={() => setDraft((p) => ({ ...p, misiPhotoUrl: '' }))}
+                      onClick={() => updateDraft((p) => ({ ...p, misiPhotoUrl: '' }))}
                       disabled={uploading.misi || uploading.home || uploading.light || uploading.dark || uploading.visi}
                     >
                       Hapus
@@ -429,106 +516,47 @@ export default function PublicSiteProfile() {
               </div>
             </div>
           </div>
+        </div>
+
+        <div className={cn('grid gap-5 md:grid-cols-2', profileTab !== 'contact' && 'hidden')}>
           <div className="space-y-2 md:col-span-2">
             <Label>Footer Tagline</Label>
-            <Input value={draft.footerTagline} onChange={(e) => setDraft((p) => ({ ...p, footerTagline: e.target.value }))} />
+            <Input value={draft.footerTagline} onChange={(e) => updateDraft((p) => ({ ...p, footerTagline: e.target.value }))} />
           </div>
           <div className="space-y-2">
             <Label>Instagram URL</Label>
-            <Input value={draft.instagramUrl} onChange={(e) => setDraft((p) => ({ ...p, instagramUrl: e.target.value }))} placeholder="https://instagram.com/..." />
+            <Input value={draft.instagramUrl} onChange={(e) => updateDraft((p) => ({ ...p, instagramUrl: e.target.value }))} placeholder="https://instagram.com/..." />
           </div>
           <div className="space-y-2">
             <Label>TikTok URL</Label>
-            <Input value={draft.tiktokUrl} onChange={(e) => setDraft((p) => ({ ...p, tiktokUrl: e.target.value }))} placeholder="https://tiktok.com/@..." />
+            <Input value={draft.tiktokUrl} onChange={(e) => updateDraft((p) => ({ ...p, tiktokUrl: e.target.value }))} placeholder="https://tiktok.com/@..." />
           </div>
           <div className="space-y-2">
             <Label>YouTube URL</Label>
-            <Input value={draft.youtubeUrl} onChange={(e) => setDraft((p) => ({ ...p, youtubeUrl: e.target.value }))} placeholder="https://youtube.com/@..." />
+            <Input value={draft.youtubeUrl} onChange={(e) => updateDraft((p) => ({ ...p, youtubeUrl: e.target.value }))} placeholder="https://youtube.com/@..." />
           </div>
           <div className="space-y-2">
             <Label>Email</Label>
-            <Input value={draft.email} onChange={(e) => setDraft((p) => ({ ...p, email: e.target.value }))} />
+            <Input value={draft.email} onChange={(e) => updateDraft((p) => ({ ...p, email: e.target.value }))} />
           </div>
           <div className="space-y-2">
             <Label>Telepon</Label>
-            <Input value={draft.phone} onChange={(e) => setDraft((p) => ({ ...p, phone: e.target.value }))} />
+            <Input value={draft.phone} onChange={(e) => updateDraft((p) => ({ ...p, phone: e.target.value }))} />
           </div>
           <div className="space-y-2 md:col-span-2">
             <Label>Alamat</Label>
-            <Input value={draft.address} onChange={(e) => setDraft((p) => ({ ...p, address: e.target.value }))} />
+            <Input value={draft.address} onChange={(e) => updateDraft((p) => ({ ...p, address: e.target.value }))} />
           </div>
         </div>
 
-        <div className="grid gap-5 md:grid-cols-2">
+        <div className={cn('grid gap-5 md:grid-cols-2', profileTab !== 'identity' && 'hidden')}>
           <div className="space-y-2">
             <Label>Logo (Light URL)</Label>
-            <Input value={draft.logoLightUrl} onChange={(e) => setDraft((p) => ({ ...p, logoLightUrl: e.target.value }))} />
+            <Input value={draft.logoLightUrl} onChange={(e) => updateDraft((p) => ({ ...p, logoLightUrl: e.target.value }))} />
           </div>
           <div className="space-y-2">
             <Label>Logo (Dark URL)</Label>
-            <Input value={draft.logoDarkUrl} onChange={(e) => setDraft((p) => ({ ...p, logoDarkUrl: e.target.value }))} />
-          </div>
-          <div className="space-y-2 md:col-span-2">
-            <Label>Foto Anggota (URL)</Label>
-            <Input value={draft.homeImageUrl} onChange={(e) => setDraft((p) => ({ ...p, homeImageUrl: e.target.value }))} placeholder="https://..." />
-          </div>
-          <div className="space-y-2 md:col-span-2">
-            <Label>Upload Foto Anggota</Label>
-            <div className="grid gap-3 md:grid-cols-[1fr_220px]">
-              <div className="space-y-2">
-                <Input
-                  id="profile-home-image"
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  disabled={uploading.home || uploading.light || uploading.dark}
-                  onChange={async (e) => {
-                    const file = e.currentTarget.files?.[0];
-                    if (!file) return;
-                    setUploading((x) => ({ ...x, home: true }));
-                    try {
-                      const url = await uploadImage(file);
-                      setDraft((p) => ({ ...p, homeImageUrl: url }));
-                      toast.success('Upload foto anggota berhasil');
-                    } catch (err: any) {
-                      toast.error(String(getErrorMessage(err, 'Gagal upload')));
-                    } finally {
-                      setUploading((x) => ({ ...x, home: false }));
-                      e.currentTarget.value = '';
-                    }
-                  }}
-                />
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button asChild variant="outline" disabled={uploading.home || uploading.light || uploading.dark || uploading.visi || uploading.misi}>
-                    <Label htmlFor="profile-home-image" className="cursor-pointer">
-                      {uploading.home ? 'Uploading...' : draft.homeImageUrl ? 'Ganti Foto' : 'Upload Foto'}
-                    </Label>
-                  </Button>
-                  {draft.homeImageUrl ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() => setDraft((p) => ({ ...p, homeImageUrl: '' }))}
-                      disabled={uploading.home || uploading.light || uploading.dark || uploading.visi || uploading.misi}
-                    >
-                      Hapus
-                    </Button>
-                  ) : null}
-                </div>
-                <div className="text-xs text-slate-500 dark:text-zinc-400">PNG/JPG. Maks 4MB.</div>
-              </div>
-              <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50 dark:border-zinc-700 dark:bg-zinc-900/40">
-                <div className="aspect-[4/3] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.2),rgba(255,255,255,0.04))]">
-                  {draft.homeImageUrl ? (
-                    <img src={draft.homeImageUrl} alt="Foto Anggota" className="h-full w-full object-cover" />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center px-4 text-center text-xs text-slate-500 dark:text-zinc-300">
-                      Belum ada foto
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
+            <Input value={draft.logoDarkUrl} onChange={(e) => updateDraft((p) => ({ ...p, logoDarkUrl: e.target.value }))} />
           </div>
           <div className="space-y-2">
             <Label>Upload Logo Light</Label>
@@ -545,7 +573,7 @@ export default function PublicSiteProfile() {
                   setUploading((x) => ({ ...x, light: true }));
                   try {
                     const url = await uploadImage(file);
-                    setDraft((p) => ({ ...p, logoLightUrl: url }));
+                    updateDraft((p) => ({ ...p, logoLightUrl: url }));
                     toast.success('Upload logo light berhasil');
                   } catch (err: any) {
                     toast.error(String(getErrorMessage(err, 'Gagal upload')));
@@ -565,7 +593,7 @@ export default function PublicSiteProfile() {
                   <Button
                     type="button"
                     variant="ghost"
-                    onClick={() => setDraft((p) => ({ ...p, logoLightUrl: '' }))}
+                    onClick={() => updateDraft((p) => ({ ...p, logoLightUrl: '' }))}
                     disabled={uploading.light || uploading.home || uploading.dark || uploading.visi || uploading.misi}
                   >
                     Hapus
@@ -589,7 +617,7 @@ export default function PublicSiteProfile() {
                   setUploading((x) => ({ ...x, dark: true }));
                   try {
                     const url = await uploadImage(file);
-                    setDraft((p) => ({ ...p, logoDarkUrl: url }));
+                    updateDraft((p) => ({ ...p, logoDarkUrl: url }));
                     toast.success('Upload logo dark berhasil');
                   } catch (err: any) {
                     toast.error(String(getErrorMessage(err, 'Gagal upload')));
@@ -609,7 +637,7 @@ export default function PublicSiteProfile() {
                   <Button
                     type="button"
                     variant="ghost"
-                    onClick={() => setDraft((p) => ({ ...p, logoDarkUrl: '' }))}
+                    onClick={() => updateDraft((p) => ({ ...p, logoDarkUrl: '' }))}
                     disabled={uploading.dark || uploading.home || uploading.light || uploading.visi || uploading.misi}
                   >
                     Hapus
@@ -621,12 +649,21 @@ export default function PublicSiteProfile() {
         </div>
 
         <div className="flex justify-end gap-3">
-          <Button variant="outline" type="button" onClick={() => setIsResetOpen(true)} disabled={saving}>
+          <Button variant="outline" type="button" onClick={() => setIsResetOpen(true)} disabled={saving} className="min-h-11">
             Reset
           </Button>
-          <Button type="button" onClick={handleSave} disabled={saving}>
-            Simpan
+          <Button type="button" onClick={handleSave} disabled={saving || !dirty} className="min-h-11" aria-busy={saving}>
+            {saving ? 'Menyimpan…' : 'Simpan'}
           </Button>
+        </div>
+          </div>
+
+          {/* [UI] preview — desktop sticky + mobile di bawah form */}
+          <CmsPreviewCollapsible>
+            <div className="xl:sticky xl:top-4">
+              <PublicSiteProfilePreview draft={draft} />
+            </div>
+          </CmsPreviewCollapsible>
         </div>
       </AdminCard>
     </AdminPageShell>

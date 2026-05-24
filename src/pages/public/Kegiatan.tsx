@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 import PublicLayout from '@/components/PublicLayout';
 import useSWR from 'swr';
 import api from '@/services/api';
@@ -14,6 +15,7 @@ import PublicCoverImage from '@/components/PublicCoverImage';
 import useLockBodyScroll from '@/lib/useLockBodyScroll';
 import useFirstLoadOverlay from '@/lib/useFirstLoadOverlay';
 import { motion } from 'framer-motion';
+import { useReducedMotion } from '@/lib/useReducedMotion';
 
 const TABS: Array<{ label: string; type?: PublicPostType }> = [
   { label: 'Semua' },
@@ -28,6 +30,8 @@ export default function Kegiatan() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
   const [tab, setTab] = useState<string>('Semua');
   const [openId, setOpenId] = useState<string | null>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
+  useDialogA11y(Boolean(openId), () => setOpenId(null), { containerRef: modalRef });
 
   const url = useMemo(() => {
     const selected = TABS.find((t) => t.label === tab);
@@ -49,6 +53,7 @@ export default function Kegiatan() {
   const selected = useMemo(() => (paged?.items ?? []).find((e) => e.id === openId) ?? null, [paged?.items, openId]);
   useLockBodyScroll(Boolean(selected));
   const showLoading = useFirstLoadOverlay(isLoading);
+  const reducedMotion = useReducedMotion();
 
   return (
     <PublicLayout>
@@ -75,11 +80,15 @@ export default function Kegiatan() {
                     }`}
                   >
                     {active ? (
-                      <motion.div
-                        layoutId="kegiatan-tab"
-                        className="absolute inset-0 rounded-lg bg-[var(--public-primary)]"
-                        transition={{ type: 'spring', stiffness: 460, damping: 44 }}
-                      />
+                      reducedMotion ? (
+                        <div className="absolute inset-0 rounded-lg bg-[var(--public-primary)]" aria-hidden="true" />
+                      ) : (
+                        <motion.div
+                          layoutId="kegiatan-tab"
+                          className="absolute inset-0 rounded-lg bg-[var(--public-primary)]"
+                          transition={{ type: 'spring', stiffness: 460, damping: 44 }}
+                        />
+                      )
                     ) : null}
                     {!active ? (
                       <div className="absolute inset-0 rounded-lg transition hover:bg-slate-50" />
@@ -162,7 +171,13 @@ export default function Kegiatan() {
       {selected ? (
         <div className="fixed inset-0 z-[60] flex items-end justify-center p-3 sm:items-center sm:p-6">
           <button type="button" aria-label="Tutup" className="absolute inset-0 bg-black/45 backdrop-blur-[2px]" onClick={() => setOpenId(null)} />
-          <div role="dialog" aria-modal="true" className="relative w-full max-w-3xl overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_30px_80px_-45px_rgba(15,23,42,0.55)]">
+          <div
+            ref={modalRef}
+            role="dialog"
+            aria-modal="true"
+            tabIndex={-1}
+            className="relative w-full max-w-3xl overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_30px_80px_-45px_rgba(15,23,42,0.55)] outline-none"
+          >
             <div className="flex items-center justify-between gap-4 border-b border-black/10 bg-white px-4 py-3 sm:px-6">
               <div className="min-w-0">
                 <div className="truncate text-base font-extrabold tracking-tight text-slate-900">{selected.title}</div>

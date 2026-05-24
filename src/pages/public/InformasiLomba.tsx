@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 import PublicLayout from '@/components/PublicLayout';
 import { Search } from 'lucide-react';
 import useSWR from 'swr';
@@ -38,6 +39,8 @@ export default function InformasiLomba() {
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<'Semua' | Status>('Semua');
   const [openId, setOpenId] = useState<string | null>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
+  useDialogA11y(Boolean(openId), () => setOpenId(null), { containerRef: modalRef });
 
   const items = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -172,9 +175,11 @@ export default function InformasiLomba() {
             onClick={() => setOpenId(null)}
           />
           <div
+            ref={modalRef}
             role="dialog"
             aria-modal="true"
-            className="relative w-full max-w-3xl overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_30px_80px_-45px_rgba(15,23,42,0.55)]"
+            tabIndex={-1}
+            className="relative w-full max-w-3xl overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_30px_80px_-45px_rgba(15,23,42,0.55)] outline-none"
           >
             <div className="flex items-center justify-between gap-4 border-b border-black/10 bg-white px-4 py-4 sm:px-6">
               <div className="min-w-0">

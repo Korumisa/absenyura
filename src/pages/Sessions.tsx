@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '@/services/api';
 import useSWR from 'swr';
 import { useAuthStore } from '@/stores/authStore';
@@ -21,9 +22,16 @@ import AdminPageShell from '@/components/AdminPageShell';
 
 import type { Location, Session } from '@/types/session';
 import { formatClassLabel } from '@/lib/classLabel';
+import { MobileTableHint } from '@/components/ui/MobileTableHint';
+import { useSwrPageState } from '@/hooks/useSwrPageState';
+import { ErrorWithRetry } from '@/components/ErrorWithRetry';
+
+const WIZARD_LABELS = ['Info & Lokasi', 'Jadwal', 'Aturan Absen', 'Kelas'] as const;
 
 export default function Sessions() {
+  const navigate = useNavigate();
   const { user: currentUser } = useAuthStore();
+  const [wizardStep, setWizardStep] = useState(1);
   const [locations, setLocations] = useState<Location[]>([]);
   const [classes, setClasses] = useState<{ id: string; name: string; semester: number }[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -50,7 +58,14 @@ export default function Sessions() {
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
 
   const fetcher = (url: string) => api.get(url).then(res => res.data.data);
-  const { data: sessions = [], error, isLoading: loading, mutate } = useSWR<Session[]>('/sessions', fetcher, { revalidateOnFocus: false });
+  const swr = useSWR<Session[]>('/sessions', fetcher, { revalidateOnFocus: false });
+  const { data: sessions = [], isInitialLoading: loading, isError, retry, mutate } = useSwrPageState(swr);
+
+  const canProceedWizard = (step: number) => {
+    if (step === 1) return Boolean(formData.title.trim() && formData.location_id);
+    if (step === 2) return Boolean(formData.session_start && formData.session_end);
+    return true;
+  };
 
   const fetchLocations = async () => {
     try {
@@ -117,6 +132,7 @@ export default function Sessions() {
         late_threshold_minutes: 15, require_checkout: false, status: 'UPCOMING'
       });
     }
+    setWizardStep(1);
     setIsModalOpen(true);
   };
 
@@ -205,6 +221,9 @@ export default function Sessions() {
         ) : null
       }
     >
+      {isError ? (
+        <ErrorWithRetry title="Gagal memuat sesi" error={swr.error} onRetry={retry} className="mb-6" />
+      ) : (
       <div className="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-700 overflow-hidden mb-6">
         <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 border-b border-slate-200 dark:border-zinc-700">
           <div className="relative">
@@ -255,7 +274,58 @@ export default function Sessions() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <ul className="space-y-3 md:hidden" aria-label="Daftar sesi">
+          {loading
+            ? Array.from({ length: 3 }).map((_, i) => (
+                <li key={i} className="rounded-2xl border border-slate-200 p-4 dark:border-zinc-800">
+                  <Skeleton className="mb-2 h-5 w-48" />
+                  <Skeleton className="h-4 w-32" />
+                </li>
+              ))
+            : filteredSessions.length === 0
+              ? (
+                  <li className="py-8 text-center text-slate-500">Tidak ada sesi.</li>
+                )
+              : filteredSessions.map((session) => (
+                  <li key={session.id} className="rounded-2xl border border-slate-200 p-4 dark:border-zinc-800">
+                    <p className="font-bold text-slate-900 dark:text-white">{session.title}</p>
+                    <p className="text-sm text-slate-500">{session.location?.name}</p>
+                    <p className="mt-1 text-sm text-slate-600">
+                      {format(new Date(session.session_start), 'dd MMM yyyy · HH:mm', { locale: id })} WIB
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {session.qr_mode !== 'NONE' && session.status !== 'CLOSED' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="min-h-11"
+                          onClick={() => window.open(`/sessions/${session.id}/qr`, '_blank')}
+                        >
+                          QR
+                        </Button>
+                      )}
+                      {(currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN') && (
+                        <>
+                          <Button variant="outline" size="sm" className="min-h-11" onClick={() => handleOpenModal(session)}>
+                            Edit
+                          </Button>
+                          <Button variant="destructive" size="sm" className="min-h-11" onClick={() => openDeleteConfirm(session.id)}>
+                            Hapus
+                          </Button>
+                        </>
+                      )}
+                      {currentUser?.role === 'USER' && session.status === 'ACTIVE' && (
+                        <Button className="min-h-11 flex-1" onClick={() => navigate(`/attend?session=${session.id}`)}>
+                          Absen
+                        </Button>
+                      )}
+                    </div>
+                  </li>
+                ))}
+        </ul>
+
+        <MobileTableHint />
+        <div className="hidden overflow-x-auto md:block">
           <Table>
           <TableHeader className="bg-slate-50 dark:bg-zinc-950/50">
             <TableRow>
@@ -295,7 +365,7 @@ export default function Sessions() {
               ))
             ) : filteredSessions.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center text-slate-500 dark:text-zinc-400">
+                <TableCell colSpan={6} className="h-24 text-center text-slate-500 dark:text-zinc-400">
                   Tidak ada sesi yang ditemukan.
                 </TableCell>
               </TableRow>
@@ -366,7 +436,7 @@ export default function Sessions() {
                             size="icon"
                             onClick={() => window.open(`/sessions/${session.id}/qr`, '_blank')}
                             className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-900/50"
-                            title="Tampilkan Layar QR (Dosen)"
+                            aria-label="Tampilkan layar QR untuk dosen"
                           >
                             <QrCode className="w-4 h-4" />
                           </Button>
@@ -376,7 +446,7 @@ export default function Sessions() {
                           size="icon"
                           onClick={() => handleOpenModal(session)}
                           className="text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:text-slate-400 dark:hover:bg-indigo-900/30"
-                          title="Edit"
+                          aria-label="Edit sesi"
                         >
                           <Edit2 className="w-4 h-4" />
                         </Button>
@@ -385,7 +455,7 @@ export default function Sessions() {
                           size="icon"
                           onClick={() => openDeleteConfirm(session.id)}
                           className="text-slate-500 hover:text-red-600 hover:bg-red-50 dark:text-slate-400 dark:hover:bg-red-900/30"
-                          title="Hapus"
+                          aria-label="Hapus sesi"
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -401,7 +471,11 @@ export default function Sessions() {
                               <Badge variant="success" className="px-3 py-1 bg-green-100 text-green-700">Sudah Absen</Badge>
                             ) : (
                               <Button 
-                                onClick={() => window.location.href = `/attend?session=${session.id}&checkout=true`}
+                                onClick={() =>
+                                  navigate(
+                                    `/attend?session=${session.id}&checkout=true&attendance=${(session as any).attendances[0].id}`,
+                                  )
+                                }
                                 className="shadow-lg shadow-amber-600/20 bg-amber-500 hover:bg-amber-600 text-white text-xs px-3 py-1.5 h-auto"
                               >
                                 Checkout
@@ -409,8 +483,8 @@ export default function Sessions() {
                             )
                           ) : (
                             <Button 
-                              onClick={() => window.location.href = `/attend?session=${session.id}`}
-                              className="shadow-sm"
+                              onClick={() => navigate(`/attend?session=${session.id}`)}
+                              className="min-h-11 shadow-sm"
                             >
                               Hadir
                             </Button>
@@ -426,6 +500,7 @@ export default function Sessions() {
         </Table>
         </div>
       </div>
+      )}
 
       <Dialog open={Boolean(isModalOpen && currentUser?.role !== 'USER')} onOpenChange={setIsModalOpen}>
         <DialogContent className="max-w-4xl p-0">
@@ -439,8 +514,30 @@ export default function Sessions() {
           </div>
 
           <form onSubmit={handleSubmit} className="max-h-[75vh] space-y-6 overflow-y-auto p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
+              {/* [IA] #7 — wizard form sesi */}
+              <nav aria-label="Langkah form sesi" className="flex flex-wrap gap-2 border-b border-slate-200 pb-4 dark:border-zinc-800">
+                {WIZARD_LABELS.map((label, i) => {
+                  const step = i + 1;
+                  return (
+                    <button
+                      key={label}
+                      type="button"
+                      onClick={() => setWizardStep(step)}
+                      className={`min-h-11 rounded-full px-4 text-sm font-semibold transition-colors ${
+                        wizardStep === step
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-zinc-800 dark:text-zinc-300'
+                      }`}
+                      aria-current={wizardStep === step ? 'step' : undefined}
+                    >
+                      {step}. {label}
+                    </button>
+                  );
+                })}
+              </nav>
+
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                <div className={`space-y-4 ${wizardStep === 1 ? '' : 'hidden'}`}>
                   <div className="space-y-2">
                     <Label>Judul / Mata Kuliah <span className="text-red-500">*</span></Label>
                     <Input 
@@ -454,6 +551,94 @@ export default function Sessions() {
                       rows={2} value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})}
                     />
                   </div>
+                  <div className="space-y-2">
+                    <Label>Lokasi Ruangan <span className="text-red-500">*</span></Label>
+                    <Select required value={formData.location_id} onValueChange={(value) => setFormData({...formData, location_id: value})}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Pilih Lokasi Geofencing..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {locations.map(loc => (
+                          <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Metode Validasi QR <span className="text-red-500">*</span></Label>
+                    <Select required value={formData.qr_mode} onValueChange={(value: string) => setFormData({...formData, qr_mode: value})}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Pilih Metode Validasi QR" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="DYNAMIC">QR Dinamis (ganti tiap 15 detik)</SelectItem>
+                        <SelectItem value="STATIC">QR Statis</SelectItem>
+                        <SelectItem value="NONE">Tanpa QR (GPS saja)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className={`space-y-4 md:col-span-2 ${wizardStep === 2 ? '' : 'hidden'}`}>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2 md:col-span-2">
+                      <Label>Waktu Mulai Sesi <span className="text-red-500">*</span></Label>
+                      <Input 
+                        type="datetime-local" required value={formData.session_start} onChange={e => setFormData({...formData, session_start: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Waktu Selesai Sesi <span className="text-red-500">*</span></Label>
+                      <Input 
+                        type="datetime-local" required value={formData.session_end} onChange={e => setFormData({...formData, session_end: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Buka Check-in <span className="text-red-500">*</span></Label>
+                      <Input 
+                        type="datetime-local" required value={formData.check_in_open_at} onChange={e => setFormData({...formData, check_in_open_at: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                      <Label>Tutup Check-in <span className="text-red-500">*</span></Label>
+                      <Input 
+                        type="datetime-local" required value={formData.check_in_close_at} onChange={e => setFormData({...formData, check_in_close_at: e.target.value})}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className={`space-y-4 md:col-span-2 ${wizardStep === 3 ? '' : 'hidden'}`}>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Toleransi Terlambat (Menit) <span className="text-red-500">*</span></Label>
+                      <Input 
+                        type="number" min="0" required value={formData.late_threshold_minutes} onChange={e => setFormData({...formData, late_threshold_minutes: parseInt(e.target.value)})}
+                      />
+                    </div>
+                    <div className="flex items-center gap-2 pt-8">
+                      <Checkbox checked={Boolean(formData.require_checkout)} onCheckedChange={(checked) => setFormData((p) => ({ ...p, require_checkout: Boolean(checked) }))} />
+                      <span className="text-sm font-medium text-slate-700 dark:text-zinc-300">Wajib Check-out</span>
+                    </div>
+                  </div>
+                  {editingSession && (
+                    <div className="space-y-2">
+                      <Label>Status Sesi (Override Manual)</Label>
+                      <Select value={formData.status} onValueChange={(value: any) => setFormData({...formData, status: value})}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Pilih Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="UPCOMING">UPCOMING</SelectItem>
+                          <SelectItem value="ACTIVE">ACTIVE</SelectItem>
+                          <SelectItem value="CLOSED">CLOSED</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
+
+                <div className={`space-y-4 md:col-span-2 ${wizardStep === 4 ? '' : 'hidden'}`}>
                   <div className="space-y-2">
                     <Label>Target Kelas</Label>
                     <div className="relative">
@@ -552,106 +737,32 @@ export default function Sessions() {
 
                     <div className="text-xs text-slate-500 dark:text-zinc-400">Kosong = semua mahasiswa.</div>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Lokasi Ruangan <span className="text-red-500">*</span></Label>
-                    <Select required value={formData.location_id} onValueChange={(value) => setFormData({...formData, location_id: value})}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Pilih Lokasi Geofencing..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {locations.map(loc => (
-                          <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Metode Validasi QR <span className="text-red-500">*</span></Label>
-                    <Select required value={formData.qr_mode} onValueChange={(value: any) => setFormData({...formData, qr_mode: value})}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Pilih Metode Validasi QR" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="DYNAMIC">QR Dinamis (Otomatis ganti tiap 15 detik)</SelectItem>
-                        <SelectItem value="STATIC">QR Statis (Satu QR untuk seluruh sesi)</SelectItem>
-                        <SelectItem value="NONE">Tanpa QR (Hanya Geofencing + IP)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Waktu Mulai Sesi <span className="text-red-500">*</span></Label>
-                      <Input 
-                        type="datetime-local" required value={formData.session_start} onChange={e => setFormData({...formData, session_start: e.target.value})}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Waktu Selesai Sesi <span className="text-red-500">*</span></Label>
-                      <Input 
-                        type="datetime-local" required value={formData.session_end} onChange={e => setFormData({...formData, session_end: e.target.value})}
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Buka Check-in <span className="text-red-500">*</span></Label>
-                      <Input 
-                        type="datetime-local" required value={formData.check_in_open_at} onChange={e => setFormData({...formData, check_in_open_at: e.target.value})}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Tutup Check-in <span className="text-red-500">*</span></Label>
-                      <Input 
-                        type="datetime-local" required value={formData.check_in_close_at} onChange={e => setFormData({...formData, check_in_close_at: e.target.value})}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4 items-end">
-                    <div className="space-y-2">
-                      <Label>Toleransi Terlambat (Menit) <span className="text-red-500">*</span></Label>
-                      <Input 
-                        type="number" min="0" required value={formData.late_threshold_minutes} onChange={e => setFormData({...formData, late_threshold_minutes: parseInt(e.target.value)})}
-                      />
-                    </div>
-                    <div className="pb-2">
-                      <div className="flex items-center gap-2">
-                        <Checkbox checked={Boolean(formData.require_checkout)} onCheckedChange={(checked) => setFormData((p) => ({ ...p, require_checkout: Boolean(checked) }))} />
-                        <span className="text-sm font-medium text-slate-700 dark:text-zinc-300">Wajib Check-out</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {editingSession && (
-                    <div className="space-y-2">
-                      <Label>Status Sesi (Override Manual)</Label>
-                      <Select value={formData.status} onValueChange={(value: any) => setFormData({...formData, status: value})}>
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Pilih Status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="UPCOMING">UPCOMING</SelectItem>
-                          <SelectItem value="ACTIVE">ACTIVE</SelectItem>
-                          <SelectItem value="CLOSED">CLOSED</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">Status biasanya diupdate otomatis oleh sistem (Cron Job).</p>
-                    </div>
-                  )}
                 </div>
               </div>
               
-              <DialogFooter className="border-t border-slate-200 pt-6 dark:border-zinc-800">
-                <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)} disabled={isSubmitting}>
+              <DialogFooter className="flex flex-wrap gap-2 border-t border-slate-200 pt-6 dark:border-zinc-800">
+                <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)} disabled={isSubmitting} className="min-h-11">
                   Batal
                 </Button>
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? 'Menyimpan...' : (editingSession ? 'Simpan Perubahan' : 'Buat Sesi')}
-                </Button>
+                {wizardStep > 1 ? (
+                  <Button type="button" variant="secondary" className="min-h-11" onClick={() => setWizardStep((s) => Math.max(1, s - 1))}>
+                    Sebelumnya
+                  </Button>
+                ) : null}
+                {wizardStep < 4 ? (
+                  <Button
+                    type="button"
+                    className="min-h-11"
+                    disabled={!canProceedWizard(wizardStep)}
+                    onClick={() => setWizardStep((s) => Math.min(4, s + 1))}
+                  >
+                    Lanjut
+                  </Button>
+                ) : (
+                  <Button type="submit" disabled={isSubmitting} className="min-h-11">
+                    {isSubmitting ? 'Menyimpan...' : (editingSession ? 'Simpan Perubahan' : 'Buat Sesi')}
+                  </Button>
+                )}
               </DialogFooter>
           </form>
         </DialogContent>

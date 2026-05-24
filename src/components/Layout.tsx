@@ -6,6 +6,7 @@ import api from '@/services/api';
 
 import { NotificationMenu } from './NotificationMenu';
 import { UserDropdown } from './UserDropdown';
+import { ThemeToggle } from './ThemeToggle';
 import { Button } from '@/components/ui/button';
 
 export default function Layout() {
@@ -54,6 +55,12 @@ export default function Layout() {
 
   return (
     <div className="admin-theme flex h-dvh overflow-hidden bg-[#f5f7fb] font-sans dark:bg-zinc-900">
+      <a
+        href="#app-main-scroll"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-[#2f80ed] focus:shadow-lg dark:focus:bg-zinc-900"
+      >
+        Lewati ke konten utama
+      </a>
       {sidebarOpen && (
         <button
           type="button"
@@ -133,6 +140,7 @@ export default function Layout() {
                             <Link
                               key={sub.path}
                               to={sub.path}
+                              aria-current={subActive ? 'page' : undefined}
                               onClick={() => setSidebarOpen(false)}
                               className={`flex items-center rounded-xl px-4 py-2 text-sm transition-colors ${
                                 subActive
@@ -155,6 +163,7 @@ export default function Layout() {
                 <Link
                   key={item.name}
                   to={item.path}
+                  aria-current={isActive ? 'page' : undefined}
                   onClick={() => setSidebarOpen(false)}
                   className={`flex items-center rounded-xl px-4 py-3 transition-colors ${
                     isActive
@@ -195,7 +204,8 @@ export default function Layout() {
             </div>
           </div>
           
-          <div className="flex items-center gap-4 ml-auto">
+          <div className="flex items-center gap-2 ml-auto sm:gap-4">
+            <ThemeToggle />
             <NotificationMenu />
             <UserDropdown />
           </div>

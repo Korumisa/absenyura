@@ -8,17 +8,39 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 import type { PublicRecruitment } from '@/types/publicSite';
 import { getErrorMessage } from '@/lib/errorMessage';
 import { prepareImageForUpload } from '@/lib/imageUpload';
 import AdminPageShell from '@/components/AdminPageShell';
 import AdminCard from '@/components/AdminCard';
+import PublicSiteRecruitmentPreview from '@/components/publicSiteAdmin/PublicSiteRecruitmentPreview';
 import { FileText } from 'lucide-react';
+import { CmsTabNav, type CmsTabItem } from '@/components/ui/CmsTabNav';
+import { CmsPublishTabs } from '@/components/ui/CmsPublishTabs';
+import { MobileTableHint } from '@/components/ui/MobileTableHint';
+import { CmsPreviewCollapsible } from '@/components/ui/CmsPreviewCollapsible';
+import { CmsViewSiteLink } from '@/components/cms/CmsViewSiteLink';
+
+type PageTab = 'form' | 'list';
+type FormTab = 'info' | 'team';
+
+const PAGE_TABS: readonly CmsTabItem<PageTab>[] = [
+  { id: 'form', label: 'Form' },
+  { id: 'list', label: 'Daftar' },
+];
+
+const FORM_TABS: readonly CmsTabItem<FormTab>[] = [
+  { id: 'info', label: 'Informasi' },
+  { id: 'team', label: 'Panitia & Kontak' },
+];
 
 export default function PublicSiteRecruitments() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
   const { data: recruitments = [], mutate } = useSWR<PublicRecruitment[]>('/public-site/admin/recruitments', fetcher, { revalidateOnFocus: false });
+
+  const [pageTab, setPageTab] = useState<PageTab>('form');
+  const [formTab, setFormTab] = useState<FormTab>('info');
 
   type CommitteeDraft = { name: string; role: string };
   type ContactDraft = { name: string; contact: string };
@@ -31,11 +53,12 @@ export default function PublicSiteRecruitments() {
     isPublished?: boolean;
     committee?: CommitteeDraft[];
     contacts?: ContactDraft[];
-  }>({ committee: [] });
-  const resetForm = () => setForm({});
+  }>({ committee: [], contacts: [] });
+  const resetForm = () => setForm({ committee: [], contacts: [] });
   const [dateStart, setDateStart] = useState('');
   const [dateEnd, setDateEnd] = useState('');
   const [uploadingPoster, setUploadingPoster] = useState(false);
+
   const resetDatesFromRange = (range: string) => {
     const raw = String(range ?? '').trim();
     if (!raw) {
@@ -52,6 +75,8 @@ export default function PublicSiteRecruitments() {
     setDateStart(raw);
     setDateEnd('');
   };
+
+  const dateRangePreview = dateStart && dateEnd ? `${dateStart} - ${dateEnd}` : dateStart || dateEnd || '';
 
   const uploadImage = async (file: File) => {
     const prepared = await prepareImageForUpload(file, { maxBytes: 4 * 1024 * 1024, maxWidth: 1600, quality: 0.82 });
@@ -95,6 +120,7 @@ export default function PublicSiteRecruitments() {
       resetForm();
       setDateStart('');
       setDateEnd('');
+      setPageTab('list');
       mutate();
     } catch (err: any) {
       toast.error(getErrorMessage(err, 'Gagal menyimpan'));
@@ -123,278 +149,317 @@ export default function PublicSiteRecruitments() {
     }
   };
 
+  const loadForEdit = (r: PublicRecruitment) => {
+    setForm({
+      id: r.id,
+      title: r.title,
+      description: r.description ?? '',
+      formUrl: r.form_url ?? '',
+      posterImageUrl: r.poster_image_url ?? '',
+      isPublished: r.is_published,
+      committee: (r.committee ?? []).map((x) => ({ name: x.name, role: x.role })),
+      contacts: (r.contacts ?? []).map((x) => ({ name: x.name, contact: x.contact })),
+    });
+    resetDatesFromRange(r.date_range ?? '');
+    setFormTab('info');
+    setPageTab('form');
+  };
+
   return (
     <AdminPageShell
       title="Open Recruitment"
       description="Kelola informasi open recruitment yang tampil di halaman publik."
       variant="plain"
       icon={<FileText size={22} />}
+      actions={<CmsViewSiteLink href="/open-recruitment" label="Lihat open recruitment" />}
     >
-      <AdminCard title="Form Recruitment" description="Tambah atau ubah informasi dan panitia.">
-        <form onSubmit={upsert} className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-2 md:col-span-2">
-            <Label>Judul</Label>
-            <Input value={form.title ?? ''} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} />
-          </div>
-          <div className="space-y-2">
-            <Label>Tanggal Mulai</Label>
-            <Input type="date" value={dateStart} onChange={(e) => setDateStart(e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label>Tanggal Selesai</Label>
-            <Input type="date" value={dateEnd} onChange={(e) => setDateEnd(e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label>Link Form</Label>
-            <Input value={form.formUrl ?? ''} onChange={(e) => setForm((p) => ({ ...p, formUrl: e.target.value }))} />
-          </div>
-          <div className="space-y-2">
-            <Label>Publik</Label>
-            <Select value={(form.isPublished ?? false) ? 'true' : 'false'} onValueChange={(v) => setForm((p) => ({ ...p, isPublished: v === 'true' }))}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="false">Draft</SelectItem>
-                <SelectItem value="true">Publish</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2 md:col-span-2">
-            <Label>Deskripsi</Label>
-            <Textarea value={form.description ?? ''} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} />
-          </div>
-          <div className="space-y-2 md:col-span-2">
-            <Label>Poster Image URL</Label>
-            <Input value={form.posterImageUrl ?? ''} onChange={(e) => setForm((p) => ({ ...p, posterImageUrl: e.target.value }))} placeholder="https://..." />
-          </div>
-          <div className="space-y-2 md:col-span-2">
-            <Label>Upload Poster</Label>
-            <div className="grid gap-3 md:grid-cols-[1fr_220px]">
-              <div className="space-y-2">
-                <Input
-                  id="recruitment-poster"
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  disabled={uploadingPoster}
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    setUploadingPoster(true);
-                    try {
-                      const url = await uploadImage(file);
-                      setForm((p) => ({ ...p, posterImageUrl: url }));
-                      toast.success('Upload poster berhasil');
-                    } catch (err: any) {
-                      toast.error(getErrorMessage(err, 'Gagal upload poster'));
-                    } finally {
-                      setUploadingPoster(false);
-                      e.currentTarget.value = '';
-                    }
-                  }}
-                />
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button asChild variant="outline" disabled={uploadingPoster}>
-                    <Label htmlFor="recruitment-poster" className="cursor-pointer">
-                      {uploadingPoster ? 'Uploading...' : form.posterImageUrl ? 'Ganti Poster' : 'Upload Poster'}
-                    </Label>
-                  </Button>
-                  {form.posterImageUrl ? (
+      <CmsTabNav<PageTab> tabs={PAGE_TABS} value={pageTab} onChange={setPageTab} ariaLabel="Bagian recruitment" />
+      <p className="text-sm text-slate-500 dark:text-zinc-400" aria-live="polite">
+        Langkah: {pageTab === 'form' ? '1 — Form recruitment' : '2 — Daftar recruitment'}
+      </p>
+
+      {pageTab === 'form' ? (
+        <div className="grid gap-6 xl:grid-cols-[1fr_minmax(280px,340px)]">
+          <AdminCard title="Form Recruitment" description="Tambah atau ubah informasi dan panitia.">
+            <form onSubmit={upsert} className="space-y-5">
+              <CmsTabNav<FormTab> tabs={FORM_TABS} value={formTab} onChange={setFormTab} ariaLabel="Bagian form recruitment" />
+
+              <div className={formTab === 'info' ? 'grid gap-4 md:grid-cols-2' : 'hidden'}>
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Judul</Label>
+                  <Input value={form.title ?? ''} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Tanggal Mulai</Label>
+                  <Input type="date" value={dateStart} onChange={(e) => setDateStart(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Tanggal Selesai</Label>
+                  <Input type="date" value={dateEnd} onChange={(e) => setDateEnd(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Link Form</Label>
+                  <Input value={form.formUrl ?? ''} onChange={(e) => setForm((p) => ({ ...p, formUrl: e.target.value }))} />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Status publikasi</Label>
+                  <CmsPublishTabs published={form.isPublished ?? false} onChange={(v) => setForm((p) => ({ ...p, isPublished: v }))} />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Deskripsi</Label>
+                  <Textarea value={form.description ?? ''} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Poster Image URL</Label>
+                  <Input value={form.posterImageUrl ?? ''} onChange={(e) => setForm((p) => ({ ...p, posterImageUrl: e.target.value }))} placeholder="https://..." />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Upload Poster</Label>
+                  <div className="grid gap-3 md:grid-cols-[1fr_180px]">
+                    <div className="space-y-2">
+                      <Input
+                        id="recruitment-poster"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        disabled={uploadingPoster}
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          setUploadingPoster(true);
+                          try {
+                            const url = await uploadImage(file);
+                            setForm((p) => ({ ...p, posterImageUrl: url }));
+                            toast.success('Upload poster berhasil');
+                          } catch (err: any) {
+                            toast.error(getErrorMessage(err, 'Gagal upload poster'));
+                          } finally {
+                            setUploadingPoster(false);
+                            e.currentTarget.value = '';
+                          }
+                        }}
+                      />
+                      <div className="flex flex-wrap gap-2">
+                        <Button asChild variant="outline" disabled={uploadingPoster} className="min-h-11">
+                          <Label htmlFor="recruitment-poster" className="cursor-pointer">
+                            {uploadingPoster ? 'Uploading...' : form.posterImageUrl ? 'Ganti Poster' : 'Upload Poster'}
+                          </Label>
+                        </Button>
+                        {form.posterImageUrl ? (
+                          <Button type="button" variant="ghost" className="min-h-11" onClick={() => setForm((p) => ({ ...p, posterImageUrl: '' }))} disabled={uploadingPoster}>
+                            Hapus
+                          </Button>
+                        ) : null}
+                      </div>
+                    </div>
+                    <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-zinc-700">
+                      <div className="aspect-[4/5] w-full bg-slate-100 dark:bg-zinc-900">
+                        {form.posterImageUrl ? (
+                          <img src={form.posterImageUrl} alt="Poster" className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="flex h-full items-center justify-center text-xs text-slate-500">Belum ada poster</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className={formTab === 'team' ? 'space-y-6' : 'hidden'}>
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <Label>Panitia</Label>
                     <Button
                       type="button"
-                      variant="ghost"
-                      onClick={() => setForm((p) => ({ ...p, posterImageUrl: '' }))}
-                      disabled={uploadingPoster}
+                      variant="outline"
+                      className="min-h-11"
+                      onClick={() => setForm((p) => ({ ...p, committee: [...(p.committee ?? []), { name: '', role: '' }] }))}
                     >
-                      Hapus
+                      Tambah Panitia
                     </Button>
-                  ) : null}
-                </div>
-                <div className="text-xs text-slate-500 dark:text-zinc-400">PNG/JPG. Maks 4MB.</div>
-              </div>
-              <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50 dark:border-zinc-700 dark:bg-zinc-900/40">
-                <div className="aspect-[4/5] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.2),rgba(255,255,255,0.04))]">
-                  {form.posterImageUrl ? (
-                    <img src={form.posterImageUrl} alt="Poster" className="h-full w-full object-cover" />
+                  </div>
+                  {(form.committee ?? []).length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-600 dark:border-zinc-700 dark:bg-zinc-900/40 dark:text-zinc-300">
+                      Belum ada panitia.
+                    </div>
                   ) : (
-                    <div className="flex h-full w-full items-center justify-center px-4 text-center text-xs text-slate-500 dark:text-zinc-300">
-                      Belum ada poster
+                    <div className="space-y-3">
+                      {(form.committee ?? []).map((c, idx) => (
+                        <div key={idx} className="grid gap-3 md:grid-cols-2">
+                          <Input
+                            value={c.name}
+                            onChange={(e) =>
+                              setForm((p) => ({
+                                ...p,
+                                committee: (p.committee ?? []).map((x, i) => (i === idx ? { ...x, name: e.target.value } : x)),
+                              }))
+                            }
+                            placeholder="Nama"
+                          />
+                          <div className="flex gap-2">
+                            <Input
+                              value={c.role}
+                              onChange={(e) =>
+                                setForm((p) => ({
+                                  ...p,
+                                  committee: (p.committee ?? []).map((x, i) => (i === idx ? { ...x, role: e.target.value } : x)),
+                                }))
+                              }
+                              placeholder="Jabatan"
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="min-h-11 shrink-0"
+                              onClick={() => setForm((p) => ({ ...p, committee: (p.committee ?? []).filter((_, i) => i !== idx) }))}
+                            >
+                              Hapus
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <Label>Contact Person</Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="min-h-11"
+                      onClick={() => setForm((p) => ({ ...p, contacts: [...(p.contacts ?? []), { name: '', contact: '' }] }))}
+                    >
+                      Tambah Kontak
+                    </Button>
+                  </div>
+                  {(form.contacts ?? []).length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-600 dark:border-zinc-700 dark:bg-zinc-900/40 dark:text-zinc-300">
+                      Belum ada kontak.
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {(form.contacts ?? []).map((c, idx) => (
+                        <div key={idx} className="grid gap-3 md:grid-cols-2">
+                          <Input
+                            value={c.name}
+                            onChange={(e) =>
+                              setForm((p) => ({
+                                ...p,
+                                contacts: (p.contacts ?? []).map((x, i) => (i === idx ? { ...x, name: e.target.value } : x)),
+                              }))
+                            }
+                            placeholder="Nama"
+                          />
+                          <div className="flex gap-2">
+                            <Input
+                              value={c.contact}
+                              onChange={(e) =>
+                                setForm((p) => ({
+                                  ...p,
+                                  contacts: (p.contacts ?? []).map((x, i) => (i === idx ? { ...x, contact: e.target.value } : x)),
+                                }))
+                              }
+                              placeholder="WhatsApp / link"
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="min-h-11 shrink-0"
+                              onClick={() => setForm((p) => ({ ...p, contacts: (p.contacts ?? []).filter((_, i) => i !== idx) }))}
+                            >
+                              Hapus
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
               </div>
-            </div>
-          </div>
-          <div className="space-y-3 md:col-span-2">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <Label>Panitia</Label>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setForm((p) => ({ ...p, committee: [...(p.committee ?? []), { name: '', role: '' }] }))}
-              >
-                Tambah Panitia
-              </Button>
-            </div>
-            {(form.committee ?? []).length === 0 ? (
-              <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-600 dark:border-zinc-700 dark:bg-zinc-900/40 dark:text-zinc-300">
-                Belum ada panitia. Klik “Tambah Panitia”.
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {(form.committee ?? []).map((c, idx) => (
-                  <div key={idx} className="grid gap-3 md:grid-cols-2">
-                    <Input
-                      value={c.name}
-                      onChange={(e) =>
-                        setForm((p) => ({
-                          ...p,
-                          committee: (p.committee ?? []).map((x, i) => (i === idx ? { ...x, name: e.target.value } : x)),
-                        }))
-                      }
-                      placeholder="Nama"
-                    />
-                    <div className="flex gap-2">
-                      <Input
-                        value={c.role}
-                        onChange={(e) =>
-                          setForm((p) => ({
-                            ...p,
-                            committee: (p.committee ?? []).map((x, i) => (i === idx ? { ...x, role: e.target.value } : x)),
-                          }))
-                        }
-                        placeholder="Jabatan"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() =>
-                          setForm((p) => ({ ...p, committee: (p.committee ?? []).filter((_, i) => i !== idx) }))
-                        }
-                      >
-                        Hapus
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
 
-          <div className="space-y-3 md:col-span-2">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <Label>Contact Person</Label>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setForm((p) => ({ ...p, contacts: [...(p.contacts ?? []), { name: '', contact: '' }] }))}
-              >
-                Tambah Kontak
-              </Button>
-            </div>
-            {(form.contacts ?? []).length === 0 ? (
-              <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-600 dark:border-zinc-700 dark:bg-zinc-900/40 dark:text-zinc-300">
-                Belum ada kontak. Klik “Tambah Kontak”.
+              <div className="flex flex-col-reverse gap-3 border-t border-slate-200 pt-4 dark:border-zinc-800 sm:flex-row sm:justify-end">
+                {form.id ? (
+                  <Button variant="outline" type="button" className="min-h-11" onClick={resetForm}>
+                    Batal
+                  </Button>
+                ) : null}
+                <Button type="submit" className="min-h-11">
+                  {form.id ? 'Update' : 'Tambah'}
+                </Button>
               </div>
-            ) : (
-              <div className="space-y-3">
-                {(form.contacts ?? []).map((c, idx) => (
-                  <div key={idx} className="grid gap-3 md:grid-cols-2">
-                    <Input
-                      value={c.name}
-                      onChange={(e) =>
-                        setForm((p) => ({
-                          ...p,
-                          contacts: (p.contacts ?? []).map((x, i) => (i === idx ? { ...x, name: e.target.value } : x)),
-                        }))
-                      }
-                      placeholder="Nama"
-                    />
-                    <div className="flex gap-2">
-                      <Input
-                        value={c.contact}
-                        onChange={(e) =>
-                          setForm((p) => ({
-                            ...p,
-                            contacts: (p.contacts ?? []).map((x, i) => (i === idx ? { ...x, contact: e.target.value } : x)),
-                          }))
-                        }
-                        placeholder="WhatsApp/Link (contoh: 0812... atau https://wa.me/62...)"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setForm((p) => ({ ...p, contacts: (p.contacts ?? []).filter((_, i) => i !== idx) }))}
-                      >
-                        Hapus
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+            </form>
+          </AdminCard>
 
-          <div className="md:col-span-2 flex justify-end gap-3">
-            {form.id ? (
-              <Button variant="outline" type="button" onClick={resetForm}>
-                Batal
-              </Button>
-            ) : null}
-            <Button type="submit">{form.id ? 'Update' : 'Tambah'}</Button>
-          </div>
-        </form>
-      </AdminCard>
-
-      <AdminCard title="Daftar Recruitment" description="Data yang tersimpan di CMS.">
-        <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-zinc-800">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Judul</TableHead>
-                <TableHead>Tanggal</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Aksi</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {recruitments.map((r) => (
-                <TableRow key={r.id}>
-                  <TableCell className="font-medium">{r.title}</TableCell>
-                  <TableCell>{r.date_range ?? '-'}</TableCell>
-                  <TableCell>{r.is_published ? 'Publish' : 'Draft'}</TableCell>
-                  <TableCell className="text-right space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      type="button"
-                      onClick={() =>
-                        (setForm({
-                          id: r.id,
-                          title: r.title,
-                          description: r.description ?? '',
-                          formUrl: r.form_url ?? '',
-                          posterImageUrl: r.poster_image_url ?? '',
-                          isPublished: r.is_published,
-                          committee: (r.committee ?? []).map((x) => ({ name: x.name, role: x.role })),
-                          contacts: (r.contacts ?? []).map((x) => ({ name: x.name, contact: x.contact })),
-                        }),
-                        resetDatesFromRange(r.date_range ?? ''))
-                      }
-                    >
-                      Edit
-                    </Button>
-                    <Button variant="destructive" size="sm" type="button" onClick={() => openDelete(r.id)}>
-                      Hapus
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <CmsPreviewCollapsible>
+            <PublicSiteRecruitmentPreview
+              title={form.title}
+              dateRange={dateRangePreview}
+              description={form.description}
+              formUrl={form.formUrl}
+              posterImageUrl={form.posterImageUrl}
+              isPublished={form.isPublished}
+              committeeCount={form.committee?.length ?? 0}
+              contactsCount={form.contacts?.length ?? 0}
+            />
+          </CmsPreviewCollapsible>
         </div>
-      </AdminCard>
+      ) : (
+        <AdminCard title="Daftar Recruitment" description="Data yang tersimpan di CMS.">
+          <ul className="space-y-3 md:hidden" aria-label="Daftar recruitment">
+            {recruitments.map((r) => (
+              <li key={r.id} className="rounded-2xl border border-slate-200 p-4 dark:border-zinc-800">
+                <p className="font-bold text-slate-900 dark:text-white">{r.title}</p>
+                <p className="text-sm text-slate-500">{r.date_range ?? '—'}</p>
+                <Badge className="mt-2" variant={r.is_published ? 'success' : 'secondary'}>
+                  {r.is_published ? 'Publik' : 'Draft'}
+                </Badge>
+                <div className="mt-3 flex gap-2">
+                  <Button variant="outline" size="sm" className="min-h-11 flex-1" type="button" onClick={() => loadForEdit(r)}>
+                    Edit
+                  </Button>
+                  <Button variant="destructive" size="sm" className="min-h-11" type="button" onClick={() => openDelete(r.id)}>
+                    Hapus
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <MobileTableHint />
+          <div className="hidden overflow-x-auto md:block">
+            <Table className="min-w-[640px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Judul</TableHead>
+                  <TableHead>Tanggal</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Aksi</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {recruitments.map((r) => (
+                  <TableRow key={r.id}>
+                    <TableCell className="font-medium">{r.title}</TableCell>
+                    <TableCell>{r.date_range ?? '-'}</TableCell>
+                    <TableCell>
+                      <Badge variant={r.is_published ? 'success' : 'secondary'}>{r.is_published ? 'Publik' : 'Draft'}</Badge>
+                    </TableCell>
+                    <TableCell className="space-x-2 text-right">
+                      <Button variant="outline" size="sm" type="button" onClick={() => loadForEdit(r)}>
+                        Edit
+                      </Button>
+                      <Button variant="destructive" size="sm" type="button" onClick={() => openDelete(r.id)}>
+                        Hapus
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </AdminCard>
+      )}
 
       <ConfirmModal
         isOpen={isDeleteOpen}

@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 import PublicLayout from '@/components/PublicLayout';
 import useSWR from 'swr';
 import api from '@/services/api';
@@ -26,8 +27,10 @@ export default function OpenRecruitment() {
 
   const [query, setQuery] = useState('');
   const [openId, setOpenId] = useState<string | null>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
   const selected = useMemo(() => items.find((x) => x.id === openId) ?? null, [items, openId]);
   useLockBodyScroll(Boolean(selected));
+  useDialogA11y(Boolean(selected), () => setOpenId(null), { containerRef: modalRef });
 
   useEffect(() => {
     const id = searchParams.get('id');
@@ -152,7 +155,13 @@ export default function OpenRecruitment() {
               setSearchParams(next);
             }}
           />
-          <div role="dialog" aria-modal="true" className="relative w-full max-w-5xl overflow-hidden rounded-3xl border border-black/10 bg-white shadow-[0_30px_80px_-45px_rgba(15,23,42,0.55)]">
+          <div
+            ref={modalRef}
+            role="dialog"
+            aria-modal="true"
+            tabIndex={-1}
+            className="relative w-full max-w-5xl overflow-hidden rounded-3xl border border-black/10 bg-white shadow-[0_30px_80px_-45px_rgba(15,23,42,0.55)] outline-none"
+          >
             <div className="relative">
               <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(37,99,235,0.16),rgba(56,189,248,0.08),transparent_60%)]" />
               <div className="relative flex items-start justify-between gap-4 border-b border-black/10 px-5 py-5 sm:px-7">

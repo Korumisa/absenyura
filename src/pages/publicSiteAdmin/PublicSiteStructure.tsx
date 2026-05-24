@@ -12,6 +12,9 @@ import { prepareImageForUpload } from '@/lib/imageUpload';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import AdminPageShell from '@/components/AdminPageShell';
 import AdminCard from '@/components/AdminCard';
+import PublicSiteStructurePreview from '@/components/publicSiteAdmin/PublicSiteStructurePreview';
+import { CmsPreviewCollapsible } from '@/components/ui/CmsPreviewCollapsible';
+import { CmsViewSiteLink } from '@/components/cms/CmsViewSiteLink';
 import { Layers } from 'lucide-react';
 
 export default function PublicSiteStructure() {
@@ -129,7 +132,13 @@ export default function PublicSiteStructure() {
   };
 
   return (
-    <AdminPageShell title="Struktur Organisasi" description="Tambahkan grup dan anggota tanpa perlu JSON." variant="plain" icon={<Layers size={22} />}>
+    <AdminPageShell
+      title="Struktur Organisasi"
+      description="Tambahkan grup dan anggota tanpa perlu JSON."
+      variant="plain"
+      icon={<Layers size={22} />}
+      actions={<CmsViewSiteLink href="/struktur-organisasi" label="Lihat struktur publik" />}
+    >
       <ConfirmModal
         isOpen={confirm.open}
         onClose={() => setConfirm((prev) => ({ ...prev, open: false }))}
@@ -144,6 +153,7 @@ export default function PublicSiteStructure() {
         variant={confirm.variant}
       />
 
+      <div className="grid gap-6 xl:grid-cols-[1fr_minmax(280px,340px)]">
       <AdminCard
         title="Grup Struktur"
         description="Atur grup, tandai divisi inti, lalu tentukan spotlight per anggota (maks 1 anggota per grup). Tips: buat grup bernama “Dosen Pembimbing” untuk tampil di atas INTI; untuk foto Visi/Misi di beranda, isi jabatan mengandung “Ketua” dan “Wakil”."
@@ -151,7 +161,7 @@ export default function PublicSiteStructure() {
           <Button
             type="button"
             variant="outline"
-            className="w-full sm:w-auto"
+            className="min-h-11 w-full sm:w-auto"
             onClick={() =>
               setGroupsDirty((prev) => [...prev, { title: '', isCore: false, people: [{ name: '', role: '', photoUrl: '', isSpotlight: false }] }])
             }
@@ -378,11 +388,16 @@ export default function PublicSiteStructure() {
           >
             Reset
           </Button>
-          <Button type="button" onClick={handleSave} disabled={saving || !dirty} className="w-full sm:w-auto">
+          <Button type="button" onClick={handleSave} disabled={saving || !dirty} className="min-h-11 w-full sm:w-auto">
             Simpan
           </Button>
         </div>
       </AdminCard>
+
+        <CmsPreviewCollapsible>
+          <PublicSiteStructurePreview groups={groups} />
+        </CmsPreviewCollapsible>
+      </div>
     </AdminPageShell>
   );
 }

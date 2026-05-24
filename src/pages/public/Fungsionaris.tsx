@@ -9,12 +9,15 @@ import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 import PublicCoverImage from '@/components/PublicCoverImage';
 import useFirstLoadOverlay from '@/lib/useFirstLoadOverlay';
 import { AnimatePresence, motion } from 'framer-motion';
+import { useReducedMotion } from '@/lib/useReducedMotion';
+import { fadeTransition } from '@/lib/motionPresets';
 
 export default function Fungsionaris() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
   const { data: groups = [], isLoading } = useSWR<PublicStructureGroup[]>('/public-site/structure', fetcher, { revalidateOnFocus: false });
   const { data: profile } = useSWR<PublicProfile | null>('/public-site/profile', fetcher, { revalidateOnFocus: false });
   const showLoading = useFirstLoadOverlay(isLoading);
+  const reducedMotion = useReducedMotion();
 
   const ordered = useMemo(
     () => groups.slice().sort((a, b) => (Number(a.sort_order ?? 999) || 999) - (Number(b.sort_order ?? 999) || 999)),
@@ -225,6 +228,35 @@ export default function Fungsionaris() {
                     const rest = people.filter((p) => p.id !== leader?.id);
                     const divisiHeads = rest.filter((p) => String(p.role ?? '').toLowerCase().includes('kadiv'));
                     const staff = rest.filter((p) => !divisiHeads.some((x) => x.id === p.id));
+                    const panel = (
+                      <>
+                        <div className="flex justify-center">{leader ? renderAvatar(leader, 'xl') : null}</div>
+
+                        {divisiHeads.length ? (
+                          <div className="mt-14 text-center">
+                            <div className="text-5xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] sm:text-6xl">DIVISI</div>
+                            <div className="mt-8 flex flex-wrap justify-center gap-10">
+                              {divisiHeads.map((p) => renderAvatar(p, 'lg'))}
+                            </div>
+                          </div>
+                        ) : null}
+
+                        {staff.length ? (
+                          <div className="mt-14 flex flex-wrap justify-center gap-x-10 gap-y-12">
+                            {staff.map((p) => renderAvatar(p, 'md'))}
+                          </div>
+                        ) : null}
+                      </>
+                    );
+
+                    if (reducedMotion) {
+                      return (
+                        <div key={activeId} className="mt-10">
+                          {panel}
+                        </div>
+                      );
+                    }
+
                     return (
                       <AnimatePresence mode="wait" initial={false}>
                         <motion.div
@@ -232,25 +264,10 @@ export default function Fungsionaris() {
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -10 }}
-                          transition={{ duration: 0.18, ease: 'easeOut' }}
+                          transition={fadeTransition(false)}
                           className="mt-10"
                         >
-                          <div className="flex justify-center">{leader ? renderAvatar(leader, 'xl') : null}</div>
-
-                          {divisiHeads.length ? (
-                            <div className="mt-14 text-center">
-                              <div className="text-5xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] sm:text-6xl">DIVISI</div>
-                              <div className="mt-8 flex flex-wrap justify-center gap-10">
-                                {divisiHeads.map((p) => renderAvatar(p, 'lg'))}
-                              </div>
-                            </div>
-                          ) : null}
-
-                          {staff.length ? (
-                            <div className="mt-14 flex flex-wrap justify-center gap-x-10 gap-y-12">
-                              {staff.map((p) => renderAvatar(p, 'md'))}
-                            </div>
-                          ) : null}
+                          {panel}
                         </motion.div>
                       </AnimatePresence>
                     );

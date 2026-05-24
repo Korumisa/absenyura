@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '@/stores/authStore';
-import { useTheme } from '@/hooks/useTheme';
+import { useTheme } from '@/providers/theme-provider';
+import { Moon, Sun } from 'lucide-react';
 import api from '@/services/api';
 import { toast } from 'sonner';
 import { User, LogOut, Building2, Plus, Trash2, X, BookOpen } from 'lucide-react';
@@ -11,7 +12,7 @@ import AdminPageShell from '@/components/AdminPageShell';
 
 export default function Settings() {
   const { user, setAuth } = useAuthStore();
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, toggleTheme } = useTheme();
   
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'profile'>('profile');
@@ -103,6 +104,16 @@ export default function Settings() {
           {activeTab === 'profile' && (
             <>
               {/* Profile Form */}
+              {/* [UX] #4 — preferensi tampilan */}
+              <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-zinc-700 dark:bg-zinc-800">
+                <h2 className="mb-4 text-lg font-bold text-slate-800 dark:text-white">Tampilan</h2>
+                <p className="mb-4 text-sm text-slate-500 dark:text-zinc-400">Mode gelap mengurangi silau saat absensi malam hari.</p>
+                <Button type="button" variant="outline" className="min-h-11 gap-2" onClick={toggleTheme} aria-pressed={theme === 'dark'}>
+                  {theme === 'dark' ? <Sun className="h-4 w-4" aria-hidden="true" /> : <Moon className="h-4 w-4" aria-hidden="true" />}
+                  {theme === 'dark' ? 'Mode terang' : 'Mode gelap'}
+                </Button>
+              </div>
+
               <div className="bg-white dark:bg-zinc-800 rounded-xl border border-slate-200 dark:border-zinc-700 shadow-sm p-6">
             <h2 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Informasi Profil</h2>
             <form onSubmit={handleSaveProfile} className="space-y-4">

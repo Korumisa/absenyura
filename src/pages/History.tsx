@@ -10,15 +10,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import AdminPageShell from '@/components/AdminPageShell';
 import type { AttendanceHistory } from '@/types/report';
+import { useSwrPageState } from '@/hooks/useSwrPageState';
+import { ErrorWithRetry } from '@/components/ErrorWithRetry';
+import { attendanceStatusLabel } from '@/lib/sessionStatusLabel';
 
 const fetcher = (url: string) => api.get(url).then(res => res.data.data);
 
 export default function HistoryPage() {
   const [filter, setFilter] = useState('ALL');
 
-  const { data: history = [], error, isLoading: loading } = useSWR<AttendanceHistory[]>('/reports', fetcher, {
-    revalidateOnFocus: false,
-  });
+  const swr = useSWR<AttendanceHistory[]>('/reports', fetcher, { revalidateOnFocus: false });
+  const { data: history = [], isInitialLoading: loading, isError, retry } = useSwrPageState(swr);
 
   const filteredHistory = history.filter(h => {
     if (filter === 'ALL') return true;
@@ -49,7 +51,9 @@ export default function HistoryPage() {
         ))}
       </div>
 
-      {loading ? (
+      {isError ? (
+        <ErrorWithRetry title="Gagal memuat riwayat" error={swr.error} onRetry={retry} />
+      ) : loading ? (
         <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-800 overflow-hidden">
           <div className="overflow-auto">
             <Table className="min-w-[800px]">
@@ -94,8 +98,38 @@ export default function HistoryPage() {
           </p>
         </div>
       ) : (
-        <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-800 overflow-hidden">
+        <>
+        {/* [UX] #18 — kartu mobile */}
+        <ul className="space-y-3 md:hidden" aria-label="Riwayat kehadiran">
+          {filteredHistory.map((item) => (
+            <li key={item.id} className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+              <p className="font-bold text-slate-900 dark:text-white">{item.session_title}</p>
+              <p className="text-sm text-indigo-600 dark:text-indigo-400">{item.class_name || 'Umum'}</p>
+              <p className="mt-2 text-sm text-slate-600 dark:text-zinc-400">
+                {format(new Date(item.check_in_time), 'dd MMM yyyy · HH:mm', { locale: id })}
+              </p>
+              <div className="mt-2 flex flex-col gap-1 text-xs text-slate-500 dark:text-zinc-400">
+                <div className="flex items-center gap-1.5">
+                  <Smartphone size={14} className="shrink-0" aria-hidden="true" />
+                  <span className="truncate" title={item.device}>{item.device || 'Perangkat tidak diketahui'}</span>
+                </div>
+                {item.photo_url ? (
+                  <a href={item.photo_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-indigo-600 dark:text-indigo-400">
+                    <Camera size={14} aria-hidden="true" /> Lihat bukti foto
+                  </a>
+                ) : null}
+              </div>
+              <div className="mt-3 flex justify-end">
+                <Badge variant={item.status === 'PRESENT' ? 'success' : item.status === 'LATE' ? 'warning' : 'secondary'}>
+                  {attendanceStatusLabel(item.status)}
+                </Badge>
+              </div>
+            </li>
+          ))}
+        </ul>
+        <div className="hidden bg-white dark:bg-zinc-900 md:block rounded-xl shadow-sm border border-slate-200 dark:border-zinc-800 overflow-hidden">
           <div className="overflow-auto">
+            <p className="sr-only">Tabel riwayat — geser horizontal jika perlu</p>
             <Table className="min-w-[800px]">
               <TableHeader className="sticky top-0 z-10 bg-slate-50 dark:bg-zinc-950/50">
                 <TableRow>
@@ -166,6 +200,7 @@ export default function HistoryPage() {
             </Table>
           </div>
         </div>
+        </>
       )}
     </AdminPageShell>
   );

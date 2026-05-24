@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import api from '@/services/api';
 import useSWR from 'swr';
-import { Download, FileText, Search, CheckCircle2, Clock, XCircle, Edit3, X } from 'lucide-react';
+import { Download, FileText, Search, CheckCircle2, Clock, XCircle, Edit3, X, ChevronDown, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, isValid } from 'date-fns';
 import { id } from 'date-fns/locale';
@@ -22,6 +22,10 @@ import type { Report } from '@/types/report';
 import type { PaginationMeta } from '@/types/common';
 import AdminPageShell from '@/components/AdminPageShell';
 import { formatClassLabel } from '@/lib/classLabel';
+import { MobileTableHint } from '@/components/ui/MobileTableHint';
+import { useSwrPageState } from '@/hooks/useSwrPageState';
+import { ErrorWithRetry } from '@/components/ErrorWithRetry';
+import { attendanceStatusLabel } from '@/lib/sessionStatusLabel';
 
 const fetcher = (url: string) => api.get(url).then(res => res.data);
 
@@ -54,9 +58,9 @@ export default function Reports() {
     queryParams.append('endDate', endDate);
   }
 
-  const { data, error: _error, isLoading: loading, mutate } = useSWR(`/reports?${queryParams.toString()}`, fetcher, {
-    revalidateOnFocus: false
-  });
+  const swr = useSWR(`/reports?${queryParams.toString()}`, fetcher, { revalidateOnFocus: false });
+  const { isInitialLoading: loading, isError, retry } = useSwrPageState(swr);
+  const { data, mutate } = swr;
 
   const reports: Report[] = Array.isArray(data?.data) ? (data.data.filter(Boolean) as Report[]) : [];
   const meta: PaginationMeta | null = data?.meta || null;
@@ -92,6 +96,8 @@ export default function Reports() {
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [overrideStatus, setOverrideStatus] = useState('PRESENT');
   const [overrideNotes, setOverrideNotes] = useState('');
+  const [overrideSubmitting, setOverrideSubmitting] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const exportExcelMatrix = useCallback(async (rows: Report[], fileSuffix: string) => {
     const safeRows = (Array.isArray(rows) ? rows : []).filter((r): r is Report => Boolean(r && (r as any).id));
@@ -257,8 +263,9 @@ export default function Reports() {
 
   const handleOverrideSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedReport) return;
+    if (!selectedReport || overrideSubmitting) return;
 
+    setOverrideSubmitting(true);
     try {
       await api.post('/attendance/override', {
         session_id: selectedReport.session_id,
@@ -275,6 +282,8 @@ export default function Reports() {
     } catch (error: unknown) {
       const err = error as { response?: { data?: { error?: string } } };
       toast.error(err.response?.data?.error || 'Gagal mengubah status');
+    } finally {
+      setOverrideSubmitting(false);
     }
   };
 
@@ -286,17 +295,43 @@ export default function Reports() {
       icon={<FileText className="h-5 w-5" />}
       actions={
         <div className="flex gap-2">
-          <Button onClick={handleExportExcel} disabled={exporting !== 'none'} className="bg-emerald-600 hover:bg-emerald-700 text-white">
-            <Download className="w-4 h-4 mr-2" /> {exporting === 'excel' ? 'Exporting...' : 'Excel'}
+          <Button
+            onClick={handleExportExcel}
+            disabled={exporting !== 'none'}
+            className="min-h-11 bg-emerald-600 text-white hover:bg-emerald-700"
+            aria-busy={exporting === 'excel'}
+          >
+            <Download className="mr-2 h-4 w-4" aria-hidden="true" />
+            {exporting === 'excel' ? 'Menyiapkan Excel…' : 'Export Excel'}
           </Button>
-          <Button onClick={handleExportPDF} disabled={exporting !== 'none'} variant="destructive">
-            <FileText className="w-4 h-4 mr-2" /> {exporting === 'pdf' ? 'Exporting...' : 'PDF'}
+          <Button
+            onClick={handleExportPDF}
+            disabled={exporting !== 'none'}
+            variant="destructive"
+            className="min-h-11"
+            aria-busy={exporting === 'pdf'}
+          >
+            <FileText className="mr-2 h-4 w-4" aria-hidden="true" />
+            {exporting === 'pdf' ? 'Menyiapkan PDF…' : 'Export PDF'}
           </Button>
         </div>
       }
     >
+      {isError ? (
+        <ErrorWithRetry title="Gagal memuat rekap" error={swr.error} onRetry={retry} />
+      ) : (
       <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-800 overflow-hidden flex flex-col h-[calc(100vh-12rem)]">
-        <div className="p-4 border-b border-slate-200 dark:border-zinc-800 flex flex-col sm:flex-row gap-4 shrink-0">
+        <div className="p-4 border-b border-slate-200 dark:border-zinc-800 shrink-0">
+          <button
+            type="button"
+            className="mb-3 flex min-h-11 w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 md:hidden"
+            aria-expanded={filtersOpen}
+            onClick={() => setFiltersOpen((v) => !v)}
+          >
+            Filter &amp; pencarian
+            <ChevronDown className={`h-5 w-5 transition-transform ${filtersOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+          </button>
+        <div className={`flex flex-col gap-4 sm:flex-row ${filtersOpen ? 'flex' : 'hidden md:flex'}`}>
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
             <Input 
@@ -305,7 +340,11 @@ export default function Reports() {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-9"
+              aria-describedby="reports-search-hint"
             />
+            <p id="reports-search-hint" className="mt-1 text-xs text-slate-500 dark:text-zinc-400">
+              Pencarian memfilter data di halaman ini ({filteredReports.length} baris).
+            </p>
           </div>
           <div className="flex gap-2 w-full sm:w-auto">
             <Input
@@ -353,8 +392,35 @@ export default function Reports() {
             </SelectContent>
           </Select>
         </div>
+        </div>
 
-        <div className="flex-1 overflow-auto">
+        <ul className="space-y-3 p-4 md:hidden" aria-label="Daftar laporan kehadiran">
+          {loading
+            ? Array.from({ length: 4 }).map((_, i) => (
+                <li key={i} className="rounded-2xl border border-slate-200 p-4 dark:border-zinc-800">
+                  <Skeleton className="mb-2 h-5 w-40" />
+                  <Skeleton className="h-4 w-full" />
+                </li>
+              ))
+            : filteredReports.length === 0
+              ? (
+                  <li className="py-8 text-center text-slate-500">Tidak ada data.</li>
+                )
+              : filteredReports.map((report: Report, idx) => (
+                  <li key={report.id ?? idx} className="rounded-2xl border border-slate-200 p-4 dark:border-zinc-800">
+                    <p className="font-bold text-slate-900 dark:text-white">{report.user_name}</p>
+                    <p className="text-sm text-slate-500">{report.nim_nip}</p>
+                    <p className="mt-2 text-sm font-medium text-indigo-600">{report.session_title}</p>
+                    <p className="text-xs text-slate-500">{safeFormat(report.check_in_time, 'dd MMM yyyy · HH:mm')}</p>
+                    <Badge className="mt-2" variant={report.status === 'PRESENT' ? 'success' : report.status === 'LATE' ? 'warning' : 'secondary'}>
+                      {attendanceStatusLabel(report.status)}
+                    </Badge>
+                  </li>
+                ))}
+        </ul>
+
+        <MobileTableHint />
+        <div className="hidden flex-1 overflow-auto md:block">
           <Table className="min-w-[800px]">
             <TableHeader className="sticky top-0 z-10 bg-slate-50 dark:bg-zinc-950">
               <TableRow>
@@ -490,6 +556,7 @@ export default function Reports() {
           </div>
         )}
       </div>
+      )}
 
       {/* Override Modal */}
       <Dialog open={Boolean(isOverrideModalOpen && selectedReport)} onOpenChange={setIsOverrideModalOpen}>
@@ -538,11 +605,18 @@ export default function Reports() {
               </div>
               
               <DialogFooter className="mt-8">
-                <Button type="button" variant="outline" onClick={() => setIsOverrideModalOpen(false)}>
+                <Button type="button" variant="outline" onClick={() => setIsOverrideModalOpen(false)} disabled={overrideSubmitting}>
                   Batal
                 </Button>
-                <Button type="submit">
-                  Simpan Status
+                <Button type="submit" disabled={overrideSubmitting} aria-busy={overrideSubmitting}>
+                  {overrideSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+                      Menyimpan…
+                    </>
+                  ) : (
+                    'Simpan Status'
+                  )}
                 </Button>
               </DialogFooter>
           </form>
