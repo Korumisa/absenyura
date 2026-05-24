@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 import { CmsTabNav, type CmsTabItem } from '@/components/ui/CmsTabNav';
 import { CmsPreviewCollapsible } from '@/components/ui/CmsPreviewCollapsible';
 import { CmsViewSiteLink } from '@/components/cms/CmsViewSiteLink';
+import { CmsEditorLayout } from '@/components/cms/CmsEditorLayout';
 
 type ProfileTab = 'identity' | 'home' | 'visimisi' | 'contact';
 
@@ -244,8 +245,14 @@ export default function PublicSiteProfile() {
         variant="primary"
       />
 
-      <AdminCard title="Pengaturan Profil" description="Data ini dipakai untuk halaman public, termasuk tombol WhatsApp." className="">
-        <div className="grid gap-6 xl:grid-cols-[1fr_minmax(280px,340px)]">
+      <AdminCard title="Pengaturan Profil" description="Data ini dipakai untuk halaman public, footer, dan kontak organisasi." className="">
+        <CmsEditorLayout
+          preview={
+            <CmsPreviewCollapsible>
+              <PublicSiteProfilePreview draft={draft} />
+            </CmsPreviewCollapsible>
+          }
+        >
           <div className="min-w-0 space-y-5">
             <CmsTabNav<ProfileTab> tabs={PROFILE_TABS} value={profileTab} onChange={setProfileTab} ariaLabel="Bagian profil" />
 
@@ -657,14 +664,7 @@ export default function PublicSiteProfile() {
           </Button>
         </div>
           </div>
-
-          {/* [UI] preview — desktop sticky + mobile di bawah form */}
-          <CmsPreviewCollapsible>
-            <div className="xl:sticky xl:top-4">
-              <PublicSiteProfilePreview draft={draft} />
-            </div>
-          </CmsPreviewCollapsible>
-        </div>
+        </CmsEditorLayout>
       </AdminCard>
     </AdminPageShell>
   );

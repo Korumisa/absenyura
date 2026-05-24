@@ -401,6 +401,9 @@ export default function PublicSitePosts() {
               }}
             />
         <ul className="space-y-3 md:hidden" aria-label="Daftar konten">
+          {posts.length === 0 ? (
+            <li className="py-8 text-center text-sm text-slate-500">Belum ada konten.</li>
+          ) : null}
           {posts.map((p) => (
             <li key={p.id} className="rounded-2xl border border-slate-200 p-4 dark:border-zinc-800">
               <p className="font-bold text-slate-900 dark:text-white">{p.title}</p>
@@ -432,6 +435,13 @@ export default function PublicSitePosts() {
             </TableRow>
           </TableHeader>
           <TableBody>
+            {posts.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="py-10 text-center text-slate-500">
+                  Belum ada konten.
+                </TableCell>
+              </TableRow>
+            ) : null}
             {posts.map((p) => (
               <TableRow key={p.id}>
                 <TableCell className="font-medium">{p.title}</TableCell>

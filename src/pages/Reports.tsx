@@ -320,7 +320,8 @@ export default function Reports() {
       {isError ? (
         <ErrorWithRetry title="Gagal memuat rekap" error={swr.error} onRetry={retry} />
       ) : (
-      <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-800 overflow-hidden flex flex-col h-[calc(100vh-12rem)]">
+      <div className="flex min-h-0 flex-1 flex-col">
+      <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-800 overflow-hidden flex min-h-0 flex-1 flex-col">
         <div className="p-4 border-b border-slate-200 dark:border-zinc-800 shrink-0">
           <button
             type="button"
@@ -346,14 +347,16 @@ export default function Reports() {
               Pencarian memfilter data di halaman ini ({filteredReports.length} baris).
             </p>
           </div>
-          <div className="flex gap-2 w-full sm:w-auto">
+          <div className="flex w-full items-center gap-2 sm:w-auto">
             <Input
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
               className="w-full sm:w-[150px]"
             />
-            <span className="self-center text-slate-500">-</span>
+            <span className="flex h-10 shrink-0 items-center px-0.5 text-slate-500" aria-hidden="true">
+              –
+            </span>
             <Input
               type="date"
               value={endDate}
@@ -555,6 +558,7 @@ export default function Reports() {
             </div>
           </div>
         )}
+      </div>
       </div>
       )}
 

@@ -15,6 +15,7 @@ import AdminCard from '@/components/AdminCard';
 import PublicSiteStructurePreview from '@/components/publicSiteAdmin/PublicSiteStructurePreview';
 import { CmsPreviewCollapsible } from '@/components/ui/CmsPreviewCollapsible';
 import { CmsViewSiteLink } from '@/components/cms/CmsViewSiteLink';
+import { CmsEditorLayout } from '@/components/cms/CmsEditorLayout';
 import { Layers } from 'lucide-react';
 
 export default function PublicSiteStructure() {
@@ -153,7 +154,13 @@ export default function PublicSiteStructure() {
         variant={confirm.variant}
       />
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_minmax(280px,340px)]">
+      <CmsEditorLayout
+        preview={
+          <CmsPreviewCollapsible>
+            <PublicSiteStructurePreview groups={groups} />
+          </CmsPreviewCollapsible>
+        }
+      >
       <AdminCard
         title="Grup Struktur"
         description="Atur grup, tandai divisi inti, lalu tentukan spotlight per anggota (maks 1 anggota per grup). Tips: buat grup bernama “Dosen Pembimbing” untuk tampil di atas INTI; untuk foto Visi/Misi di beranda, isi jabatan mengandung “Ketua” dan “Wakil”."
@@ -393,11 +400,7 @@ export default function PublicSiteStructure() {
           </Button>
         </div>
       </AdminCard>
-
-        <CmsPreviewCollapsible>
-          <PublicSiteStructurePreview groups={groups} />
-        </CmsPreviewCollapsible>
-      </div>
+      </CmsEditorLayout>
     </AdminPageShell>
   );
 }

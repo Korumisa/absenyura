@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import AdminPageShell from '@/components/AdminPageShell';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
 import { MobileTableHint } from '@/components/ui/MobileTableHint';
+import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
 import type { AuditLog } from '@/types/audit';
 import type { PaginationMeta } from '@/types/common';
 import {
@@ -68,6 +69,31 @@ export default function AuditLogs() {
     );
   });
 
+  const renderLogRow = (log: AuditLog) => {
+    const detail = formatAuditDetail(log);
+    return (
+      <>
+        <Badge
+          variant={getAuditActionVariant(log.action) as 'default' | 'destructive' | 'secondary'}
+          className="gap-1.5 font-normal"
+        >
+          {getActionIcon(log.action)}
+          {getAuditActionLabel(log.action)}
+        </Badge>
+        <p className="mt-1 font-mono text-[10px] text-slate-400">{log.action}</p>
+        <p className="mt-2 text-sm font-medium text-slate-700 dark:text-zinc-300">
+          {getAuditTableLabel(log.target_table)}
+        </p>
+        {detail ? <p className="mt-1 text-sm text-slate-500">{detail}</p> : null}
+        <div className="mt-2 flex flex-wrap gap-3 text-xs text-slate-500">
+          <span>{log.actor_id ? `Pengguna ${log.actor_id.slice(0, 8)}…` : 'Sistem'}</span>
+          <span>{log.ip_address || '—'}</span>
+          <span>{format(new Date(log.created_at), 'dd MMM yyyy HH:mm', { locale: id })}</span>
+        </div>
+      </>
+    );
+  };
+
   return (
     <AdminPageShell
       title="Audit Log Sistem"
@@ -76,145 +102,185 @@ export default function AuditLogs() {
       icon={<Shield className="h-5 w-5" />}
     >
       {fetchError ? (
-        <ErrorWithRetry
-          title="Gagal memuat audit log"
-          error={fetchError}
-          onRetry={loadLogs}
-          className="mb-6"
-        />
-      ) : null}
-
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-        <div className="border-b border-slate-200 p-4 dark:border-zinc-800">
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <Input
-              type="text"
-              placeholder="Cari aktivitas, tabel, ID pengguna, atau IP..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-        </div>
-
-        <MobileTableHint />
-
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader className="bg-slate-50 dark:bg-zinc-950/50">
-              <TableRow>
-                <TableHead>Aktivitas</TableHead>
-                <TableHead>Target</TableHead>
-                <TableHead>Pengguna</TableHead>
-                <TableHead>Detail</TableHead>
-                <TableHead>IP</TableHead>
-                <TableHead>Waktu</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center text-slate-500">
-                    Memuat data...
-                  </TableCell>
-                </TableRow>
-              ) : filteredLogs.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center text-slate-500">
-                    {searchTerm ? 'Tidak ada log yang cocok dengan pencarian.' : 'Belum ada aktivitas tercatat.'}
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredLogs.map((log) => {
-                  const detail = formatAuditDetail(log);
-                  return (
-                    <TableRow key={log.id}>
-                      <TableCell>
-                        <Badge
-                          variant={getAuditActionVariant(log.action) as 'default' | 'destructive' | 'secondary'}
-                          className="gap-1.5 font-normal"
-                        >
-                          {getActionIcon(log.action)}
-                          {getAuditActionLabel(log.action)}
-                        </Badge>
-                        <p className="mt-1 font-mono text-[10px] text-slate-400">{log.action}</p>
-                      </TableCell>
-                      <TableCell>
-                        <p className="font-medium text-slate-700 dark:text-zinc-300">
-                          {getAuditTableLabel(log.target_table)}
-                        </p>
-                        {log.target_id ? (
-                          <p className="mt-0.5 truncate font-mono text-xs text-slate-400" title={log.target_id}>
-                            {log.target_id.slice(0, 8)}…
-                          </p>
-                        ) : null}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-zinc-300">
-                          <User size={14} className="shrink-0 text-slate-400" />
-                          {log.actor_id ? (
-                            <span className="font-mono text-xs" title={log.actor_id}>
-                              {log.actor_id.slice(0, 8)}…
-                            </span>
-                          ) : (
-                            <span className="text-slate-400">Sistem</span>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="max-w-[200px] text-sm text-slate-600 dark:text-zinc-400">
-                        {detail ?? '—'}
-                      </TableCell>
-                      <TableCell className="font-mono text-sm text-slate-500 dark:text-zinc-400">
-                        {log.ip_address || '—'}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-zinc-300">
-                          <Calendar size={14} className="shrink-0 text-slate-400" />
-                          <span>
-                            {format(new Date(log.created_at), 'dd MMM yyyy', { locale: id })}
-                            <br />
-                            <span className="text-xs text-slate-400">
-                              {format(new Date(log.created_at), 'HH:mm:ss')}
-                            </span>
-                          </span>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
-        </div>
-
-        {meta && meta.totalPages > 1 ? (
-          <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50 p-4 dark:border-zinc-700 dark:bg-zinc-800/50">
-            <span className="text-sm text-slate-500 dark:text-zinc-400">
-              Menampilkan {(meta.page - 1) * meta.limit + 1}–{Math.min(meta.page * meta.limit, meta.total)} dari{' '}
-              {meta.total} log
-            </span>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
-              >
-                Sebelumnya
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage((p) => Math.min(meta.totalPages, p + 1))}
-                disabled={page === meta.totalPages}
-              >
-                Selanjutnya
-              </Button>
+        <ErrorWithRetry title="Gagal memuat audit log" error={fetchError} onRetry={loadLogs} />
+      ) : (
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="border-b border-slate-200 p-4 dark:border-zinc-800">
+            <div className="relative max-w-md">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Input
+                type="text"
+                placeholder="Cari aktivitas, tabel, ID pengguna, atau IP..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9"
+              />
             </div>
           </div>
-        ) : null}
-      </div>
+
+          <ul className="space-y-3 p-4 md:hidden" aria-label="Daftar audit log">
+            {loading ? (
+              <li className="py-8 text-center text-slate-500">Memuat data...</li>
+            ) : filteredLogs.length === 0 ? (
+              <li>
+                <AdminEmptyState
+                  compact
+                  icon={Shield}
+                  title={searchTerm ? 'Tidak ada hasil' : 'Belum ada aktivitas'}
+                  description={
+                    searchTerm
+                      ? 'Ubah kata kunci pencarian.'
+                      : 'Aktivitas sistem akan tercatat di sini.'
+                  }
+                />
+              </li>
+            ) : (
+              filteredLogs.map((log) => (
+                <li
+                  key={log.id}
+                  className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950"
+                >
+                  {renderLogRow(log)}
+                </li>
+              ))
+            )}
+          </ul>
+
+          <MobileTableHint />
+          <div className="hidden overflow-x-auto md:block">
+            <Table>
+              <TableHeader className="bg-slate-50 dark:bg-zinc-950/50">
+                <TableRow>
+                  <TableHead>Aktivitas</TableHead>
+                  <TableHead>Target</TableHead>
+                  <TableHead>Pengguna</TableHead>
+                  <TableHead>Detail</TableHead>
+                  <TableHead>IP</TableHead>
+                  <TableHead>Waktu</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="h-24 text-center text-slate-500">
+                      Memuat data...
+                    </TableCell>
+                  </TableRow>
+                ) : filteredLogs.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="p-0">
+                      <AdminEmptyState
+                        compact
+                        icon={Shield}
+                        title={searchTerm ? 'Tidak ada hasil' : 'Belum ada aktivitas'}
+                        description={
+                          searchTerm
+                            ? 'Ubah kata kunci pencarian.'
+                            : 'Aktivitas sistem akan tercatat di sini.'
+                        }
+                        className="border-0 shadow-none"
+                      />
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredLogs.map((log) => {
+                    const detail = formatAuditDetail(log);
+                    return (
+                      <TableRow key={log.id}>
+                        <TableCell>
+                          <Badge
+                            variant={
+                              getAuditActionVariant(log.action) as
+                                | 'default'
+                                | 'destructive'
+                                | 'secondary'
+                            }
+                            className="gap-1.5 font-normal"
+                          >
+                            {getActionIcon(log.action)}
+                            {getAuditActionLabel(log.action)}
+                          </Badge>
+                          <p className="mt-1 font-mono text-[10px] text-slate-400">{log.action}</p>
+                        </TableCell>
+                        <TableCell>
+                          <p className="font-medium text-slate-700 dark:text-zinc-300">
+                            {getAuditTableLabel(log.target_table)}
+                          </p>
+                          {log.target_id ? (
+                            <p
+                              className="mt-0.5 truncate font-mono text-xs text-slate-400"
+                              title={log.target_id}
+                            >
+                              {log.target_id.slice(0, 8)}…
+                            </p>
+                          ) : null}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-zinc-300">
+                            <User size={14} className="shrink-0 text-slate-400" />
+                            {log.actor_id ? (
+                              <span className="font-mono text-xs" title={log.actor_id}>
+                                {log.actor_id.slice(0, 8)}…
+                              </span>
+                            ) : (
+                              <span className="text-slate-400">Sistem</span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="max-w-[200px] text-sm text-slate-600 dark:text-zinc-400">
+                          {detail ?? '—'}
+                        </TableCell>
+                        <TableCell className="font-mono text-sm text-slate-500 dark:text-zinc-400">
+                          {log.ip_address || '—'}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-zinc-300">
+                            <Calendar size={14} className="shrink-0 text-slate-400" />
+                            <span>
+                              {format(new Date(log.created_at), 'dd MMM yyyy', { locale: id })}
+                              <br />
+                              <span className="text-xs text-slate-400">
+                                {format(new Date(log.created_at), 'HH:mm:ss')}
+                              </span>
+                            </span>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
+
+          {meta && meta.totalPages > 1 ? (
+            <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50 p-4 dark:border-zinc-700 dark:bg-zinc-800/50">
+              <span className="text-sm text-slate-500 dark:text-zinc-400">
+                Menampilkan {(meta.page - 1) * meta.limit + 1}–
+                {Math.min(meta.page * meta.limit, meta.total)} dari {meta.total} log
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                >
+                  Sebelumnya
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.min(meta.totalPages, p + 1))}
+                  disabled={page === meta.totalPages}
+                >
+                  Selanjutnya
+                </Button>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      )}
     </AdminPageShell>
   );
 }

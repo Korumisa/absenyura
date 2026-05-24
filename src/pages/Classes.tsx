@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import useSWR from 'swr';
+import { useSwrPageState } from '@/hooks/useSwrPageState';
+import { ErrorWithRetry } from '@/components/ErrorWithRetry';
+import { MobileTableHint } from '@/components/ui/MobileTableHint';
+import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
 import api from '@/services/api';
 import { useAuthStore } from '@/stores/authStore';
 import { Plus, Search, Edit2, Trash2, X, Users, BookOpen } from 'lucide-react';
@@ -45,7 +49,9 @@ export default function Classes() {
   const [classToDelete, setClassToDelete] = useState<string | null>(null);
 
   const fetcher = (url: string) => api.get(url).then(res => res.data.data);
-  const { data: classes = [], error, isLoading: loading, mutate } = useSWR<ClassItem[]>('/classes', fetcher, { revalidateOnFocus: false });
+  const swr = useSWR<ClassItem[]>('/classes', fetcher, { revalidateOnFocus: false });
+  const { data: classes = [], isInitialLoading: loading, isError, retry, mutate } = useSwrPageState(swr);
+  const hasSearch = Boolean(searchTerm.trim());
 
   const fetchLecturers = async () => {
     if (currentUser?.role !== 'USER') {
@@ -190,6 +196,9 @@ export default function Classes() {
         ) : null
       }
     >
+      {isError ? (
+        <ErrorWithRetry title="Gagal memuat kelas" error={swr.error} onRetry={retry} />
+      ) : (
       <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-800 overflow-hidden">
         <div className="p-4 border-b border-slate-200 dark:border-zinc-800">
           <div className="relative max-w-md">
@@ -204,7 +213,70 @@ export default function Classes() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <ul className="space-y-3 p-4 md:hidden" aria-label="Daftar kelas">
+          {loading
+            ? Array.from({ length: 3 }).map((_, i) => (
+                <li key={i} className="rounded-2xl border border-slate-200 p-4 dark:border-zinc-800">
+                  <Skeleton className="mb-2 h-5 w-48" />
+                  <Skeleton className="h-4 w-32" />
+                </li>
+              ))
+            : filteredClasses.length === 0 ? (
+                <li>
+                  <AdminEmptyState
+                    compact
+                    icon={BookOpen}
+                    title={hasSearch ? 'Tidak ada hasil' : 'Belum ada kelas'}
+                    description={
+                      hasSearch
+                        ? 'Ubah kata kunci pencarian.'
+                        : 'Buat kelas baru untuk mengelola mahasiswa dan sesi.'
+                    }
+                  />
+                </li>
+              )
+            : filteredClasses.map((c) => (
+                <li key={c.id} className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+                  <div className="flex items-start gap-2">
+                    <BookOpen size={18} className="mt-0.5 shrink-0 text-indigo-500" />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-bold text-slate-900 dark:text-white">{c.name}</p>
+                      <p className="text-sm text-slate-500">{c.course_code || '—'} · Semester {c.semester}</p>
+                      <p className="mt-1 text-sm text-slate-600 dark:text-zinc-400">Dosen: {c.lecturer.name}</p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <Badge variant="secondary">{c._count.enrollments} mahasiswa</Badge>
+                        <Badge variant="outline">{c._count.sessions} sesi</Badge>
+                      </div>
+                    </div>
+                  </div>
+                  {currentUser?.role !== 'USER' ? (
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <Button variant="outline" className="min-h-11 flex-1" onClick={() => handleOpenEnrollModal(c.id)}>
+                        <Users className="mr-2 h-4 w-4" />
+                        Mahasiswa
+                      </Button>
+                      <Button variant="outline" className="min-h-11 flex-1" onClick={() => handleOpenModal(c)}>
+                        <Edit2 className="mr-2 h-4 w-4" />
+                        Edit
+                      </Button>
+                      {currentUser?.role === 'SUPER_ADMIN' ? (
+                        <Button
+                          variant="outline"
+                          className="min-h-11 w-full text-red-600 sm:w-auto"
+                          onClick={() => openDeleteConfirm(c.id)}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Hapus
+                        </Button>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </li>
+              ))}
+        </ul>
+
+        <MobileTableHint />
+        <div className="hidden overflow-x-auto md:block">
           <Table>
             <TableHeader className="bg-slate-50 dark:bg-zinc-950/50">
               <TableRow>
@@ -233,8 +305,18 @@ export default function Classes() {
                 ))
               ) : filteredClasses.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center text-slate-500">
-                    Tidak ada kelas ditemukan.
+                  <TableCell colSpan={5} className="p-0">
+                    <AdminEmptyState
+                      compact
+                      icon={BookOpen}
+                      title={hasSearch ? 'Tidak ada hasil' : 'Belum ada kelas'}
+                      description={
+                        hasSearch
+                          ? 'Ubah kata kunci pencarian.'
+                          : 'Buat kelas baru untuk mengelola mahasiswa dan sesi.'
+                      }
+                      className="border-0 shadow-none"
+                    />
                   </TableCell>
                 </TableRow>
               ) : (
@@ -309,6 +391,7 @@ export default function Classes() {
           </Table>
         </div>
       </div>
+      )}
 
       {/* Modal Form */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>

@@ -9,14 +9,21 @@ import { Skeleton } from '@/components/ui/skeleton';
 import PublicEnter from '@/components/PublicEnter';
 import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 import PublicCoverImage from '@/components/PublicCoverImage';
+import { useSwrPageState } from '@/hooks/useSwrPageState';
+import { PublicPageError } from '@/components/public/PublicPageError';
 
 export default function BeritaDetail() {
   const { slug } = useParams();
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
   const { data: profile } = useSWR<PublicProfile | null>('/public-site/profile', fetcher, { revalidateOnFocus: false });
-  const { data: post, isLoading } = useSWR<PublicPost>(slug ? `/public-site/posts/${slug}` : null, fetcher, { revalidateOnFocus: false });
+  const postSwr = useSWR<PublicPost>(slug ? `/public-site/posts/${slug}` : null, fetcher, { revalidateOnFocus: false });
+  const { data: post, isInitialLoading: isLoading, isError, retry } = useSwrPageState(postSwr);
   const showLoading = isLoading && !post;
   const orgName = profile?.org_name ?? '';
+
+  if (isError) {
+    return <PublicPageError title="Gagal memuat berita" error={postSwr.error} onRetry={retry} />;
+  }
 
   return (
     <PublicLayout>

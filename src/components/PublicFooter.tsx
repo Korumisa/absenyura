@@ -102,6 +102,7 @@ export default function PublicFooter() {
             <div className="mb-4 text-sm font-extrabold tracking-tight text-slate-900">Quick Links</div>
             <ul className="space-y-2 text-sm">
               <li><Link to="/" className="hover:text-[var(--public-primary)]">Home</Link></li>
+              <li><Link to="/berita" className="hover:text-[var(--public-primary)]">Berita</Link></li>
               <li><Link to="/informasi" className="hover:text-[var(--public-primary)]">Informasi</Link></li>
               <li><Link to="/struktur-organisasi" className="hover:text-[var(--public-primary)]">Struktur Organisasi</Link></li>
               <li><Link to="/program-kerja" className="hover:text-[var(--public-primary)]">Program Kerja</Link></li>

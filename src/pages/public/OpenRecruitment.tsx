@@ -15,11 +15,19 @@ import useLockBodyScroll from '@/lib/useLockBodyScroll';
 import useFirstLoadOverlay from '@/lib/useFirstLoadOverlay';
 import { useAuthStore } from '@/stores/authStore';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useSwrPageState } from '@/hooks/useSwrPageState';
+import { PublicPageError } from '@/components/public/PublicPageError';
+import { PublicEmptyState } from '@/components/public/PublicEmptyState';
 
 export default function OpenRecruitment() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
-  const { data: items = [], isLoading } = useSWR<PublicRecruitment[]>('/public-site/recruitments', fetcher, { revalidateOnFocus: false });
+  const swr = useSWR<PublicRecruitment[]>('/public-site/recruitments', fetcher, { revalidateOnFocus: false });
+  const { data: items = [], isInitialLoading: isLoading, isError, retry } = useSwrPageState(swr);
   const showLoading = useFirstLoadOverlay(isLoading);
+
+  if (isError) {
+    return <PublicPageError title="Gagal memuat open recruitment" error={swr.error} onRetry={retry} />;
+  }
   const { isAuthenticated, user } = useAuthStore();
   const location = useLocation();
   const navigate = useNavigate();
@@ -93,18 +101,12 @@ export default function OpenRecruitment() {
               ))}
             </div>
           ) : items.length === 0 ? (
-            <div className="relative mt-6 overflow-hidden rounded-2xl border border-dashed border-black/15 bg-white/60 p-6 text-left text-sm text-slate-600 sm:p-10">
-              <div className="pointer-events-none absolute -left-16 -top-16 h-52 w-52 rounded-[48%_52%_58%_42%/44%_43%_57%_56%] bg-[var(--public-primary)]/12 blur-3xl" />
-              <div className="pointer-events-none absolute -right-16 -bottom-16 h-56 w-56 rounded-[53%_47%_45%_55%/48%_56%_44%_52%] bg-sky-400/10 blur-3xl" />
-              <div className="relative">
-                <div className="text-base font-extrabold tracking-tight text-slate-900">Belum ada open recruitment</div>
-                <div className="mt-2 max-w-2xl">Admin bisa menambahkan open recruitment dari menu Konten Website.</div>
-              </div>
-            </div>
+            <PublicEmptyState
+              title="Belum ada open recruitment"
+              description="Admin bisa menambahkan open recruitment dari menu Konten Website."
+            />
           ) : filtered.length === 0 ? (
-            <div className="mt-6 rounded-2xl border border-dashed border-black/15 bg-white/60 p-8 text-sm text-slate-600">
-              Tidak ada data yang cocok dengan pencarian.
-            </div>
+            <PublicEmptyState variant="search" />
           ) : (
             <div className="mt-6 grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] justify-start justify-items-start gap-6">
               {filtered.map((r) => (

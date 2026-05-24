@@ -3,10 +3,14 @@ import api from '@/services/api';
 import { Plus, Edit2, Trash2, Search, X, MapPin, LocateFixed } from 'lucide-react';
 import { toast } from 'sonner';
 import { MapContainer, TileLayer, Marker, Circle, useMapEvents } from 'react-leaflet';
-import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { MapResizeOnOpen } from '@/components/MapResizeOnOpen';
 import useSWR from 'swr';
+import { useSwrPageState } from '@/hooks/useSwrPageState';
+import { ErrorWithRetry } from '@/components/ErrorWithRetry';
+import { MobileTableHint } from '@/components/ui/MobileTableHint';
+import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,14 +21,9 @@ import { ConfirmModal } from '@/components/ConfirmModal';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import AdminPageShell from '@/components/AdminPageShell';
 import type { Location } from '@/types/location';
+import { fixLeafletDefaultIcons } from '@/lib/leafletIcon';
 
-// Fix leaflet icon issue in react-leaflet
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: '/images/marker-icon-2x.png',
-  iconUrl: '/images/marker-icon.png',
-  shadowUrl: '/images/marker-shadow.png',
-});
+fixLeafletDefaultIcons();
 
 export default function Locations() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -51,7 +50,10 @@ export default function Locations() {
   const searchTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
   const fetcher = (url: string) => api.get(url).then(res => res.data.data);
-  const { data: locations = [], error, isLoading: loading, mutate } = useSWR<Location[]>('/locations', fetcher, { revalidateOnFocus: false });
+  const swr = useSWR<Location[]>('/locations', fetcher, { revalidateOnFocus: false });
+  const { data: locations = [], isInitialLoading: loading, isError, retry, mutate } = useSwrPageState(swr);
+
+  const hasFilters = Boolean(searchTerm.trim()) || wifiFilter !== 'ALL';
 
   const handleOpenModal = (location: Location | null = null) => {
     if (location) {
@@ -235,6 +237,9 @@ export default function Locations() {
         </Button>
       }
     >
+      {isError ? (
+        <ErrorWithRetry title="Gagal memuat lokasi" error={swr.error} onRetry={retry} />
+      ) : (
       <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-800 overflow-hidden">
         <div className="p-4 border-b border-slate-200 dark:border-zinc-800 flex flex-col sm:flex-row gap-4">
           <div className="relative max-w-md flex-1">
@@ -259,7 +264,63 @@ export default function Locations() {
           </Select>
         </div>
 
-        <div className="overflow-x-auto">
+        <ul className="space-y-3 p-4 md:hidden" aria-label="Daftar lokasi">
+          {loading
+            ? Array.from({ length: 3 }).map((_, i) => (
+                <li key={i} className="rounded-2xl border border-slate-200 p-4 dark:border-zinc-800">
+                  <Skeleton className="mb-2 h-5 w-40" />
+                  <Skeleton className="h-4 w-full" />
+                </li>
+              ))
+            : filteredLocations.length === 0 ? (
+                <li>
+                  <AdminEmptyState
+                    compact
+                    icon={MapPin}
+                    title={hasFilters ? 'Tidak ada hasil' : 'Belum ada lokasi'}
+                    description={
+                      hasFilters
+                        ? 'Ubah kata kunci atau filter WiFi.'
+                        : 'Tambahkan lokasi geofencing untuk sesi absensi.'
+                    }
+                  />
+                </li>
+              )
+            : filteredLocations.map((loc) => (
+                <li key={loc.id} className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+                  <div className="flex items-start gap-2">
+                    <MapPin size={18} className="mt-0.5 shrink-0 text-indigo-500" />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-bold text-slate-900 dark:text-white">{loc.name}</p>
+                      <p className="mt-1 truncate text-sm text-slate-500">{loc.address || 'Tanpa alamat'}</p>
+                      <p className="mt-2 font-mono text-xs text-slate-500">
+                        {loc.latitude.toFixed(5)}, {loc.longitude.toFixed(5)} · {loc.radius} m
+                      </p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        WiFi/IP: {loc.wifi_bssid.length > 0 ? `${loc.wifi_bssid.length} aturan` : 'Tanpa batasan'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-4 flex gap-2">
+                    <Button variant="outline" className="min-h-11 flex-1" onClick={() => handleOpenModal(loc)}>
+                      <Edit2 className="mr-2 h-4 w-4" />
+                      Edit
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="min-h-11 flex-1 text-red-600 hover:text-red-700"
+                      onClick={() => openDeleteConfirm(loc.id)}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Hapus
+                    </Button>
+                  </div>
+                </li>
+              ))}
+        </ul>
+
+        <MobileTableHint />
+        <div className="hidden overflow-x-auto md:block">
           <Table>
             <TableHeader className="bg-slate-50 dark:bg-zinc-950/50">
               <TableRow>
@@ -280,8 +341,18 @@ export default function Locations() {
                 </TableRow>
               ) : filteredLocations.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center text-slate-500 dark:text-zinc-400">
-                    Tidak ada data lokasi ditemukan.
+                  <TableCell colSpan={6} className="p-0">
+                    <AdminEmptyState
+                      compact
+                      icon={MapPin}
+                      title={hasFilters ? 'Tidak ada hasil' : 'Belum ada lokasi'}
+                      description={
+                        hasFilters
+                          ? 'Ubah kata kunci atau filter WiFi.'
+                          : 'Tambahkan lokasi geofencing untuk sesi absensi.'
+                      }
+                      className="border-0 shadow-none"
+                    />
                   </TableCell>
                 </TableRow>
               ) : (
@@ -342,6 +413,7 @@ export default function Locations() {
           </Table>
         </div>
       </div>
+      )}
 
       {/* Modal Form */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>

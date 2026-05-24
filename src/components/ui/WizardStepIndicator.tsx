@@ -40,9 +40,7 @@ export function WizardStepIndicator({
                 >
                   {done ? <Check className="h-4 w-4" /> : step}
                 </span>
-                <span className="hidden sm:inline">
-                  {step}. {label}
-                </span>
+                <span className="hidden sm:inline">{label}</span>
                 <span className="sm:hidden">{step}</span>
               </div>
               {i < labels.length - 1 ? (

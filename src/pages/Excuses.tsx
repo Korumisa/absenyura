@@ -21,6 +21,9 @@ import { MobileTableHint } from '@/components/ui/MobileTableHint';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
 import { excuseStatusLabel } from '@/lib/sessionStatusLabel';
+import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
+import { useSwrPageState } from '@/hooks/useSwrPageState';
+import { FileText as FileTextIcon } from 'lucide-react';
 
 export default function Excuses() {
   const { user: currentUser } = useAuthStore();
@@ -68,7 +71,15 @@ export default function Excuses() {
   }, [filePreviewUrl]);
 
   const fetcher = (url: string) => api.get(url).then(res => res.data.data);
-  const { data: excuses = [], error, isLoading: loading, mutate } = useSWR<Excuse[]>('/excuses', fetcher, { revalidateOnFocus: false });
+  const swr = useSWR<Excuse[]>('/excuses', fetcher, { revalidateOnFocus: false });
+  const { data: excuses = [], isInitialLoading: loading, isError, retry, mutate } = useSwrPageState(swr);
+  const hasFilters = Boolean(searchTerm.trim()) || statusFilter !== 'ALL' || reasonFilter !== 'ALL';
+
+  const resolveProofUrl = (proofUrl: string | null | undefined) => {
+    if (!proofUrl) return null;
+    if (proofUrl.startsWith('http') || proofUrl.startsWith('data:')) return proofUrl;
+    return `${import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, '')}${proofUrl}`;
+  };
 
   const fetchSessions = async () => {
     try {
@@ -199,7 +210,7 @@ export default function Excuses() {
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
-    toast.success('Export CSV berhasil');
+    toast.success('Unduh CSV berhasil');
   };
 
   return (
@@ -213,7 +224,7 @@ export default function Excuses() {
           {currentUser?.role !== 'USER' ? (
             <Button variant="outline" className="min-h-11" onClick={exportCsv} disabled={loading || filteredExcuses.length === 0}>
               <Download className="mr-2 h-4 w-4" aria-hidden="true" />
-              Export CSV
+              Unduh CSV
             </Button>
           ) : null}
           {currentUser?.role === 'USER' ? (
@@ -225,14 +236,13 @@ export default function Excuses() {
         </div>
       }
     >
-      {error ? (
+      {isError ? (
         <ErrorWithRetry
           title="Gagal memuat pengajuan izin"
-          error={error}
-          onRetry={() => mutate()}
-          className="mb-6"
+          error={swr.error}
+          onRetry={retry}
         />
-      ) : null}
+      ) : (
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
         <div className="p-4 border-b border-slate-200 dark:border-zinc-800 flex flex-col sm:flex-row gap-4">
           <div className="relative max-w-md flex-1">
@@ -277,7 +287,23 @@ export default function Excuses() {
                   <Skeleton className="mt-3 h-9 w-full" />
                 </li>
               ))
-            : filteredExcuses.map((excuse) => (
+            : filteredExcuses.length === 0 ? (
+                <li>
+                  <AdminEmptyState
+                    compact
+                    icon={FileTextIcon}
+                    title={hasFilters ? 'Tidak ada hasil' : 'Belum ada pengajuan'}
+                    description={
+                      hasFilters
+                        ? 'Ubah filter atau kata kunci pencarian.'
+                        : 'Pengajuan izin dan sakit akan muncul di sini.'
+                    }
+                  />
+                </li>
+              )
+            : filteredExcuses.map((excuse) => {
+                const proofHref = resolveProofUrl(excuse.proof_url);
+                return (
                 <li key={excuse.id} className="rounded-2xl border border-slate-200 p-4 dark:border-zinc-700">
                   {currentUser?.role !== 'USER' && (
                     <p className="font-bold text-slate-900 dark:text-white">{excuse.user.name}</p>
@@ -298,6 +324,17 @@ export default function Excuses() {
                       {excuseStatusLabel(excuse.status)}
                     </Badge>
                   </div>
+                  {proofHref ? (
+                    <a
+                      href={proofHref}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-2 inline-flex items-center gap-1 text-sm text-indigo-600 dark:text-indigo-400"
+                    >
+                      <Download className="h-4 w-4" />
+                      Lihat bukti
+                    </a>
+                  ) : null}
                   {currentUser?.role !== 'USER' && excuse.status === 'PENDING' ? (
                     <div className="mt-3 flex gap-2">
                       <Button
@@ -319,7 +356,8 @@ export default function Excuses() {
                     </div>
                   ) : null}
                 </li>
-              ))}
+              );
+              })}
         </ul>
 
         <MobileTableHint />
@@ -413,6 +451,7 @@ export default function Excuses() {
           </Table>
         </div>
       </div>
+      )}
 
       {/* Modal Form */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>

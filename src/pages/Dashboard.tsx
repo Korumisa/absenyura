@@ -3,8 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import useSWR from 'swr';
 import { useAuthStore } from '@/stores/authStore';
 import api from '@/services/api';
-import { Users, Calendar, CheckCircle2, Clock, MapPin, FileText, BarChart3, QrCode, RefreshCw, AlertCircle } from 'lucide-react';
-import { getErrorMessage } from '@/lib/errorMessage';
+import { Users, Calendar, CheckCircle2, Clock, MapPin, FileText, BarChart3, QrCode, RefreshCw } from 'lucide-react';
+import AdminPageShell from '@/components/AdminPageShell';
+import { ErrorWithRetry } from '@/components/ErrorWithRetry';
+import { MobileTableHint } from '@/components/ui/MobileTableHint';
 import {
   BarChart,
   Bar,
@@ -52,64 +54,41 @@ export default function Dashboard() {
     return 22;
   }, [chartPointCount]);
 
-  if (loading && !data) {
-    return (
-      <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-8">
-        <div className="mb-8">
-          <Skeleton className="h-10 w-48 mb-2" />
-          <Skeleton className="h-5 w-64" />
-        </div>
-        
-        {/* Banner Skeleton */}
-        <Skeleton className="h-48 w-full rounded-3xl" />
-        
-        {/* Stats Grid Skeleton */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {[...Array(4)].map((_, i) => (
-            <Skeleton key={i} className="h-32 w-full rounded-2xl" />
-          ))}
-        </div>
-
-        {/* Charts & Lists Skeleton */}
-        <div className="grid lg:grid-cols-3 gap-6">
-          <Skeleton className="lg:col-span-2 h-96 w-full rounded-2xl" />
-          <Skeleton className="h-96 w-full rounded-2xl" />
-        </div>
-      </div>
-    );
-  }
-
-  // [UX] #6 — error state, bukan skeleton tanpa akhir
-  if (error || !data) {
-    return (
-      <div className="mx-auto max-w-lg p-6 sm:p-8" role="alert">
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-center dark:border-red-900/50 dark:bg-red-950/30">
-          <AlertCircle className="mx-auto mb-4 h-12 w-12 text-red-500" aria-hidden="true" />
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white">Gagal memuat dashboard</h2>
-          <p className="mt-2 text-sm text-slate-600 dark:text-zinc-400">
-            {getErrorMessage(error, 'Periksa koneksi internet Anda lalu coba lagi.')}
-          </p>
-          <Button type="button" className="mt-6 min-h-11" onClick={() => mutate()}>
-            <RefreshCw className="mr-2 h-4 w-4" aria-hidden="true" />
-            Muat ulang
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
   const isUser = user?.role === 'USER';
 
   return (
-    <div className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-slate-800 dark:text-white">Dashboard</h1>
-        <p className="text-slate-500 dark:text-zinc-400 mt-1">
-          Selamat datang kembali, <span className="font-medium text-indigo-600 dark:text-indigo-400">{user?.name}</span>!
-        </p>
-      </div>
-
-      {isUser ? (
+    <AdminPageShell
+      title="Dashboard"
+      description={
+        <>
+          Selamat datang kembali,{' '}
+          <span className="font-medium text-indigo-600 dark:text-indigo-400">{user?.name}</span>!
+        </>
+      }
+      icon={<BarChart3 className="h-5 w-5" />}
+      actions={
+        <Button type="button" variant="outline" className="min-h-11" onClick={() => mutate()} disabled={loading}>
+          <RefreshCw className={`mr-2 h-4 w-4 ${isValidating ? 'animate-spin' : ''}`} />
+          Muat ulang
+        </Button>
+      }
+    >
+      {loading && !data ? (
+        <div className="space-y-8">
+          <Skeleton className="h-48 w-full rounded-3xl" />
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {[...Array(4)].map((_, i) => (
+              <Skeleton key={i} className="h-32 w-full rounded-2xl" />
+            ))}
+          </div>
+          <div className="grid gap-6 lg:grid-cols-3">
+            <Skeleton className="h-96 w-full rounded-2xl lg:col-span-2" />
+            <Skeleton className="h-96 w-full rounded-2xl" />
+          </div>
+        </div>
+      ) : error && !data ? (
+        <ErrorWithRetry title="Gagal memuat dashboard" error={error} onRetry={() => mutate()} />
+      ) : !data ? null : isUser ? (
         // ================= USER DASHBOARD (Modern & Clean) =================
         <div className="space-y-8">
           {/* [UX] quick action — sesi aktif */}
@@ -315,7 +294,7 @@ export default function Dashboard() {
                                         }
                                         className="h-auto min-h-11 bg-amber-500 px-3 py-1.5 text-xs text-white shadow-lg shadow-amber-600/20 hover:bg-amber-600"
                                       >
-                                        Checkout
+                                        Check-out
                                       </Button>
                                     )
                                   ) : (
@@ -346,7 +325,7 @@ export default function Dashboard() {
           <div className="bg-gradient-to-r from-slate-900 to-indigo-950 dark:from-indigo-950 dark:to-zinc-950 rounded-3xl p-8 sm:p-10 text-white shadow-xl relative overflow-hidden">
             <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/20 blur-[80px] rounded-full pointer-events-none"></div>
             <div className="relative z-10">
-              <h2 className="text-3xl sm:text-4xl font-extrabold mb-2">Selamat Datang, {user?.name}! 🚀</h2>
+              <h2 className="text-3xl sm:text-4xl font-extrabold mb-2">Selamat Datang, {user?.name}!</h2>
               <p className="text-indigo-200 text-lg max-w-2xl">
                 Pantau aktivitas akademik, kelola jadwal sesi, dan tinjau metrik kehadiran secara real-time dari satu dasbor pusat.
               </p>
@@ -532,8 +511,44 @@ export default function Dashboard() {
               <div className="px-8 py-6 border-b border-slate-200 dark:border-zinc-800">
                 <h2 className="text-xl font-bold text-slate-800 dark:text-white">Aktivitas Sesi Terbaru</h2>
               </div>
+
+              <ul className="space-y-3 p-4 md:hidden" aria-label="Sesi terbaru">
+                {data?.recent_sessions?.length === 0 ? (
+                  <li className="py-6 text-center text-sm text-slate-500">Belum ada sesi kelas yang dibuat.</li>
+                ) : (
+                  data?.recent_sessions?.map((session: any) => (
+                    <li
+                      key={session.id}
+                      className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950"
+                    >
+                      <p className="font-bold text-slate-900 dark:text-white">
+                        {typeof session.title === 'object' && session.title !== null
+                          ? (session.title as { name?: string; id?: string }).name ||
+                            (session.title as { id?: string }).id
+                          : session.title}
+                      </p>
+                      {session.location?.name ? (
+                        <p className="mt-1 flex items-center gap-1 text-sm text-slate-500">
+                          <MapPin size={14} />
+                          {session.location.name}
+                        </p>
+                      ) : null}
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <Badge variant="outline">{sessionStatusLabel(session.status)}</Badge>
+                        <span className="text-xs text-slate-500">
+                          {format(new Date(session.session_start), 'dd MMM yyyy HH:mm', { locale: id })}
+                        </span>
+                        <span className="text-xs text-slate-500">
+                          · {session._count?.attendances || 0} hadir
+                        </span>
+                      </div>
+                    </li>
+                  ))
+                )}
+              </ul>
+              <MobileTableHint />
               
-              <div className="flex-1 overflow-x-auto">
+              <div className="hidden flex-1 overflow-x-auto md:block">
                 <Table>
                   <TableHeader className="bg-slate-50 dark:bg-zinc-950/50">
                     <TableRow>
@@ -608,6 +623,6 @@ export default function Dashboard() {
           </div>
         </div>
       )}
-    </div>
+    </AdminPageShell>
   );
 }

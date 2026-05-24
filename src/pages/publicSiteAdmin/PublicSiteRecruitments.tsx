@@ -374,7 +374,7 @@ export default function PublicSiteRecruitments() {
                                   contacts: (p.contacts ?? []).map((x, i) => (i === idx ? { ...x, contact: e.target.value } : x)),
                                 }))
                               }
-                              placeholder="WhatsApp / link"
+                              placeholder="Telepon / link"
                             />
                             <Button
                               type="button"
@@ -424,6 +424,9 @@ export default function PublicSiteRecruitments() {
             }}
           />
           <ul className="space-y-3 md:hidden" aria-label="Daftar recruitment">
+            {recruitments.length === 0 ? (
+              <li className="py-8 text-center text-sm text-slate-500">Belum ada recruitment.</li>
+            ) : null}
             {recruitments.map((r) => (
               <li key={r.id} className="rounded-2xl border border-slate-200 p-4 dark:border-zinc-800">
                 <p className="font-bold text-slate-900 dark:text-white">{r.title}</p>
@@ -454,6 +457,13 @@ export default function PublicSiteRecruitments() {
                 </TableRow>
               </TableHeader>
               <TableBody>
+                {recruitments.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="py-10 text-center text-slate-500">
+                      Belum ada recruitment.
+                    </TableCell>
+                  </TableRow>
+                ) : null}
                 {recruitments.map((r) => (
                   <TableRow key={r.id}>
                     <TableCell className="font-medium">{r.title}</TableCell>

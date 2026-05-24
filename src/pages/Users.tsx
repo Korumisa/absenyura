@@ -3,6 +3,8 @@ import api from '@/services/api';
 import useSWR from 'swr';
 import { useAuthStore } from '@/stores/authStore';
 import { Plus, Search, Edit2, Trash2, X, Download, Upload, Smartphone, Users as UsersIcon } from 'lucide-react';
+import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
+import { userRoleLabel } from '@/lib/sessionStatusLabel';
 import * as ExcelJS from 'exceljs';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
@@ -156,6 +158,8 @@ export default function Users() {
   };
 
   const filteredUsers = users;
+  const hasFilters =
+    Boolean(debouncedSearch.trim()) || roleFilter !== 'ALL' || statusFilter !== 'ALL';
 
   const handleDownloadTemplate = async () => {
     const workbook = new ExcelJS.Workbook();
@@ -315,12 +319,26 @@ export default function Users() {
                     <Skeleton className="mt-3 h-9 w-full" />
                   </li>
                 ))
+              : filteredUsers.length === 0 ? (
+                <li>
+                  <AdminEmptyState
+                    compact
+                    icon={UsersIcon}
+                    title={hasFilters ? 'Tidak ada hasil' : 'Belum ada pengguna'}
+                    description={
+                      hasFilters
+                        ? 'Ubah filter atau kata kunci pencarian.'
+                        : 'Tambahkan pengguna baru untuk memulai.'
+                    }
+                  />
+                </li>
+              )
               : filteredUsers.map((user) => (
               <li key={user.id} className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
                 <p className="font-bold text-slate-900 dark:text-white">{user.name}</p>
                 <p className="text-sm text-slate-500">{user.email}</p>
                 <div className="mt-2 flex flex-wrap gap-2">
-                  <Badge variant="secondary">{user.role}</Badge>
+                  <Badge variant="secondary">{userRoleLabel(user.role)}</Badge>
                   <Badge variant={user.is_active ? 'success' : 'destructive'}>{user.is_active ? 'Aktif' : 'Nonaktif'}</Badge>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -444,7 +462,7 @@ export default function Users() {
                             title="Reset Perangkat (Mahasiswa akan diminta login ulang di perangkat baru)"
                           >
                             <Smartphone size={14} className="mr-1.5" />
-                            Reset Device
+                            Reset perangkat
                           </Button>
                         ) : null}
                         <Button

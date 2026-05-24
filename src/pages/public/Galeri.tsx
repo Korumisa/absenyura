@@ -14,12 +14,20 @@ import PublicPhotoFrame from '@/components/PublicPhotoFrame';
 import PublicCoverImage from '@/components/PublicCoverImage';
 import useLockBodyScroll from '@/lib/useLockBodyScroll';
 import useFirstLoadOverlay from '@/lib/useFirstLoadOverlay';
+import { useSwrPageState } from '@/hooks/useSwrPageState';
+import { PublicPageError } from '@/components/public/PublicPageError';
+import { PublicEmptyState } from '@/components/public/PublicEmptyState';
 
 export default function Galeri() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
   const { data: profile } = useSWR<PublicProfile | null>('/public-site/profile', fetcher, { revalidateOnFocus: false });
-  const { data: albums = [], isLoading } = useSWR<PublicGalleryAlbum[]>('/public-site/galleries', fetcher, { revalidateOnFocus: false });
+  const swr = useSWR<PublicGalleryAlbum[]>('/public-site/galleries', fetcher, { revalidateOnFocus: false });
+  const { data: albums = [], isInitialLoading: isLoading, isError, retry } = useSwrPageState(swr);
   const showLoading = useFirstLoadOverlay(isLoading);
+
+  if (isError) {
+    return <PublicPageError title="Gagal memuat galeri" error={swr.error} onRetry={retry} />;
+  }
   const orgName = profile?.org_name ?? '';
 
   const [activeAlbumId, setActiveAlbumId] = useState<string | null>(null);
@@ -61,14 +69,10 @@ export default function Galeri() {
               ))}
             </div>
           ) : albums.length === 0 ? (
-            <div className="relative mt-6 overflow-hidden rounded-2xl border border-dashed border-black/15 bg-white/60 p-6 text-left text-sm text-slate-600 sm:p-10">
-              <div className="pointer-events-none absolute -left-16 -top-16 h-52 w-52 rounded-[48%_52%_58%_42%/44%_43%_57%_56%] bg-[var(--public-primary)]/12 blur-3xl" />
-              <div className="pointer-events-none absolute -right-16 -bottom-16 h-56 w-56 rounded-[53%_47%_45%_55%/48%_56%_44%_52%] bg-sky-400/10 blur-3xl" />
-              <div className="relative">
-                <div className="text-base font-extrabold tracking-tight text-slate-900">Belum ada album galeri</div>
-                <div className="mt-2 max-w-2xl">Admin bisa menambahkan album dan foto dari menu Konten Website.</div>
-              </div>
-            </div>
+            <PublicEmptyState
+              title="Belum ada album galeri"
+              description="Admin bisa menambahkan album dan foto dari menu Konten Website."
+            />
           ) : (
             <div className="mt-6 grid gap-8 lg:grid-cols-[320px_1fr]">
               <aside className="space-y-4">

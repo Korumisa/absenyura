@@ -256,6 +256,9 @@ export default function PublicSiteGalleries() {
             }}
           />
           <ul className="space-y-3 md:hidden" aria-label="Daftar album">
+            {galleries.length === 0 ? (
+              <li className="py-8 text-center text-sm text-slate-500">Belum ada album.</li>
+            ) : null}
             {galleries.map((g) => (
               <li key={g.id} className="rounded-2xl border border-slate-200 p-4 dark:border-zinc-800">
                 <p className="font-bold text-slate-900 dark:text-white">{g.title}</p>
@@ -301,6 +304,13 @@ export default function PublicSiteGalleries() {
                 </TableRow>
               </TableHeader>
               <TableBody>
+                {galleries.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="py-10 text-center text-slate-500">
+                      Belum ada album.
+                    </TableCell>
+                  </TableRow>
+                ) : null}
                 {galleries.map((g) => (
                   <TableRow key={g.id}>
                     <TableCell className="font-medium">{g.title}</TableCell>

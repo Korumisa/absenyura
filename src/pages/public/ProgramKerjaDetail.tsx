@@ -10,6 +10,8 @@ import type { PublicProgram } from '@/types/publicSite';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import useFirstLoadOverlay from '@/lib/useFirstLoadOverlay';
+import { useSwrPageState } from '@/hooks/useSwrPageState';
+import { PublicPageError } from '@/components/public/PublicPageError';
 
 type ParsedProgram = {
   fields: Array<{ label: string; value: string }>;
@@ -69,11 +71,16 @@ function parseProgramDescription(description: string | null): ParsedProgram {
 export default function ProgramKerjaDetail() {
   const { id } = useParams();
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
-  const { data: items = [], isLoading } = useSWR<PublicProgram[]>('/public-site/programs', fetcher, { revalidateOnFocus: false });
+  const swr = useSWR<PublicProgram[]>('/public-site/programs', fetcher, { revalidateOnFocus: false });
+  const { data: items = [], isInitialLoading: isLoading, isError, retry } = useSwrPageState(swr);
 
   const program = useMemo(() => items.find((p) => p.id === id) ?? null, [items, id]);
   const parsed = useMemo(() => parseProgramDescription(program?.description ?? null), [program?.description]);
   const showLoading = useFirstLoadOverlay(isLoading);
+
+  if (isError) {
+    return <PublicPageError title="Gagal memuat program" error={swr.error} onRetry={retry} />;
+  }
 
   return (
     <PublicLayout>

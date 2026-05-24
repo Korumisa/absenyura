@@ -94,7 +94,7 @@ export default function HistoryPage() {
           <Calendar size={48} className="text-slate-300 dark:text-zinc-600 mb-4" />
           <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-2">Belum Ada Riwayat</h3>
           <p className="text-slate-500 dark:text-zinc-400">
-            {filter === 'ALL' ? 'Kamu belum mengikuti sesi kelas apapun.' : 'Tidak ada data untuk status ini.'}
+            {filter === 'ALL' ? 'Kamu belum mengikuti sesi kelas apa pun.' : 'Tidak ada data untuk status ini.'}
           </p>
         </div>
       ) : (
@@ -191,7 +191,7 @@ export default function HistoryPage() {
                         {item.status === 'LATE' && <Clock className="w-3.5 h-3.5" />}
                         {(item.status === 'SICK' || item.status === 'EXCUSED') && <FileText className="w-3.5 h-3.5" />}
                         {item.status === 'ABSENT' && <XCircle className="w-3.5 h-3.5" />}
-                        {item.status === 'SICK' ? 'SAKIT' : item.status === 'EXCUSED' ? 'IZIN' : item.status}
+                        {attendanceStatusLabel(item.status)}
                       </Badge>
                     </TableCell>
                   </TableRow>

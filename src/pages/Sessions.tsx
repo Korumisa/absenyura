@@ -137,6 +137,15 @@ export default function Sessions() {
     setIsModalOpen(true);
   };
 
+  const onWizardFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (wizardStep < 4) {
+      if (canProceedWizard(wizardStep)) setWizardStep((s) => Math.min(4, s + 1));
+      return;
+    }
+    void handleSubmit(e);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return;
@@ -225,7 +234,7 @@ export default function Sessions() {
       {isError ? (
         <ErrorWithRetry title="Gagal memuat sesi" error={swr.error} onRetry={retry} className="mb-6" />
       ) : (
-      <div className="bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-700 overflow-hidden mb-6">
+      <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-800 overflow-hidden mb-6">
         <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 border-b border-slate-200 dark:border-zinc-700">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
@@ -278,7 +287,7 @@ export default function Sessions() {
         <ul className="space-y-3 md:hidden" aria-label="Daftar sesi">
           {loading
             ? Array.from({ length: 3 }).map((_, i) => (
-                <li key={i} className="rounded-2xl border border-slate-200 p-4 dark:border-zinc-800">
+                <li key={i} className="rounded-2xl border border-slate-200 p-4 dark:border-zinc-800 dark:bg-zinc-900">
                   <Skeleton className="mb-2 h-5 w-48" />
                   <Skeleton className="h-4 w-32" />
                 </li>
@@ -288,7 +297,7 @@ export default function Sessions() {
                   <li className="py-8 text-center text-slate-500">Tidak ada sesi.</li>
                 )
               : filteredSessions.map((session) => (
-                  <li key={session.id} className="rounded-2xl border border-slate-200 p-4 dark:border-zinc-800">
+                  <li key={session.id} className="rounded-2xl border border-slate-200 p-4 dark:border-zinc-800 dark:bg-zinc-900">
                     <p className="font-bold text-slate-900 dark:text-white">{session.title}</p>
                     <p className="text-sm text-slate-500">{session.location?.name}</p>
                     <p className="mt-1 text-sm text-slate-600">
@@ -479,7 +488,7 @@ export default function Sessions() {
                                 }
                                 className="shadow-lg shadow-amber-600/20 bg-amber-500 hover:bg-amber-600 text-white text-xs px-3 py-1.5 h-auto"
                               >
-                                Checkout
+                                Check-out
                               </Button>
                             )
                           ) : (
@@ -514,7 +523,7 @@ export default function Sessions() {
             </DialogHeader>
           </div>
 
-          <form onSubmit={handleSubmit} className="max-h-[75vh] space-y-6 overflow-y-auto p-6">
+          <form onSubmit={onWizardFormSubmit} className="max-h-[75vh] space-y-6 overflow-y-auto p-6">
               <WizardStepIndicator labels={WIZARD_LABELS} currentStep={wizardStep} />
 
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -560,9 +569,9 @@ export default function Sessions() {
                   </div>
                 </div>
 
-                <div className={`space-y-4 md:col-span-2 ${wizardStep === 2 ? '' : 'hidden'}`}>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2 md:col-span-2">
+                <div className={`md:col-span-2 ${wizardStep === 2 ? '' : 'hidden'}`}>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                    <div className="space-y-2">
                       <Label>Waktu Mulai Sesi <span className="text-red-500">*</span></Label>
                       <Input 
                         type="datetime-local" required value={formData.session_start} onChange={e => setFormData({...formData, session_start: e.target.value})}
@@ -580,7 +589,7 @@ export default function Sessions() {
                         type="datetime-local" required value={formData.check_in_open_at} onChange={e => setFormData({...formData, check_in_open_at: e.target.value})}
                       />
                     </div>
-                    <div className="space-y-2 md:col-span-2">
+                    <div className="space-y-2">
                       <Label>Tutup Check-in <span className="text-red-500">*</span></Label>
                       <Input 
                         type="datetime-local" required value={formData.check_in_close_at} onChange={e => setFormData({...formData, check_in_close_at: e.target.value})}
@@ -627,6 +636,9 @@ export default function Sessions() {
                       <Input
                         value={classSearch}
                         onChange={(e) => setClassSearch(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') e.preventDefault();
+                        }}
                         placeholder="Cari kelas..."
                         className="pl-9"
                       />
@@ -721,7 +733,7 @@ export default function Sessions() {
                 </div>
               </div>
               
-              <DialogFooter className="flex flex-wrap gap-2 border-t border-slate-200 pt-6 dark:border-zinc-800">
+              <DialogFooter className="mt-2 flex flex-wrap gap-3 border-t border-slate-200 pt-8 dark:border-zinc-800">
                 <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)} disabled={isSubmitting} className="min-h-11">
                   Batal
                 </Button>

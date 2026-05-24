@@ -22,6 +22,16 @@ export function attendanceStatusLabel(status: string): string {
   return map[status] ?? status;
 }
 
+/** Label peran pengguna */
+export function userRoleLabel(role: string): string {
+  const map: Record<string, string> = {
+    USER: 'Mahasiswa',
+    ADMIN: 'Admin',
+    SUPER_ADMIN: 'Super Admin',
+  };
+  return map[role] ?? role;
+}
+
 /** Label pengajuan izin — E-03 */
 export function excuseStatusLabel(status: string): string {
   const map: Record<string, string> = {

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import AdminPageShell from '@/components/AdminPageShell';
 import AdminCard from '@/components/AdminCard';
+import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
 import { cn } from '@/lib/utils';
 
 export default function MasterData() {
@@ -115,6 +116,13 @@ export default function MasterData() {
               }
             >
               <div className="space-y-4">
+                {faculties.length === 0 ? (
+                  <AdminEmptyState
+                    icon={Building2}
+                    title="Belum ada data"
+                    description="Tambahkan fakultas dan program studi untuk digunakan di profil pengguna."
+                  />
+                ) : null}
                 {faculties.map((faculty, index) => {
                   if (!faculty) return null;
                   const facultyName =
@@ -248,6 +256,13 @@ export default function MasterData() {
               }
             >
               <div className="space-y-3">
+                {subjects.length === 0 ? (
+                  <AdminEmptyState
+                    icon={BookOpen}
+                    title="Belum ada data"
+                    description="Tambahkan mata kuliah agar tersedia saat membuat sesi kehadiran."
+                  />
+                ) : null}
                 {subjects.map((subject, index) => (
                   <div
                     key={index}

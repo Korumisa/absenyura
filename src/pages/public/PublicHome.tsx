@@ -14,6 +14,8 @@ import useHorizontalWheelScroll from '@/lib/useHorizontalWheelScroll';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useReducedMotion } from '@/lib/useReducedMotion';
 import { fadeTransition } from '@/lib/motionPresets';
+import { useSwrPageState } from '@/hooks/useSwrPageState';
+import { PublicPageError } from '@/components/public/PublicPageError';
 
 function HorizontalSnapRail({
   children,
@@ -319,7 +321,9 @@ export default function PublicHome() {
     return window.sessionStorage.getItem('public-home-ready') === '1';
   });
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
-  const { data: profile, isLoading: isLoadingProfile } = useSWR<PublicProfile | null>('/public-site/profile', fetcher, { revalidateOnFocus: false });
+  const profileSwr = useSWR<PublicProfile | null>('/public-site/profile', fetcher, { revalidateOnFocus: false });
+  const { data: profile, isInitialLoading: isLoadingProfile, isError: isProfileError, retry: retryProfile } =
+    useSwrPageState(profileSwr);
   const { data: programs = [], isLoading: isLoadingPrograms } = useSWR<PublicProgram[]>('/public-site/programs', fetcher, { revalidateOnFocus: false });
   const { data: structure = [], isLoading: isLoadingStructure } = useSWR<PublicStructureGroup[]>('/public-site/structure', fetcher, { revalidateOnFocus: false });
   const { data: latest, isLoading: isLoadingLatest } = useSWR<{ items: PublicPost[] }>(
@@ -353,6 +357,10 @@ export default function PublicHome() {
       if (typeof window !== 'undefined') window.sessionStorage.setItem('public-home-ready', '1');
     }
   }, [hasLoadedOnce, isPageLoading]);
+
+  if (isProfileError && !profile) {
+    return <PublicPageError title="Gagal memuat beranda" error={profileSwr.error} onRetry={retryProfile} />;
+  }
 
   const orgName = profile?.org_name ?? '';
   const campusName = profile?.campus_name ?? '';

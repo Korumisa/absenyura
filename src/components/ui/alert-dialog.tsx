@@ -43,7 +43,12 @@ function AlertDialogHeader({ className, ...props }: React.HTMLAttributes<HTMLDiv
 AlertDialogHeader.displayName = "AlertDialogHeader"
 
 function AlertDialogFooter({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2", className)} {...props} />
+  return (
+    <div
+      className={cn("mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end sm:space-x-0", className)}
+      {...props}
+    />
+  )
 }
 AlertDialogFooter.displayName = "AlertDialogFooter"
 

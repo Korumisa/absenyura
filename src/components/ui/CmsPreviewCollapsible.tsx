@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -11,6 +11,14 @@ export function CmsPreviewCollapsible({
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 1279px)');
+    const sync = () => setOpen(mq.matches);
+    sync();
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
+  }, []);
 
   return (
     <div className={cn('xl:contents', className)}>

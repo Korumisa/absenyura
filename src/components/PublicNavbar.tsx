@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 import { Link, useLocation } from 'react-router-dom';
 import { ChevronDown, Menu, X } from 'lucide-react';
 import useSWR from 'swr';
@@ -86,6 +87,10 @@ export default function PublicNavbar() {
   }, [activePath]);
 
   const loginCta = useMemo(() => ({ to: '/login', label: 'Login' }), []);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const closeMobileMenu = () => setIsMobileMenuOpen(false);
+  useDialogA11y(isMobileMenuOpen, closeMobileMenu, { containerRef: mobileMenuRef, triggerRef: menuButtonRef });
 
   return (
     <nav className="fixed left-0 top-0 z-50 w-full border-b border-black/10 bg-white/85 shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] backdrop-blur-xl">
@@ -175,6 +180,7 @@ export default function PublicNavbar() {
         </div>
 
         <button
+          ref={menuButtonRef}
           type="button"
           className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg p-2 text-slate-800 md:hidden"
           aria-expanded={isMobileMenuOpen}
@@ -217,6 +223,7 @@ export default function PublicNavbar() {
       {reducedMotion ? (
         isMobileMenuOpen ? (
           <div
+            ref={mobileMenuRef}
             id="public-mobile-nav"
             className="absolute left-0 top-[4.25rem] flex max-h-[min(70vh,calc(100vh-4.25rem))] w-full flex-col gap-1 overflow-y-auto border-t border-black/10 bg-white px-2 py-3 shadow-lg md:hidden"
             role="dialog"
@@ -249,6 +256,7 @@ export default function PublicNavbar() {
         <AnimatePresence>
           {isMobileMenuOpen ? (
             <motion.div
+              ref={mobileMenuRef}
               id="public-mobile-nav"
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}

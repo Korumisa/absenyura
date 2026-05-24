@@ -11,10 +11,16 @@ import useFirstLoadOverlay from '@/lib/useFirstLoadOverlay';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useReducedMotion } from '@/lib/useReducedMotion';
 import { fadeTransition } from '@/lib/motionPresets';
+import PublicEnter from '@/components/PublicEnter';
+import PublicReveal from '@/components/PublicReveal';
+import { useSwrPageState } from '@/hooks/useSwrPageState';
+import { PublicPageError } from '@/components/public/PublicPageError';
+import { PublicEmptyState } from '@/components/public/PublicEmptyState';
 
 export default function Fungsionaris() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
-  const { data: groups = [], isLoading } = useSWR<PublicStructureGroup[]>('/public-site/structure', fetcher, { revalidateOnFocus: false });
+  const structureSwr = useSWR<PublicStructureGroup[]>('/public-site/structure', fetcher, { revalidateOnFocus: false });
+  const { data: groups = [], isInitialLoading: isLoading, isError, retry } = useSwrPageState(structureSwr);
   const { data: profile } = useSWR<PublicProfile | null>('/public-site/profile', fetcher, { revalidateOnFocus: false });
   const showLoading = useFirstLoadOverlay(isLoading);
   const reducedMotion = useReducedMotion();
@@ -89,17 +95,25 @@ export default function Fungsionaris() {
     );
   };
 
+  if (isError) {
+    return (
+      <PublicPageError title="Gagal memuat fungsionaris" error={structureSwr.error} onRetry={retry} />
+    );
+  }
+
   return (
     <PublicLayout>
       <PublicLoadingOverlay show={showLoading} />
-      <PublicPageHero
-        top="Susunan"
-        bottom="Fungsionaris"
-        subtitle={subtitleBits.length ? subtitleBits.join(' • ') : 'Susunan fungsionaris yang dapat dikelola dari menu Konten Website.'}
-        compact
-      />
+      <PublicEnter>
+        <PublicPageHero
+          top="Susunan"
+          bottom="Fungsionaris"
+          subtitle={subtitleBits.length ? subtitleBits.join(' • ') : 'Susunan fungsionaris yang dapat dikelola dari menu Konten Website.'}
+          compact
+        />
+      </PublicEnter>
 
-      <div className="mx-auto -mt-6 max-w-7xl px-4 pb-24 sm:px-6">
+      <PublicReveal className="mx-auto -mt-6 max-w-7xl px-4 pb-24 sm:px-6">
         {isLoading ? (
           <div className="mt-6 space-y-10">
             {Array.from({ length: 2 }).map((_, gi) => (
@@ -124,13 +138,12 @@ export default function Fungsionaris() {
             ))}
           </div>
         ) : groups.length === 0 ? (
-          <div className="relative mt-6 overflow-hidden rounded-2xl border border-dashed border-black/15 bg-white/60 p-6 text-left text-sm text-slate-600 sm:p-10">
-            <div className="pointer-events-none absolute -left-16 -top-16 h-52 w-52 rounded-[48%_52%_58%_42%/44%_43%_57%_56%] bg-[var(--public-primary)]/12 blur-3xl" />
-            <div className="pointer-events-none absolute -right-16 -bottom-16 h-56 w-56 rounded-[53%_47%_45%_55%/48%_56%_44%_52%] bg-sky-400/10 blur-3xl" />
-            <div className="relative">
-              <div className="text-base font-extrabold tracking-tight text-slate-900">Struktur organisasi belum diatur</div>
-              <div className="mt-2 max-w-2xl">Admin bisa mengatur grup dan anggota dari menu Konten Website.</div>
-            </div>
+          <div className="mt-6">
+            <PublicEmptyState
+              variant="global"
+              title="Struktur organisasi belum diatur"
+              description="Admin dapat mengatur grup dan anggota dari menu Konten Website."
+            />
           </div>
         ) : (
           <div className="mt-6">
@@ -189,9 +202,11 @@ export default function Fungsionaris() {
                 );
               })()
             ) : (
-              <div className="mt-10 rounded-2xl border border-dashed border-black/15 bg-white/60 p-8 text-sm text-slate-600">
-                Belum ada data inti.
-              </div>
+              <PublicEmptyState
+                variant="search"
+                title="Belum ada data inti"
+                description="Tambahkan anggota inti dari menu Konten Website."
+              />
             )}
 
             <div className="mt-16 text-center">
@@ -273,20 +288,23 @@ export default function Fungsionaris() {
                     );
                   })()
                 ) : (
-                  <div className="mt-10 rounded-2xl border border-dashed border-black/15 bg-white/60 p-8 text-sm text-slate-600">
-                    Anggota belum diisi.
-                  </div>
+                  <PublicEmptyState
+                    variant="search"
+                    title="Anggota belum diisi"
+                    description="Pilih bidang lain atau tambahkan anggota dari Konten Website."
+                  />
                 )}
               </div>
             ) : (
-              <div className="mt-10 rounded-2xl border border-dashed border-black/15 bg-white/60 p-8 text-sm text-slate-600">
-                Belum ada bidang/divisi.
-              </div>
+              <PublicEmptyState
+                variant="global"
+                title="Belum ada bidang"
+                description="Tambahkan grup bidang/divisi dari menu Konten Website."
+              />
             )}
           </div>
         )}
-      </div>
+      </PublicReveal>
     </PublicLayout>
   );
 }
-

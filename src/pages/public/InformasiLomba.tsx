@@ -13,6 +13,9 @@ import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 import PublicCoverImage from '@/components/PublicCoverImage';
 import useLockBodyScroll from '@/lib/useLockBodyScroll';
 import useFirstLoadOverlay from '@/lib/useFirstLoadOverlay';
+import { useSwrPageState } from '@/hooks/useSwrPageState';
+import { PublicPageError } from '@/components/public/PublicPageError';
+import { PublicEmptyState } from '@/components/public/PublicEmptyState';
 
 type Status = 'Buka' | 'Tutup';
 type Paged<T> = { items: T[]; total: number; page: number; pageSize: number; totalPages: number };
@@ -33,8 +36,13 @@ function getJoinUrl(p: PublicPost) {
 
 export default function InformasiLomba() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
-  const { data: paged, isLoading } = useSWR<Paged<PublicPost>>('/public-site/posts?type=LOMBA&page=1&pageSize=24', fetcher, { revalidateOnFocus: false });
+  const swr = useSWR<Paged<PublicPost>>('/public-site/posts?type=LOMBA&page=1&pageSize=24', fetcher, { revalidateOnFocus: false });
+  const { data: paged, isInitialLoading: isLoading, isError, retry } = useSwrPageState(swr);
   const showLoading = useFirstLoadOverlay(isLoading);
+
+  if (isError) {
+    return <PublicPageError title="Gagal memuat informasi lomba" error={swr.error} onRetry={retry} />;
+  }
 
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<'Semua' | Status>('Semua');
@@ -109,14 +117,10 @@ export default function InformasiLomba() {
               ))}
             </div>
           ) : items.length === 0 ? (
-            <div className="relative mt-10 overflow-hidden rounded-2xl border border-dashed border-black/15 bg-white/60 p-6 text-left text-sm text-slate-600 sm:p-10">
-              <div className="pointer-events-none absolute -left-16 -top-16 h-52 w-52 rounded-[48%_52%_58%_42%/44%_43%_57%_56%] bg-[var(--public-primary)]/12 blur-3xl" />
-              <div className="pointer-events-none absolute -right-16 -bottom-16 h-56 w-56 rounded-[53%_47%_45%_55%/48%_56%_44%_52%] bg-sky-400/10 blur-3xl" />
-              <div className="relative">
-                <div className="text-base font-extrabold tracking-tight text-slate-900">Belum ada informasi lomba</div>
-                <div className="mt-2 max-w-2xl">Admin bisa menambahkan post tipe LOMBA dari menu Konten Website.</div>
-              </div>
-            </div>
+            <PublicEmptyState
+              title="Belum ada informasi lomba"
+              description="Admin bisa menambahkan post tipe LOMBA dari menu Konten Website."
+            />
           ) : (
             <div className="mt-10 grid gap-6 md:grid-cols-2 lg:gap-8 lg:grid-cols-3">
               {items.map((l) => (

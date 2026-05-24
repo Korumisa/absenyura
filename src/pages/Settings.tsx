@@ -86,20 +86,7 @@ export default function Settings() {
       variant="plain"
       icon={<User className="h-5 w-5" />}
     >
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Sidebar Nav */}
-        <div className="md:col-span-1 space-y-2">
-            <Button 
-              variant="ghost" 
-              onClick={() => setActiveTab('profile')}
-              className={`w-full justify-start ${activeTab === 'profile' ? 'text-indigo-700 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-800'}`}
-            >
-              <User className="w-5 h-5 mr-3" /> Profil & Keamanan
-            </Button>
-          </div>
-
-        {/* Content */}
-        <div className="md:col-span-2 space-y-6">
+      <div className="max-w-3xl space-y-6">
           
           {activeTab === 'profile' && (
             <>
@@ -149,7 +136,7 @@ export default function Settings() {
                     type="password" value={formData.current_password} onChange={e => setFormData({...formData, current_password: e.target.value})}
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label>Kata Sandi Baru</Label>
                     <Input 
@@ -191,8 +178,6 @@ export default function Settings() {
           </div>
           </>
         )}
-
-        </div>
       </div>
     </AdminPageShell>
   );
