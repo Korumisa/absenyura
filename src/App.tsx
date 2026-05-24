@@ -194,10 +194,19 @@ export default function App() {
           <Route path="/open-recruitment" element={<PageSuspense><OpenRecruitment /></PageSuspense>} />
           
           <Route element={<ProtectedRoute />}>
+            <Route
+              path="/sessions/:id/qr"
+              element={
+                <PageSuspense>
+                  <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}>
+                    <QRDisplay />
+                  </ProtectedRoute>
+                </PageSuspense>
+              }
+            />
             <Route element={<Layout />}>
               <Route path="/dashboard" element={<PageSuspense><ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'USER']}><Dashboard /></ProtectedRoute></PageSuspense>} />
               <Route path="/sessions" element={<PageSuspense><ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'USER']}><Sessions /></ProtectedRoute></PageSuspense>} />
-              <Route path="/sessions/:id/qr" element={<PageSuspense><ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}><QRDisplay /></ProtectedRoute></PageSuspense>} />
               <Route path="/attend" element={<PageSuspense><ProtectedRoute allowedRoles={['USER']}><Attend /></ProtectedRoute></PageSuspense>} />
               <Route path="/history" element={<PageSuspense><ProtectedRoute allowedRoles={['USER']}><HistoryPage /></ProtectedRoute></PageSuspense>} />
               <Route path="/classes" element={<PageSuspense><ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'USER']}><Classes /></ProtectedRoute></PageSuspense>} />

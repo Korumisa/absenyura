@@ -9,6 +9,8 @@ import { id } from 'date-fns/locale';
 import * as ExcelJS from 'exceljs';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import QRCode from 'qrcode';
+import { reportClassLabel } from '@/lib/reportLabel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -34,6 +36,30 @@ const safeFormat = (value: unknown, fmt: string) => {
   if (!isValid(d)) return '-';
   return format(d, fmt, { locale: id });
 };
+
+type ExportSessionMeta = {
+  sessionId: string;
+  sessionTitle: string;
+  classesLabel: string;
+};
+
+async function buildSessionAttendUrl(sessionId: string): Promise<string> {
+  try {
+    const res = await api.get(`/sessions/${sessionId}/qr`);
+    const token = res.data?.data?.token;
+    if (token) {
+      return `${window.location.origin}/attend?session=${sessionId}&token=${encodeURIComponent(token)}`;
+    }
+  } catch {
+    /* fallback tanpa token */
+  }
+  return `${window.location.origin}/attend?session=${sessionId}`;
+}
+
+async function qrImageBase64(url: string): Promise<string> {
+  const dataUrl = await QRCode.toDataURL(url, { width: 280, margin: 1, color: { dark: '#1e3a8a' } });
+  return dataUrl.split(',')[1] ?? '';
+}
 
 export default function Reports() {
   const { user } = useAuthStore();
@@ -99,7 +125,7 @@ export default function Reports() {
   const [overrideSubmitting, setOverrideSubmitting] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
-  const exportExcelMatrix = useCallback(async (rows: Report[], fileSuffix: string) => {
+  const exportExcelMatrix = useCallback(async (rows: Report[], fileSuffix: string, sessionMeta?: ExportSessionMeta) => {
     const safeRows = (Array.isArray(rows) ? rows : []).filter((r): r is Report => Boolean(r && (r as any).id));
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Rekap Matriks Kehadiran');
@@ -107,10 +133,11 @@ export default function Reports() {
     // Dapatkan daftar sesi unik dari laporan yang difilter
     const uniqueSessions = Array.from(new Set(safeRows.map(r => String((r as any).session_title ?? '')))).filter(Boolean);
     
-    // Siapkan kolom: Nama, NIM, lalu diikuti nama-nama sesi
+    // Siapkan kolom: Nama, NIM, Kelas, lalu diikuti nama-nama sesi
     const columns = [
       { header: 'Nama Peserta', key: 'user_name', width: 25 },
       { header: 'NIM/NIP', key: 'nim_nip', width: 15 },
+      { header: 'Kelas', key: 'kelas', width: 22 },
     ];
     uniqueSessions.forEach(session => {
       columns.push({ header: session, key: session, width: 15 });
@@ -136,6 +163,7 @@ export default function Reports() {
         studentData[studentId] = {
           user_name: String((r as any).user_name ?? '-'),
           nim_nip: r.nim_nip || '-',
+          kelas: reportClassLabel(r),
           total_present: 0,
           total_sick: 0,
           total_excused: 0,
@@ -158,6 +186,26 @@ export default function Reports() {
       sheet.addRow(data);
     });
 
+    if (sessionMeta?.sessionId) {
+      const qrSheet = workbook.addWorksheet('QR Scan Absensi');
+      const attendUrl = await buildSessionAttendUrl(sessionMeta.sessionId);
+      qrSheet.mergeCells('A1', 'D1');
+      qrSheet.getCell('A1').value = `QR Absensi — ${sessionMeta.sessionTitle}`;
+      qrSheet.getCell('A1').font = { bold: true, size: 14 };
+      qrSheet.getCell('A2').value = `Kelas: ${sessionMeta.classesLabel}`;
+      qrSheet.getCell('A3').value = 'Tautan scan (buka di browser HP):';
+      qrSheet.getCell('A4').value = attendUrl;
+      qrSheet.getCell('A4').font = { color: { argb: 'FF2563EB' }, underline: true };
+      try {
+        const base64 = await qrImageBase64(attendUrl);
+        const imageId = workbook.addImage({ base64, extension: 'png' });
+        qrSheet.addImage(imageId, { tl: { col: 0, row: 5 }, ext: { width: 220, height: 220 } });
+      } catch {
+        qrSheet.getCell('A6').value = '(QR gagal dibuat — gunakan tautan di atas)';
+      }
+      qrSheet.getColumn(1).width = 72;
+    }
+
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const url = URL.createObjectURL(blob);
@@ -169,18 +217,38 @@ export default function Reports() {
     toast.success('Matriks Laporan Excel berhasil diunduh');
   }, []);
 
-  const exportPdfList = useCallback((rows: Report[], fileSuffix: string) => {
+  const exportPdfList = useCallback(async (rows: Report[], fileSuffix: string, sessionMeta?: ExportSessionMeta) => {
     const safeRows = (Array.isArray(rows) ? rows : []).filter((r): r is Report => Boolean(r && (r as any).id));
     const doc = new jsPDF();
-    
+
+    let tableStartY = 35;
+
     doc.setFontSize(16);
     doc.text('Laporan Rekapitulasi Kehadiran', 14, 20);
     doc.setFontSize(10);
     doc.text(`Dicetak pada: ${format(new Date(), 'dd MMMM yyyy HH:mm', { locale: id })}`, 14, 28);
 
+    if (sessionMeta?.sessionId) {
+      const attendUrl = await buildSessionAttendUrl(sessionMeta.sessionId);
+      doc.setFontSize(11);
+      doc.text(`Sesi: ${sessionMeta.sessionTitle}`, 14, 36);
+      doc.text(`Kelas: ${sessionMeta.classesLabel}`, 14, 42);
+      try {
+        const base64 = await qrImageBase64(attendUrl);
+        doc.addImage(`data:image/png;base64,${base64}`, 'PNG', 150, 14, 48, 48);
+      } catch {
+        /* tanpa gambar QR */
+      }
+      doc.setFontSize(8);
+      doc.text('QR / tautan scan absensi:', 14, 50);
+      doc.text(doc.splitTextToSize(attendUrl, 130), 14, 55);
+      tableStartY = 68;
+    }
+
     const tableData = safeRows.map(r => [
       String((r as any).user_name ?? '-'),
       r.nim_nip || '-',
+      reportClassLabel(r),
       String((r as any).session_title ?? '-'),
       safeFormat((r as any).session_date, 'dd/MM/yyyy'),
       safeFormat((r as any).check_in_time, 'HH:mm:ss'),
@@ -188,9 +256,9 @@ export default function Reports() {
     ]);
 
     autoTable(doc, {
-      head: [['Nama', 'NIM/NIP', 'Sesi', 'Tanggal', 'Waktu', 'Status']],
+      head: [['Nama', 'NIM/NIP', 'Kelas', 'Sesi', 'Tanggal', 'Waktu', 'Status']],
       body: tableData,
-      startY: 35,
+      startY: tableStartY,
       theme: 'grid',
       styles: { fontSize: 8 },
       headStyles: { fillColor: [79, 70, 229] }
@@ -216,15 +284,25 @@ export default function Reports() {
     return all;
   }, []);
 
+  const sessionExportMeta = useCallback((): ExportSessionMeta | undefined => {
+    if (sessionId === 'ALL') return undefined;
+    const s = sessions.find((x) => x.id === sessionId);
+    if (!s) return undefined;
+    const labels = (s.session_classes ?? []).map((x: any) => formatClassLabel(x?.class)).filter(Boolean);
+    const classesLabel = labels.length ? labels.join(', ') : s.class ? formatClassLabel(s.class) : 'Umum';
+    return { sessionId, sessionTitle: s.title, classesLabel };
+  }, [sessionId, sessions]);
+
   const handleExportExcel = useCallback(async () => {
     const sanitize = (s: string) => s.replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '').slice(0, 40) || 'Sesi';
     try {
       setExporting('excel');
+      const meta = sessionExportMeta();
       if (sessionId !== 'ALL') {
         const all = await fetchAllReportsForSession(sessionId);
         const rows = all.filter((r) => statusFilter === 'ALL' || r.status === statusFilter);
         const title = sessions.find((s) => s.id === sessionId)?.title || 'Sesi';
-        await exportExcelMatrix(rows, sanitize(title));
+        await exportExcelMatrix(rows, sanitize(title), meta);
         return;
       }
       await exportExcelMatrix(filteredReports, 'Semua');
@@ -233,26 +311,27 @@ export default function Reports() {
     } finally {
       setExporting('none');
     }
-  }, [exportExcelMatrix, fetchAllReportsForSession, filteredReports, sessionId, sessions, statusFilter]);
+  }, [exportExcelMatrix, fetchAllReportsForSession, filteredReports, sessionExportMeta, sessionId, sessions, statusFilter]);
 
   const handleExportPDF = useCallback(async () => {
     const sanitize = (s: string) => s.replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '').slice(0, 40) || 'Sesi';
     try {
       setExporting('pdf');
+      const meta = sessionExportMeta();
       if (sessionId !== 'ALL') {
         const all = await fetchAllReportsForSession(sessionId);
         const rows = all.filter((r) => statusFilter === 'ALL' || r.status === statusFilter);
         const title = sessions.find((s) => s.id === sessionId)?.title || 'Sesi';
-        exportPdfList(rows, sanitize(title));
+        await exportPdfList(rows, sanitize(title), meta);
         return;
       }
-      exportPdfList(filteredReports, 'Semua');
+      await exportPdfList(filteredReports, 'Semua');
     } catch (err: any) {
       toast.error(err?.response?.data?.error || 'Gagal export PDF');
     } finally {
       setExporting('none');
     }
-  }, [exportPdfList, fetchAllReportsForSession, filteredReports, sessionId, sessions, statusFilter]);
+  }, [exportPdfList, fetchAllReportsForSession, filteredReports, sessionExportMeta, sessionId, sessions, statusFilter]);
 
   const handleOpenOverride = (report: Report) => {
     setSelectedReport(report);
@@ -321,7 +400,7 @@ export default function Reports() {
         <ErrorWithRetry title="Gagal memuat rekap" error={swr.error} onRetry={retry} />
       ) : (
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-        <div className="shrink-0 border-b border-slate-200 p-4 dark:border-zinc-800">
+        <div className="shrink-0 border-b border-slate-200 p-4 sm:p-5 dark:border-zinc-800">
           <button
             type="button"
             className="mb-3 flex min-h-11 w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 md:hidden"
@@ -396,7 +475,7 @@ export default function Reports() {
         </p>
         </div>
 
-        <ul className="space-y-3 p-4 md:hidden" aria-label="Daftar laporan kehadiran">
+        <ul className="space-y-4 p-4 sm:p-5 md:hidden" aria-label="Daftar laporan kehadiran">
           {loading
             ? Array.from({ length: 4 }).map((_, i) => (
                 <li key={i} className="rounded-2xl border border-slate-200 p-4 dark:border-zinc-800">
@@ -409,10 +488,11 @@ export default function Reports() {
                   <li className="py-8 text-center text-slate-500">Tidak ada data.</li>
                 )
               : filteredReports.map((report: Report, idx) => (
-                  <li key={report.id ?? idx} className="rounded-2xl border border-slate-200 p-4 dark:border-zinc-800">
+                  <li key={report.id ?? idx} className="space-y-2 rounded-2xl border border-slate-200 p-5 dark:border-zinc-800">
                     <p className="font-bold text-slate-900 dark:text-white">{report.user_name}</p>
                     <p className="text-sm text-slate-500">{report.nim_nip}</p>
-                    <p className="mt-2 text-sm font-medium text-indigo-600">{report.session_title}</p>
+                    <p className="text-xs font-medium text-slate-600 dark:text-zinc-400">Kelas: {reportClassLabel(report)}</p>
+                    <p className="text-sm font-medium text-indigo-600">{report.session_title}</p>
                     <p className="text-xs text-slate-500">{safeFormat(report.check_in_time, 'dd MMM yyyy · HH:mm')}</p>
                     <Badge className="mt-2" variant={report.status === 'PRESENT' ? 'success' : report.status === 'LATE' ? 'warning' : 'secondary'}>
                       {attendanceStatusLabel(report.status)}

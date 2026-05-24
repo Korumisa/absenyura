@@ -425,38 +425,39 @@ export default function Attend() {
   }, []);
 
   const startCamera = useCallback(
-    async (mode = facingMode, retryCount = 0) => {
+    async (mode = facingMode) => {
       setCameraStarting(true);
       setCameraPermissionError(null);
       try {
         stopCamera();
-        if (retryCount === 0) {
+        if (scannerRef.current) {
           await releaseQrScanner();
         } else {
-          await waitForCameraRelease(800 + retryCount * 400);
+          await waitForCameraRelease(400);
         }
 
-        const stream = await acquireCameraStream({
-          facingMode: mode,
-          preferRear: mode === 'environment',
-        });
-
-        setIsCameraActive(true);
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          await videoRef.current.play().catch(() => undefined);
+        let lastErr: unknown;
+        for (let attempt = 0; attempt < 4; attempt++) {
+          if (attempt > 0) {
+            await waitForCameraRelease(700 + attempt * 350);
+          }
+          try {
+            const stream = await acquireCameraStream({
+              facingMode: mode,
+              preferRear: mode === 'environment',
+            });
+            setIsCameraActive(true);
+            if (videoRef.current) {
+              videoRef.current.srcObject = stream;
+              await videoRef.current.play().catch(() => undefined);
+            }
+            return;
+          } catch (err) {
+            lastErr = err;
+          }
         }
-      } catch (err: unknown) {
-        const e = err as { name?: string; message?: string };
-        const isHardwareLock =
-          ['NotReadableError', 'TrackStartError', 'OverconstrainedError'].includes(e?.name ?? '') ||
-          (e?.message ?? '').toLowerCase().includes('could not start video source');
 
-        if (retryCount < 3 && isHardwareLock) {
-          return startCamera(mode, retryCount + 1);
-        }
-
-        const msg = humanizeCameraError(err);
+        const msg = humanizeCameraError(lastErr);
         setCameraPermissionError(msg);
         toast.error(msg);
       } finally {
@@ -465,11 +466,6 @@ export default function Attend() {
     },
     [facingMode, releaseQrScanner]
   );
-
-  useEffect(() => {
-    if (isCheckoutMode || scanning || photoBlob || !scanResult) return;
-    void startCamera();
-  }, [isCheckoutMode, scanning, photoBlob, scanResult, startCamera]);
 
   const switchCamera = () => {
     const newMode = facingMode === 'user' ? 'environment' : 'user';
@@ -672,17 +668,23 @@ export default function Attend() {
     return isIpValid() ? 'Terverifikasi' : 'Di luar jaringan kampus';
   };
 
+  const checkInReady =
+    !!scanResult &&
+    !!location &&
+    !gpsError &&
+    !!photoBlob &&
+    !isOffline &&
+    (sessionDetails?.location ? isLocationValid() : true);
+
   const actionOverlayLabel = loading
     ? 'Mengirim data absensi…'
     : checkoutSubmitting
       ? 'Memproses check-out…'
-      : cameraStarting
-        ? 'Menyiapkan kamera…'
-        : sessionLoading
-          ? 'Memuat data sesi…'
-          : checkoutLoading
-            ? 'Memuat data check-out…'
-            : null;
+      : sessionLoading
+        ? 'Memuat data sesi…'
+        : checkoutLoading
+          ? 'Memuat data check-out…'
+          : null;
 
   // [UX] A-03 — halaman error penuh saat sesi gagal dimuat
   if (sessionLoadError && (sessionParam || isCheckoutMode)) {
@@ -872,7 +874,52 @@ export default function Attend() {
           </div>
         </div>
 
-        <div className="flex flex-1 flex-col gap-8 p-6 sm:p-8">
+        {(cameraPermissionError || gpsError) && (
+          <div
+            className="mx-4 mt-4 rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-900/50 dark:bg-red-950/40 sm:mx-6"
+            role="alert"
+            aria-live="assertive"
+          >
+            <div className="flex gap-3">
+              <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-600" aria-hidden="true" />
+              <div className="min-w-0 space-y-1">
+                <p className="font-semibold text-red-800 dark:text-red-300">Perlu perbaikan sebelum absen</p>
+                {gpsError ? <p className="text-sm text-red-700 dark:text-red-400">GPS: {gpsError}</p> : null}
+                {cameraPermissionError ? (
+                  <p className="text-sm text-red-700 dark:text-red-400">Kamera: {cameraPermissionError}</p>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {!scanning && scanResult && (
+          <div
+            className="mx-4 mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-zinc-700 dark:bg-zinc-900/50 sm:mx-6"
+            role="status"
+            aria-live="polite"
+          >
+            <p className="mb-3 text-sm font-semibold text-slate-800 dark:text-zinc-200">Status persiapan check-in</p>
+            <ul className="space-y-2 text-sm">
+              <li className={scanResult ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700'}>
+                {scanResult ? '✓' : '○'} QR / token sesi
+              </li>
+              <li className={location && !gpsError ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700'}>
+                {location && !gpsError ? '✓' : '○'} Lokasi GPS
+              </li>
+              <li className={photoBlob ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700'}>
+                {photoBlob ? '✓' : '○'} Foto bukti
+                {!photoBlob && !cameraStarting ? ' — ketuk Buka Kamera' : ''}
+                {cameraStarting ? ' — menyiapkan kamera…' : ''}
+              </li>
+              <li className={checkInReady ? 'font-semibold text-emerald-800 dark:text-emerald-300' : 'text-slate-600 dark:text-zinc-400'}>
+                {checkInReady ? '✓ Siap dikirim' : '○ Belum siap dikirim'}
+              </li>
+            </ul>
+          </div>
+        )}
+
+        <div className="flex flex-1 flex-col gap-8 p-5 sm:p-8">
           {location && sessionDetails?.location && (
             <div className="z-0 h-52 w-full overflow-hidden rounded-xl border border-slate-200 shadow-inner dark:border-zinc-700">
               <MapContainer 
