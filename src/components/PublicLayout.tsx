@@ -5,11 +5,18 @@ import useSWR from 'swr';
 import { useSWRConfig } from 'swr';
 import api from '@/services/api';
 import type { PublicProfile } from '@/types/publicSite';
+import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
+
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
   const { mutate } = useSWRConfig();
-  const { data: profile } = useSWR<PublicProfile | null>('/public-site/profile', fetcher, { revalidateOnFocus: false });
+  const { data: profile, isLoading: isLoadingProfile } = useSWR<PublicProfile | null>(
+    '/public-site/profile',
+    fetcher,
+    { revalidateOnFocus: false },
+  );
   const primary = profile?.primary_color || '#2563eb';
+  const showBootOverlay = isLoadingProfile && !profile;
 
   React.useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -38,6 +45,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
         {children}
       </main>
       <PublicFooter />
+      <PublicLoadingOverlay show={showBootOverlay} label="Memuat..." className="z-[95] bg-white/35 backdrop-blur-xl" />
     </div>
   );
 }

@@ -15,6 +15,7 @@ import { useReducedMotion } from '@/lib/useReducedMotion';
 import { fadeTransition } from '@/lib/motionPresets';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { PublicPageError } from '@/components/public/PublicPageError';
+import { Skeleton } from '@/components/ui/skeleton';
 
 function HorizontalSnapRail({
   children,
@@ -410,14 +411,27 @@ export default function PublicHome() {
                 <BrandMark className="hidden h-28 w-28 shrink-0 sm:block" src={logoSrc} name={orgName || campusName} />
                 <div>
                   <div className="font-display text-4xl italic tracking-tight text-slate-900 md:text-5xl">Kabinet</div>
-                  <div className="mt-1 text-5xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] md:text-7xl">
-                    {heroKabinetName}
-                  </div>
-                  {kabinetPeriod ? <div className="mt-2 text-sm font-semibold tracking-wide text-muted-foreground">{kabinetPeriod}</div> : null}
-                  <div className="mt-5 max-w-md text-sm font-medium text-slate-700 md:text-base">
-                    {orgName}
-                    <div className="text-muted-foreground">{campusName}</div>
-                  </div>
+                  {isLoadingProfile ? (
+                    <div className="mt-2 space-y-3" aria-busy="true" aria-label="Memuat profil organisasi">
+                      <Skeleton className="h-14 w-full max-w-md md:h-16" />
+                      <Skeleton className="h-4 w-40" />
+                      <Skeleton className="h-4 w-56" />
+                      <Skeleton className="h-4 w-48" />
+                    </div>
+                  ) : (
+                    <>
+                      <div className="mt-1 text-5xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] md:text-7xl">
+                        {heroKabinetName}
+                      </div>
+                      {kabinetPeriod ? (
+                        <div className="mt-2 text-sm font-semibold tracking-wide text-muted-foreground">{kabinetPeriod}</div>
+                      ) : null}
+                      <div className="mt-5 max-w-md text-sm font-medium text-slate-700 md:text-base">
+                        {orgName}
+                        <div className="text-muted-foreground">{campusName}</div>
+                      </div>
+                    </>
+                  )}
                   {heroSubtitle ? (
                     <div className="mt-4 max-w-xl text-sm text-muted-foreground md:text-base">{heroSubtitle}</div>
                   ) : null}
@@ -444,14 +458,13 @@ export default function PublicHome() {
               <div className="relative">
                 <div className="overflow-hidden rounded-3xl border border-black/10 bg-white shadow-[0_28px_70px_-50px_rgba(15,23,42,0.4)]">
                   <div className="relative aspect-[4/3] w-full bg-slate-50">
-                    {profile?.home_image_url ? (
+                    {isLoadingProfile ? (
+                      <Skeleton className="h-full w-full rounded-none" aria-hidden="true" />
+                    ) : profile?.home_image_url ? (
                       <PublicCoverImage url={profile.home_image_url} alt="Foto Anggota" />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center p-8">
-                        <div className="w-full rounded-2xl border border-dashed border-black/20 bg-white/60 p-8 text-center text-sm text-muted-foreground">
-                          <div className="text-base font-extrabold tracking-tight text-slate-900">Tempat Foto Anggota</div>
-                          <div className="mt-2">Upload lewat admin: Konten Website → Profil → Upload Foto Anggota.</div>
-                        </div>
+                        <p className="text-center text-sm text-muted-foreground">Foto anggota belum tersedia.</p>
                       </div>
                     )}
                   </div>

@@ -4,7 +4,9 @@ import { useTheme } from '@/providers/theme-provider';
 import { Moon, Sun } from 'lucide-react';
 import api from '@/services/api';
 import { toast } from 'sonner';
-import { User, LogOut } from 'lucide-react';
+import { User, LogOut, Shield, Mail, Phone } from 'lucide-react';
+import { userRoleLabel } from '@/lib/statusLabel';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,6 +14,10 @@ import AdminPageShell from '@/components/AdminPageShell';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
 import { toastErrorMessage } from '@/lib/toastMessage';
 import { cn } from '@/lib/utils';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+
+const settingsCardClass = 'rounded-xl border border-border bg-card text-card-foreground shadow-card dark:shadow-none dark:ring-1 dark:ring-white/10';
 
 type ProfileField = 'name' | 'email' | 'phone' | 'current_password' | 'new_password' | 'confirm_password';
 type FieldErrors = Partial<Record<ProfileField, string>>;
@@ -32,7 +38,7 @@ function parseFieldErrors(err: unknown): FieldErrors {
 
 export default function Settings() {
   const { user, setAuth } = useAuthStore();
-  const { theme, setTheme, toggleTheme } = useTheme();
+  const { theme, toggleTheme } = useTheme();
   
   const [profileLoading, setProfileLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -84,6 +90,8 @@ export default function Settings() {
     void loadProfile();
   }, [user]);
 
+  const isStudent = user?.role === 'USER';
+
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (formData.new_password && formData.new_password !== formData.confirm_password) {
@@ -123,7 +131,7 @@ export default function Settings() {
       variant="plain"
       icon={<User className="h-5 w-5" />}
     >
-      <div className="max-w-3xl space-y-6">
+      <div className="max-w-5xl space-y-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-6 lg:space-y-0">
           
           {activeTab === 'profile' && profileError ? (
             <ErrorWithRetry
@@ -158,21 +166,86 @@ export default function Settings() {
             />
           ) : activeTab === 'profile' && (
             <>
-              {/* Profile Form */}
-              {/* [UX] #4 — preferensi tampilan */}
-              <div className="rounded-xl border border-border bg-white p-6 shadow-sm border-border bg-muted">
-                <h2 className="mb-4 text-lg font-bold text-slate-800 dark:text-white">Tampilan</h2>
-                <p className="mb-4 text-sm text-muted-foreground text-muted-foreground">Mode gelap mengurangi silau saat absensi malam hari.</p>
-                <Button type="button" variant="outline" className="min-h-11 gap-2" onClick={toggleTheme} aria-pressed={theme === 'dark'}>
-                  {theme === 'dark' ? <Sun className="h-4 w-4" aria-hidden="true" /> : <Moon className="h-4 w-4" aria-hidden="true" />}
-                  {theme === 'dark' ? 'Mode terang' : 'Mode gelap'}
-                </Button>
+              <div className="space-y-6">
+              <Card className={settingsCardClass}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg">Tampilan</CardTitle>
+                  <CardDescription>
+                    Pilih tema yang nyaman untuk mata saat Anda mengelola absensi di malam hari atau siang hari.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button type="button" variant="outline" className="min-h-11 gap-2" onClick={toggleTheme} aria-pressed={theme === 'dark'}>
+                    {theme === 'dark' ? <Sun className="h-4 w-4" aria-hidden="true" /> : <Moon className="h-4 w-4" aria-hidden="true" />}
+                    {theme === 'dark' ? 'Mode terang' : 'Mode gelap'}
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card className={settingsCardClass}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg">Ringkasan Akun</CardTitle>
+                  <CardDescription>Data login Anda di sistem absensi.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-start gap-3 rounded-lg border border-border bg-muted/40 p-4">
+                    <Shield className="mt-0.5 h-5 w-5 shrink-0 text-brand" aria-hidden="true" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-medium text-muted-foreground">Peran</p>
+                      <Badge variant="secondary" className="mt-1">
+                        {user ? userRoleLabel(user.role) : '—'}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 text-sm">
+                    <User className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                    <div className="min-w-0">
+                      <p className="text-xs text-muted-foreground">Nama</p>
+                      <p className="font-medium text-foreground">{formData.name || '—'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 text-sm">
+                    <Mail className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                    <div className="min-w-0 break-all">
+                      <p className="text-xs text-muted-foreground">Email</p>
+                      <p className="font-medium text-foreground">{formData.email || '—'}</p>
+                    </div>
+                  </div>
+                  {formData.phone ? (
+                    <div className="flex items-start gap-3 text-sm">
+                      <Phone className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">No. HP</p>
+                        <p className="font-medium text-foreground">{formData.phone}</p>
+                      </div>
+                    </div>
+                  ) : null}
+                  {isStudent ? (
+                    <p className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
+                      Perangkat absensi terikat saat login pertama. Hubungi admin jika perlu reset perangkat.
+                    </p>
+                  ) : null}
+                </CardContent>
+              </Card>
               </div>
 
-              <div className="bg-white bg-muted rounded-xl border border-border border-border shadow-sm p-6">
-            <h2 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Informasi Profil</h2>
+              <Card className={cn(settingsCardClass, 'lg:min-h-[32rem]')}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">Informasi Profil</CardTitle>
+              <CardDescription>Perbarui nama, kontak, dan kata sandi akun Anda.</CardDescription>
+            </CardHeader>
+            <CardContent>
             <form onSubmit={handleSaveProfile} className="space-y-4">
-              <div className="space-y-2">
+              {profileLoading ? (
+                <div className="space-y-4" aria-busy="true" aria-label="Memuat profil">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              ) : (
+              <>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-2 sm:col-span-2">
                 <Label>Nama Lengkap</Label>
                 <Input
                   type="text"
@@ -213,7 +286,7 @@ export default function Settings() {
                   </p>
                 ) : null}
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 sm:col-span-2">
                 <Label>Email</Label>
                 <Input
                   type="email"
@@ -233,13 +306,14 @@ export default function Settings() {
                     {fieldErrors.email}
                   </p>
                 ) : null}
-                <p className="text-xs text-muted-foreground mt-1">Gunakan email yang aktif untuk notifikasi dan pemulihan akun.</p>
+                <p className="mt-1 text-xs text-muted-foreground">Gunakan email yang aktif untuk notifikasi dan pemulihan akun.</p>
+              </div>
               </div>
               
-              <hr className="my-6 border-border border-border" />
+              <hr className="my-6 border-border" />
               
-              <h3 className="text-base font-bold text-slate-800 dark:text-white mb-2">Ubah Kata Sandi</h3>
-              <p className="text-sm text-muted-foreground text-muted-foreground mb-4">Kosongkan jika tidak ingin mengubah kata sandi.</p>
+              <h3 className="mb-2 text-base font-bold text-foreground">Ubah Kata Sandi</h3>
+              <p className="mb-4 text-sm text-muted-foreground">Kosongkan jika tidak ingin mengubah kata sandi.</p>
               
               <div className="space-y-4">
                 <div className="space-y-2">
@@ -308,18 +382,26 @@ export default function Settings() {
                 </div>
               </div>
 
-              <div className="pt-4 flex justify-end">
+              <div className="flex justify-end pt-4">
                 <Button type="submit" disabled={saving || profileLoading}>
                   {saving ? 'Menyimpan...' : 'Simpan Perubahan'}
                 </Button>
               </div>
+              </>
+              )}
             </form>
-          </div>
+            </CardContent>
+          </Card>
 
-          {/* Danger Zone */}
-          <div className="bg-white bg-muted rounded-xl border border-red-200 dark:border-red-900/50 shadow-sm p-6 mt-6">
-            <h2 className="text-lg font-bold text-red-600 dark:text-red-500 mb-2">Manajemen Perangkat</h2>
-            <p className="text-sm text-muted-foreground text-muted-foreground mb-4">Logout paksa dari perangkat ini (akan menghapus sesi token).</p>
+          {!isStudent ? (
+          <Card className={cn(settingsCardClass, 'border-red-200 dark:border-red-900/50 lg:col-span-2')}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg text-red-600 dark:text-red-400">Manajemen Perangkat</CardTitle>
+              <CardDescription>
+                Hapus penautan perangkat ini; login berikutnya akan meminta verifikasi ulang.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
             <Button
               type="button"
               variant="outline"
@@ -327,11 +409,13 @@ export default function Settings() {
                 localStorage.removeItem('device_fingerprint');
                 toast.success('Perangkat dilupakan. Anda akan diminta login kembali pada percobaan berikutnya.');
               }}
-              className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-900 dark:text-red-500 dark:hover:bg-red-900/20"
+              className="min-h-11 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-900/20"
             >
-              <LogOut size={16} /> Lupakan Perangkat Ini
+              <LogOut size={16} className="mr-2" aria-hidden="true" /> Lupakan Perangkat Ini
             </Button>
-          </div>
+            </CardContent>
+          </Card>
+          ) : null}
           </>
         )}
       </div>
