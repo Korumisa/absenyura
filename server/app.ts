@@ -99,35 +99,87 @@ app.use(csrfProtect)
 
 // Cron fallback removed in favor of Vercel Cron endpoint
 
-// Rate limiting
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 20,
-  standardHeaders: true,
-  legacyHeaders: false,
-  keyGenerator: (req) => ipKeyGenerator(req.ip ?? 'unknown'),
+/**
+ * Rate limiting — dirancang untuk NAT kampus (banyak mahasiswa, satu IP publik).
+ * - Login: per email/NIM, BUKAN per IP → 500 login bersamaan aman.
+ * - Refresh/API: per cookie sesi (accessToken), BUKAN per IP.
+ * - Halaman publik (/public-site): tidak dibatasi ketat.
+ */
+const isProd = process.env.NODE_ENV === 'production'
+
+const rateLimitMessage = (message: string) => ({
+  success: false,
+  error_code: 'RATE_LIMITED',
+  message,
 })
 
-const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 1000, // 1000 requests per window
-  message: 'Too many requests, please try again after 15 minutes',
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: isProd ? 20 : 200,
+  skipSuccessfulRequests: true,
   standardHeaders: true,
   legacyHeaders: false,
+  message: rateLimitMessage(
+    'Terlalu banyak percobaan login untuk akun ini. Tunggu beberapa menit lalu coba lagi.',
+  ),
   keyGenerator: (req) => {
-    // Attempt to rate limit by user token to prevent Campus NAT IP blocking
-    if (req.cookies?.token) {
-      return req.cookies.token
-    }
-    if (req.headers?.authorization) {
-      return String(req.headers.authorization)
-    }
-    return ipKeyGenerator(req.ip ?? 'unknown')
+    const identity = String((req.body as { email?: string })?.email ?? '').trim().toLowerCase()
+    if (identity) return `login:user:${identity}`
+    return `login:anon:${ipKeyGenerator(req.ip ?? 'unknown')}`
   },
 })
 
-app.use('/api/auth/login', authLimiter)
-app.use('/api/auth/refresh', authLimiter)
+const refreshLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: isProd ? 120 : 1000,
+  skipSuccessfulRequests: true,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => !req.cookies?.refreshToken,
+  message: rateLimitMessage('Terlalu banyak permintaan sesi. Muat ulang halaman lalu coba lagi.'),
+  keyGenerator: (req) => `refresh:${String(req.cookies?.refreshToken ?? 'missing')}`,
+})
+
+function sessionRateLimitKey(req: Request): string {
+  if (req.cookies?.accessToken) return `api:at:${req.cookies.accessToken}`
+  if (req.cookies?.refreshToken) return `api:rt:${req.cookies.refreshToken}`
+  if (req.headers?.authorization) return `api:auth:${String(req.headers.authorization)}`
+  return `api:ip:${ipKeyGenerator(req.ip ?? 'unknown')}`
+}
+
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: isProd ? 800 : 5000,
+  message: rateLimitMessage('Terlalu banyak permintaan. Silakan coba lagi setelah beberapa menit.'),
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => {
+    const p = req.path
+    if (p.startsWith('/auth/')) return true
+    if (p.startsWith('/public-site')) return true
+    if (p === '/health') return true
+    return false
+  },
+  keyGenerator: (req) => sessionRateLimitKey(req),
+})
+
+/** Batas longgar khusus IP anonim (tanpa cookie) untuk endpoint non-publik */
+const anonymousApiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: isProd ? 3000 : 20000,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => {
+    const p = req.path
+    if (p.startsWith('/auth/') || p.startsWith('/public-site') || p === '/health') return true
+    return Boolean(req.cookies?.accessToken || req.cookies?.refreshToken)
+  },
+  keyGenerator: (req) => `anon:${ipKeyGenerator(req.ip ?? 'unknown')}`,
+})
+
+app.use('/api/auth/login', loginLimiter)
+app.use('/api/auth/refresh', refreshLimiter)
+app.use('/api/', anonymousApiLimiter)
 app.use('/api/', apiLimiter)
 
 app.use('/api/cron', guardCron)

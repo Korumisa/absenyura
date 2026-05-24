@@ -37,17 +37,8 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
     if (window.sessionStorage.getItem(key) === '1') return;
     window.sessionStorage.setItem(key, '1');
 
-    const urls = [
-      '/public-site/profile',
-      '/public-site/programs',
-      '/public-site/structure',
-      '/public-site/recruitments',
-      '/public-site/galleries',
-      '/public-site/categories',
-      '/public-site/posts?type=BERITA&page=1&pageSize=6',
-      '/public-site/posts?type=LOMBA&page=1&pageSize=6',
-      '/public-site/posts?type=KEGIATAN&page=1&pageSize=9',
-    ];
+    // Prefetch ringan — hindari membanjiri API (penting di NAT kampus / mobile)
+    const urls = ['/public-site/profile', '/public-site/categories'];
     void Promise.allSettled(urls.map((url) => mutate(url, fetcher(url), { revalidate: false })));
   }, [mutate]);
 

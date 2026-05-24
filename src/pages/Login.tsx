@@ -29,8 +29,19 @@ export default function Login() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
   const { data: profile, isLoading: profileLoading } = useSWR<PublicProfile | null>('/public-site/profile', fetcher, { revalidateOnFocus: false });
 
+  // Halaman publik — selalu tampilan terang meski preferensi admin mode gelap
+  React.useEffect(() => {
+    const root = document.documentElement;
+    const hadDark = root.classList.contains('dark');
+    root.classList.remove('dark');
+    return () => {
+      if (hadDark) root.classList.add('dark');
+    };
+  }, []);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
     setLoading(true);
     setLoginError(null);
     try {
@@ -54,8 +65,12 @@ export default function Login() {
       }
 
       navigate(target, { replace: true });
-    } catch (err: any) {
-      const msg = getErrorMessage(err, 'Gagal masuk. Periksa email/NIM dan kata sandi Anda.');
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      const msg =
+        status === 429
+          ? 'Terlalu banyak percobaan login. Tunggu 2–3 menit lalu coba lagi.'
+          : getErrorMessage(err, 'Gagal masuk. Periksa email/NIM dan kata sandi Anda.');
       setLoginError(msg);
       toast.error(msg);
     } finally {
@@ -67,7 +82,7 @@ export default function Login() {
     <PublicLayout>
       <PublicEnter>
         <PublicLoadingOverlay show={loading} label="Memverifikasi akun…" />
-        <section className="relative flex flex-1 items-center overflow-hidden bg-[radial-gradient(circle_at_20%_20%,rgba(37,99,235,0.18),transparent_50%),radial-gradient(circle_at_70%_10%,rgba(59,130,246,0.14),transparent_55%),linear-gradient(180deg,rgba(15,23,42,0.02),transparent)] px-4 py-10 dark:bg-[radial-gradient(circle_at_20%_20%,rgba(37,99,235,0.22),transparent_55%),radial-gradient(circle_at_70%_10%,rgba(59,130,246,0.16),transparent_55%),linear-gradient(180deg,rgba(15,23,42,0.7),rgba(15,23,42,0.85))]">
+        <section className="relative flex flex-1 items-center overflow-hidden bg-[radial-gradient(circle_at_20%_20%,rgba(37,99,235,0.18),transparent_50%),radial-gradient(circle_at_70%_10%,rgba(59,130,246,0.14),transparent_55%),linear-gradient(180deg,rgba(15,23,42,0.02),transparent)] px-4 py-10">
           <div className="absolute -left-12 top-16 h-72 w-72 rounded-full bg-[var(--public-primary)]/20 blur-3xl" />
           <div className="absolute -right-16 bottom-10 h-80 w-80 rounded-full bg-sky-400/15 blur-3xl" />
 
@@ -87,13 +102,13 @@ export default function Login() {
                   <img
                     src={profile?.logo_light_url || '/3.%20HM%20SDP.png'}
                     alt="Logo"
-                    className="h-14 w-14 rounded-2xl bg-white/70 p-2 ring-1 ring-black/10 dark:bg-white/10 dark:ring-white/10"
+                    className="h-14 w-14 rounded-2xl bg-white/70 p-2 ring-1 ring-black/10"
                   />
                   <div>
-                    <div className="text-sm font-extrabold tracking-tight text-slate-900 dark:text-white">
+                    <div className="text-sm font-extrabold tracking-tight text-slate-900">
                       {profile?.org_name ? profile.org_name : 'Profil belum diatur'}
                     </div>
-                    <div className="text-xs font-medium text-slate-500 dark:text-slate-300">
+                    <div className="text-xs font-medium text-slate-500">
                       {profile?.campus_name ? profile.campus_name : 'Konten Website'}
                     </div>
                   </div>
@@ -101,11 +116,11 @@ export default function Login() {
               )}
             </div>
 
-            <div className="mt-6 font-display text-4xl italic tracking-tight text-slate-900 dark:text-white md:text-5xl">Masuk</div>
+            <div className="mt-6 font-display text-4xl italic tracking-tight text-slate-900 md:text-5xl">Masuk</div>
             <div className="mt-1 text-5xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] md:text-6xl">
               Dashboard
             </div>
-            <div className="mt-4 max-w-md text-sm text-slate-700 dark:text-slate-300">
+            <div className="mt-4 max-w-md text-sm text-slate-700">
               Masuk untuk absen, lihat riwayat kehadiran, dan persentase kehadiran Anda.
             </div>
 
@@ -120,7 +135,7 @@ export default function Login() {
             </div>
           </div>
 
-          <div className="relative overflow-hidden rounded-3xl border border-black/10 bg-white/85 p-7 shadow-[0_28px_70px_-52px_rgba(15,23,42,0.5)] backdrop-blur dark:border-white/10 dark:bg-zinc-950/70 dark:shadow-[0_28px_70px_-52px_rgba(0,0,0,0.8)]">
+          <div className="relative overflow-hidden rounded-3xl border border-black/10 bg-white/85 p-7 shadow-[0_28px_70px_-52px_rgba(15,23,42,0.5)] backdrop-blur">
             <div className="pointer-events-none absolute -top-12 left-10 h-40 w-40 rounded-full bg-[var(--public-primary)]/14 blur-3xl" />
             <div className="pointer-events-none absolute -bottom-16 right-6 h-48 w-48 rounded-full bg-sky-400/12 blur-3xl" />
 
@@ -130,22 +145,22 @@ export default function Login() {
                   <LogIn size={22} />
                 </div>
                 <div>
-                  <div className="text-lg font-extrabold tracking-tight text-slate-900 dark:text-white">Masuk Akun</div>
-                  <div className="text-sm text-slate-600 dark:text-slate-300">Gunakan email/NIM dan kata sandi.</div>
+                  <div className="text-lg font-extrabold tracking-tight text-slate-900">Masuk Akun</div>
+                  <div className="text-sm text-slate-600">Gunakan email/NIM dan kata sandi.</div>
                 </div>
               </div>
 
               <form onSubmit={handleLogin} className="mt-8 space-y-5" aria-busy={loading}>
                 {loginError ? (
                   <div
-                    className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-100"
+                    className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900"
                     role="alert"
                   >
                     {loginError}
                   </div>
                 ) : null}
                 <div
-                  className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-100"
+                  className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900"
                   role="note"
                 >
                   Akun dibuat oleh admin kampus. Belum punya akun? Hubungi pengurus HM atau bagian akademik fakultas Anda.
@@ -221,7 +236,7 @@ export default function Login() {
               Reset kata sandi dilakukan oleh admin. Hubungi kontak berikut dengan email/NIM Anda.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-2 text-sm text-slate-700 dark:text-zinc-300">
+          <div className="space-y-2 text-sm text-slate-700">
             {profile?.email ? (
               <p>
                 Email:{' '}

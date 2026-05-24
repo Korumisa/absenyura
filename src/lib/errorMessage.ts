@@ -82,7 +82,7 @@ export function getErrorMessage(err: any, fallback: string) {
   if (status === 403) return 'Kode QR ini bukan untuk kelas Anda. Pastikan Anda memindai kode yang benar.';
   if (status === 404) return 'Data tidak ditemukan.';
   if (status === 413) return 'File terlalu besar. Maksimal 5MB.';
-  if (status === 429) return 'Permintaan dari perangkat Anda terlalu padat saat ini. Silakan tunggu sekitar 15 menit sebelum mencoba kembali.';
+  if (status === 429) return 'Terlalu banyak percobaan dalam waktu singkat. Tunggu 1–2 menit lalu coba lagi.';
   if (typeof status === 'number' && status >= 500) return 'Sistem kami sedang mengalami gangguan koneksi. Tenang, kami sedang memperbaikinya. Silakan segarkan halaman dalam beberapa saat.';
   return fallback;
 }

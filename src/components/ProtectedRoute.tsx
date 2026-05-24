@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import axios from 'axios';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
@@ -7,6 +7,7 @@ import { ProtectedRouteProps } from '../types/protectedroute';
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles, children }) => {
   const { isAuthenticated, user, setAuth, logout } = useAuthStore();
   const location = useLocation();
+  const sessionVerifiedRef = useRef(false);
   const bypass =
     import.meta.env.MODE === 'development' &&
     (import.meta.env.VITE_DEV_BYPASS_AUTH === 'true' || import.meta.env.VITE_DEV_BYPASS_AUTH === '1');
@@ -28,21 +29,34 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles, ch
       };
     }
 
+    if (!isAuthenticated || !user) {
+      sessionVerifiedRef.current = false;
+      return;
+    }
+
+    if (sessionVerifiedRef.current) return;
+
     const verify = async () => {
-      if (!isAuthenticated || !user) return;
       try {
         await axios.post('/api/auth/refresh', {}, { withCredentials: true });
-        if (!cancelled) setAuth(user);
-      } catch {
-        if (!cancelled) logout();
+        if (!cancelled) {
+          sessionVerifiedRef.current = true;
+          setAuth(user);
+        }
+      } catch (err: unknown) {
+        const status = (err as { response?: { status?: number } })?.response?.status;
+        if (!cancelled && status !== 429) {
+          sessionVerifiedRef.current = false;
+          logout();
+        }
       }
     };
 
-    verify();
+    void verify();
     return () => {
       cancelled = true;
     };
-  }, [isAuthenticated, user, setAuth, logout]);
+  }, [isAuthenticated, user?.id, setAuth, logout, bypass]);
 
   if (bypass) {
     return children ? <>{children}</> : <Outlet />;

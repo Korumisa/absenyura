@@ -57,6 +57,7 @@ export default function Sessions() {
   // Delete Session Confirmation Modal
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
+  const [isSaveConfirmOpen, setIsSaveConfirmOpen] = useState(false);
 
   const fetcher = (url: string) => api.get(url).then(res => res.data.data);
   const swr = useSWR<Session[]>('/sessions', fetcher, { revalidateOnFocus: false });
@@ -139,11 +140,9 @@ export default function Sessions() {
 
   const onWizardFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (wizardStep < 4) {
-      if (canProceedWizard(wizardStep)) setWizardStep((s) => Math.min(4, s + 1));
-      return;
+    if (wizardStep < 4 && canProceedWizard(wizardStep)) {
+      setWizardStep((s) => Math.min(4, s + 1));
     }
-    void handleSubmit(e);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -569,30 +568,50 @@ export default function Sessions() {
                   </div>
                 </div>
 
-                <div className={`md:col-span-2 ${wizardStep === 2 ? '' : 'hidden'}`}>
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                    <div className="space-y-2">
+                <div className={`md:col-span-2 space-y-4 ${wizardStep === 2 ? '' : 'hidden'}`}>
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+                    <div className="min-w-0 flex-1 space-y-2">
                       <Label>Waktu Mulai Sesi <span className="text-red-500">*</span></Label>
-                      <Input 
-                        type="datetime-local" required value={formData.session_start} onChange={e => setFormData({...formData, session_start: e.target.value})}
+                      <Input
+                        type="datetime-local"
+                        required
+                        value={formData.session_start}
+                        onChange={(e) => setFormData({ ...formData, session_start: e.target.value })}
                       />
                     </div>
-                    <div className="space-y-2">
+                    <span className="hidden shrink-0 px-1 pb-2 text-slate-500 sm:inline" aria-hidden="true">
+                      –
+                    </span>
+                    <div className="min-w-0 flex-1 space-y-2">
                       <Label>Waktu Selesai Sesi <span className="text-red-500">*</span></Label>
-                      <Input 
-                        type="datetime-local" required value={formData.session_end} onChange={e => setFormData({...formData, session_end: e.target.value})}
+                      <Input
+                        type="datetime-local"
+                        required
+                        value={formData.session_end}
+                        onChange={(e) => setFormData({ ...formData, session_end: e.target.value })}
                       />
                     </div>
-                    <div className="space-y-2">
+                  </div>
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+                    <div className="min-w-0 flex-1 space-y-2">
                       <Label>Buka Check-in <span className="text-red-500">*</span></Label>
-                      <Input 
-                        type="datetime-local" required value={formData.check_in_open_at} onChange={e => setFormData({...formData, check_in_open_at: e.target.value})}
+                      <Input
+                        type="datetime-local"
+                        required
+                        value={formData.check_in_open_at}
+                        onChange={(e) => setFormData({ ...formData, check_in_open_at: e.target.value })}
                       />
                     </div>
-                    <div className="space-y-2">
+                    <span className="hidden shrink-0 px-1 pb-2 text-slate-500 sm:inline" aria-hidden="true">
+                      –
+                    </span>
+                    <div className="min-w-0 flex-1 space-y-2">
                       <Label>Tutup Check-in <span className="text-red-500">*</span></Label>
-                      <Input 
-                        type="datetime-local" required value={formData.check_in_close_at} onChange={e => setFormData({...formData, check_in_close_at: e.target.value})}
+                      <Input
+                        type="datetime-local"
+                        required
+                        value={formData.check_in_close_at}
+                        onChange={(e) => setFormData({ ...formData, check_in_close_at: e.target.value })}
                       />
                     </div>
                   </div>
@@ -752,14 +771,35 @@ export default function Sessions() {
                     Lanjut
                   </Button>
                 ) : (
-                  <Button type="submit" disabled={isSubmitting} className="min-h-11">
-                    {isSubmitting ? 'Menyimpan...' : (editingSession ? 'Simpan Perubahan' : 'Buat Sesi')}
+                  <Button
+                    type="button"
+                    disabled={isSubmitting}
+                    className="min-h-11"
+                    onClick={() => setIsSaveConfirmOpen(true)}
+                  >
+                    {editingSession ? 'Simpan Perubahan' : 'Buat Sesi'}
                   </Button>
                 )}
               </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmModal
+        isOpen={isSaveConfirmOpen}
+        onClose={() => setIsSaveConfirmOpen(false)}
+        onConfirm={() => {
+          setIsSaveConfirmOpen(false);
+          void handleSubmit({ preventDefault: () => {} } as React.FormEvent);
+        }}
+        title={editingSession ? 'Simpan perubahan sesi?' : 'Buat sesi baru?'}
+        description={
+          editingSession
+            ? `Perubahan pada "${formData.title || editingSession.title}" akan disimpan ke sistem.`
+            : `Sesi "${formData.title || 'tanpa judul'}" akan dibuat. Pastikan jadwal dan kelas sudah benar.`
+        }
+        confirmText={editingSession ? 'Ya, Simpan' : 'Ya, Buat Sesi'}
+      />
 
       {/* Delete Session Confirmation Modal */}
       <ConfirmModal 

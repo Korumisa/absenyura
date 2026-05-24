@@ -19,7 +19,6 @@ import { Image } from 'lucide-react';
 import { CmsTabNav, type CmsTabItem } from '@/components/ui/CmsTabNav';
 import { CmsPublishTabs } from '@/components/ui/CmsPublishTabs';
 import { MobileTableHint } from '@/components/ui/MobileTableHint';
-import { CmsViewSiteLink } from '@/components/cms/CmsViewSiteLink';
 import { CmsEditorLayout } from '@/components/cms/CmsEditorLayout';
 import { CmsListToolbar } from '@/components/cms/CmsListToolbar';
 import { AdminContentTransition } from '@/components/admin/AdminContentTransition';
@@ -122,7 +121,6 @@ export default function PublicSiteGalleries() {
       description="Kelola album dan foto yang akan tampil di halaman publik."
       variant="plain"
       icon={<Image size={22} />}
-      actions={<CmsViewSiteLink href="/galeri" label="Lihat galeri publik" />}
     >
       <CmsTabNav<PageTab> tabs={PAGE_TABS} value={pageTab} onChange={setPageTab} ariaLabel="Mode galeri" />
 

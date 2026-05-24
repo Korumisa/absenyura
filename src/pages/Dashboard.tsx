@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import useSWR from 'swr';
 import { useAuthStore } from '@/stores/authStore';
 import api from '@/services/api';
-import { Users, Calendar, CheckCircle2, Clock, MapPin, FileText, BarChart3, QrCode, RefreshCw } from 'lucide-react';
+import { Users, Calendar, CheckCircle2, Clock, MapPin, FileText, BarChart3, QrCode } from 'lucide-react';
 import AdminPageShell from '@/components/AdminPageShell';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
 import { MobileTableHint } from '@/components/ui/MobileTableHint';
@@ -66,12 +66,6 @@ export default function Dashboard() {
         </>
       }
       icon={<BarChart3 className="h-5 w-5" />}
-      actions={
-        <Button type="button" variant="outline" className="min-h-11" onClick={() => mutate()} disabled={loading}>
-          <RefreshCw className={`mr-2 h-4 w-4 ${isValidating ? 'animate-spin' : ''}`} />
-          Muat ulang
-        </Button>
-      }
     >
       {loading && !data ? (
         <div className="space-y-8">
@@ -410,13 +404,18 @@ export default function Dashboard() {
                 </div>
               </div>
               
-              <div className="relative h-80 w-full min-h-[320px]" aria-busy={isValidating}>
+              <div className="relative min-h-[320px] w-full min-w-0" aria-busy={isValidating}>
                 {isValidating ? (
                   <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-white/60 dark:bg-zinc-900/60">
                     <p className="text-sm font-medium text-slate-600 dark:text-zinc-300">Memperbarui grafik…</p>
                   </div>
                 ) : null}
-                <ResponsiveContainer width="100%" height="100%">
+                {chartData.length === 0 ? (
+                  <div className="flex h-[320px] items-center justify-center text-sm text-slate-500 dark:text-zinc-400">
+                    Belum ada data grafik untuk rentang ini.
+                  </div>
+                ) : (
+                <ResponsiveContainer width="100%" height={320}>
                   <BarChart
                     data={chartData}
                     margin={{ top: 8, right: 12, left: 4, bottom: 8 }}
@@ -503,6 +502,7 @@ export default function Dashboard() {
                     )}
                   </BarChart>
                 </ResponsiveContainer>
+                )}
               </div>
             </div>
 

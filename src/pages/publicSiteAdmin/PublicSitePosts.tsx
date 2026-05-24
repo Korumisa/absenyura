@@ -20,7 +20,6 @@ import { CmsTabNav, type CmsTabItem } from '@/components/ui/CmsTabNav';
 import { CmsPublishTabs } from '@/components/ui/CmsPublishTabs';
 import { MobileTableHint } from '@/components/ui/MobileTableHint';
 import PublicSitePostPreview from '@/components/publicSiteAdmin/PublicSitePostPreview';
-import { CmsViewSiteLink } from '@/components/cms/CmsViewSiteLink';
 import { CmsEditorLayout } from '@/components/cms/CmsEditorLayout';
 import { CmsCollapsibleSection } from '@/components/cms/CmsCollapsibleSection';
 import { CmsListToolbar } from '@/components/cms/CmsListToolbar';
@@ -189,23 +188,12 @@ export default function PublicSitePosts() {
     )[postType];
   }, [postType]);
 
-  const publicViewLink = useMemo(() => {
-    const map: Record<PublicPostType, { href: string; label: string }> = {
-      BERITA: { href: '/berita', label: 'Lihat berita publik' },
-      KEGIATAN: { href: '/kegiatan', label: 'Lihat kegiatan publik' },
-      LOMBA: { href: '/informasi-lomba', label: 'Lihat lomba publik' },
-      PENGUMUMAN: { href: '/berita', label: 'Lihat pengumuman publik' },
-    };
-    return map[postType];
-  }, [postType]);
-
   return (
     <AdminPageShell
       title="Konten Publik"
       description="Kelola konten untuk halaman publik."
       variant="plain"
       icon={<Newspaper size={22} />}
-      actions={<CmsViewSiteLink href={publicViewLink.href} label={publicViewLink.label} />}
     >
       <CmsTabNav<PublicPostType>
         tabs={POST_TYPE_TABS}

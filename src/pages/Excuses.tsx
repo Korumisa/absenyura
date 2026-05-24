@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import api from '@/services/api';
 import useSWR from 'swr';
 import { useAuthStore } from '@/stores/authStore';
-import { Plus, Search, FileText, CheckCircle2, XCircle, Clock, Download, UploadCloud, X } from 'lucide-react';
+import { Plus, Search, FileText, CheckCircle2, XCircle, Clock, Download, UploadCloud, X, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -24,6 +24,7 @@ import { excuseStatusLabel } from '@/lib/sessionStatusLabel';
 import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { FileText as FileTextIcon } from 'lucide-react';
+import ActionLoadingOverlay from '@/components/ActionLoadingOverlay';
 
 export default function Excuses() {
   const { user: currentUser } = useAuthStore();
@@ -45,6 +46,8 @@ export default function Excuses() {
   const [file, setFile] = useState<File | null>(null);
   const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [reviewingId, setReviewingId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const acceptFile = (f: File | null | undefined) => {
@@ -99,6 +102,7 @@ export default function Excuses() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitting) return;
     if (!formData.session_id) {
       toast.error('Pilih sesi kelas terlebih dahulu');
       return;
@@ -107,7 +111,8 @@ export default function Excuses() {
       toast.error('Unggah bukti dokumen/foto terlebih dahulu');
       return;
     }
-    
+
+    setSubmitting(true);
     try {
       const form = new FormData();
       form.append('session_id', formData.session_id);
@@ -116,7 +121,7 @@ export default function Excuses() {
       form.append('proof', file);
 
       await api.post('/excuses', form, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
       toast.success('Pengajuan izin berhasil dikirim');
       setIsModalOpen(false);
@@ -125,18 +130,30 @@ export default function Excuses() {
       mutate();
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Terjadi kesalahan saat mengajukan izin');
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const handleReview = async (id: string, status: 'APPROVED' | 'REJECTED') => {
+    if (reviewingId) return;
+    setReviewingId(id);
     try {
       await api.put(`/excuses/${id}/review`, { status });
       toast.success(`Pengajuan izin ${status === 'APPROVED' ? 'disetujui' : 'ditolak'}`);
       mutate();
     } catch (error) {
       toast.error('Gagal mereview pengajuan izin');
+    } finally {
+      setReviewingId(null);
     }
   };
+
+  const actionOverlayLabel = submitting
+    ? 'Mengirim pengajuan izin…'
+    : reviewingId
+      ? 'Memproses tinjauan…'
+      : null;
 
   const filteredExcuses = excuses.filter(ex => {
     const matchSearch = (ex.user?.name && ex.user.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -214,6 +231,8 @@ export default function Excuses() {
   };
 
   return (
+    <>
+    <ActionLoadingOverlay show={!!actionOverlayLabel} label={actionOverlayLabel ?? ''} />
     <AdminPageShell
       title="Pengajuan Izin & Sakit"
       description={currentUser?.role === 'USER' ? 'Ajukan izin atau sakit untuk sesi yang Anda lewatkan.' : 'Tinjau dan setujui pengajuan mahasiswa.'}
@@ -341,15 +360,18 @@ export default function Excuses() {
                         size="sm"
                         variant="outline"
                         className="min-h-11 flex-1 border-emerald-200 text-emerald-700"
-                        onClick={() => handleReview(excuse.id, 'APPROVED')}
+                        disabled={!!reviewingId}
+                        aria-busy={reviewingId === excuse.id}
+                        onClick={() => void handleReview(excuse.id, 'APPROVED')}
                       >
-                        Terima
+                        {reviewingId === excuse.id ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Terima'}
                       </Button>
                       <Button
                         size="sm"
                         variant="outline"
                         className="min-h-11 flex-1 border-red-200 text-red-700"
-                        onClick={() => handleReview(excuse.id, 'REJECTED')}
+                        disabled={!!reviewingId}
+                        onClick={() => void handleReview(excuse.id, 'REJECTED')}
                       >
                         Tolak
                       </Button>
@@ -434,10 +456,23 @@ export default function Excuses() {
                       <TableCell className="text-right">
                         {excuse.status === 'PENDING' && (
                           <div className="flex justify-end gap-2">
-                            <Button size="sm" variant="outline" className="text-emerald-600 border-emerald-200 hover:bg-emerald-50" onClick={() => handleReview(excuse.id, 'APPROVED')}>
-                              Terima
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-emerald-200 text-emerald-600 hover:bg-emerald-50"
+                              disabled={!!reviewingId}
+                              aria-busy={reviewingId === excuse.id}
+                              onClick={() => void handleReview(excuse.id, 'APPROVED')}
+                            >
+                              {reviewingId === excuse.id ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Terima'}
                             </Button>
-                            <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => handleReview(excuse.id, 'REJECTED')}>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-red-200 text-red-600 hover:bg-red-50"
+                              disabled={!!reviewingId}
+                              onClick={() => void handleReview(excuse.id, 'REJECTED')}
+                            >
                               Tolak
                             </Button>
                           </div>
@@ -454,16 +489,22 @@ export default function Excuses() {
       )}
 
       {/* Modal Form */}
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+      <Dialog
+        open={isModalOpen}
+        onOpenChange={(open) => {
+          if (!open && submitting) return;
+          setIsModalOpen(open);
+        }}
+      >
         <DialogContent className="max-w-lg p-0">
-          <div className="border-b border-slate-200 px-6 py-4 dark:border-zinc-800">
+          <div className="border-b border-slate-200 px-6 py-5 dark:border-zinc-800">
             <DialogHeader>
               <DialogTitle className="text-xl font-bold text-slate-800 dark:text-white">Buat Pengajuan Izin Baru</DialogTitle>
               <DialogDescription className="sr-only">Form pengajuan izin</DialogDescription>
             </DialogHeader>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4 p-6">
+          <form onSubmit={handleSubmit} className="space-y-6 p-6 sm:p-8">
               <div className="space-y-2">
                 <Label>Pilih Sesi / Kelas <span className="text-red-500">*</span></Label>
                 <Select required value={formData.session_id} onValueChange={val => setFormData({...formData, session_id: val})}>
@@ -545,7 +586,7 @@ export default function Excuses() {
                     acceptFile(e.dataTransfer.files?.[0]);
                   }}
                   className={cn(
-                    'flex flex-col items-center justify-center gap-2 rounded-md border border-dashed px-4 py-6 text-center transition-colors',
+                    'flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed px-5 py-8 text-center transition-colors',
                     'border-slate-300 hover:bg-slate-50 dark:border-zinc-700 dark:hover:bg-zinc-900/40',
                     isDragging && 'border-indigo-500 bg-indigo-50/60 dark:bg-indigo-950/20',
                     file && 'py-4',
@@ -590,17 +631,25 @@ export default function Excuses() {
                 </div>
               </div>
               
-              <DialogFooter className="mt-8 border-t border-slate-200 pt-4 dark:border-zinc-800">
-                <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
+              <DialogFooter className="mt-2 gap-3 border-t border-slate-200 pt-6 dark:border-zinc-800 sm:gap-4">
+                <Button type="button" variant="outline" className="min-h-11" disabled={submitting} onClick={() => setIsModalOpen(false)}>
                   Batal
                 </Button>
-                <Button type="submit">
-                  Kirim Pengajuan
+                <Button type="submit" className="min-h-11" disabled={submitting} aria-busy={submitting}>
+                  {submitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+                      Mengirim…
+                    </>
+                  ) : (
+                    'Kirim Pengajuan'
+                  )}
                 </Button>
               </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
     </AdminPageShell>
+    </>
   );
 }

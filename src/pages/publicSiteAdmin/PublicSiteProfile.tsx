@@ -17,7 +17,6 @@ import { Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CmsTabNav, type CmsTabItem } from '@/components/ui/CmsTabNav';
 import { CmsPreviewCollapsible } from '@/components/ui/CmsPreviewCollapsible';
-import { CmsViewSiteLink } from '@/components/cms/CmsViewSiteLink';
 import { CmsEditorLayout } from '@/components/cms/CmsEditorLayout';
 
 type ProfileTab = 'identity' | 'home' | 'visimisi' | 'contact';
@@ -229,7 +228,6 @@ export default function PublicSiteProfile() {
       description="Atur identitas, deskripsi, logo, dan tautan sosial media."
       variant="plain"
       icon={<Globe size={22} />}
-      actions={<CmsViewSiteLink href="/" />}
     >
       <ConfirmModal
         isOpen={isResetOpen}

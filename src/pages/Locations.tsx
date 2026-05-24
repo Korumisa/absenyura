@@ -427,8 +427,8 @@ export default function Locations() {
             </DialogHeader>
           </div>
 
-          <form onSubmit={handleSubmit} className="flex flex-col overflow-hidden md:flex-row">
-              <div className="relative z-10 shrink-0 space-y-4 overflow-y-auto border-r border-slate-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950 md:w-1/2">
+          <form onSubmit={handleSubmit} className="flex flex-col overflow-hidden md:flex-row md:items-stretch">
+              <div className="relative z-10 shrink-0 space-y-4 overflow-y-auto border-r border-slate-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950 md:w-1/2 md:max-h-[min(72vh,680px)]">
                 <div className="space-y-2">
                   <Label>Nama Lokasi <span className="text-red-500">*</span></Label>
                   <Input 
@@ -491,14 +491,14 @@ export default function Locations() {
                 </div>
               </div>
               
-              <div className="flex h-64 min-h-[280px] flex-col md:h-[400px] md:w-1/2">
-                <div className="location-map-panel relative isolate z-0 min-h-[280px] flex-1 overflow-hidden bg-slate-100 dark:bg-zinc-900">
+              <div className="flex min-h-[360px] flex-1 flex-col md:w-1/2">
+                <div className="location-map-panel relative isolate z-0 min-h-[320px] flex-1 overflow-hidden bg-slate-100 dark:bg-zinc-900 md:min-h-[480px]">
                   {isModalOpen ? (
                   <MapContainer 
                     key={editingLocation?.id ?? 'new-location'}
                     center={mapCenter} 
                     zoom={16} 
-                    style={{ height: '100%', width: '100%', minHeight: 280 }}
+                    style={{ height: '100%', width: '100%', minHeight: 320 }}
                     scrollWheelZoom={true}
                   >
                     <TileLayer
@@ -535,7 +535,7 @@ export default function Locations() {
                     </div>
                   </div>
                 </div>
-                <div className="p-4 border-t border-slate-200 dark:border-zinc-800 flex justify-end gap-3 shrink-0">
+                <div className="flex shrink-0 justify-end gap-3 border-t border-slate-200 p-5 dark:border-zinc-800">
                   <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
                     Batal
                   </Button>

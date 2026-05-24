@@ -19,7 +19,6 @@ import { FileText } from 'lucide-react';
 import { CmsTabNav, type CmsTabItem } from '@/components/ui/CmsTabNav';
 import { CmsPublishTabs } from '@/components/ui/CmsPublishTabs';
 import { MobileTableHint } from '@/components/ui/MobileTableHint';
-import { CmsViewSiteLink } from '@/components/cms/CmsViewSiteLink';
 import { CmsEditorLayout } from '@/components/cms/CmsEditorLayout';
 import { CmsListToolbar } from '@/components/cms/CmsListToolbar';
 import { AdminContentTransition } from '@/components/admin/AdminContentTransition';
@@ -173,7 +172,6 @@ export default function PublicSiteRecruitments() {
       description="Kelola informasi open recruitment yang tampil di halaman publik."
       variant="plain"
       icon={<FileText size={22} />}
-      actions={<CmsViewSiteLink href="/open-recruitment" label="Lihat open recruitment" />}
     >
       <CmsTabNav<PageTab> tabs={PAGE_TABS} value={pageTab} onChange={setPageTab} ariaLabel="Mode recruitment" />
 

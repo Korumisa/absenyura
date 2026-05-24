@@ -50,10 +50,19 @@ api.interceptors.request.use((config) => {
 });
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    useAppStatusStore.getState().clearNetworkIssues();
+    return response;
+  },
   async (error) => {
     if (!error?.response) {
-      useAppStatusStore.getState().setMaintenance('Server tidak dapat dihubungi. Silakan coba lagi.');
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        useAppStatusStore.getState().setOffline(true);
+      } else {
+        useAppStatusStore.getState().setMaintenance(
+          'Server sibuk atau tidak dapat dihubungi. Mencoba lagi otomatis saat koneksi stabil.',
+        );
+      }
     }
 
     const originalRequest = error.config;
@@ -70,6 +79,10 @@ api.interceptors.response.use(
     const isPublicRequest = isPublicSiteRequest && !isAdminPublicSiteRequest;
     const { isAuthenticated } = useAuthStore.getState();
 
+    if (error.response?.status === 429) {
+      return Promise.reject(error);
+    }
+
     if (error.response?.status === 403 && !originalRequest._csrfRetry) {
       const apiError = error.response?.data?.error;
       if (apiError === 'CSRF validation failed') {
@@ -78,8 +91,11 @@ api.interceptors.response.use(
           await api.post('/auth/refresh', {});
           return api.request(originalRequest);
         } catch (refreshError) {
-          useAuthStore.getState().logout();
-          window.location.href = '/login';
+          const refreshStatus = (refreshError as { response?: { status?: number } })?.response?.status;
+          if (refreshStatus !== 429) {
+            useAuthStore.getState().logout();
+            window.location.href = '/login';
+          }
           return Promise.reject(refreshError);
         }
       }
@@ -111,8 +127,11 @@ api.interceptors.response.use(
         return api.request(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError);
-        useAuthStore.getState().logout();
-        window.location.href = '/login';
+        const refreshStatus = (refreshError as { response?: { status?: number } })?.response?.status;
+        if (refreshStatus !== 429) {
+          useAuthStore.getState().logout();
+          window.location.href = '/login';
+        }
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

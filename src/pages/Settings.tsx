@@ -27,27 +27,35 @@ export default function Settings() {
   });
 
   useEffect(() => {
+    if (!user) return;
+
     const loadProfile = async () => {
       setLoading(true);
       try {
         const res = await api.get('/settings/profile');
-        if (res.data.data) {
+        const row = res.data.data;
+        if (row) {
           setFormData({
-            name: res.data.data.name || '',
-            email: res.data.data.email || '',
-            phone: res.data.data.phone || '',
+            name: row.name || user.name || '',
+            email: row.email || user.email || '',
+            phone: row.phone || '',
             current_password: '',
             new_password: '',
-            confirm_password: ''
+            confirm_password: '',
           });
         }
-      } catch (error) {
-        toast.error('Gagal memuat profil');
+      } catch {
+        setFormData((prev) => ({
+          ...prev,
+          name: user.name || '',
+          email: user.email || '',
+        }));
       } finally {
         setLoading(false);
       }
     };
-    if (user) loadProfile();
+
+    void loadProfile();
   }, [user]);
 
   const handleSaveProfile = async (e: React.FormEvent) => {

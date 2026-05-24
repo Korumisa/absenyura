@@ -320,9 +320,8 @@ export default function Reports() {
       {isError ? (
         <ErrorWithRetry title="Gagal memuat rekap" error={swr.error} onRetry={retry} />
       ) : (
-      <div className="flex min-h-0 flex-1 flex-col">
-      <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-800 overflow-hidden flex min-h-0 flex-1 flex-col">
-        <div className="p-4 border-b border-slate-200 dark:border-zinc-800 shrink-0">
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="shrink-0 border-b border-slate-200 p-4 dark:border-zinc-800">
           <button
             type="button"
             className="mb-3 flex min-h-11 w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 md:hidden"
@@ -332,9 +331,9 @@ export default function Reports() {
             Filter &amp; pencarian
             <ChevronDown className={`h-5 w-5 transition-transform ${filtersOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
           </button>
-        <div className={`flex flex-col gap-4 sm:flex-row ${filtersOpen ? 'flex' : 'hidden md:flex'}`}>
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+        <div className={`flex flex-col gap-4 sm:flex-row sm:items-end ${filtersOpen ? 'flex' : 'hidden md:flex'}`}>
+          <div className="relative min-w-0 flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <Input 
               type="text" 
               placeholder="Cari nama, NIM, atau sesi..." 
@@ -343,9 +342,6 @@ export default function Reports() {
               className="pl-9"
               aria-describedby="reports-search-hint"
             />
-            <p id="reports-search-hint" className="mt-1 text-xs text-slate-500 dark:text-zinc-400">
-              Pencarian memfilter data di halaman ini ({filteredReports.length} baris).
-            </p>
           </div>
           <div className="flex w-full items-center gap-2 sm:w-auto">
             <Input
@@ -395,6 +391,9 @@ export default function Reports() {
             </SelectContent>
           </Select>
         </div>
+        <p id="reports-search-hint" className="mt-3 text-xs text-slate-500 dark:text-zinc-400">
+          Pencarian memfilter data di halaman ini ({filteredReports.length} baris).
+        </p>
         </div>
 
         <ul className="space-y-3 p-4 md:hidden" aria-label="Daftar laporan kehadiran">
@@ -423,7 +422,7 @@ export default function Reports() {
         </ul>
 
         <MobileTableHint />
-        <div className="hidden flex-1 overflow-auto md:block">
+        <div className="hidden max-h-[calc(100vh-18rem)] overflow-auto md:block">
           <Table className="min-w-[800px]">
             <TableHeader className="sticky top-0 z-10 bg-slate-50 dark:bg-zinc-950">
               <TableRow>
@@ -558,7 +557,6 @@ export default function Reports() {
             </div>
           </div>
         )}
-      </div>
       </div>
       )}
 

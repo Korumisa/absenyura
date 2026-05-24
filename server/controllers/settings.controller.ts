@@ -2,6 +2,24 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import prisma from '../utils/prisma.js';
 
+export const getProfile = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const user_id = (req as any).user.id;
+    const user = await prisma.user.findUnique({
+      where: { id: user_id },
+      select: { id: true, name: true, email: true, phone: true, role: true },
+    });
+    if (!user) {
+      res.status(404).json({ success: false, error: 'User not found' });
+      return;
+    }
+    res.status(200).json({ success: true, data: user });
+  } catch (error) {
+    console.error('Error fetching profile:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+};
+
 export const updateProfile = async (req: Request, res: Response): Promise<void> => {
   try {
     const user_id = (req as any).user.id;

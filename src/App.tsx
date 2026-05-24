@@ -1,7 +1,7 @@
 import { Suspense, useEffect } from "react";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import { Toaster } from "sonner";
+import { Toaster, toast } from "sonner";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Layout from "@/components/Layout";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
@@ -12,6 +12,7 @@ import PageSkeleton from "@/components/PageSkeleton";
 
 import { ThemeProvider } from "@/providers/theme-provider";
 import { getOfflineAttendances, deleteOfflineAttendance } from "@/lib/idb";
+import { dispatchAppOnline, ONLINE_USER_MESSAGE } from "@/lib/networkEvents";
 import api from "@/services/api";
 import { useAppStatusStore } from "@/stores/appStatusStore";
 import PublicLoadingOverlay from "@/components/PublicLoadingOverlay";
@@ -58,8 +59,9 @@ export default function App() {
   const user = useAuthStore((state) => state.user);
   const isMaintenance = useAppStatusStore((s) => s.isMaintenance);
   const maintenanceReason = useAppStatusStore((s) => s.reason);
-  const clearMaintenance = useAppStatusStore((s) => s.clearMaintenance);
+  const clearNetworkIssues = useAppStatusStore((s) => s.clearNetworkIssues);
   const setMaintenance = useAppStatusStore((s) => s.setMaintenance);
+  const setOffline = useAppStatusStore((s) => s.setOffline);
 
   useAutoLogout();
 
@@ -119,34 +121,45 @@ export default function App() {
         const res = await api.get('/status');
         if (cancelled) return;
         if (res?.status === 200 && res?.data?.success === true) {
-          clearMaintenance();
+          clearNetworkIssues();
           return;
         }
         setMaintenance('Layanan sedang mengalami gangguan. Silakan coba lagi.');
       } catch {
         if (cancelled) return;
-        setMaintenance('Server tidak dapat dihubungi. Silakan coba lagi.');
+        if (navigator.onLine) {
+          setMaintenance('Server tidak dapat dihubungi. Mencoba lagi otomatis saat koneksi stabil.');
+        } else {
+          setOffline(true);
+        }
       }
     };
 
     const onOnline = () => {
-      checkHealth();
+      clearNetworkIssues();
+      dispatchAppOnline();
+      void checkHealth();
+      toast.success(ONLINE_USER_MESSAGE, { id: 'network-online' });
     };
     const onOffline = () => {
-      setMaintenance('Koneksi internet terputus. Silakan sambungkan kembali.');
+      setOffline(true);
     };
+
+    if (!navigator.onLine) {
+      setOffline(true);
+    }
 
     window.addEventListener('online', onOnline);
     window.addEventListener('offline', onOffline);
 
-    checkHealth();
+    void checkHealth();
 
     return () => {
       cancelled = true;
       window.removeEventListener('online', onOnline);
       window.removeEventListener('offline', onOffline);
     };
-  }, [clearMaintenance, setMaintenance]);
+  }, [clearNetworkIssues, setMaintenance, setOffline]);
 
   const getDefaultRoute = () => {
     if (user?.role === 'CONTENT_ADMIN') return '/public-site/profile';

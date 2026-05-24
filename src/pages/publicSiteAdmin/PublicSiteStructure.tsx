@@ -14,7 +14,6 @@ import AdminPageShell from '@/components/AdminPageShell';
 import AdminCard from '@/components/AdminCard';
 import PublicSiteStructurePreview from '@/components/publicSiteAdmin/PublicSiteStructurePreview';
 import { CmsPreviewCollapsible } from '@/components/ui/CmsPreviewCollapsible';
-import { CmsViewSiteLink } from '@/components/cms/CmsViewSiteLink';
 import { CmsEditorLayout } from '@/components/cms/CmsEditorLayout';
 import { Layers } from 'lucide-react';
 
@@ -138,7 +137,6 @@ export default function PublicSiteStructure() {
       description="Tambahkan grup dan anggota tanpa perlu JSON."
       variant="plain"
       icon={<Layers size={22} />}
-      actions={<CmsViewSiteLink href="/struktur-organisasi" label="Lihat struktur publik" />}
     >
       <ConfirmModal
         isOpen={confirm.open}
