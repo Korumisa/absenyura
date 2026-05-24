@@ -1,16 +1,20 @@
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-/** [IA] Stepper informatif — progres saja, navigasi lewat Lanjut/Sebelumnya (USWDS pattern) */
+/** [IA] Stepper — label langkah + penjelasan singkat fungsi langkah aktif */
 export function WizardStepIndicator({
   labels,
+  hints,
   currentStep,
   className,
 }: {
   labels: readonly string[];
+  /** Satu kalimat per langkah: apa yang diisi di langkah ini */
+  hints?: readonly string[];
   currentStep: number;
   className?: string;
 }) {
+  const hint = hints?.[currentStep - 1];
   return (
     <nav aria-label="Progres langkah" className={cn('border-b border-border pb-4 border-border', className)}>
       <ol className="flex flex-wrap items-center gap-2 sm:gap-0">
@@ -50,9 +54,14 @@ export function WizardStepIndicator({
           );
         })}
       </ol>
-      <p className="mt-2 text-xs text-muted-foreground text-muted-foreground">
-        Langkah {currentStep} dari {labels.length} — gunakan tombol Sebelumnya / Lanjut di bawah untuk berpindah.
-      </p>
+      {hint ? (
+        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+          <span className="sr-only">
+            Langkah {currentStep} dari {labels.length},{' '}
+          </span>
+          {hint}
+        </p>
+      ) : null}
     </nav>
   );
 }

@@ -34,6 +34,12 @@ import { ErrorWithRetry } from '@/components/ErrorWithRetry';
 import { TablePagination } from '@/components/ui/TablePagination';
 
 const WIZARD_LABELS = ['Info & Lokasi', 'Jadwal', 'Aturan Absen', 'Kelas'] as const;
+const WIZARD_HINTS = [
+  'Nama sesi, lokasi geofencing, dan cara validasi absensi (QR atau GPS saja).',
+  'Waktu mulai–selesai sesi serta kapan mahasiswa boleh membuka check-in.',
+  'Batas menit dianggap terlambat dan apakah wajib check-out setelah hadir.',
+  'Kelas yang diundang; kosongkan pilihan kelas jika sesi untuk semua mahasiswa.',
+] as const;
 
 type FormFieldKey =
   | 'title'
@@ -702,7 +708,7 @@ export default function Sessions() {
           </div>
 
           <form onSubmit={onWizardFormSubmit} className="max-h-[75vh] space-y-6 overflow-y-auto p-6">
-              <WizardStepIndicator labels={WIZARD_LABELS} currentStep={wizardStep} />
+              <WizardStepIndicator labels={WIZARD_LABELS} hints={WIZARD_HINTS} currentStep={wizardStep} />
 
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <div className={`grid grid-cols-1 gap-4 sm:grid-cols-2 md:col-span-2 ${wizardStep === 1 ? '' : 'hidden'}`}>

@@ -30,6 +30,43 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 
 const COLORS = ['#4f46e5', '#f59e0b', '#ef4444'];
 
+type DashboardRecentSession = {
+  id: string;
+  title: unknown;
+  status: string;
+  session_start: string;
+  class?: unknown;
+  location?: { name?: string } | null;
+  _count?: { attendances?: number };
+};
+
+function dashboardSessionTitle(session: DashboardRecentSession): string {
+  if (typeof session.title === 'object' && session.title !== null) {
+    const t = session.title as { name?: string; id?: string };
+    return t.name || t.id || '—';
+  }
+  return String(session.title ?? '—');
+}
+
+function dashboardSessionClass(session: DashboardRecentSession): string | null {
+  if (!session.class) return null;
+  if (typeof session.class === 'object' && session.class !== null) {
+    const c = session.class as { name?: string; id?: string };
+    return formatClassLabel(session.class as Parameters<typeof formatClassLabel>[0]) || c.name || c.id || null;
+  }
+  return String(session.class);
+}
+
+function dashboardSessionStatusClass(status: string): string {
+  if (status === 'ACTIVE') {
+    return 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400';
+  }
+  if (status === 'UPCOMING') {
+    return 'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
+  }
+  return '';
+}
+
 export default function Dashboard() {
   const user = useAuthStore((state) => state.user);
   const navigate = useNavigate();
@@ -507,119 +544,62 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Recent Sessions List Admin */}
-            <div className="flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-card dark:shadow-none dark:ring-1 dark:ring-white/10">
+            {/* Recent Sessions List Admin — kartu vertikal, tanpa scroll horizontal */}
+            <div className="rounded-xl border border-border bg-card shadow-card dark:shadow-none dark:ring-1 dark:ring-white/10">
               <div className="border-b border-border px-6 py-5">
                 <h2 className="text-xl font-bold text-slate-800 dark:text-white">Aktivitas Sesi Terbaru</h2>
               </div>
 
-              <ul className="space-y-3 p-5 md:hidden" aria-label="Sesi terbaru">
+              <ul className="space-y-3 p-5" aria-label="Sesi terbaru">
                 {data?.recent_sessions?.length === 0 ? (
-                  <li className="py-6 text-center text-sm text-muted-foreground">Belum ada sesi kelas yang dibuat.</li>
+                  <li className="flex flex-col items-center py-10 text-center text-muted-foreground">
+                    <Calendar size={40} className="mb-3 opacity-50" aria-hidden="true" />
+                    <p className="text-sm font-medium">Belum ada sesi kelas yang dibuat.</p>
+                  </li>
                 ) : (
-                  data?.recent_sessions?.map((session: any) => (
+                  data.recent_sessions.map((session: DashboardRecentSession) => (
                     <li
                       key={session.id}
-                      className="rounded-2xl border border-border bg-white p-4 border-border bg-card"
+                      className="rounded-2xl border border-border bg-background/60 p-4"
                     >
-                      <p className="font-bold text-slate-900 dark:text-white">
-                        {typeof session.title === 'object' && session.title !== null
-                          ? (session.title as { name?: string; id?: string }).name ||
-                            (session.title as { id?: string }).id
-                          : session.title}
-                      </p>
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-bold text-foreground">{dashboardSessionTitle(session)}</p>
+                          {dashboardSessionClass(session) ? (
+                            <p className="mt-0.5 text-sm text-muted-foreground">{dashboardSessionClass(session)}</p>
+                          ) : null}
+                        </div>
+                        <Badge
+                          variant="outline"
+                          className={dashboardSessionStatusClass(session.status)}
+                        >
+                          {sessionStatusLabel(session.status)}
+                        </Badge>
+                      </div>
                       {session.location?.name ? (
-                        <p className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
-                          <MapPin size={14} />
-                          {session.location.name}
+                        <p className="mt-2 flex items-center gap-1.5 text-sm text-muted-foreground">
+                          <MapPin size={14} className="shrink-0" aria-hidden="true" />
+                          <span className="truncate">{session.location.name}</span>
                         </p>
                       ) : null}
-                      <div className="mt-2 flex flex-wrap items-center gap-2">
-                        <Badge variant="outline">{sessionStatusLabel(session.status)}</Badge>
-                        <span className="text-xs text-muted-foreground">
-                          {format(new Date(session.session_start), 'dd MMM yyyy HH:mm', { locale: id })}
+                      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                        <span className="inline-flex items-center gap-1.5">
+                          <Calendar size={14} className="shrink-0 text-brand" aria-hidden="true" />
+                          {format(new Date(session.session_start), 'dd MMM yyyy', { locale: id })}
                         </span>
-                        <span className="text-xs text-muted-foreground">
-                          · {session._count?.attendances || 0} hadir
+                        <span className="inline-flex items-center gap-1.5">
+                          <Clock size={14} className="shrink-0 text-brand" aria-hidden="true" />
+                          {format(new Date(session.session_start), 'HH:mm', { locale: id })} WIB
+                        </span>
+                        <span className="inline-flex items-center gap-1.5 font-medium text-foreground">
+                          <Users size={14} className="shrink-0 text-brand" aria-hidden="true" />
+                          {session._count?.attendances ?? 0} hadir
                         </span>
                       </div>
                     </li>
                   ))
                 )}
               </ul>
-              <MobileTableHint />
-              
-              <div className="hidden flex-1 overflow-x-auto md:block">
-                <Table className="min-w-[720px]">
-                  <TableHeader className="sticky top-0 z-10 bg-muted/50 [&_tr]:border-b">
-                    <TableRow>
-                      <TableHead>Sesi & Kelas</TableHead>
-                      <TableHead>Jadwal</TableHead>
-                      <TableHead className="text-right">Peserta</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {data?.recent_sessions?.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
-                          <div className="flex flex-col items-center">
-                            <Calendar size={40} className="mb-3 opacity-50" />
-                            <p className="text-sm font-medium">Belum ada sesi kelas yang dibuat.</p>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      data?.recent_sessions?.map((session: any) => (
-                        <TableRow key={session.id}>
-                          <TableCell>
-                            <div className="flex items-start gap-2">
-                              <div>
-                                <h4 className="font-bold text-slate-800 dark:text-white text-base">
-                                  {typeof session.title === 'object' && session.title !== null ? ((session.title as any).name || (session.title as any).id) : session.title}
-                                </h4>
-                                {session.class && (
-                                    <p className="mt-0.5 text-xs text-muted-foreground text-muted-foreground">
-                                      {typeof session.class === 'object' && session.class !== null ? ((session.class as any).name || (session.class as any).id) : (session.class?.name || session.class || '-')}
-                                    </p>
-                                  )}
-                              </div>
-                            </div>
-                            <div className="mt-2">
-                              <Badge 
-                                variant="outline" 
-                                className={`text-[10px] uppercase tracking-wider px-2 py-0.5 
-                                ${session.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800' : 
-                                  session.status === 'UPCOMING' ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800' : 
-                                  'bg-slate-50 text-muted-foreground border-border dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'}`}
-                              >
-                                {sessionStatusLabel(session.status)}
-                              </Badge>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex flex-col gap-1.5 text-xs text-muted-foreground text-muted-foreground font-medium">
-                              <div className="flex items-center gap-1.5">
-                                <Calendar size={14} className="text-indigo-400" /> 
-                                {format(new Date(session.session_start), 'dd MMM yyyy')}
-                              </div>
-                              <div className="flex items-center gap-1.5">
-                                <Clock size={14} className="text-indigo-400" />
-                                {format(new Date(session.session_start), 'HH:mm')}
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-1.5 text-slate-700 dark:text-zinc-300 font-medium">
-                              <Users size={14} className="text-indigo-400" />
-                              {session._count?.attendances || 0}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
             </div>
           </div>
         </div>
