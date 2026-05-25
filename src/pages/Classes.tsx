@@ -212,7 +212,7 @@ export default function Classes() {
       ) : (
       <div className="overflow-hidden rounded-xl border border-border bg-card shadow-card dark:shadow-none dark:ring-1 dark:ring-white/10">
         <div className="flex flex-col gap-3 border-b border-border p-5 sm:flex-row sm:flex-wrap sm:items-center">
-          <div className="relative min-w-0 flex-1 sm:max-w-md">
+          <div className="relative w-full min-w-0 flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="search"

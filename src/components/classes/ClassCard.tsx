@@ -1,14 +1,8 @@
-import { Users, Edit2, Trash2 } from 'lucide-react';
+import { GraduationCap, Pencil, Trash2 } from 'lucide-react';
 import type { ClassItem } from '@/types/class';
-import { classDetailLine, formatClassLabel } from '@/lib/classLabel';
-import { Badge } from '@/components/ui/badge';
+import { classDetailLine } from '@/lib/classLabel';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-
-function classInitial(name: string, courseCode?: string | null) {
-  const src = String(courseCode || name || '').trim();
-  return (src[0] || 'K').toUpperCase();
-}
 
 export default function ClassCard({
   classItem,
@@ -26,80 +20,97 @@ export default function ClassCard({
   onDelete?: () => void;
 }) {
   const detail = classDetailLine(classItem);
-  const label = formatClassLabel(classItem) || classItem.name;
-  const initial = classInitial(classItem.name, classItem.course_code);
+  const count = classItem._count.enrollments;
 
   return (
     <article
       className={cn(
-        'relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-card transition',
-        'hover:border-brand/35 hover:shadow-elevated dark:shadow-none dark:ring-1 dark:ring-white/10',
+        'group relative flex flex-col rounded-lg border border-slate-200 bg-white',
+        'transition hover:border-slate-300 hover:shadow-sm',
+        'dark:border-slate-700 dark:bg-card dark:hover:border-slate-600',
       )}
     >
-      <div className="absolute inset-y-0 left-0 w-1.5 bg-brand" aria-hidden />
+      <div className="h-1 rounded-t-lg bg-emerald-600" aria-hidden />
+
+      <div className="flex flex-1 flex-col p-4">
+        <div className="flex items-start justify-between gap-2">
+          <button
+            type="button"
+            onClick={onOpen}
+            className="flex min-w-0 flex-1 items-start gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <div
+              className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-slate-100 text-base font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+              aria-hidden
+            >
+              <GraduationCap className="h-6 w-6 text-slate-500" />
+            </div>
+            <div className="min-w-0 flex-1 pt-0.5">
+              <h3 className="text-base font-bold leading-snug text-slate-900 dark:text-slate-100">
+                {classItem.name}
+              </h3>
+              {detail ? (
+                <p className="mt-0.5 line-clamp-2 text-sm text-slate-500 dark:text-slate-400">{detail}</p>
+              ) : null}
+              <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                {count} {count === 1 ? 'mahasiswa' : 'mahasiswa'}
+              </p>
+            </div>
+          </button>
+
+          {canManage ? (
+            <div className="flex shrink-0 gap-0.5">
+              {onEdit ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-slate-500"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEdit();
+                  }}
+                  title="Edit kelas"
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              ) : null}
+              {isSuperAdmin && onDelete ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-red-600 hover:text-red-700"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete();
+                  }}
+                  title="Hapus kelas"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+
+        <div className="mt-3 border-t border-slate-100 pt-3 dark:border-slate-800">
+          <p className="truncate text-xs text-slate-500">
+            Pengampu: <span className="font-medium text-slate-700 dark:text-slate-300">{classItem.lecturer.name}</span>
+          </p>
+          {classItem._count.sessions > 0 ? (
+            <p className="mt-1 text-xs text-slate-400">{classItem._count.sessions} sesi absensi</p>
+          ) : null}
+        </div>
+      </div>
+
       <button
         type="button"
         onClick={onOpen}
-        className="flex flex-1 flex-col items-stretch px-5 pb-3 pt-5 pl-6 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        className="border-t border-slate-100 px-4 py-3 text-left text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50/80 dark:border-slate-800 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
       >
-        <div
-          className="mb-4 grid h-14 w-14 place-items-center rounded-full bg-muted text-lg font-bold text-muted-foreground ring-1 ring-border"
-          aria-hidden
-        >
-          {initial}
-        </div>
-
-        <h3 className="line-clamp-2 text-lg font-bold tracking-tight text-foreground">{classItem.name}</h3>
-        {detail ? <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{detail}</p> : null}
-        <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          {classItem._count.enrollments} mahasiswa
-        </p>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <Badge variant="outline" className="text-[11px]">
-            {label}
-          </Badge>
-          <Badge variant="secondary" className="text-[11px]">
-            {classItem._count.sessions} sesi
-          </Badge>
-        </div>
-        <p className="mt-3 truncate text-sm text-muted-foreground">
-          <span className="font-medium text-foreground/80">Pengampu:</span> {classItem.lecturer.name}
-        </p>
+        Lihat daftar mahasiswa →
       </button>
-
-      {canManage ? (
-        <div className="flex flex-wrap gap-2 border-t border-border px-4 py-3 pl-5">
-          <Button type="button" variant="outline" size="sm" className="min-h-10 flex-1" onClick={onOpen}>
-            <Users className="mr-2 h-4 w-4" />
-            Mahasiswa
-          </Button>
-          {onEdit ? (
-            <Button type="button" variant="outline" size="sm" className="min-h-10" onClick={onEdit}>
-              <Edit2 className="h-4 w-4" />
-              <span className="sr-only">Edit</span>
-            </Button>
-          ) : null}
-          {isSuperAdmin && onDelete ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="min-h-10 text-destructive hover:text-destructive"
-              onClick={onDelete}
-            >
-              <Trash2 className="h-4 w-4" />
-              <span className="sr-only">Hapus</span>
-            </Button>
-          ) : null}
-        </div>
-      ) : (
-        <div className="border-t border-border px-4 py-3 pl-5">
-          <Button type="button" variant="outline" size="sm" className="min-h-10 w-full" onClick={onOpen}>
-            <Users className="mr-2 h-4 w-4" />
-            Lihat daftar mahasiswa
-          </Button>
-        </div>
-      )}
     </article>
   );
 }

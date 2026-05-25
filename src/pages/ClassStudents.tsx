@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import useSWR from 'swr';
 import { ArrowLeft, Plus, Search, Trash2, UserCircle, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
@@ -12,11 +12,11 @@ import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
 import ActionLoadingOverlay from '@/components/ActionLoadingOverlay';
 import { ConfirmModal } from '@/components/ConfirmModal';
+import StudentSearchPicker from '@/components/classes/StudentSearchPicker';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TablePagination } from '@/components/ui/TablePagination';
@@ -34,7 +34,6 @@ export default function ClassStudents() {
   const navigate = useNavigate();
   const { user: currentUser } = useAuthStore();
   const canManage = currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN';
-  const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN';
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStudentId, setSelectedStudentId] = useState('');
@@ -112,6 +111,10 @@ export default function ClassStudents() {
 
   const selectedStudentName =
     notEnrolled.find((s) => s.id === selectedStudentId)?.name ?? 'mahasiswa ini';
+
+  const openStudentDetail = (studentId: string) => {
+    navigate(`/students/${studentId}`, { state: { from: `/classes/${classId}`, classId } });
+  };
 
   const handleEnroll = async () => {
     if (!selectedStudentId || !classId || enrolling) return;
@@ -198,8 +201,8 @@ export default function ClassStudents() {
           </Button>
         }
       >
-        <div className="mb-6 overflow-hidden rounded-xl border border-border bg-card shadow-card dark:shadow-none dark:ring-1 dark:ring-white/10">
-          <div className="border-b-4 border-brand bg-muted/30 px-5 py-5 sm:px-6">
+        <div className="mb-6 overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-border dark:bg-card">
+          <div className="border-b border-slate-200 bg-slate-50/80 px-5 py-5 sm:px-6 dark:border-border dark:bg-muted/30">
             {loadingClass ? (
               <div className="space-y-2">
                 <Skeleton className="h-8 w-64" />
@@ -207,13 +210,13 @@ export default function ClassStudents() {
               </div>
             ) : classInfo ? (
               <>
-                <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Kelas</p>
-                <h2 className="mt-1 text-2xl font-bold text-foreground sm:text-3xl">{classInfo.name}</h2>
-                {detail ? <p className="mt-1 text-sm text-muted-foreground">{detail}</p> : null}
-                <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Kelas</p>
+                <h2 className="mt-1 text-2xl font-bold text-slate-900 dark:text-foreground">{classInfo.name}</h2>
+                {detail ? <p className="mt-1 text-sm text-slate-600 dark:text-muted-foreground">{detail}</p> : null}
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-slate-600 dark:text-muted-foreground">
                   {semLabel ? <Badge variant="outline">{semLabel}</Badge> : null}
                   <span>
-                    Diampu oleh: <strong className="text-foreground">{classInfo.lecturer.name}</strong>
+                    Diampu oleh: <strong className="text-slate-900 dark:text-foreground">{classInfo.lecturer.name}</strong>
                   </span>
                   <Badge variant="secondary">{classInfo._count.enrollments} mahasiswa</Badge>
                 </div>
@@ -222,30 +225,19 @@ export default function ClassStudents() {
           </div>
 
           {canManage ? (
-            <div className="flex flex-col gap-3 border-b border-border p-5 sm:flex-row sm:items-end">
-              <div className="flex-1 space-y-2">
+            <div className="grid gap-3 border-b border-slate-200 p-5 sm:grid-cols-[1fr_auto] sm:items-end dark:border-border">
+              <div className="w-full space-y-2">
                 <Label>Tambah mahasiswa ke kelas</Label>
-                <Select value={selectedStudentId} onValueChange={setSelectedStudentId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Pilih mahasiswa…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {notEnrolled.length === 0 ? (
-                      <SelectItem value="__none" disabled>
-                        Semua mahasiswa sudah terdaftar
-                      </SelectItem>
-                    ) : (
-                      notEnrolled.map((s) => (
-                        <SelectItem key={s.id} value={s.id}>
-                          {s.name} ({s.nim_nip || 'tanpa NIM'})
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
+                <StudentSearchPicker
+                  options={notEnrolled}
+                  value={selectedStudentId}
+                  onChange={setSelectedStudentId}
+                  disabled={notEnrolled.length === 0}
+                />
               </div>
               <Button
                 type="button"
+                className="min-h-11 shrink-0"
                 disabled={!selectedStudentId || notEnrolled.length === 0}
                 onClick={() => setIsEnrollConfirmOpen(true)}
               >
@@ -254,25 +246,22 @@ export default function ClassStudents() {
               </Button>
             </div>
           ) : null}
+        </div>
 
-          <div className="p-5">
-            <div className="relative max-w-md">
+        <div className="overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-border dark:bg-card">
+          <div className="flex flex-col gap-3 border-b border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between dark:border-border">
+            <h3 className="font-semibold text-foreground">Daftar Siswa Kelas</h3>
+            <div className="relative w-full sm:max-w-xl sm:flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 type="search"
                 placeholder="Cari nama, NIM, atau email…"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9"
+                className="h-10 w-full pl-9"
                 aria-label="Cari mahasiswa"
               />
             </div>
-          </div>
-        </div>
-
-        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-card dark:shadow-none dark:ring-1 dark:ring-white/10">
-          <div className="border-b border-border px-5 py-4">
-            <h3 className="font-semibold text-foreground">Daftar Siswa Kelas</h3>
           </div>
 
           {studentsError ? (
@@ -336,12 +325,16 @@ export default function ClassStudents() {
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-1">
-                              {isSuperAdmin ? (
-                                <Button variant="ghost" size="sm" asChild>
-                                  <Link to="/users" title="Kelola di menu Pengguna">
-                                    <ExternalLink className="h-4 w-4" />
-                                    <span className="sr-only">Kelola pengguna</span>
-                                  </Link>
+                              {canManage ? (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-9 w-9"
+                                  title="Biodata mahasiswa"
+                                  onClick={() => openStudentDetail(student.id)}
+                                >
+                                  <ExternalLink className="h-4 w-4" />
+                                  <span className="sr-only">Biodata mahasiswa</span>
                                 </Button>
                               ) : null}
                               {canManage ? (

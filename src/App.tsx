@@ -22,6 +22,7 @@ const Dashboard = lazyWithRetry(() => import("@/pages/Dashboard"));
 const Users = lazyWithRetry(() => import("@/pages/Users"));
 const Classes = lazyWithRetry(() => import("@/pages/Classes"));
 const ClassStudents = lazyWithRetry(() => import("@/pages/ClassStudents"));
+const StudentDetail = lazyWithRetry(() => import("@/pages/StudentDetail"));
 const Excuses = lazyWithRetry(() => import("@/pages/Excuses"));
 const Locations = lazyWithRetry(() => import("@/pages/Locations"));
 const Sessions = lazyWithRetry(() => import("@/pages/Sessions"));
@@ -231,6 +232,7 @@ export default function App() {
               <Route path="/history" element={<PageSuspense><ProtectedRoute allowedRoles={['USER']}><HistoryPage /></ProtectedRoute></PageSuspense>} />
               <Route path="/classes" element={<PageSuspense><ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'USER']}><Classes /></ProtectedRoute></PageSuspense>} />
               <Route path="/classes/:classId" element={<PageSuspense><ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'USER']}><ClassStudents /></ProtectedRoute></PageSuspense>} />
+              <Route path="/students/:studentId" element={<PageSuspense><ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}><StudentDetail /></ProtectedRoute></PageSuspense>} />
               <Route path="/excuses" element={<PageSuspense><ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'USER']}><Excuses /></ProtectedRoute></PageSuspense>} />
               <Route path="/users" element={<PageSuspense><ProtectedRoute allowedRoles={['SUPER_ADMIN']}><Users /></ProtectedRoute></PageSuspense>} />
               <Route path="/locations" element={<PageSuspense><ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}><Locations /></ProtectedRoute></PageSuspense>} />

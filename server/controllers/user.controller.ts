@@ -115,9 +115,78 @@ export const getUsers = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
+const userPublicSelect = {
+  id: true,
+  name: true,
+  email: true,
+  role: true,
+  nim_nip: true,
+  department: true,
+  phone: true,
+  is_active: true,
+  semester: true,
+  enrollment_date: true,
+  avatar_url: true,
+  device_fingerprint: true,
+  created_at: true,
+  updated_at: true,
+} as const;
+
+async function adminCanViewStudent(actorId: string, studentId: string): Promise<boolean> {
+  const hit = await prisma.classEnrollment.findFirst({
+    where: {
+      student_id: studentId,
+      class: { lecturer_id: actorId },
+    },
+  });
+  return Boolean(hit);
+}
+
+export const getUserById = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const actor = (req as any).user;
+
+    const user = await prisma.user.findUnique({
+      where: { id },
+      select: userPublicSelect,
+    });
+
+    if (!user) {
+      res.status(404).json({ success: false, error: 'Pengguna tidak ditemukan' });
+      return;
+    }
+
+    if (actor.role === 'SUPER_ADMIN') {
+      res.status(200).json({ success: true, data: user });
+      return;
+    }
+
+    if (actor.role === 'ADMIN') {
+      if (user.role !== 'USER') {
+        res.status(403).json({ success: false, error: 'Akses ditolak' });
+        return;
+      }
+      const allowed = await adminCanViewStudent(actor.id, id);
+      if (!allowed) {
+        res.status(403).json({ success: false, error: 'Akses ditolak' });
+        return;
+      }
+      res.status(200).json({ success: true, data: user });
+      return;
+    }
+
+    res.status(403).json({ success: false, error: 'Akses ditolak' });
+  } catch (error) {
+    console.error('Error fetching user:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+};
+
 export const getUserEnrollments = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
+    const actor = (req as any).user;
     const user = await prisma.user.findUnique({
       where: { id },
       select: { id: true, role: true },
@@ -126,6 +195,18 @@ export const getUserEnrollments = async (req: Request, res: Response): Promise<v
     if (!user) {
       res.status(404).json({ success: false, error: 'Pengguna tidak ditemukan' });
       return;
+    }
+
+    if (actor.role === 'ADMIN') {
+      if (user.role !== 'USER') {
+        res.status(403).json({ success: false, error: 'Akses ditolak' });
+        return;
+      }
+      const allowed = await adminCanViewStudent(actor.id, id);
+      if (!allowed) {
+        res.status(403).json({ success: false, error: 'Akses ditolak' });
+        return;
+      }
     }
 
     if (user.role !== 'USER') {
