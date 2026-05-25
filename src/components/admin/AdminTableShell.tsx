@@ -1,6 +1,5 @@
 import * as React from 'react';
 import { cn } from '@/lib/utils';
-import { MobileTableHint } from '@/components/ui/MobileTableHint';
 
 type AdminTableShellProps = {
   /** Bar filter / pencarian di atas tabel */
@@ -12,8 +11,6 @@ type AdminTableShellProps = {
   /** Footer paginasi */
   footer?: React.ReactNode;
   className?: string;
-  /** Sembunyikan petunjuk scroll horizontal */
-  hideScrollHint?: boolean;
   /** min-width untuk tabel lebar */
   tableMinWidth?: string;
 };
@@ -28,7 +25,6 @@ export function AdminTableShell({
   children,
   footer,
   className,
-  hideScrollHint = false,
   tableMinWidth = '720px',
 }: AdminTableShellProps) {
   return (
@@ -43,12 +39,6 @@ export function AdminTableShell({
       ) : null}
 
       {mobile ? <div className="space-y-4 p-5 sm:p-6 md:hidden">{mobile}</div> : null}
-
-      {!hideScrollHint ? (
-        <div className="hidden md:block">
-          <MobileTableHint />
-        </div>
-      ) : null}
 
       <div className="hidden overflow-x-auto md:block">
         <div style={{ minWidth: tableMinWidth }} className="w-full min-w-0">

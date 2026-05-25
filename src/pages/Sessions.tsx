@@ -26,7 +26,6 @@ import { CardSkeletonList } from '@/components/admin/CardSkeleton';
 
 import type { Location, Session } from '@/types/session';
 import { formatClassLabel, sessionClassNames } from '@/lib/classLabel';
-import { MobileTableHint } from '@/components/ui/MobileTableHint';
 import { WizardStepIndicator } from '@/components/ui/WizardStepIndicator';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { useClientPagination } from '@/hooks/useClientPagination';
@@ -115,6 +114,14 @@ export default function Sessions() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
   const [isSaveConfirmOpen, setIsSaveConfirmOpen] = useState(false);
+
+  // Nilai minimum untuk input datetime-local (waktu sekarang dalam zona lokal)
+  // Sengaja hitung sekali per render — memo tidak perlu karena cheap & tidak harus update tiap detik.
+  const nowLocalMin = (() => {
+    const d = new Date();
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().slice(0, 16);
+  })();
 
   const fetcher = (url: string) => api.get(url).then(res => res.data.data);
   const swr = useSWR<Session[]>('/sessions', fetcher, { revalidateOnFocus: false });
@@ -217,6 +224,33 @@ export default function Sessions() {
     setFormErrors({});
 
     try {
+      const openAtMs = new Date(formData.check_in_open_at).getTime();
+      const closeAtMs = new Date(formData.check_in_close_at).getTime();
+      const sessionStartMs = new Date(formData.session_start).getTime();
+      const sessionEndMs = new Date(formData.session_end).getTime();
+      const nowMs = Date.now();
+      const isEditOngoing = Boolean(editingSession) && editingSession?.status !== 'UPCOMING';
+
+      const errors: Record<string, string> = {};
+      if (Number.isNaN(closeAtMs) || Number.isNaN(openAtMs)) {
+        errors.check_in_close_at = 'Format waktu tidak valid.';
+      } else {
+        if (!isEditOngoing && closeAtMs <= nowMs + 60_000) {
+          errors.check_in_close_at = 'Tutup absen harus minimal 1 menit ke depan dari sekarang.';
+        }
+        if (closeAtMs <= openAtMs) {
+          errors.check_in_close_at = 'Tutup absen harus setelah Buka absen.';
+        }
+        if (!Number.isNaN(sessionEndMs) && sessionEndMs < sessionStartMs) {
+          errors.session_end = 'Berakhir sesi tidak boleh sebelum mulai sesi.';
+        }
+      }
+      if (Object.keys(errors).length > 0) {
+        setFormErrors(errors);
+        setSaving(false);
+        return;
+      }
+
       const payload = {
         ...formData,
         session_start: new Date(formData.session_start).toISOString(),
@@ -502,9 +536,6 @@ export default function Sessions() {
           )}
         </ul>
 
-        <div className="hidden md:block">
-          <MobileTableHint />
-        </div>
         <div className="hidden overflow-x-auto md:block">
           <Table>
           <TableHeader className="sticky top-0 z-10 bg-muted/50 [&_tr]:border-b">
@@ -785,6 +816,7 @@ export default function Sessions() {
                       <Input
                         type="datetime-local"
                         required
+                        min={editingSession ? undefined : nowLocalMin}
                         value={formData.check_in_open_at}
                         onChange={(e) => { clearFieldError('check_in_open_at'); setFormData({ ...formData, check_in_open_at: e.target.value }); }}
                         aria-invalid={Boolean(formErrors.check_in_open_at)}
@@ -799,6 +831,7 @@ export default function Sessions() {
                       <Input
                         type="datetime-local"
                         required
+                        min={editingSession ? undefined : nowLocalMin}
                         value={formData.check_in_close_at}
                         onChange={(e) => { clearFieldError('check_in_close_at'); setFormData({ ...formData, check_in_close_at: e.target.value }); }}
                         aria-invalid={Boolean(formErrors.check_in_close_at)}

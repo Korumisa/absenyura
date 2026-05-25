@@ -19,7 +19,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import AdminPageShell from '@/components/AdminPageShell';
-import { MobileTableHint } from '@/components/ui/MobileTableHint';
 import { TablePagination } from '@/components/ui/TablePagination';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
@@ -427,9 +426,6 @@ export default function Users() {
             ))}
         </ul>
 
-        <div className="hidden md:block">
-          <MobileTableHint />
-        </div>
         <div className="hidden overflow-x-auto md:block">
           <Table>
             <TableHeader className="sticky top-0 z-10 bg-muted/50 [&_tr]:border-b">

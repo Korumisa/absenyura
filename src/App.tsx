@@ -11,6 +11,7 @@ import ScrollToTop from "@/components/ScrollToTop";
 
 import { ThemeProvider } from "@/providers/theme-provider";
 import { getOfflineAttendances, deleteOfflineAttendance } from "@/lib/idb";
+import { getDeviceFingerprint } from "@/lib/deviceFingerprint";
 import { dispatchAppOnline, ONLINE_USER_MESSAGE } from "@/lib/networkEvents";
 import api from "@/services/api";
 import { useAppStatusStore } from "@/stores/appStatusStore";
@@ -82,7 +83,10 @@ export default function App() {
             if (item.token) formData.append('qr_token', item.token);
             formData.append('latitude', item.lat.toString());
             formData.append('longitude', item.lng.toString());
-            formData.append('device_fingerprint', item.deviceInfo + ' [OFFLINE_SYNC]');
+            const offlineFingerprint = item.deviceInfo && item.deviceInfo.length >= 16
+              ? item.deviceInfo
+              : await getDeviceFingerprint();
+            formData.append('device_fingerprint', `${offlineFingerprint} [OFFLINE_SYNC]`);
             // Assuming we allow no-photo for offline sync as fallback, or we could have saved photoBlob to IDB as well.
             // For simplicity in this PWA version, offline sync might skip photo or use a placeholder.
 

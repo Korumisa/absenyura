@@ -16,7 +16,6 @@ import type { PaginationMeta } from '@/types/common';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
 import { TablePagination } from '@/components/ui/TablePagination';
-import { MobileTableHint } from '@/components/ui/MobileTableHint';
 import { attendanceBadgeVariant, attendanceStatusLabel } from '@/lib/statusLabel';
 
 const fetcher = (url: string) => api.get(url).then(res => res.data);
@@ -76,7 +75,6 @@ export default function HistoryPage() {
             <CardSkeletonList count={4} />
           </div>
           <div className="hidden overflow-hidden rounded-xl border border-border bg-card shadow-card dark:shadow-none dark:ring-1 dark:ring-white/10 md:block">
-            <MobileTableHint />
             <div className="overflow-x-auto">
               <Table className="min-w-[800px]">
                 <TableHeader className="sticky top-0 z-10 bg-muted/50 [&_tr]:border-b">
@@ -113,17 +111,19 @@ export default function HistoryPage() {
           </div>
         </>
       ) : filteredHistory.length === 0 ? (
-        <AdminEmptyState
-          compact
-          icon={HistoryIcon}
-          hasFilters={hasFilters}
-          title={hasFilters ? undefined : 'Belum Ada Riwayat'}
-          description={hasFilters ? undefined : 'Kamu belum mengikuti sesi kelas apa pun.'}
-        />
+        <div className="px-1 py-2 md:px-0 md:py-0">
+          <AdminEmptyState
+            compact
+            icon={HistoryIcon}
+            hasFilters={hasFilters}
+            title={hasFilters ? undefined : 'Belum Ada Riwayat'}
+            description={hasFilters ? undefined : 'Kamu belum mengikuti sesi kelas apa pun.'}
+          />
+        </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-card dark:shadow-none dark:ring-1 dark:ring-white/10">
+        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-card dark:shadow-none dark:ring-1 dark:ring-white/10 md:bg-card max-md:border-0 max-md:bg-transparent max-md:shadow-none max-md:dark:ring-0">
         {/* [UX] #18 — kartu mobile */}
-        <ul className="space-y-4 md:hidden" aria-label="Riwayat kehadiran">
+        <ul className="space-y-3 px-1 py-2 md:hidden" aria-label="Riwayat kehadiran">
           {filteredHistory.map((item) => (
             <li key={item.id} className="rounded-2xl border border-border bg-card p-4">
               <p className="font-bold text-foreground">{item.session_title}</p>
@@ -166,7 +166,6 @@ export default function HistoryPage() {
           ))}
         </ul>
         <div className="hidden md:block">
-          <MobileTableHint />
           <div className="overflow-x-auto">
             <Table className="min-w-[800px]">
               <TableHeader className="sticky top-0 z-10 bg-muted/50 [&_tr]:border-b">

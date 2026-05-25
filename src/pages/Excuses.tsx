@@ -17,7 +17,6 @@ import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { formatClassLabel } from '@/lib/classLabel';
 import AdminPageShell from '@/components/AdminPageShell';
-import { MobileTableHint } from '@/components/ui/MobileTableHint';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
 import { excuseStatusLabel } from '@/lib/statusLabel';
@@ -429,7 +428,6 @@ export default function Excuses() {
               })}
         </ul>
 
-        <MobileTableHint />
         <div className="hidden overflow-x-auto md:block">
           <Table>
             <TableHeader className="sticky top-0 z-10 bg-muted/50 [&_tr]:border-b">

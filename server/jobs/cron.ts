@@ -45,13 +45,19 @@ export const runCronJob = async () => {
 
     const now = new Date();
 
+    // Transisi memakai `check_in_open_at` & `check_in_close_at` (bukan `session_start` / `session_end`)
+    // karena field-field tersebut adalah jendela waktu absensi yang otoritatif.
     // UPCOMING -> ACTIVE (when check_in_open_at is reached and before check_in_close_at + 2 min grace period)
     const twoMinutesAgo = new Date(now.getTime() - 2 * 60000);
     const twoMinutesFuture = new Date(now.getTime() + 2 * 60000);
+    // Cooldown 1 menit: sesi yang baru dibuat / di-update tidak langsung kena cron,
+    // memberi admin buffer untuk edit ulang jika salah set jam.
+    const oneMinuteAgo = new Date(now.getTime() - 60_000);
 
     const sessionsToActivate = await prisma.session.findMany({
       where: {
         status: 'UPCOMING',
+        created_at: { lte: oneMinuteAgo },
         // Active when now >= check_in_open_at - 2 min
         check_in_open_at: { lte: twoMinutesFuture },
         // Must not have reached check_in_close_at + 2 min yet
@@ -98,10 +104,17 @@ export const runCronJob = async () => {
     const sessionsToClose = await prisma.session.findMany({
       where: {
         status: { in: ['ACTIVE', 'UPCOMING'] },
+        created_at: { lte: oneMinuteAgo },
         // Close only when now > check_in_close_at + 2 min (i.e. check_in_close_at <= now - 2 min)
         check_in_close_at: { lte: twoMinutesAgo }
       }
     });
+
+    if (sessionsToActivate.length > 0 || sessionsToClose.length > 0) {
+      console.log(
+        `[Cron] now=${now.toISOString()} activated=${sessionsToActivate.length} closed=${sessionsToClose.length}`,
+      );
+    }
 
     if (sessionsToClose.length > 0) {
       await prisma.session.updateMany({

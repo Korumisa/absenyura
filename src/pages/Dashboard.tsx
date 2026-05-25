@@ -6,7 +6,6 @@ import api from '@/services/api';
 import { Users, Calendar, CheckCircle2, Clock, MapPin, FileText, BarChart3, QrCode } from 'lucide-react';
 import AdminPageShell from '@/components/AdminPageShell';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
-import { MobileTableHint } from '@/components/ui/MobileTableHint';
 import {
   BarChart,
   Bar,
@@ -249,7 +248,6 @@ export default function Dashboard() {
               </ul>
 
               <div className="hidden md:block">
-                <MobileTableHint className="hidden md:block" />
                 <div className="overflow-x-auto">
                 <Table className="min-w-[720px]">
                   <TableHeader className="sticky top-0 z-10 bg-muted/50 [&_tr]:border-b">

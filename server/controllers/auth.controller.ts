@@ -71,7 +71,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
         // Compare base fingerprints (ignoring the [OFFLINE_SYNC] tag)
         const storedDevice = user.device_fingerprint.replace(' [OFFLINE_SYNC]', '');
         const incomingDevice = device_fingerprint.replace(' [OFFLINE_SYNC]', '');
-        
+
         if (storedDevice !== incomingDevice) {
           if (user.role === 'USER') {
             res.status(403).json({ 

@@ -15,6 +15,7 @@ import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 import useSWR from 'swr';
 import type { PublicProfile } from '@/types/publicSite';
 import { getErrorMessage } from '@/lib/errorMessage';
+import { getDeviceFingerprint } from '@/lib/deviceFingerprint';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -45,12 +46,7 @@ export default function Login() {
     setLoading(true);
     setLoginError(null);
     try {
-      // Simulating device fingerprint using a simple random string stored in localStorage
-      let device_fingerprint = localStorage.getItem('device_fingerprint');
-      if (!device_fingerprint) {
-        device_fingerprint = Math.random().toString(36).substring(2, 15);
-        localStorage.setItem('device_fingerprint', device_fingerprint);
-      }
+      const device_fingerprint = await getDeviceFingerprint();
 
       const res = await api.post('/auth/login', { email, password, device_fingerprint });
       const { user } = res.data.data;

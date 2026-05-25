@@ -26,7 +26,6 @@ import AdminPageShell from '@/components/AdminPageShell';
 import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
 import { CardSkeletonList } from '@/components/admin/CardSkeleton';
 import { formatClassLabel } from '@/lib/classLabel';
-import { MobileTableHint } from '@/components/ui/MobileTableHint';
 import { TablePagination } from '@/components/ui/TablePagination';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
@@ -560,7 +559,6 @@ export default function Reports() {
           )}
         </ul>
 
-        <MobileTableHint />
         <div className="hidden overflow-x-auto md:block">
           <Table className="min-w-[800px]">
             <TableHeader className="sticky top-0 z-10 bg-muted/50 [&_tr]:border-b">

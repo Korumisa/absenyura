@@ -18,7 +18,6 @@ import PublicSiteGalleryPreview from '@/components/publicSiteAdmin/PublicSiteGal
 import { Image } from 'lucide-react';
 import { CmsTabNav, type CmsTabItem } from '@/components/ui/CmsTabNav';
 import { CmsPublishTabs } from '@/components/ui/CmsPublishTabs';
-import { MobileTableHint } from '@/components/ui/MobileTableHint';
 import { CmsEditorLayout } from '@/components/cms/CmsEditorLayout';
 import { CmsListToolbar } from '@/components/cms/CmsListToolbar';
 import { AdminContentTransition } from '@/components/admin/AdminContentTransition';
@@ -290,7 +289,6 @@ export default function PublicSiteGalleries() {
               </li>
             ))}
           </ul>
-          <MobileTableHint />
           <div className="hidden overflow-x-auto md:block">
             <Table className="min-w-[560px]">
               <TableHeader>

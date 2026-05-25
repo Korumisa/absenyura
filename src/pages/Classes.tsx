@@ -4,7 +4,6 @@ import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { useClientPagination } from '@/hooks/useClientPagination';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
 import { TablePagination } from '@/components/ui/TablePagination';
-import { MobileTableHint } from '@/components/ui/MobileTableHint';
 import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
 import api from '@/services/api';
 import { useAuthStore } from '@/stores/authStore';
@@ -304,7 +303,6 @@ export default function Classes() {
               ))}
         </ul>
 
-        <MobileTableHint />
         <div className="hidden overflow-x-auto md:block">
           <Table>
             <TableHeader className="sticky top-0 z-10 bg-muted/50 [&_tr]:border-b">

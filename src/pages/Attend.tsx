@@ -12,6 +12,7 @@ import { getErrorMessage } from '@/lib/errorMessage';
 import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { saveOfflineAttendance } from '@/lib/idb';
+import { getDeviceFingerprint } from '@/lib/deviceFingerprint';
 import {
   acquireCameraStream,
   humanizeCameraError,
@@ -616,7 +617,7 @@ export default function Attend() {
       // Bersihkan whitespace jika ada (misal dari hasil scan)
       sessionId = sessionId.trim();
 
-      const deviceFingerprint = localStorage.getItem('device_fingerprint') || 'unknown-device';
+      const deviceFingerprint = await getDeviceFingerprint();
 
       if (isOffline) {
         // Save to IndexedDB

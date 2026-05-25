@@ -9,7 +9,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import AdminPageShell from '@/components/AdminPageShell';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
-import { MobileTableHint } from '@/components/ui/MobileTableHint';
 import { TablePagination } from '@/components/ui/TablePagination';
 import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
 import type { AuditLog } from '@/types/audit';
@@ -147,7 +146,6 @@ export default function AuditLogs() {
             )}
           </ul>
 
-          <MobileTableHint />
           <div className="hidden overflow-x-auto md:block">
             <Table>
               <TableHeader className="sticky top-0 z-10 bg-muted/50 [&_tr]:border-b">

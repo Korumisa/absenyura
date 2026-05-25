@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import AdminPageShell from '@/components/AdminPageShell';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
 import { toastErrorMessage } from '@/lib/toastMessage';
+import { forgetDeviceFingerprint } from '@/lib/deviceFingerprint';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -243,7 +244,7 @@ export default function Settings() {
                     type="button"
                     variant="outline"
                     onClick={() => {
-                      localStorage.removeItem('device_fingerprint');
+                      forgetDeviceFingerprint();
                       toast.success('Perangkat dilupakan. Anda akan diminta login kembali pada percobaan berikutnya.');
                     }}
                     className="min-h-11 w-full border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-900/20 sm:w-auto"

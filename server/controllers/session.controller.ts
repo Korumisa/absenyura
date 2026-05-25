@@ -69,6 +69,46 @@ export const getSessions = async (req: Request, res: Response): Promise<void> =>
   }
 };
 
+type SessionTimeError = { field: string; message: string; error_code: string };
+
+/** Mengembalikan `null` jika valid, atau objek error jika tidak. */
+const validateSessionTimes = (
+  body: {
+    session_start: string;
+    session_end: string;
+    check_in_open_at: string;
+    check_in_close_at: string;
+  },
+  opts: { allowPastClose: boolean },
+): SessionTimeError | null => {
+  const openAt = new Date(body.check_in_open_at).getTime();
+  const closeAt = new Date(body.check_in_close_at).getTime();
+  const startAt = new Date(body.session_start).getTime();
+  const endAt = new Date(body.session_end).getTime();
+  if (Number.isNaN(openAt) || Number.isNaN(closeAt) || Number.isNaN(startAt) || Number.isNaN(endAt)) {
+    return { field: 'check_in_close_at', message: 'Format waktu sesi tidak valid.', error_code: 'INVALID_TIME' };
+  }
+  if (closeAt <= openAt) {
+    return { field: 'check_in_close_at', message: 'Tutup absen harus setelah Buka absen.', error_code: 'CLOSE_BEFORE_OPEN' };
+  }
+  if (endAt < startAt) {
+    return { field: 'session_end', message: 'Berakhir sesi tidak boleh sebelum mulai sesi.', error_code: 'END_BEFORE_START' };
+  }
+  if (!opts.allowPastClose && closeAt <= Date.now() + 60_000) {
+    return { field: 'check_in_close_at', message: 'Tutup absen harus minimal 1 menit ke depan.', error_code: 'CLOSE_AT_IN_PAST' };
+  }
+  return null;
+};
+
+const sendSessionTimeError = (res: Response, v: SessionTimeError): void => {
+  res.status(400).json({
+    success: false,
+    error_code: v.error_code,
+    field_errors: { [v.field]: v.message },
+    message: v.message,
+  });
+};
+
 export const createSession = async (req: Request, res: Response): Promise<void> => {
   try {
     const { title, description, class_id, class_ids, location_id, qr_mode, session_start, session_end, check_in_open_at, check_in_close_at, late_threshold_minutes, require_checkout } = req.body;
@@ -76,6 +116,15 @@ export const createSession = async (req: Request, res: Response): Promise<void> 
     const incomingClassIds = Array.isArray(class_ids) ? class_ids.map((x: any) => String(x || '').trim()).filter(Boolean) : [];
     const uniqueClassIds = Array.from(new Set(incomingClassIds));
     const useMultiClass = uniqueClassIds.length > 0;
+
+    const timeError = validateSessionTimes(
+      { session_start, session_end, check_in_open_at, check_in_close_at },
+      { allowPastClose: false },
+    );
+    if (timeError) {
+      sendSessionTimeError(res, timeError);
+      return;
+    }
 
     // Generate static token if qr_mode is STATIC
     let qr_token = null;
@@ -157,6 +206,19 @@ export const updateSession = async (req: Request, res: Response): Promise<void> 
     const hasClassIds = Array.isArray(class_ids);
     const incomingClassIds = hasClassIds ? class_ids.map((x: any) => String(x || '').trim()).filter(Boolean) : [];
     const uniqueClassIds = Array.from(new Set(incomingClassIds));
+
+    // Edit sesi yang sudah berjalan (ACTIVE/CLOSED) boleh punya close_at di masa lalu —
+    // hanya block kalau sesi masih UPCOMING (belum mulai).
+    const existing = await prisma.session.findUnique({ where: { id }, select: { status: true } });
+    const allowPastClose = Boolean(existing && existing.status !== 'UPCOMING');
+    const timeError = validateSessionTimes(
+      { session_start, session_end, check_in_open_at, check_in_close_at },
+      { allowPastClose },
+    );
+    if (timeError) {
+      sendSessionTimeError(res, timeError);
+      return;
+    }
 
     const session = await prisma.session.update({
       where: { id },

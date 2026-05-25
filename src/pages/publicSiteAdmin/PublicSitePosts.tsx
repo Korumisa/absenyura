@@ -18,7 +18,6 @@ import AdminCard from '@/components/AdminCard';
 import { Newspaper } from 'lucide-react';
 import { CmsTabNav, type CmsTabItem } from '@/components/ui/CmsTabNav';
 import { CmsPublishTabs } from '@/components/ui/CmsPublishTabs';
-import { MobileTableHint } from '@/components/ui/MobileTableHint';
 import PublicSitePostPreview from '@/components/publicSiteAdmin/PublicSitePostPreview';
 import { CmsEditorLayout } from '@/components/cms/CmsEditorLayout';
 import { CmsCollapsibleSection } from '@/components/cms/CmsCollapsibleSection';
@@ -410,7 +409,6 @@ export default function PublicSitePosts() {
             </li>
           ))}
         </ul>
-        <MobileTableHint />
         <div className="hidden overflow-x-auto md:block">
         <Table className="min-w-[640px]">
           <TableHeader>
