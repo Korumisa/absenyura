@@ -367,7 +367,26 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
 export const updateUser = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { name, email, role, nim_nip, department, phone, is_active, password, semester, class_ids } = req.body;
+    const actor = (req as any).user;
+    let { name, email, role, nim_nip, department, phone, is_active, password, semester, class_ids } = req.body;
+
+    if (actor.role === 'ADMIN') {
+      const target = await prisma.user.findUnique({ where: { id }, select: { role: true } });
+      if (!target || target.role !== 'USER') {
+        res.status(403).json({ success: false, error: 'Akses ditolak' });
+        return;
+      }
+      const allowed = await adminCanViewStudent(actor.id, id);
+      if (!allowed) {
+        res.status(403).json({ success: false, error: 'Akses ditolak' });
+        return;
+      }
+      role = undefined;
+      class_ids = undefined;
+    } else if (actor.role !== 'SUPER_ADMIN') {
+      res.status(403).json({ success: false, error: 'Akses ditolak' });
+      return;
+    }
 
     if (role && typeof role === 'string' && !ALLOWED_ROLES.has(role)) {
       res.status(400).json({ success: false, error: 'Role tidak valid' });
@@ -581,6 +600,20 @@ export const importUsers = async (req: Request, res: Response): Promise<void> =>
 export const resetDeviceFingerprint = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
+    const actor = (req as any).user;
+
+    if (actor.role === 'ADMIN') {
+      const target = await prisma.user.findUnique({ where: { id }, select: { role: true } });
+      if (!target || target.role !== 'USER') {
+        res.status(403).json({ success: false, error: 'Akses ditolak' });
+        return;
+      }
+      const allowed = await adminCanViewStudent(actor.id, id);
+      if (!allowed) {
+        res.status(403).json({ success: false, error: 'Akses ditolak' });
+        return;
+      }
+    }
 
     await prisma.user.update({
       where: { id },

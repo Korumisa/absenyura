@@ -21,7 +21,7 @@ router.get('/:id', authorize(['SUPER_ADMIN', 'ADMIN']), getUserById);
 router.get('/:id/enrollments', authorize(['SUPER_ADMIN', 'ADMIN']), getUserEnrollments);
 router.post('/', authorize(['SUPER_ADMIN']), createUser);
 router.post('/import', authorize(['SUPER_ADMIN']), uploadExcel.single('file'), importUsers);
-router.put('/:id', authorize(['SUPER_ADMIN']), updateUser);
+router.put('/:id', authorize(['SUPER_ADMIN', 'ADMIN']), updateUser);
 router.delete('/:id', authorize(['SUPER_ADMIN']), deleteUser);
 router.post('/:id/reset-device', authorize(['SUPER_ADMIN', 'ADMIN']), resetDeviceFingerprint);
 

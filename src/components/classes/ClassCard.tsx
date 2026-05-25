@@ -25,12 +25,11 @@ export default function ClassCard({
   return (
     <article
       className={cn(
-        'group relative flex flex-col rounded-lg border border-slate-200 bg-white',
-        'transition hover:border-slate-300 hover:shadow-sm',
-        'dark:border-slate-700 dark:bg-card dark:hover:border-slate-600',
+        'group relative flex flex-col overflow-hidden rounded-lg border border-border bg-card',
+        'transition hover:border-brand/40 hover:shadow-sm',
       )}
     >
-      <div className="h-1 rounded-t-lg bg-emerald-600" aria-hidden />
+      <div className="h-1 bg-brand" aria-hidden />
 
       <div className="flex flex-1 flex-col p-4">
         <div className="flex items-start justify-between gap-2">
@@ -40,20 +39,18 @@ export default function ClassCard({
             className="flex min-w-0 flex-1 items-start gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <div
-              className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-slate-100 text-base font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+              className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-brand/10 text-brand"
               aria-hidden
             >
-              <GraduationCap className="h-6 w-6 text-slate-500" />
+              <GraduationCap className="h-6 w-6" />
             </div>
             <div className="min-w-0 flex-1 pt-0.5">
-              <h3 className="text-base font-bold leading-snug text-slate-900 dark:text-slate-100">
-                {classItem.name}
-              </h3>
+              <h3 className="text-base font-bold leading-snug text-foreground">{classItem.name}</h3>
               {detail ? (
-                <p className="mt-0.5 line-clamp-2 text-sm text-slate-500 dark:text-slate-400">{detail}</p>
+                <p className="mt-0.5 line-clamp-2 text-sm text-muted-foreground">{detail}</p>
               ) : null}
-              <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                {count} {count === 1 ? 'mahasiswa' : 'mahasiswa'}
+              <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                {count} mahasiswa
               </p>
             </div>
           </button>
@@ -65,7 +62,7 @@ export default function ClassCard({
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 text-slate-500"
+                  className="h-8 w-8"
                   onClick={(e) => {
                     e.stopPropagation();
                     onEdit();
@@ -80,7 +77,7 @@ export default function ClassCard({
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 text-red-600 hover:text-red-700"
+                  className="h-8 w-8 text-destructive hover:text-destructive"
                   onClick={(e) => {
                     e.stopPropagation();
                     onDelete();
@@ -94,12 +91,12 @@ export default function ClassCard({
           ) : null}
         </div>
 
-        <div className="mt-3 border-t border-slate-100 pt-3 dark:border-slate-800">
-          <p className="truncate text-xs text-slate-500">
-            Pengampu: <span className="font-medium text-slate-700 dark:text-slate-300">{classItem.lecturer.name}</span>
+        <div className="mt-3 border-t border-border pt-3">
+          <p className="truncate text-xs text-muted-foreground">
+            Pengampu: <span className="font-medium text-foreground">{classItem.lecturer.name}</span>
           </p>
           {classItem._count.sessions > 0 ? (
-            <p className="mt-1 text-xs text-slate-400">{classItem._count.sessions} sesi absensi</p>
+            <p className="mt-1 text-xs text-muted-foreground">{classItem._count.sessions} sesi absensi</p>
           ) : null}
         </div>
       </div>
@@ -107,7 +104,7 @@ export default function ClassCard({
       <button
         type="button"
         onClick={onOpen}
-        className="border-t border-slate-100 px-4 py-3 text-left text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50/80 dark:border-slate-800 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
+        className="border-t border-border bg-muted/30 px-4 py-3 text-left text-sm font-semibold text-brand transition hover:bg-brand/10"
       >
         Lihat daftar mahasiswa →
       </button>
