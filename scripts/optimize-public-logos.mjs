@@ -9,7 +9,7 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, '..', 'public');
 
-const source = path.join(publicDir, '3. HM SDP.png');
+const source = path.join(publicDir, 'logo-hmsdp.png');
 const outWebp = path.join(publicDir, 'logo-hmsdp.webp');
 const outPng = path.join(publicDir, 'logo-hmsdp.png');
 

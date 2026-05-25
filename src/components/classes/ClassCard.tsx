@@ -25,7 +25,7 @@ export default function ClassCard({
   return (
     <article
       className={cn(
-        'group relative flex flex-col overflow-hidden rounded-lg border border-border bg-card',
+        'group relative flex h-full flex-col overflow-hidden rounded-lg border border-border bg-card',
         'transition hover:border-brand/40 hover:shadow-sm',
       )}
     >
@@ -44,19 +44,19 @@ export default function ClassCard({
             >
               <GraduationCap className="h-6 w-6" />
             </div>
-            <div className="min-w-0 flex-1 pt-0.5">
-              <h3 className="text-base font-bold leading-snug text-foreground">{classItem.name}</h3>
-              {detail ? (
-                <p className="mt-0.5 line-clamp-2 text-sm text-muted-foreground">{detail}</p>
-              ) : null}
-              <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <div className="min-h-[5.25rem] min-w-0 flex-1 pt-0.5">
+              <h3 className="line-clamp-1 text-base font-bold leading-snug text-foreground">{classItem.name}</h3>
+              <p className="mt-0.5 line-clamp-2 min-h-[2.5rem] text-sm text-muted-foreground">
+                {detail || '\u00a0'}
+              </p>
+              <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-brand">
                 {count} mahasiswa
               </p>
             </div>
           </button>
 
           {canManage ? (
-            <div className="flex shrink-0 gap-0.5">
+            <div className="flex shrink-0 gap-0.5 self-start">
               {onEdit ? (
                 <Button
                   type="button"
@@ -91,20 +91,22 @@ export default function ClassCard({
           ) : null}
         </div>
 
-        <div className="mt-3 border-t border-border pt-3">
+        <div className="mt-auto border-t border-border pt-3">
           <p className="truncate text-xs text-muted-foreground">
             Pengampu: <span className="font-medium text-foreground">{classItem.lecturer.name}</span>
           </p>
-          {classItem._count.sessions > 0 ? (
-            <p className="mt-1 text-xs text-muted-foreground">{classItem._count.sessions} sesi absensi</p>
-          ) : null}
+          <p className="mt-1 min-h-[1.125rem] text-xs text-muted-foreground">
+            {classItem._count.sessions > 0
+              ? `${classItem._count.sessions} sesi absensi`
+              : '\u00a0'}
+          </p>
         </div>
       </div>
 
       <button
         type="button"
         onClick={onOpen}
-        className="border-t border-border bg-muted/30 px-4 py-3 text-left text-sm font-semibold text-brand transition hover:bg-brand/10"
+        className="mt-auto shrink-0 border-t border-border bg-muted/30 px-4 py-3 text-left text-sm font-semibold text-brand transition hover:bg-brand/10"
       >
         Lihat daftar mahasiswa →
       </button>

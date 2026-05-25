@@ -239,10 +239,10 @@ export default function Classes() {
           ) : null}
         </div>
 
-        <div className="grid gap-4 p-5 sm:grid-cols-2 xl:grid-cols-3" aria-label="Daftar kelas">
+        <div className="grid items-stretch gap-4 p-5 sm:grid-cols-2 xl:grid-cols-3" aria-label="Daftar kelas">
           {loading
             ? Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="rounded-2xl border border-border p-5">
+                <div key={i} className="flex h-full min-h-[220px] flex-col rounded-2xl border border-border p-5">
                   <Skeleton className="mb-4 h-14 w-14 rounded-full" />
                   <Skeleton className="mb-2 h-6 w-40" />
                   <Skeleton className="h-4 w-28" />
