@@ -274,7 +274,7 @@ export default function Classes() {
           </div>
         </div>
 
-        <ul className="space-y-4 md:hidden" aria-label="Daftar kelas">
+        <ul className="space-y-3 p-5 md:hidden" aria-label="Daftar kelas">
           {loading
             ? Array.from({ length: 3 }).map((_, i) => (
                 <li key={i} className="rounded-2xl border border-border p-4 border-border">

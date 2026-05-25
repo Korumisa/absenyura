@@ -112,8 +112,7 @@ export default function Sessions() {
 
   const fetcher = (url: string) => api.get(url).then(res => res.data.data);
   const swr = useSWR<Session[]>('/sessions', fetcher, { revalidateOnFocus: false });
-  const { data: sessions = [], isInitialLoading: loading, isError, isSlowLoading, retry, mutate } =
-    useSwrPageState(swr);
+  const { data: sessions = [], isPending, isError, retry, mutate } = useSwrPageState(swr);
 
   const hasFilters =
     Boolean(searchTerm.trim()) ||
@@ -411,13 +410,6 @@ export default function Sessions() {
     >
       {isError ? (
         <ErrorWithRetry title="Gagal memuat sesi" error={swr.error} onRetry={retry} className="mb-6" />
-      ) : isSlowLoading ? (
-        <ErrorWithRetry
-          title="Memuat sesi terlalu lama"
-          error={new Error('Koneksi lambat atau server sibuk. Coba muat ulang.')}
-          onRetry={retry}
-          className="mb-6"
-        />
       ) : (
       <div className="mb-6 overflow-hidden rounded-xl border border-border bg-card shadow-card dark:shadow-none dark:ring-1 dark:ring-white/10">
         <div className="grid grid-cols-1 gap-5 border-b border-border p-5 sm:grid-cols-2 lg:grid-cols-4">
@@ -469,8 +461,8 @@ export default function Sessions() {
           </div>
         </div>
 
-        <ul className="space-y-4 md:hidden" aria-label="Daftar sesi">
-          {loading ? (
+        <ul className="space-y-3 p-5 md:hidden" aria-label="Daftar sesi">
+          {isPending ? (
             <li>
               <CardSkeletonList count={3} />
             </li>
@@ -486,14 +478,6 @@ export default function Sessions() {
                     ? 'Ubah filter pencarian, tanggal, lokasi, atau kelas.'
                     : 'Buat sesi kehadiran untuk memulai absensi.'
                 }
-                action={
-                  !hasFilters && currentUser?.role !== 'USER' ? (
-                    <Button onClick={() => handleOpenModal()}>
-                      <Plus className="mr-2 h-4 w-4" />
-                      Buat Sesi
-                    </Button>
-                  ) : undefined
-                }
               />
             </li>
           ) : (
@@ -503,7 +487,7 @@ export default function Sessions() {
               return (
                 <li
                   key={session.id}
-                  className="rounded-2xl border border-border bg-card p-5 shadow-sm"
+                  className="rounded-2xl border border-border bg-background/60 p-4 dark:bg-muted/10"
                 >
                   <div className="space-y-2">
                     <div className="flex flex-wrap items-start justify-between gap-2">
@@ -604,7 +588,7 @@ export default function Sessions() {
               </TableRow>
           </TableHeader>
           <TableBody>
-            {loading ? (
+            {isPending ? (
               Array.from({ length: 5 }).map((_, idx) => (
                 <TableRow key={idx}>
                   <TableCell>
@@ -641,14 +625,6 @@ export default function Sessions() {
                       hasFilters
                         ? 'Ubah filter pencarian, tanggal, lokasi, atau kelas.'
                         : 'Buat sesi kehadiran untuk memulai absensi.'
-                    }
-                    action={
-                      !hasFilters && currentUser?.role !== 'USER' ? (
-                        <Button onClick={() => handleOpenModal()}>
-                          <Plus className="mr-2 h-4 w-4" />
-                          Buat Sesi
-                        </Button>
-                      ) : undefined
                     }
                     className="border-0 shadow-none"
                   />

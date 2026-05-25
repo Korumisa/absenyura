@@ -118,7 +118,7 @@ export default function AuditLogs() {
             </div>
           </div>
 
-          <ul className="space-y-4 md:hidden" aria-label="Daftar audit log">
+          <ul className="space-y-3 p-5 md:hidden" aria-label="Daftar audit log">
             {loading ? (
               <li className="py-8 text-center text-muted-foreground">Memuat data...</li>
             ) : filteredLogs.length === 0 ? (

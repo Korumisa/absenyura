@@ -29,7 +29,7 @@ export default function HistoryPage() {
   }, [filter]);
 
   const swr = useSWR(`/reports?page=${page}&limit=20`, fetcher, { revalidateOnFocus: false });
-  const { isInitialLoading: loading, isError, isSlowLoading, retry } = useSwrPageState(swr);
+  const { isPending, isError, retry } = useSwrPageState(swr);
   const history: AttendanceHistory[] = Array.isArray(swr.data?.data) ? swr.data.data : [];
   const meta: PaginationMeta | null = swr.data?.meta ?? null;
   const hasFilters = filter !== 'ALL';
@@ -63,13 +63,13 @@ export default function HistoryPage() {
         ))}
       </div>
 
-      {isError || isSlowLoading ? (
+      {isError ? (
         <ErrorWithRetry
-          title={isSlowLoading ? 'Memuat terlalu lama' : 'Gagal memuat riwayat'}
+          title="Gagal memuat riwayat"
           error={swr.error ?? 'Permintaan membutuhkan waktu lebih lama dari biasanya.'}
           onRetry={retry}
         />
-      ) : loading ? (
+      ) : isPending ? (
         <>
           <div className="md:hidden">
             <CardSkeletonList count={4} />
@@ -123,7 +123,7 @@ export default function HistoryPage() {
       ) : (
         <div className="overflow-hidden rounded-xl border border-border bg-card shadow-card dark:shadow-none dark:ring-1 dark:ring-white/10 md:bg-card max-md:border-0 max-md:bg-transparent max-md:shadow-none max-md:dark:ring-0">
         {/* [UX] #18 — kartu mobile */}
-        <ul className="space-y-3 px-1 py-2 md:hidden" aria-label="Riwayat kehadiran">
+        <ul className="space-y-3 p-5 md:hidden" aria-label="Riwayat kehadiran">
           {filteredHistory.map((item) => (
             <li key={item.id} className="rounded-2xl border border-border bg-card p-4">
               <p className="font-bold text-foreground">{item.session_title}</p>

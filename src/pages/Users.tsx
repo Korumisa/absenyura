@@ -384,7 +384,7 @@ export default function Users() {
         </div>
 
         {/* [UX] #11 — daftar kartu di mobile */}
-        <ul className="space-y-4 md:hidden" aria-label="Daftar pengguna">
+        <ul className="space-y-3 p-5 md:hidden" aria-label="Daftar pengguna">
             {loading ? (
               <li>
                 <CardSkeletonList count={4} />

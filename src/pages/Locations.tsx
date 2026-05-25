@@ -293,7 +293,7 @@ export default function Locations() {
           </Select>
         </div>
 
-        <ul className="space-y-4 md:hidden" aria-label="Daftar lokasi">
+        <ul className="space-y-3 p-5 md:hidden" aria-label="Daftar lokasi">
           {loading
             ? Array.from({ length: 3 }).map((_, i) => (
                 <li key={i} className="rounded-2xl border border-border p-4 border-border">

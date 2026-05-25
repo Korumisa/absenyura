@@ -324,7 +324,7 @@ export default function Excuses() {
           </Select>
         </div>
 
-        <ul className="space-y-4 md:hidden" aria-label="Daftar pengajuan izin">
+        <ul className="space-y-3 p-5 md:hidden" aria-label="Daftar pengajuan izin">
           {loading
             ? Array.from({ length: 3 }).map((_, i) => (
                 <li key={i} className="rounded-2xl border border-border p-4 border-border">

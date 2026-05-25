@@ -487,7 +487,7 @@ export default function Reports() {
         </p>
         </div>
 
-        <ul className="space-y-4 md:hidden" aria-label="Daftar laporan kehadiran">
+        <ul className="space-y-3 p-5 md:hidden" aria-label="Daftar laporan kehadiran">
           {loading ? (
             <li>
               <CardSkeletonList count={4} />
