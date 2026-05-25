@@ -88,6 +88,7 @@ app.use(
       'X-CSRF-Token',
       'X-Seed-Secret',
       'X-Internal-Token',
+      'X-Cron-Secret',
     ],
     optionsSuccessStatus: 204,
   })
@@ -158,6 +159,7 @@ const apiLimiter = rateLimit({
     if (p.startsWith('/auth/')) return true
     if (p.startsWith('/public-site')) return true
     if (p === '/health') return true
+    if (p.startsWith('/cron')) return true
     return false
   },
   keyGenerator: (req) => sessionRateLimitKey(req),
@@ -172,6 +174,7 @@ const anonymousApiLimiter = rateLimit({
   skip: (req) => {
     const p = req.path
     if (p.startsWith('/auth/') || p.startsWith('/public-site') || p === '/health') return true
+    if (p.startsWith('/cron')) return true
     return Boolean(req.cookies?.accessToken || req.cookies?.refreshToken)
   },
   keyGenerator: (req) => `anon:${ipKeyGenerator(req.ip ?? 'unknown')}`,

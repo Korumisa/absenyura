@@ -153,5 +153,81 @@ Selamat! Sistem Absensi Anda sudah berjalan secara *Production*. 🎉
 
 ---
 
+## ⏱️ Cron status sesi (Vercel Hobby — gratis)
+
+Di **Vercel Hobby**, cron bawaan hanya bisa **1× per hari**. Status sesi (`UPCOMING` → `ACTIVE` → `CLOSED`) butuh pemicu lebih sering. Aplikasi memakai **beberapa lapisan** (utama + cadangan):
+
+| Lapisan | Pemicu | Frekuensi |
+|---------|--------|-----------|
+| Utama | [cron-job.org](https://cron-job.org) | Tiap **5 menit** (`job=session`) |
+| Backup terjadwal | GitHub Actions | Tiap **15 menit** (`job=session`) |
+| Backup harian | Vercel Cron | **1×/hari** 01:00 UTC (`job=all` di `vercel.json`) |
+| Backup traffic | Lazy sync API | Saat buka dashboard / sesi / QR / absen |
+
+### 1. Set `CRON_SECRET` di Vercel
+
+Generate secret acak (32+ byte hex), lalu tambahkan di **Vercel → Settings → Environment Variables** (Production):
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+Nama variabel: `CRON_SECRET`. Redeploy setelah disimpan.
+
+### 2. Utama — cron-job.org
+
+1. Daftar gratis di [cron-job.org](https://cron-job.org)
+2. Buat cronjob baru:
+   - **Title:** `Absenyura - sync session status`
+   - **URL:** `https://<domain-production>/api/cron/trigger?job=session&key=<CRON_SECRET>`
+   - **Schedule:** Every **5 minutes**
+   - **Expected:** HTTP **200**, body JSON `success: true`
+3. Aktifkan **failure notification** (email) agar tahu jika pemicu gagal
+4. Cek **Execution history** jika status sesi tidak berubah
+
+Opsional: gunakan header `X-Cron-Secret: <CRON_SECRET>` alih-alih `?key=` di URL.
+
+### 3. Backup — GitHub Actions
+
+Workflow: [`.github/workflows/session-cron.yml`](.github/workflows/session-cron.yml)
+
+Di **GitHub → Settings → Secrets and variables → Actions**, tambahkan:
+
+| Secret | Contoh |
+|--------|--------|
+| `APP_URL` | `https://your-app.vercel.app` (tanpa slash di akhir) |
+| `CRON_SECRET` | Sama dengan nilai di Vercel |
+
+Workflow berjalan tiap 15 menit. Tes manual: tab **Actions** → **Session cron backup** → **Run workflow**.
+
+### 4. Backup — Vercel Cron harian
+
+Sudah dikonfigurasi di `vercel.json`: `GET /api/cron/trigger?job=all` pada `0 1 * * *` (sync sesi tertinggal, hapus foto lama, update semester).
+
+### 5. Verifikasi
+
+```bash
+curl "https://<domain>/api/cron/trigger?job=session&key=<CRON_SECRET>"
+```
+
+Harus mengembalikan `200` dan `triggeredAt`. Tanpa key/secret salah → `404`.
+
+Buat sesi `UPCOMING` dengan `check_in_open_at` beberapa menit lalu, tunggu 5–10 menit **tanpa** membuka app → status harus menjadi **ACTIVE**.
+
+### Troubleshooting
+
+| Gejala | Yang dicek |
+|--------|------------|
+| Status tidak berubah saat app ditutup | Execution history cron-job.org; secret `CRON_SECRET` di Vercel |
+| HTTP 404 dari cron eksternal | `CRON_SECRET` benar; redeploy setelah ubah env |
+| HTTP 429 | Pastikan path `/api/cron` tidak kena rate limit (sudah di-skip di kode) |
+| Hanya update saat buka app | cron-job.org / GitHub Actions belum jalan atau secret salah |
+| Catch-up semalam | Vercel Cron harian di dashboard Vercel |
+
+**Lokal / VPS (PM2):** `startCronJobs()` di server tetap menjalankan interval 1 menit — tidak perlu cron-job.org.
+
+---
+
 ## 🧹 Fitur Auto-Cleanup
-Aplikasi ini sudah dilengkapi dengan **Cron Job otomatis** yang berjalan setiap jam **02:00 Pagi**. Job ini akan **menghapus foto-foto selfie bukti absen yang umurnya sudah lebih dari 7 hari (1 minggu)** dari folder `/uploads/attendance` untuk menghemat ruang penyimpanan (*storage*) server Anda. Data teks kehadirannya (status, waktu, IP) akan tetap tersimpan selamanya di database.
+
+Cron harian (`job=all` / `job=photo`) menghapus foto selfie bukti absen yang berumur **lebih dari 7 hari** dari penyimpanan. Data teks kehadiran (status, waktu, IP) tetap di database.

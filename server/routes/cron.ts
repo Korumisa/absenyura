@@ -23,7 +23,12 @@ router.get('/trigger', async (req: Request, res: Response): Promise<void> => {
       run(runSemesterUpdateJob, 'semester');
     }
 
-    res.status(200).json({ success: true, message: 'Cron job triggered', job });
+    res.status(200).json({
+      success: true,
+      message: 'Cron job triggered',
+      job,
+      triggeredAt: new Date().toISOString(),
+    });
   } catch (error) {
     res.status(500).json({ success: false, error: 'Failed to trigger cron job' });
   }

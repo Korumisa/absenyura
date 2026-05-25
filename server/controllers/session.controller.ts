@@ -213,6 +213,7 @@ export const deleteSession = async (req: Request, res: Response): Promise<void> 
 };
 
 export const getSessionById = async (req: Request, res: Response): Promise<void> => {
+  triggerSessionCronLazy();
   try {
     const { id } = req.params;
     const user = (req as any).user;

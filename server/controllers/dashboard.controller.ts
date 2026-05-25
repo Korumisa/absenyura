@@ -3,11 +3,13 @@ import { Prisma } from '@prisma/client';
 import prisma from '../utils/prisma.js';
 import { fillChartData, getWibRangeUtc, type ChartRow } from '../utils/dashboardChart.js';
 import { sessionListRelations } from '../utils/sessionQuerySelect.js';
+import { triggerSessionCronLazy } from '../jobs/cron.js';
 
 const isMissingSemesterColumn = (err: any) =>
   Boolean(err && err.code === 'P2022' && String(err?.meta?.column || '').includes('Class.semester'));
 
 export const getDashboardStats = async (req: Request, res: Response): Promise<void> => {
+  triggerSessionCronLazy();
   try {
     const user = (req as any).user;
     const rangeDays = parseInt((req.query.range as string) || '7', 10);
