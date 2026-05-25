@@ -53,9 +53,11 @@ export function NotificationMenu() {
 
   return (
     <div className="relative">
-      <button 
+      <button
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 text-muted-foreground hover:text-brand text-muted-foreground dark:hover:text-indigo-400 hover:bg-muted hover:bg-muted rounded-full transition-colors focus:outline-none"
+        aria-label="Notifikasi"
+        className="relative flex min-h-11 min-w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-brand focus:outline-none dark:hover:text-indigo-400"
       >
         <Bell size={22} />
         {unreadCount > 0 && (

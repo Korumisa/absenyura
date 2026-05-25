@@ -738,12 +738,37 @@ export const listAdminRecruitments = async (req: Request, res: Response): Promis
   }
 };
 
+function validateRecruitmentPublishFields(payload: {
+  isPublished?: boolean;
+  dateRange?: string;
+  formUrl?: string;
+}): string | null {
+  if (!Boolean(payload.isPublished)) return null;
+  if (!String(payload.dateRange ?? '').trim()) {
+    return 'Periode pendaftaran wajib diisi sebelum publish.';
+  }
+  const formUrl = String(payload.formUrl ?? '').trim();
+  if (!formUrl || !/^https:\/\/.+/i.test(formUrl)) {
+    return 'Link form pendaftaran (https://) wajib diisi sebelum publish.';
+  }
+  return null;
+}
+
 export const createAdminRecruitment = async (req: PublicRoleRequest, res: Response): Promise<void> => {
   try {
     const payload = req.body ?? {};
     const title = String(payload.title ?? '').trim();
     if (!title) {
       res.status(400).json({ success: false, error: 'Judul wajib diisi' });
+      return;
+    }
+    const publishErr = validateRecruitmentPublishFields({
+      isPublished: payload.isPublished,
+      dateRange: payload.dateRange,
+      formUrl: payload.formUrl,
+    });
+    if (publishErr) {
+      res.status(400).json({ success: false, error: publishErr });
       return;
     }
     const committee = Array.isArray(payload.committee) ? payload.committee : [];
@@ -799,6 +824,16 @@ export const updateAdminRecruitment = async (req: PublicRoleRequest, res: Respon
     const title = String(payload.title ?? existing.title).trim();
     if (!title) {
       res.status(400).json({ success: false, error: 'Judul wajib diisi' });
+      return;
+    }
+    const willPublish = typeof payload.isPublished === 'boolean' ? payload.isPublished : existing.is_published;
+    const publishErr = validateRecruitmentPublishFields({
+      isPublished: willPublish,
+      dateRange: typeof payload.dateRange === 'string' ? payload.dateRange : existing.date_range ?? '',
+      formUrl: typeof payload.formUrl === 'string' ? payload.formUrl : existing.form_url ?? '',
+    });
+    if (publishErr) {
+      res.status(400).json({ success: false, error: publishErr });
       return;
     }
     const committee = Array.isArray(payload.committee) ? payload.committee : null;

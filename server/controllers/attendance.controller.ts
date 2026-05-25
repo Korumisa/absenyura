@@ -409,7 +409,10 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
       res.status(400).json({ success: false, error: 'Anda sudah melakukan check-in pada sesi ini' });
       return;
     }
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    res.status(500).json({
+      success: false,
+      error: 'Absensi gagal diproses. Coba lagi dalam 1 menit; jika berulang, hubungi admin dengan waktu kejadian.',
+    });
   } finally {
     if (req.file && req.file.path && !isUploadingInBackground) {
       fsPromises.unlink(req.file.path).catch(() => {});
@@ -444,6 +447,9 @@ export const checkOut = async (req: Request, res: Response): Promise<void> => {
 
     res.status(200).json({ success: true, data: updated, message: 'Check-out berhasil' });
   } catch (error) {
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    res.status(500).json({
+      success: false,
+      error: 'Absensi gagal diproses. Coba lagi dalam 1 menit; jika berulang, hubungi admin dengan waktu kejadian.',
+    });
   }
 };

@@ -24,6 +24,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import AdminPageShell from '@/components/AdminPageShell';
 import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
 import { CardSkeletonList } from '@/components/admin/CardSkeleton';
+import { AdminContentTransition } from '@/components/admin/AdminContentTransition';
 
 import type { Location, Session } from '@/types/session';
 import { formatClassLabel, sessionClassNames } from '@/lib/classLabel';
@@ -765,7 +766,9 @@ export default function Sessions() {
               <WizardStepIndicator labels={WIZARD_LABELS} hints={WIZARD_HINTS} currentStep={wizardStep} />
 
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                <div className={`grid grid-cols-1 gap-4 sm:grid-cols-2 md:col-span-2 ${wizardStep === 1 ? '' : 'hidden'}`}>
+                <AdminContentTransition contentKey={String(wizardStep)} className="md:col-span-2">
+                {wizardStep === 1 ? (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label>Judul / Mata Kuliah <span className="text-red-500">*</span></Label>
                     <Input 
@@ -812,8 +815,8 @@ export default function Sessions() {
                     {fieldError('qr_mode')}
                   </div>
                 </div>
-
-                <div className={`md:col-span-2 space-y-4 ${wizardStep === 2 ? '' : 'hidden'}`}>
+                ) : wizardStep === 2 ? (
+                <div className="space-y-4">
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
                     <div className="min-w-0 flex-1 space-y-2">
                       <Label>Waktu Mulai Sesi <span className="text-red-500">*</span></Label>
@@ -871,8 +874,8 @@ export default function Sessions() {
                     </div>
                   </div>
                 </div>
-
-                <div className={`space-y-4 md:col-span-2 ${wizardStep === 3 ? '' : 'hidden'}`}>
+                ) : wizardStep === 3 ? (
+                <div className="space-y-4">
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
                       <Label>Toleransi Terlambat (Menit) <span className="text-red-500">*</span></Label>
@@ -904,8 +907,8 @@ export default function Sessions() {
                     </div>
                   )}
                 </div>
-
-                <div className={`space-y-4 md:col-span-2 ${wizardStep === 4 ? '' : 'hidden'}`}>
+                ) : (
+                <div className="space-y-4">
                   <div className="space-y-2">
                     <Label>Target Kelas</Label>
                     <div className="relative">
@@ -1010,6 +1013,8 @@ export default function Sessions() {
                     <div className="text-xs text-muted-foreground">Kosong = semua mahasiswa.</div>
                   </div>
                 </div>
+                )}
+                </AdminContentTransition>
               </div>
               
               <DialogFooter className="mt-6 flex flex-wrap gap-3">

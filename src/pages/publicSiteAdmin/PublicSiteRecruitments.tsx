@@ -86,8 +86,25 @@ export default function PublicSiteRecruitments() {
     return res.data.data.url as string;
   };
 
+  const validatePublish = (): string | null => {
+    if (!form.isPublished) return null;
+    if (!dateStart.trim() && !dateEnd.trim()) {
+      return 'Isi periode pendaftaran (tanggal mulai & selesai) sebelum mempublikasikan.';
+    }
+    const url = String(form.formUrl ?? '').trim();
+    if (!url || !/^https:\/\/.+/i.test(url)) {
+      return 'Link form pendaftaran (https://) wajib diisi sebelum mempublikasikan.';
+    }
+    return null;
+  };
+
   const upsert = async (e: React.FormEvent) => {
     e.preventDefault();
+    const publishErr = validatePublish();
+    if (publishErr) {
+      toast.error(publishErr);
+      return;
+    }
     try {
       const dateRange = dateStart && dateEnd ? `${dateStart} - ${dateEnd}` : dateStart || dateEnd || undefined;
       const committee = (form.committee ?? []).map((x, idx) => ({ name: x.name, role: x.role, sortOrder: idx }));

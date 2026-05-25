@@ -8,6 +8,8 @@ import type { PublicProfile } from '@/types/publicSite';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useReducedMotion } from '@/lib/useReducedMotion';
 import { fadeTransition } from '@/lib/motionPresets';
+import { BrandLogoImage } from '@/components/public/BrandLogoImage';
+import { DEFAULT_BRAND_LOGO_PNG } from '@/lib/staticBrandAssets';
 
 type NavItem = { label: string; to: string };
 type NavGroup = { label: string; items: NavItem[] };
@@ -55,10 +57,8 @@ const MOBILE_NAV: NavItem[] = [
 function BrandMark() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
   const { data: profile } = useSWR<PublicProfile | null>('/public-site/profile', fetcher, { revalidateOnFocus: false });
-  const src = profile?.logo_light_url || profile?.logo_dark_url || '/3.%20HM%20SDP.png';
-  return (
-    <img src={src} alt="Logo organisasi" className="h-10 w-10 object-contain" />
-  );
+  const src = profile?.logo_light_url || profile?.logo_dark_url || DEFAULT_BRAND_LOGO_PNG;
+  return <BrandLogoImage src={src} alt="Logo organisasi" className="h-10 w-10" priority />;
 }
 
 export default function PublicNavbar() {

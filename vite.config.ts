@@ -16,9 +16,7 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react({
         babel: {
-          plugins: [
-            'react-dev-locator',
-          ],
+          plugins: [...(mode === 'development' ? ['react-dev-locator'] : [])],
         },
       }),
       tsconfigPaths(),
@@ -42,8 +40,12 @@ export default defineConfig(({ mode }) => {
         },
         workbox: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-          globIgnores: ['**/vendor-export*.js', '**/vendor-maps*.js'],
-          maximumFileSizeToCacheInBytes: 5000000, // <== Added to allow large chunk caching
+          globIgnores: [
+            '**/vendor-export*.js',
+            '**/vendor-maps*.js',
+            '**/vendor-charts*.js',
+          ],
+          maximumFileSizeToCacheInBytes: 2_000_000,
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/api\.ipify\.org\/.*/i,

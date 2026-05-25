@@ -33,6 +33,7 @@ import { attendanceBadgeVariant, attendanceStatusLabel } from '@/lib/statusLabel
 import { toastErrorMessage } from '@/lib/toastMessage';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import { DatePicker } from '@/components/ui/date-picker';
+import { FadeIn } from '@/components/admin/FadeIn';
 
 const fetcher = (url: string) => api.get(url).then(res => res.data);
 
@@ -316,9 +317,11 @@ export default function Reports() {
         const rows = all.filter((r) => statusFilter === 'ALL' || r.status === statusFilter);
         const title = sessions.find((s) => s.id === sessionId)?.title || 'Sesi';
         await exportExcelMatrix(rows, sanitize(title), meta);
+        toast.success('Excel berhasil diunduh');
         return;
       }
       await exportExcelMatrix(filteredReports, 'Semua');
+      toast.success('Excel berhasil diunduh');
     } catch (err: unknown) {
       toast.error(toastErrorMessage(err, 'Gagal export Excel'));
     } finally {
@@ -336,9 +339,11 @@ export default function Reports() {
         const rows = all.filter((r) => statusFilter === 'ALL' || r.status === statusFilter);
         const title = sessions.find((s) => s.id === sessionId)?.title || 'Sesi';
         await exportPdfList(rows, sanitize(title), meta);
+        toast.success('PDF berhasil diunduh');
         return;
       }
       await exportPdfList(filteredReports, 'Semua');
+      toast.success('PDF berhasil diunduh');
     } catch (err: unknown) {
       toast.error(toastErrorMessage(err, 'Gagal export PDF'));
     } finally {
@@ -422,7 +427,7 @@ export default function Reports() {
             Filter &amp; pencarian
             <ChevronDown className={`h-5 w-5 transition-transform ${filtersOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
           </button>
-        <div className={`flex flex-col gap-4 sm:flex-row sm:items-end ${filtersOpen ? 'flex' : 'hidden md:flex'}`}>
+        <FadeIn className={`flex flex-col gap-4 sm:flex-row sm:items-end ${filtersOpen ? 'flex' : 'hidden md:flex'}`}>
           <div className="relative min-w-0 flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <Input 
@@ -481,7 +486,7 @@ export default function Reports() {
               })}
             </SelectContent>
           </Select>
-        </div>
+        </FadeIn>
         <p id="reports-search-hint" className="mt-3 text-xs text-muted-foreground">
           Pencarian memfilter data di halaman ini ({filteredReports.length} baris).
         </p>

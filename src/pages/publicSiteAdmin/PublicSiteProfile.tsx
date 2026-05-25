@@ -18,6 +18,7 @@ import { Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CmsTabNav, type CmsTabItem } from '@/components/ui/CmsTabNav';
 import { CmsEditorLayout } from '@/components/cms/CmsEditorLayout';
+import { AdminContentTransition } from '@/components/admin/AdminContentTransition';
 
 type ProfileTab = 'identity' | 'home' | 'visimisi' | 'contact';
 
@@ -250,6 +251,7 @@ export default function PublicSiteProfile() {
           <div className="min-w-0 space-y-6">
             <CmsTabNav<ProfileTab> tabs={PROFILE_TABS} value={profileTab} onChange={setProfileTab} ariaLabel="Bagian profil" />
 
+        <AdminContentTransition contentKey={profileTab}>
         <div className={cn('grid gap-5 md:grid-cols-2', profileTab !== 'identity' && 'hidden')}>
           <div className="space-y-2">
             <Label>Nama Organisasi</Label>
@@ -648,6 +650,7 @@ export default function PublicSiteProfile() {
             </div>
           </div>
         </div>
+        </AdminContentTransition>
 
         <AdminCardActions>
           <Button variant="outline" type="button" onClick={() => setIsResetOpen(true)} disabled={saving} className="min-h-11 w-full sm:w-auto">

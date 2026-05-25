@@ -75,7 +75,7 @@ export default function Layout() {
         <div className="flex h-16 items-center justify-between border-b border-sidebar-border bg-card px-6">
           <div className="flex items-center gap-3">
             <img
-              src="/3.%20HM%20SDP.png"
+              src="/logo-hmsdp.webp"
               alt="Logo HM"
               className="h-9 w-9 rounded-xl bg-background/70 p-1.5 ring-1 ring-border"
             />
@@ -178,7 +178,7 @@ export default function Layout() {
             </Button>
             <div className="flex items-center gap-2 lg:hidden">
               <img
-                src="/3.%20HM%20SDP.png"
+                src="/logo-hmsdp.webp"
                 alt="Logo HM"
                 className="h-8 w-8 rounded-lg bg-background/70 p-1 ring-1 ring-border"
               />

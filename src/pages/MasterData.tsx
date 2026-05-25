@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import AdminPageShell from '@/components/AdminPageShell';
 import AdminCard from '@/components/AdminCard';
 import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
+import { AdminContentTransition } from '@/components/admin/AdminContentTransition';
 import { cn } from '@/lib/utils';
 
 export default function MasterData() {
@@ -120,7 +121,9 @@ export default function MasterData() {
         <div className="min-w-0 flex-1">
           {isLoadError ? (
             <ErrorWithRetry title="Gagal memuat master data" error={loadError} onRetry={retryLoad} />
-          ) : activeTab === 'departments' ? (
+          ) : (
+            <AdminContentTransition contentKey={activeTab}>
+            {activeTab === 'departments' ? (
             <AdminCard
               title="Manajemen Fakultas & Prodi"
               description="Atur hierarki fakultas dan program studi untuk profil pengguna."
@@ -336,6 +339,8 @@ export default function MasterData() {
                 </div>
               </div>
             </AdminCard>
+          )}
+            </AdminContentTransition>
           )}
         </div>
       </div>

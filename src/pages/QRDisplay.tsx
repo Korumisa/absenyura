@@ -13,6 +13,7 @@ import { sessionClassNames } from '@/lib/classLabel';
 import { Attendee } from '@/types/qrdisplay';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { FadeIn } from '@/components/admin/FadeIn';
 
 const QR_ROTATE_MS = 15_000;
 const QR_PREFETCH_AT_MS = 12_000;
@@ -169,7 +170,7 @@ export default function QRDisplay() {
 
   if (sessionError) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-100 p-6">
+      <FadeIn className="flex min-h-screen items-center justify-center bg-slate-100 p-6">
         <div className="w-full max-w-md">
           <ErrorWithRetry
             title="Gagal memuat sesi"
@@ -182,15 +183,15 @@ export default function QRDisplay() {
             </Button>
           </div>
         </div>
-      </div>
+      </FadeIn>
     );
   }
 
   if (sessionLoading || !session) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-100" aria-busy="true" aria-label="Memuat sesi">
+      <FadeIn className="flex min-h-screen items-center justify-center bg-slate-100" aria-busy="true" aria-label="Memuat sesi">
         <p className="text-muted-foreground">Memuat sesi…</p>
-      </div>
+      </FadeIn>
     );
   }
 

@@ -77,8 +77,8 @@ export const runCronJob = async () => {
         await prisma.notification.create({
           data: {
             user_id: session.created_by_id,
-            title: 'Sesi Dimulai',
-            message: `Sesi "${session.title}" sekarang aktif dan siap menerima absensi.`,
+            title: 'Sesi absensi dibuka',
+            message: `Sesi "${session.title}" sudah aktif. Mahasiswa dapat melakukan check-in sekarang.`,
             type: 'SUCCESS'
           }
         });
@@ -90,8 +90,8 @@ export const runCronJob = async () => {
           await prisma.notification.createMany({
             data: expectedUserIds.map(id => ({
               user_id: id,
-              title: 'Sesi Absensi Dimulai',
-              message: `Sesi "${session.title}" telah dibuka. Segera lakukan absensi.`,
+              title: 'Waktunya absen',
+              message: `Sesi "${session.title}" sudah dibuka. Buka aplikasi dan lakukan check-in sebelum batas waktu.`,
               type: 'INFO'
             }))
           });
@@ -155,8 +155,8 @@ export const runCronJob = async () => {
         await prisma.notification.create({
           data: {
             user_id: session.created_by_id,
-            title: 'Sesi Selesai',
-            message: `Sesi "${session.title}" telah ditutup otomatis. ${absentUserIds.length} mahasiswa ditandai Alfa.`,
+            title: 'Sesi absensi ditutup',
+            message: `Sesi "${session.title}" telah ditutup. ${absentUserIds.length} mahasiswa ditandai tidak hadir (Alfa).`,
             type: 'INFO'
           }
         });
@@ -166,8 +166,8 @@ export const runCronJob = async () => {
           await prisma.notification.createMany({
             data: absentUserIds.map(id => ({
               user_id: id,
-              title: 'Tidak Hadir (Alfa)',
-              message: `Anda ditandai Alfa (Tidak Hadir) pada sesi "${session.title}" karena batas waktu absensi telah berakhir.`,
+              title: 'Tidak hadir (Alfa)',
+              message: `Anda ditandai tidak hadir pada sesi "${session.title}" karena batas waktu check-in telah berakhir.`,
               type: 'WARNING'
             }))
           });

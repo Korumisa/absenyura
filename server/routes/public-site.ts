@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { authenticate, authorize } from '../middlewares/auth.middleware.js';
+import { publicSiteCache } from '../middlewares/publicSiteCache.middleware.js';
 import {
   getPublicProfile,
   getPublicPrograms,
@@ -37,14 +38,16 @@ import {
 
 const router = Router();
 
-router.get('/profile', getPublicProfile);
-router.get('/programs', getPublicPrograms);
-router.get('/categories', listPublicCategories);
-router.get('/posts', listPublicPosts);
-router.get('/posts/:slug', getPublicPostBySlug);
-router.get('/galleries', getPublicGalleries);
-router.get('/recruitments', getPublicRecruitments);
-router.get('/structure', getPublicStructure);
+const publicRead = [publicSiteCache];
+
+router.get('/profile', ...publicRead, getPublicProfile);
+router.get('/programs', ...publicRead, getPublicPrograms);
+router.get('/categories', ...publicRead, listPublicCategories);
+router.get('/posts', ...publicRead, listPublicPosts);
+router.get('/posts/:slug', ...publicRead, getPublicPostBySlug);
+router.get('/galleries', ...publicRead, getPublicGalleries);
+router.get('/recruitments', ...publicRead, getPublicRecruitments);
+router.get('/structure', ...publicRead, getPublicStructure);
 
 router.use(authenticate);
 router.use(authorize(['SUPER_ADMIN', 'CONTENT_ADMIN']));

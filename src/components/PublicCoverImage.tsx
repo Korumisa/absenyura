@@ -1,17 +1,46 @@
 import React, { useMemo, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { ensureHttpsUrl } from '@/lib/ensureHttpsUrl';
+import { buildCloudinarySrcSet, optimizeCloudinaryUrl } from '@/lib/cloudinaryImage';
 
 type PublicCoverImageProps = {
   url?: string | null;
   alt: string;
   className?: string;
   imgClassName?: string;
+  /** Gambar above-the-fold (hero/LCP) — jangan lazy-load */
+  priority?: boolean;
+  /** Lebar tampilan perkiraan untuk Cloudinary & atribut sizes */
+  displayWidth?: number;
 };
 
-export default function PublicCoverImage({ url, alt, className, imgClassName }: PublicCoverImageProps) {
+export default function PublicCoverImage({
+  url,
+  alt,
+  className,
+  imgClassName,
+  priority = false,
+  displayWidth = 640,
+}: PublicCoverImageProps) {
   const [failed, setFailed] = useState(false);
-  const src = useMemo(() => ensureHttpsUrl(url), [url]);
+  const rawSrc = useMemo(() => ensureHttpsUrl(url), [url]);
+  const src = useMemo(
+    () => (rawSrc ? optimizeCloudinaryUrl(rawSrc, { width: displayWidth }) : ''),
+    [rawSrc, displayWidth],
+  );
+  const srcSet = useMemo(() => {
+    if (!rawSrc || priority) return undefined;
+    return buildCloudinarySrcSet(rawSrc, [
+      Math.round(displayWidth * 0.75),
+      displayWidth,
+      Math.round(displayWidth * 1.5),
+    ]);
+  }, [rawSrc, displayWidth, priority]);
+  const sizes = useMemo(() => {
+    if (!srcSet) return undefined;
+    return `(max-width: 768px) 100vw, ${displayWidth}px`;
+  }, [srcSet, displayWidth]);
+
   const initial = useMemo(() => String(alt ?? '').trim().slice(0, 1).toUpperCase() || 'A', [alt]);
   const showImg = Boolean(src) && !failed;
 
@@ -20,10 +49,13 @@ export default function PublicCoverImage({ url, alt, className, imgClassName }: 
       {showImg ? (
         <img
           src={src}
+          srcSet={srcSet}
+          sizes={sizes}
           alt={alt}
           className={cn('h-full w-full object-cover', imgClassName)}
-          loading="lazy"
+          loading={priority ? 'eager' : 'lazy'}
           decoding="async"
+          fetchPriority={priority ? 'high' : undefined}
           referrerPolicy="no-referrer"
           onError={() => setFailed(true)}
         />
@@ -36,4 +68,3 @@ export default function PublicCoverImage({ url, alt, className, imgClassName }: 
     </div>
   );
 }
-

@@ -11,7 +11,10 @@ import { APP_ONLINE_EVENT, OFFLINE_USER_MESSAGE, ONLINE_USER_MESSAGE } from '@/l
 import { getErrorMessage } from '@/lib/errorMessage';
 import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import { saveOfflineAttendance } from '@/lib/idb';
+import { saveOfflineAttendance, saveOfflinePhoto } from '@/lib/idb';
+import { AttendPrivacyBanner } from '@/components/attend/AttendPrivacyBanner';
+import { AttendStepIndicator } from '@/components/attend/AttendStepIndicator';
+import { track } from '@vercel/analytics';
 import { getDeviceFingerprint } from '@/lib/deviceFingerprint';
 import {
   acquireCameraStream,
@@ -620,14 +623,20 @@ export default function Attend() {
       const deviceFingerprint = await getDeviceFingerprint();
 
       if (isOffline) {
-        // Save to IndexedDB
-        await saveOfflineAttendance({
+        const offlineId = await saveOfflineAttendance({
           session_id: sessionId,
           token: qrToken !== NO_QR_TOKEN ? qrToken : undefined,
           lat: location.lat,
           lng: location.lng,
-          deviceInfo: deviceFingerprint
+          deviceInfo: deviceFingerprint,
         });
+        if (photoBlob) {
+          try {
+            await saveOfflinePhoto(offlineId, photoBlob);
+          } catch (photoErr) {
+            console.error('Failed to save offline photo', photoErr);
+          }
+        }
         toast.success('Tersimpan offline. Akan terkirim otomatis saat internet kembali.');
         navigate('/dashboard');
         return;
@@ -672,6 +681,7 @@ export default function Attend() {
       });
       
       toast.success(res.data.message || 'Check-in berhasil!');
+      track('checkin_success');
       navigate('/dashboard');
     } catch (error: unknown) {
       const apiMsg = getErrorMessage(error, 'Absensi gagal dikirim');
@@ -843,6 +853,17 @@ export default function Attend() {
         <h1 className="text-2xl font-bold text-foreground">Check-in Kehadiran</h1>
         <p className="text-sm text-muted-foreground">Scan QR Code kelas dan pastikan Anda berada di lokasi.</p>
       </div>
+
+      <AttendPrivacyBanner />
+
+      <AttendStepIndicator
+        currentStep={(() => {
+          if (!scanResult) return 1;
+          if (!location || gpsError) return 2;
+          if (!photoBlob) return 3;
+          return 4;
+        })()}
+      />
 
       <div className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-card">
         {isOffline && (

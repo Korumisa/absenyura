@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { lazy, Suspense, useMemo, useState } from "react";
 import { useNavigate } from 'react-router-dom';
 import useSWR from 'swr';
 import { useAuthStore } from '@/stores/authStore';
@@ -6,17 +6,12 @@ import api from '@/services/api';
 import { Users, Calendar, CheckCircle2, Clock, MapPin, FileText, BarChart3, QrCode } from 'lucide-react';
 import AdminPageShell from '@/components/AdminPageShell';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from 'recharts';
 import { AttendanceChartLegend } from '@/components/charts/AttendanceChartLegend';
-import { ATTENDANCE_CHART_COLORS, type ChartFilterValue } from '@/lib/attendanceChartTheme';
+import { type ChartFilterValue } from '@/lib/attendanceChartTheme';
+
+const DashboardAttendanceBarChart = lazy(
+  () => import('@/components/charts/DashboardAttendanceBarChart'),
+);
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -24,6 +19,7 @@ import { DashboardAdminSkeleton, DashboardUserSkeleton } from '@/components/admi
 import { Badge } from '@/components/ui/badge';
 import { formatClassLabel } from '@/lib/classLabel';
 import { sessionStatusLabel } from '@/lib/sessionStatusLabel';
+import { AttendOnboardingBanner } from '@/components/attend/AttendOnboardingBanner';
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -109,6 +105,11 @@ export default function Dashboard() {
       ) : !data ? null : isUser ? (
         // ================= USER DASHBOARD (Modern & Clean) =================
         <div className="space-y-8">
+          <AttendOnboardingBanner
+            onGoAttend={
+              activeSession ? () => navigate(`/attend?session=${activeSession.id}`) : undefined
+            }
+          />
           {/* [UX] quick action — sesi aktif */}
           {activeSession ? (
             <section className="rounded-3xl border-2 border-indigo-500 bg-gradient-to-r from-indigo-600 to-violet-600 p-6 text-white shadow-xl sm:p-8" aria-label="Sesi absensi aktif">
@@ -450,92 +451,21 @@ export default function Dashboard() {
                     Belum ada data grafik untuk rentang ini.
                   </div>
                 ) : (
-                <ResponsiveContainer width="100%" height={320}>
-                  <BarChart
-                    data={chartData}
-                    margin={{ top: 8, right: 12, left: 4, bottom: 8 }}
-                    barCategoryGap={chartStacked ? '18%' : '24%'}
-                    barGap={chartStacked ? 2 : 4}
+                  <Suspense
+                    fallback={
+                      <div className="flex h-[320px] items-center justify-center text-sm text-muted-foreground">
+                        Memuat grafik…
+                      </div>
+                    }
                   >
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" opacity={0.5} />
-                    <XAxis 
-                      dataKey="date" 
-                      tickFormatter={(val) => format(new Date(val), 'dd MMM', { locale: id })}
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fill: '#64748b', fontSize: 11, fontWeight: 500 }}
-                      interval={chartPointCount > 20 ? Math.floor(chartPointCount / 10) : 0}
-                      dy={10}
+                    <DashboardAttendanceBarChart
+                      chartData={chartData}
+                      chartFilter={chartFilter}
+                      chartStacked={chartStacked}
+                      chartBarSize={chartBarSize}
+                      chartPointCount={chartPointCount}
                     />
-                    <YAxis 
-                      allowDecimals={false}
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fill: '#64748b', fontSize: 12, fontWeight: 500 }}
-                      width={36}
-                    />
-                    <Tooltip 
-                      contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                      labelFormatter={(val) => val ? format(new Date(val as string), 'dd MMMM yyyy', { locale: id }) : ''}
-                      labelStyle={{ fontWeight: 'bold', color: '#1e293b', marginBottom: '4px' }}
-                    />
-                    {(chartFilter === 'ALL' || chartFilter === 'PRESENT') && (
-                      <Bar
-                        dataKey="present"
-                        name="Hadir"
-                        fill={ATTENDANCE_CHART_COLORS.present}
-                        stackId={chartStacked ? 'kehadiran' : undefined}
-                        barSize={chartBarSize}
-                        minPointSize={4}
-                        radius={chartStacked ? [0, 0, 0, 0] : [6, 6, 0, 0]}
-                      />
-                    )}
-                    {(chartFilter === 'ALL' || chartFilter === 'LATE') && (
-                      <Bar
-                        dataKey="late"
-                        name="Terlambat"
-                        fill={ATTENDANCE_CHART_COLORS.late}
-                        stackId={chartStacked ? 'kehadiran' : undefined}
-                        barSize={chartBarSize}
-                        minPointSize={4}
-                        radius={chartStacked ? [0, 0, 0, 0] : [6, 6, 0, 0]}
-                      />
-                    )}
-                    {(chartFilter === 'ALL' || chartFilter === 'SICK_EXCUSED') && (
-                      <Bar
-                        dataKey="sick"
-                        name="Sakit"
-                        fill={ATTENDANCE_CHART_COLORS.sick}
-                        stackId={chartStacked ? 'kehadiran' : undefined}
-                        barSize={chartBarSize}
-                        minPointSize={4}
-                        radius={chartStacked ? [0, 0, 0, 0] : [6, 6, 0, 0]}
-                      />
-                    )}
-                    {(chartFilter === 'ALL' || chartFilter === 'SICK_EXCUSED') && (
-                      <Bar
-                        dataKey="excused"
-                        name="Izin"
-                        fill={ATTENDANCE_CHART_COLORS.excused}
-                        stackId={chartStacked ? 'kehadiran' : undefined}
-                        barSize={chartBarSize}
-                        minPointSize={4}
-                        radius={chartStacked ? [0, 0, 0, 0] : [6, 6, 0, 0]}
-                      />
-                    )}
-                    {(chartFilter === 'ALL' || chartFilter === 'ABSENT') && (
-                      <Bar
-                        dataKey="absent"
-                        name="Alfa"
-                        fill={ATTENDANCE_CHART_COLORS.absent}
-                        stackId={chartStacked ? 'kehadiran' : undefined}
-                        barSize={chartBarSize}
-                        minPointSize={4}
-                        radius={chartStacked ? [6, 6, 0, 0] : [6, 6, 0, 0]}
-                      />
-                    )}
-                  </BarChart>
-                </ResponsiveContainer>
+                  </Suspense>
                 )}
                 {chartData.length > 0 ? (
                   <AttendanceChartLegend chartFilter={chartFilter as ChartFilterValue} />

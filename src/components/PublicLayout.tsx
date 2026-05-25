@@ -6,8 +6,12 @@ import { useSWRConfig } from 'swr';
 import api from '@/services/api';
 import type { PublicProfile } from '@/types/publicSite';
 import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
+import { PublicPageMeta } from '@/components/public/PublicPageMeta';
+import { useLocation } from 'react-router-dom';
+import { loadCormorantDisplayFont } from '@/lib/loadFonts';
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
+  const location = useLocation();
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
   const { mutate } = useSWRConfig();
   const { data: profile, isLoading: isLoadingProfile } = useSWR<PublicProfile | null>(
@@ -17,6 +21,10 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
   );
   const primary = profile?.primary_color || '#2563eb';
   const showBootOverlay = isLoadingProfile && !profile;
+
+  React.useEffect(() => {
+    loadCormorantDisplayFont();
+  }, []);
 
   React.useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -29,11 +37,19 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
     void Promise.allSettled(urls.map((url) => mutate(url, fetcher(url), { revalidate: false })));
   }, [mutate]);
 
+  const orgLabel = profile?.org_name?.trim() || 'HM SDP';
+  const metaDescription = profile?.hero_subtitle?.trim() || profile?.about_content?.trim()?.slice(0, 160);
+
   return (
     <div
       className="flex min-h-screen flex-col overflow-x-hidden bg-white font-sans text-slate-900 selection:bg-blue-200/60 selection:text-slate-900"
       style={{ ['--public-primary' as any]: primary }}
     >
+      <PublicPageMeta
+        title={orgLabel}
+        description={metaDescription || undefined}
+        path={location.pathname}
+      />
       <a
         href="#public-main"
         className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-[var(--public-primary)]"

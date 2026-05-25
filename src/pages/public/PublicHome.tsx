@@ -16,6 +16,10 @@ import { fadeTransition } from '@/lib/motionPresets';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { PublicPageError } from '@/components/public/PublicPageError';
 import { Skeleton } from '@/components/ui/skeleton';
+import { hasText, showPublicSection } from '@/lib/publicContent';
+import { BrandLogoImage } from '@/components/public/BrandLogoImage';
+import { ensureHttpsUrl } from '@/lib/ensureHttpsUrl';
+import { optimizeCloudinaryUrl } from '@/lib/cloudinaryImage';
 
 function HorizontalSnapRail({
   children,
@@ -256,7 +260,7 @@ function BrandMark({ className, src, name }: { className?: string; src: string; 
   if (src)
     return (
       <div className={className}>
-        <PublicCoverImage url={src} alt={name || 'Logo'} imgClassName="object-contain" />
+        <BrandLogoImage src={src} alt={name || 'Logo'} className="h-full w-full" />
       </div>
     );
   const first = String(name || '').trim().slice(0, 1).toUpperCase() || 'H';
@@ -320,28 +324,64 @@ export default function PublicHome() {
   const profileSwr = useSWR<PublicProfile | null>('/public-site/profile', fetcher, { revalidateOnFocus: false });
   const { data: profile, isInitialLoading: isLoadingProfile, isError: isProfileError, retry: retryProfile } =
     useSwrPageState(profileSwr);
-  const { data: programs = [], isLoading: isLoadingPrograms } = useSWR<PublicProgram[]>('/public-site/programs', fetcher, { revalidateOnFocus: false });
-  const { data: structure = [], isLoading: isLoadingStructure } = useSWR<PublicStructureGroup[]>('/public-site/structure', fetcher, { revalidateOnFocus: false });
+
+  const [loadBelowFold, setLoadBelowFold] = useState(false);
+  useEffect(() => {
+    if (isLoadingProfile && !profile) return;
+    const run = () => setLoadBelowFold(true);
+    if ('requestIdleCallback' in window) {
+      const id = window.requestIdleCallback(run, { timeout: 1800 });
+      return () => window.cancelIdleCallback(id);
+    }
+    const t = setTimeout(run, 400);
+    return () => clearTimeout(t);
+  }, [isLoadingProfile, profile]);
+
+  const belowFoldKey = loadBelowFold ? true : null;
+  const { data: programs = [], isLoading: isLoadingPrograms } = useSWR<PublicProgram[]>(
+    belowFoldKey ? '/public-site/programs' : null,
+    fetcher,
+    { revalidateOnFocus: false },
+  );
+  const { data: structure = [], isLoading: isLoadingStructure } = useSWR<PublicStructureGroup[]>(
+    belowFoldKey ? '/public-site/structure' : null,
+    fetcher,
+    { revalidateOnFocus: false },
+  );
   const { data: latest, isLoading: isLoadingLatest } = useSWR<{ items: PublicPost[] }>(
-    '/public-site/posts?type=BERITA&page=1&pageSize=3',
+    belowFoldKey ? '/public-site/posts?type=BERITA&page=1&pageSize=3' : null,
     (url) => api.get(url).then((r) => r.data.data),
-    { revalidateOnFocus: false }
+    { revalidateOnFocus: false },
   );
   const { data: recruitments = [], isLoading: isLoadingRecruitments } = useSWR<PublicRecruitment[]>(
-    '/public-site/recruitments',
+    belowFoldKey ? '/public-site/recruitments' : null,
     fetcher,
-    { revalidateOnFocus: false }
+    { revalidateOnFocus: false },
   );
   const { data: galleries = [], isLoading: isLoadingGalleries } = useSWR<PublicGalleryAlbum[]>(
-    '/public-site/galleries',
+    belowFoldKey ? '/public-site/galleries' : null,
     fetcher,
-    { revalidateOnFocus: false }
+    { revalidateOnFocus: false },
   );
   const { data: lombaPaged, isLoading: isLoadingLomba } = useSWR<{ items: PublicPost[] }>(
-    '/public-site/posts?type=LOMBA&page=1&pageSize=6',
+    belowFoldKey ? '/public-site/posts?type=LOMBA&page=1&pageSize=6' : null,
     (url) => api.get(url).then((r) => r.data.data),
-    { revalidateOnFocus: false }
+    { revalidateOnFocus: false },
   );
+
+  useEffect(() => {
+    const raw = profile?.home_image_url;
+    if (!raw) return;
+    const href = optimizeCloudinaryUrl(ensureHttpsUrl(raw), { width: 828 });
+    const link = document.createElement('link');
+    link.rel = 'preload';
+    link.as = 'image';
+    link.href = href;
+    document.head.appendChild(link);
+    return () => {
+      link.remove();
+    };
+  }, [profile?.home_image_url]);
 
   if (isProfileError && !profile) {
     return <PublicPageError title="Gagal memuat beranda" error={profileSwr.error} onRetry={retryProfile} />;
@@ -395,7 +435,15 @@ export default function PublicHome() {
   const logoSrc = profile?.logo_light_url ?? '';
   const posts = latest?.items ?? [];
   const lomba = lombaPaged?.items ?? [];
-  const heroKabinetName = kabinetName || (!isLoadingProfile ? 'Kabinet belum diatur' : '');
+  const heroKabinetName = kabinetName || '';
+  const showAboutVideoSection = Boolean(videoSrc) || aboutParagraphs.length > 0;
+  const showVisiMisiSection = showPublicSection(
+    vision,
+    missionItems.join(' '),
+    homeCardLeftBody,
+    homeCardRightBody,
+    aboutParagraphs.join(' '),
+  );
 
   return (
     <PublicLayout>
@@ -420,9 +468,11 @@ export default function PublicHome() {
                     </div>
                   ) : (
                     <>
-                      <div className="mt-1 text-5xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] md:text-7xl">
-                        {heroKabinetName}
-                      </div>
+                      {heroKabinetName ? (
+                        <div className="mt-1 text-5xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] md:text-7xl">
+                          {heroKabinetName}
+                        </div>
+                      ) : null}
                       {kabinetPeriod ? (
                         <div className="mt-2 text-sm font-semibold tracking-wide text-muted-foreground">{kabinetPeriod}</div>
                       ) : null}
@@ -461,7 +511,12 @@ export default function PublicHome() {
                     {isLoadingProfile ? (
                       <Skeleton className="h-full w-full rounded-none" aria-hidden="true" />
                     ) : profile?.home_image_url ? (
-                      <PublicCoverImage url={profile.home_image_url} alt="Foto Anggota" />
+                      <PublicCoverImage
+                        url={profile.home_image_url}
+                        alt="Foto Anggota"
+                        priority
+                        displayWidth={828}
+                      />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center p-8">
                         <p className="text-center text-sm text-muted-foreground">Foto anggota belum tersedia.</p>
@@ -473,12 +528,13 @@ export default function PublicHome() {
             </PublicEnter>
           </section>
 
+          {showAboutVideoSection ? (
           <section className="relative overflow-hidden bg-white">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_10%,rgba(37,99,235,0.12),transparent_55%),radial-gradient(circle_at_75%_20%,rgba(59,130,246,0.10),transparent_60%)] opacity-70" />
             <PublicReveal className="relative mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 md:grid-cols-2 md:py-20">
+              {videoSrc ? (
               <div className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_22px_56px_-48px_rgba(15,23,42,0.45)]">
                 <div className="aspect-video w-full">
-                  {videoSrc ? (
                     <iframe
                       className="h-full w-full"
                       src={videoSrc}
@@ -487,30 +543,20 @@ export default function PublicHome() {
                       referrerPolicy="strict-origin-when-cross-origin"
                       allowFullScreen
                     />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_25%_25%,rgba(37,99,235,0.22),transparent_58%),radial-gradient(circle_at_70%_20%,rgba(59,130,246,0.14),transparent_60%),linear-gradient(135deg,rgba(15,23,42,0.06),rgba(15,23,42,0.02))]">
-                      <div className="rounded-xl border border-black/10 bg-white/70 px-5 py-3 text-sm font-semibold text-slate-700 backdrop-blur">
-                        Video profil belum diatur
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
+              ) : null}
 
+              {aboutParagraphs.length ? (
               <div className="text-slate-800">
                 <div className="mb-4 font-display text-3xl italic tracking-tight md:text-4xl">{aboutTitle || 'Tentang'}</div>
-                {aboutParagraphs.length ? (
                   <div className="space-y-5 text-[17px] leading-relaxed text-slate-700">
                     {aboutParagraphs.map((p) => (
                       <p key={p}>{p}</p>
                     ))}
                   </div>
-                ) : (
-                  <div className="rounded-2xl border border-dashed border-black/15 bg-white/60 p-6 text-sm text-muted-foreground">
-                    Konten “Tentang” belum diatur. Admin bisa isi dari menu Konten Website.
-                  </div>
-                )}
               </div>
+              ) : null}
             </PublicReveal>
 
             <div className="relative mx-auto max-w-7xl px-4 sm:px-6">
@@ -526,7 +572,9 @@ export default function PublicHome() {
               </div>
             </div>
           </section>
+          ) : null}
 
+          {showVisiMisiSection ? (
           <section className="relative overflow-hidden bg-white py-20">
             <PublicReveal className="relative mx-auto max-w-7xl px-4 sm:px-6">
               <div className="mx-auto max-w-5xl text-center">
@@ -572,9 +620,11 @@ export default function PublicHome() {
                     <div className="mt-4 font-display text-4xl italic tracking-tight text-slate-900 sm:text-5xl">
                       Visi {orgName || 'Organisasi'}
                     </div>
+                    {hasText(vision) ? (
                     <div className="mt-5 whitespace-pre-wrap text-[17px] leading-relaxed text-slate-700 sm:text-[18px]">
-                      {vision || 'Visi belum diatur. Admin bisa isi dari menu Konten Website → Profil.'}
+                      {vision}
                     </div>
+                    ) : null}
                   </div>
                   <div className="relative mx-auto w-full max-w-[360px] md:mx-0 md:max-w-none md:justify-self-end">
                     <div className="relative overflow-hidden rounded-3xl bg-slate-50 shadow-[0_22px_60px_-52px_rgba(15,23,42,0.55)]">
@@ -583,6 +633,7 @@ export default function PublicHome() {
                           url={visiPhotoUrl || ketua?.photo_url || profile?.home_image_url}
                           alt={visiName || ketua?.name || 'Visi'}
                           imgClassName="object-cover"
+                          displayWidth={420}
                         />
                       </div>
                     </div>
@@ -607,6 +658,7 @@ export default function PublicHome() {
                             url={misiPhotoUrl || wakil?.photo_url || profile?.home_image_url}
                             alt={misiName || wakil?.name || 'Misi'}
                             imgClassName="object-cover"
+                            displayWidth={420}
                           />
                         </div>
                       </div>
@@ -640,16 +692,13 @@ export default function PublicHome() {
                           </div>
                         ))}
                       </div>
-                    ) : (
-                      <div className="mt-5 rounded-2xl border border-dashed border-black/15 bg-white/60 p-6 text-sm text-muted-foreground">
-                        Misi belum diatur. Admin bisa isi dari menu Konten Website → Profil.
-                      </div>
-                    )}
+                    ) : null}
                   </div>
                 </div>
               </div>
             </PublicReveal>
           </section>
+          ) : null}
 
           <section className="relative bg-slate-50/55 py-20">
             <PublicReveal className="mx-auto max-w-7xl px-4 text-center sm:px-6">
@@ -805,6 +854,7 @@ export default function PublicHome() {
         </PublicReveal>
       </section>
 
+      {(isLoadingStructure || structure.length > 0) ? (
       <section className="relative bg-slate-50/55 py-20">
         <div className="pointer-events-none absolute inset-0 opacity-70 [background:radial-gradient(circle_at_12%_18%,rgba(37,99,235,0.10),transparent_55%),radial-gradient(circle_at_86%_12%,rgba(56,189,248,0.10),transparent_60%)]" />
         <div className="pointer-events-none absolute inset-0 opacity-[0.35] [background:linear-gradient(rgba(15,23,42,0.06)_1px,transparent_1px),linear-gradient(90deg,rgba(15,23,42,0.06)_1px,transparent_1px)] [background-size:44px_44px]" />
@@ -827,17 +877,6 @@ export default function PublicHome() {
 
           {isLoadingStructure ? (
             <div className="mt-12 h-40" />
-          ) : structure.length === 0 ? (
-            <div className="relative mt-12 overflow-hidden rounded-2xl border border-dashed border-black/15 bg-white/60 p-6 text-left text-sm text-muted-foreground sm:p-10">
-              <div className="pointer-events-none absolute -left-16 -top-16 h-52 w-52 rounded-[48%_52%_58%_42%/44%_43%_57%_56%] bg-[var(--public-primary)]/12 blur-3xl" />
-              <div className="pointer-events-none absolute -right-16 -bottom-16 h-56 w-56 rounded-[53%_47%_45%_55%/48%_56%_44%_52%] bg-sky-400/10 blur-3xl" />
-              <div className="relative">
-                <div className="text-base font-extrabold tracking-tight text-slate-900">Struktur organisasi belum diatur</div>
-                <div className="mt-2 max-w-2xl">
-                  Admin bisa isi susunan fungsionaris dari menu Konten Website → Struktur.
-                </div>
-              </div>
-            </div>
           ) : (
             (() => {
               const ordered = structure
@@ -871,6 +910,7 @@ export default function PublicHome() {
           </div>
         </PublicReveal>
       </section>
+      ) : null}
 
       <section className="relative bg-white py-20">
         <PublicReveal className="mx-auto max-w-7xl px-4 sm:px-6">

@@ -10,7 +10,7 @@ import { useAutoLogout } from "@/hooks/useAutoLogout";
 import ScrollToTop from "@/components/ScrollToTop";
 
 import { ThemeProvider } from "@/providers/theme-provider";
-import { getOfflineAttendances, deleteOfflineAttendance } from "@/lib/idb";
+import { getOfflineAttendances, deleteOfflineAttendance, getOfflinePhoto } from "@/lib/idb";
 import { getDeviceFingerprint } from "@/lib/deviceFingerprint";
 import { dispatchAppOnline, ONLINE_USER_MESSAGE } from "@/lib/networkEvents";
 import api from "@/services/api";
@@ -87,8 +87,12 @@ export default function App() {
               ? item.deviceInfo
               : await getDeviceFingerprint();
             formData.append('device_fingerprint', `${offlineFingerprint} [OFFLINE_SYNC]`);
-            // Assuming we allow no-photo for offline sync as fallback, or we could have saved photoBlob to IDB as well.
-            // For simplicity in this PWA version, offline sync might skip photo or use a placeholder.
+            if (item.id) {
+              const photo = await getOfflinePhoto(item.id);
+              if (photo) {
+                formData.append('photo', photo, 'attendance.jpg');
+              }
+            }
 
             try {
               await api.post('/attendance/check-in', formData, {

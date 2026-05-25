@@ -16,6 +16,7 @@ import useSWR from 'swr';
 import type { PublicProfile } from '@/types/publicSite';
 import { getErrorMessage } from '@/lib/errorMessage';
 import { getDeviceFingerprint } from '@/lib/deviceFingerprint';
+import { BrandLogoImage } from '@/components/public/BrandLogoImage';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -95,10 +96,11 @@ export default function Login() {
                 </>
               ) : (
                 <>
-                  <img
-                    src={profile?.logo_light_url || '/3.%20HM%20SDP.png'}
+                  <BrandLogoImage
+                    src={profile?.logo_light_url}
                     alt="Logo"
                     className="h-14 w-14 rounded-2xl bg-white/70 p-2 ring-1 ring-black/10"
+                    priority
                   />
                   <div>
                     <div className="text-sm font-extrabold tracking-tight text-slate-900">
