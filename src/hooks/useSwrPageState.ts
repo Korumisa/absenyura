@@ -83,10 +83,11 @@ export function useSwrPageState<T>(swr: Pick<SWRResponse<T>, 'data' | 'error' | 
   }, [isSlowLoading, isFetchFailed, autoRetryCount, showErrorUi, scheduleAutoRetry, clearRetryTimer]);
 
   useEffect(() => {
-    if ((isFetchFailed || isSlowLoading) && autoRetryCount >= MAX_AUTO_RETRIES) {
+    // Hanya tampilkan error merah jika fetch benar-benar gagal — bukan karena lambat saja
+    if (isFetchFailed && autoRetryCount >= MAX_AUTO_RETRIES) {
       setShowErrorUi(true);
     }
-  }, [autoRetryCount, isFetchFailed, isSlowLoading]);
+  }, [autoRetryCount, isFetchFailed]);
 
   /** Tampilkan skeleton (termasuk saat retry otomatis) */
   const isPending =
@@ -94,6 +95,8 @@ export function useSwrPageState<T>(swr: Pick<SWRResponse<T>, 'data' | 'error' | 
 
   const isRefreshing = isValidating && data !== undefined;
   const isError = showErrorUi;
+  const showSlowLoadingHint =
+    isSlowLoading && !isFetchFailed && data === undefined && autoRetryCount >= MAX_AUTO_RETRIES;
 
   return {
     data,
@@ -104,6 +107,7 @@ export function useSwrPageState<T>(swr: Pick<SWRResponse<T>, 'data' | 'error' | 
     isError,
     isEmpty,
     isSlowLoading,
+    showSlowLoadingHint,
     mutate,
     retry: () => {
       setAutoRetryCount(0);

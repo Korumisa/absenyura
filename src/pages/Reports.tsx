@@ -29,6 +29,7 @@ import { formatClassLabel } from '@/lib/classLabel';
 import { TablePagination } from '@/components/ui/TablePagination';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
+import { SlowLoadingHint } from '@/components/admin/SlowLoadingHint';
 import { attendanceBadgeVariant, attendanceStatusLabel } from '@/lib/statusLabel';
 import { toastErrorMessage } from '@/lib/toastMessage';
 import { ConfirmModal } from '@/components/ConfirmModal';
@@ -91,7 +92,7 @@ export default function Reports() {
   }
 
   const swr = useSWR(`/reports?${queryParams.toString()}`, fetcher, { revalidateOnFocus: false });
-  const { isInitialLoading: loading, isError, retry } = useSwrPageState(swr);
+  const { isPending: loading, isError, showSlowLoadingHint, retry } = useSwrPageState(swr);
   const { data, mutate } = swr;
 
   const reports: Report[] = Array.isArray(data?.data) ? (data.data.filter(Boolean) as Report[]) : [];
@@ -493,6 +494,11 @@ export default function Reports() {
         </div>
 
         <ul className="space-y-3 p-5 md:hidden" aria-label="Daftar laporan kehadiran">
+          {showSlowLoadingHint ? (
+            <li>
+              <SlowLoadingHint onRetry={retry} />
+            </li>
+          ) : null}
           {loading ? (
             <li>
               <CardSkeletonList count={4} />
@@ -565,6 +571,11 @@ export default function Reports() {
         </ul>
 
         <div className="hidden overflow-x-auto md:block">
+          {showSlowLoadingHint ? (
+            <div className="border-b border-border p-4">
+              <SlowLoadingHint onRetry={retry} />
+            </div>
+          ) : null}
           <Table className="min-w-[800px]">
             <TableHeader className="sticky top-0 z-10 bg-muted/50 [&_tr]:border-b">
               <TableRow>
