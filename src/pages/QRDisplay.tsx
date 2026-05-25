@@ -9,7 +9,7 @@ import { Users, Clock, ArrowLeft, CheckCircle2, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 import type { Session } from '@/types/session';
-import { formatClassLabel } from '@/lib/classLabel';
+import { sessionClassNames } from '@/lib/classLabel';
 import { Attendee } from '@/types/qrdisplay';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -195,12 +195,7 @@ export default function QRDisplay() {
   }
 
   const isActive = session.status === 'ACTIVE';
-  const classLabels = (session.session_classes ?? []).map((x) => formatClassLabel(x.class)).filter(Boolean);
-  const classesLabel = classLabels.length
-    ? classLabels.join(', ')
-    : session.class
-      ? formatClassLabel(session.class)
-      : 'Umum';
+  const classesLabel = sessionClassNames(session);
 
   return (
     <div className="min-h-screen bg-slate-100">

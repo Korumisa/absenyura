@@ -50,6 +50,12 @@ export default function Classes() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [classToDelete, setClassToDelete] = useState<string | null>(null);
 
+  // Save / enroll / remove confirmation
+  const [isSaveConfirmOpen, setIsSaveConfirmOpen] = useState(false);
+  const [isEnrollConfirmOpen, setIsEnrollConfirmOpen] = useState(false);
+  const [isRemoveConfirmOpen, setIsRemoveConfirmOpen] = useState(false);
+  const [studentToRemove, setStudentToRemove] = useState<{ id: string; name: string } | null>(null);
+
   const fetcher = (url: string) => api.get(url).then(res => res.data.data);
   const swr = useSWR<ClassItem[]>('/classes', fetcher, { revalidateOnFocus: false });
   const { data: classes = [], isInitialLoading: loading, isError, retry, mutate } = useSwrPageState(swr);
@@ -116,6 +122,7 @@ export default function Classes() {
         await api.post('/classes', formData);
         toast.success('Kelas berhasil ditambahkan');
       }
+      setIsSaveConfirmOpen(false);
       setIsModalOpen(false);
       mutate();
     } catch (error: any) {
@@ -161,22 +168,33 @@ export default function Classes() {
       setEnrolledStudents(res.data.data);
       mutate();
       setSelectedStudentId('');
+      setIsEnrollConfirmOpen(false);
     } catch (error) {
       toast.error('Gagal menambahkan mahasiswa');
     }
   };
 
-  const handleRemoveStudent = async (studentId: string) => {
-    if (!selectedClassId) return;
+  const openRemoveStudentConfirm = (student: User) => {
+    setStudentToRemove({ id: student.id, name: student.name });
+    setIsRemoveConfirmOpen(true);
+  };
+
+  const confirmRemoveStudent = async () => {
+    if (!selectedClassId || !studentToRemove) return;
     try {
-      await api.delete(`/classes/${selectedClassId}/enroll/${studentId}`);
+      await api.delete(`/classes/${selectedClassId}/enroll/${studentToRemove.id}`);
       toast.success('Mahasiswa berhasil dikeluarkan');
-      setEnrolledStudents(prev => prev.filter(s => s.id !== studentId));
+      setEnrolledStudents((prev) => prev.filter((s) => s.id !== studentToRemove.id));
       mutate();
+      setIsRemoveConfirmOpen(false);
+      setStudentToRemove(null);
     } catch (error) {
       toast.error('Gagal mengeluarkan mahasiswa');
     }
   };
+
+  const selectedStudentName =
+    allStudents.find((s) => s.id === selectedStudentId)?.name ?? 'mahasiswa ini';
 
   const filteredClasses = classes.filter(c => 
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -505,7 +523,7 @@ export default function Classes() {
                 <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
                   Batal
                 </Button>
-                <Button type="submit">
+                <Button type="button" onClick={() => setIsSaveConfirmOpen(true)}>
                   Simpan
                 </Button>
               </DialogFooter>
@@ -547,7 +565,11 @@ export default function Classes() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <Button onClick={handleEnrollStudent} disabled={!selectedStudentId}>
+                  <Button
+                    type="button"
+                    onClick={() => setIsEnrollConfirmOpen(true)}
+                    disabled={!selectedStudentId}
+                  >
                     Tambahkan
                   </Button>
                 </div>
@@ -577,7 +599,7 @@ export default function Classes() {
                               <Button 
                                 variant="ghost" 
                                 size="sm"
-                                onClick={() => handleRemoveStudent(student.id)}
+                                onClick={() => openRemoveStudentConfirm(student)}
                                 className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/30 h-8 px-2"
                               >
                                 Keluarkan
@@ -593,6 +615,47 @@ export default function Classes() {
             </div>
         </DialogContent>
       </Dialog>
+
+      <ConfirmModal
+        isOpen={isSaveConfirmOpen}
+        onClose={() => setIsSaveConfirmOpen(false)}
+        onConfirm={() => {
+          void handleSubmit({ preventDefault: () => {} } as React.FormEvent);
+        }}
+        title={editingClass ? 'Simpan perubahan kelas?' : 'Tambah kelas baru?'}
+        description={
+          editingClass
+            ? `Perubahan pada kelas "${formData.name || editingClass.name}" akan disimpan.`
+            : `Kelas "${formData.name || 'tanpa nama'}" akan ditambahkan ke sistem.`
+        }
+        confirmText={editingClass ? 'Ya, Simpan' : 'Ya, Tambah'}
+      />
+
+      <ConfirmModal
+        isOpen={isEnrollConfirmOpen}
+        onClose={() => setIsEnrollConfirmOpen(false)}
+        onConfirm={() => void handleEnrollStudent()}
+        title="Tambah mahasiswa ke kelas?"
+        description={`${selectedStudentName} akan didaftarkan ke kelas ini.`}
+        confirmText="Ya, Tambahkan"
+      />
+
+      <ConfirmModal
+        isOpen={isRemoveConfirmOpen}
+        onClose={() => {
+          setIsRemoveConfirmOpen(false);
+          setStudentToRemove(null);
+        }}
+        onConfirm={() => void confirmRemoveStudent()}
+        title="Keluarkan mahasiswa dari kelas?"
+        description={
+          studentToRemove
+            ? `${studentToRemove.name} akan dikeluarkan dari kelas ini. Riwayat absensi sebelumnya tidak terhapus.`
+            : 'Mahasiswa akan dikeluarkan dari kelas ini.'
+        }
+        confirmText="Ya, Keluarkan"
+        variant="danger"
+      />
 
       {/* Delete Class Confirmation Modal */}
       <ConfirmModal 

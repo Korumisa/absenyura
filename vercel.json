@@ -2,8 +2,12 @@
   "version": 2,
   "crons": [
     {
-      "path": "/api/cron/trigger",
-      "schedule": "0 1 * * *"
+      "path": "/api/cron/trigger?job=session",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/trigger?job=daily",
+      "schedule": "0 2 * * *"
     }
   ],
   "builds": [

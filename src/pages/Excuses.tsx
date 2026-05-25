@@ -28,6 +28,7 @@ import { useClientPagination } from '@/hooks/useClientPagination';
 import { TablePagination } from '@/components/ui/TablePagination';
 import { FileText as FileTextIcon } from 'lucide-react';
 import ActionLoadingOverlay from '@/components/ActionLoadingOverlay';
+import { ConfirmModal } from '@/components/ConfirmModal';
 
 export default function Excuses() {
   const { user: currentUser } = useAuthStore();
@@ -51,6 +52,11 @@ export default function Excuses() {
   const [isDragging, setIsDragging] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [reviewingId, setReviewingId] = useState<string | null>(null);
+  const [reviewConfirm, setReviewConfirm] = useState<{
+    id: string;
+    status: 'APPROVED' | 'REJECTED';
+    studentName: string;
+  } | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const acceptFile = (f: File | null | undefined) => {
@@ -138,13 +144,23 @@ export default function Excuses() {
     }
   };
 
-  const handleReview = async (id: string, status: 'APPROVED' | 'REJECTED') => {
-    if (reviewingId) return;
+  const openReviewConfirm = (
+    id: string,
+    status: 'APPROVED' | 'REJECTED',
+    studentName: string,
+  ) => {
+    setReviewConfirm({ id, status, studentName });
+  };
+
+  const confirmReview = async () => {
+    if (!reviewConfirm || reviewingId) return;
+    const { id, status } = reviewConfirm;
     setReviewingId(id);
     try {
       await api.put(`/excuses/${id}/review`, { status });
       toast.success(`Pengajuan izin ${status === 'APPROVED' ? 'disetujui' : 'ditolak'}`);
       mutate();
+      setReviewConfirm(null);
     } catch (error: unknown) {
       toast.error(toastErrorMessage(error, 'Gagal mereview pengajuan izin'));
     } finally {
@@ -393,7 +409,7 @@ export default function Excuses() {
                         className="min-h-11 flex-1 border-emerald-200 text-emerald-700"
                         disabled={!!reviewingId}
                         aria-busy={reviewingId === excuse.id}
-                        onClick={() => void handleReview(excuse.id, 'APPROVED')}
+                        onClick={() => openReviewConfirm(excuse.id, 'APPROVED', excuse.user?.name ?? 'Mahasiswa')}
                       >
                         {reviewingId === excuse.id ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Terima'}
                       </Button>
@@ -402,7 +418,7 @@ export default function Excuses() {
                         variant="outline"
                         className="min-h-11 flex-1 border-red-200 text-red-700"
                         disabled={!!reviewingId}
-                        onClick={() => void handleReview(excuse.id, 'REJECTED')}
+                        onClick={() => openReviewConfirm(excuse.id, 'REJECTED', excuse.user?.name ?? 'Mahasiswa')}
                       >
                         Tolak
                       </Button>
@@ -504,7 +520,7 @@ export default function Excuses() {
                               className="border-emerald-200 text-emerald-600 hover:bg-emerald-50"
                               disabled={!!reviewingId}
                               aria-busy={reviewingId === excuse.id}
-                              onClick={() => void handleReview(excuse.id, 'APPROVED')}
+                              onClick={() => openReviewConfirm(excuse.id, 'APPROVED', excuse.user?.name ?? 'Mahasiswa')}
                             >
                               {reviewingId === excuse.id ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Terima'}
                             </Button>
@@ -513,7 +529,7 @@ export default function Excuses() {
                               variant="outline"
                               className="border-red-200 text-red-600 hover:bg-red-50"
                               disabled={!!reviewingId}
-                              onClick={() => void handleReview(excuse.id, 'REJECTED')}
+                              onClick={() => openReviewConfirm(excuse.id, 'REJECTED', excuse.user?.name ?? 'Mahasiswa')}
                             >
                               Tolak
                             </Button>
@@ -696,6 +712,26 @@ export default function Excuses() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmModal
+        isOpen={Boolean(reviewConfirm)}
+        onClose={() => setReviewConfirm(null)}
+        onConfirm={() => void confirmReview()}
+        title={
+          reviewConfirm?.status === 'APPROVED'
+            ? 'Setujui pengajuan izin?'
+            : 'Tolak pengajuan izin?'
+        }
+        description={
+          reviewConfirm
+            ? `Pengajuan dari ${reviewConfirm.studentName} akan ${
+                reviewConfirm.status === 'APPROVED' ? 'disetujui' : 'ditolak'
+              } dan status kehadiran disesuaikan.`
+            : ''
+        }
+        confirmText={reviewConfirm?.status === 'APPROVED' ? 'Ya, Setujui' : 'Ya, Tolak'}
+        variant={reviewConfirm?.status === 'REJECTED' ? 'danger' : 'primary'}
+      />
     </AdminPageShell>
     </>
   );

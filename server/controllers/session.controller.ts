@@ -3,11 +3,13 @@ import prisma from '../utils/prisma.js';
 import crypto from 'crypto';
 import { locationAttendSelect, sessionListRelations } from '../utils/sessionQuerySelect.js';
 import { buildDynamicQrToken, QR_WINDOW_MS } from '../utils/dynamicQr.js';
+import { triggerSessionCronLazy } from '../jobs/cron.js';
 
 const isMissingSemesterColumn = (err: any) =>
   Boolean(err && err.code === 'P2022' && String(err?.meta?.column || '').includes('Class.semester'));
 
 export const getSessions = async (req: Request, res: Response): Promise<void> => {
+  triggerSessionCronLazy();
   try {
     const user = (req as any).user;
     let sessions;
@@ -219,7 +221,10 @@ export const getSessionById = async (req: Request, res: Response): Promise<void>
       include: {
         location: { select: locationAttendSelect },
         creator: { select: { name: true } },
-        session_classes: { select: { class_id: true } },
+        class: { select: { id: true, name: true, semester: true } },
+        session_classes: {
+          select: { class: { select: { id: true, name: true, semester: true } } },
+        },
       },
     });
 

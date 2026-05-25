@@ -25,6 +25,8 @@ import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
 import type { User } from '@/types/user';
 import type { PaginationMeta } from '@/types/common';
+import { ClassMultiSelect, type ClassOption } from '@/components/ClassMultiSelect';
+import { formatClassLabel } from '@/lib/classLabel';
 
 export default function Users() {
   const { user: currentUser } = useAuthStore();
@@ -61,6 +63,8 @@ export default function Users() {
     name: '', email: '', password: '', role: 'USER', is_active: true, department: '', nim_nip: '', phone: '', semester: 1
   });
   const [facultiesData, setFacultiesData] = useState<{name: string, departments: string[]}[]>([]);
+  const [classIds, setClassIds] = useState<string[]>([]);
+  const [enrolledClasses, setEnrolledClasses] = useState<ClassOption[]>([]);
 
   // Reset Modal state
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
@@ -101,7 +105,9 @@ export default function Users() {
     fetchFaculties();
   }, []);
 
-  const handleOpenModal = (user: User | null = null) => {
+  const handleOpenModal = async (user: User | null = null) => {
+    setClassIds([]);
+    setEnrolledClasses([]);
     if (user) {
       setEditingUser(user);
       setFormData({
@@ -115,6 +121,14 @@ export default function Users() {
         semester: user.semester || 1,
         is_active: user.is_active
       });
+      if (user.role === 'USER') {
+        try {
+          const res = await api.get(`/users/${user.id}/enrollments`);
+          setEnrolledClasses(res.data.data ?? []);
+        } catch {
+          toast.error('Gagal memuat kelas mahasiswa');
+        }
+      }
     } else {
       setEditingUser(null);
       setFormData({
@@ -127,14 +141,30 @@ export default function Users() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const payload = {
+        ...formData,
+        class_ids: formData.role === 'USER' ? classIds : [],
+      };
       if (editingUser) {
-        await api.put(`/users/${editingUser.id}`, formData);
-        toast.success('Pengguna berhasil diperbarui');
+        const res = await api.put(`/users/${editingUser.id}`, payload);
+        const added = res.data?.data?.enrolled_added ?? 0;
+        if (added > 0) {
+          toast.success(`Pengguna diperbarui dan ditambahkan ke ${added} kelas`);
+        } else {
+          toast.success('Pengguna berhasil diperbarui');
+        }
       } else {
-        await api.post('/users', formData);
-        toast.success('Pengguna berhasil ditambahkan');
+        const res = await api.post('/users', payload);
+        const enrolled = res.data?.data?.enrolled_classes ?? 0;
+        if (enrolled > 0) {
+          toast.success(`Pengguna ditambahkan dan didaftarkan ke ${enrolled} kelas`);
+        } else {
+          toast.success('Pengguna berhasil ditambahkan');
+        }
       }
       setIsModalOpen(false);
+      setClassIds([]);
+      setEnrolledClasses([]);
       mutate();
     } catch (error: unknown) {
       toast.error(toastErrorMessage(error, 'Terjadi kesalahan'));
@@ -604,6 +634,36 @@ export default function Users() {
                   <Checkbox checked={Boolean(formData.is_active)} onCheckedChange={(checked) => setFormData((p) => ({ ...p, is_active: Boolean(checked) }))} />
                   <span className="text-sm font-medium text-muted-foreground">Akun Aktif</span>
                 </div>
+              ) : null}
+
+              {formData.role === 'USER' ? (
+                <>
+                  {editingUser && enrolledClasses.length > 0 ? (
+                    <div className="space-y-2 md:col-span-2">
+                      <Label>Kelas terdaftar saat ini</Label>
+                      <div className="flex flex-wrap gap-2 rounded-xl border border-border bg-muted/30 p-3">
+                        {enrolledClasses.map((c) => (
+                          <Badge key={c.id} variant="secondary">
+                            {formatClassLabel(c)}
+                          </Badge>
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Untuk mengeluarkan atau pindah kelas, gunakan halaman Kelas.
+                      </p>
+                    </div>
+                  ) : null}
+                  <ClassMultiSelect
+                    value={classIds}
+                    onChange={setClassIds}
+                    excludeClassIds={editingUser ? enrolledClasses.map((c) => c.id) : []}
+                    hint={
+                      editingUser
+                        ? 'Pilih kelas tambahan (opsional). Kelas yang sudah terdaftar tidak ditampilkan di daftar.'
+                        : 'Kosongkan jika belum masuk kelas. Untuk mengeluarkan atau pindah kelas, gunakan halaman Kelas.'
+                    }
+                  />
+                </>
               ) : null}
             </div>
 

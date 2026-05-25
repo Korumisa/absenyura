@@ -3,6 +3,7 @@ import prisma from '../utils/prisma.js';
 import { sessionCheckInSelect } from '../utils/sessionQuerySelect.js';
 import { validateDynamicQrToken } from '../utils/dynamicQr.js';
 import { logCheckinStep } from '../utils/checkinLogger.js';
+import { triggerSessionCronLazy } from '../jobs/cron.js';
 import crypto from 'crypto';
 import fs from 'fs';
 import fsPromises from 'fs/promises';
@@ -91,6 +92,7 @@ export const getChallenge = async (req: Request, res: Response): Promise<void> =
 };
 
 export const checkIn = async (req: Request, res: Response): Promise<void> => {
+  triggerSessionCronLazy();
   let isUploadingInBackground = false;
   const checkinStart = Date.now();
   try {

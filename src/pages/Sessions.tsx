@@ -25,7 +25,7 @@ import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
 import { CardSkeletonList } from '@/components/admin/CardSkeleton';
 
 import type { Location, Session } from '@/types/session';
-import { formatClassLabel } from '@/lib/classLabel';
+import { formatClassLabel, sessionClassNames } from '@/lib/classLabel';
 import { MobileTableHint } from '@/components/ui/MobileTableHint';
 import { WizardStepIndicator } from '@/components/ui/WizardStepIndicator';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
@@ -61,14 +61,6 @@ function qrModeLabel(mode: string): string {
   if (mode === 'DYNAMIC') return 'QR Dinamis';
   if (mode === 'STATIC') return 'QR Statis';
   return mode;
-}
-
-function sessionClassNames(session: Session): string {
-  const names = (session.session_classes ?? [])
-    .map((x) => formatClassLabel(x?.class))
-    .filter(Boolean);
-  if (names.length) return names.join(', ');
-  return session.class ? formatClassLabel(session.class) : 'Semua Mahasiswa';
 }
 
 function sessionStatusBadgeVariant(status: string): 'success' | 'outline' | 'secondary' {
@@ -865,55 +857,57 @@ export default function Sessions() {
                       />
                     </div>
 
-                    <div className="scrollbar-hide max-h-56 overflow-y-auto rounded-xl border border-border rounded-xl border border-border bg-card p-2">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        className={[
-                          'h-auto w-full justify-between rounded-lg px-3 py-2 text-left',
-                          formData.class_ids.length === 0
-                            ? 'bg-emerald-50 text-emerald-900 hover:bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-100 dark:hover:bg-emerald-950/30'
-                            : 'hover:bg-slate-50 dark:hover:bg-zinc-900',
-                        ].join(' ')}
-                        onClick={() => setFormData((p) => ({ ...p, class_ids: [] }))}
-                      >
-                        <span className="font-medium">Semua Mahasiswa (Umum)</span>
-                        {formData.class_ids.length === 0 ? <span className="text-xs font-semibold">Terpilih</span> : null}
-                      </Button>
-                      <div className="my-2 h-px bg-slate-200/70 bg-muted/70" />
-                      {classes
-                        .filter((c) => c.name.toLowerCase().includes(classSearch.trim().toLowerCase()))
-                        .map((c) => {
-                          const selected = formData.class_ids.includes(c.id);
-                          return (
-                            <Button
-                              key={c.id}
-                              type="button"
-                              variant="ghost"
-                              className={[
-                                'h-auto w-full justify-between rounded-lg px-3 py-2 text-left',
-                                selected
-                                  ? 'bg-emerald-50 text-emerald-900 hover:bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-100 dark:hover:bg-emerald-950/30'
-                                  : 'hover:bg-slate-50 dark:hover:bg-zinc-900',
-                              ].join(' ')}
-                              onClick={() => {
-                                setFormData((p) => {
-                                  const set = new Set(p.class_ids);
-                                  if (selected) set.delete(c.id);
-                                  else set.add(c.id);
-                                  return { ...p, class_ids: Array.from(set) };
-                                });
-                              }}
-                            >
-                              <span className="font-medium">{formatClassLabel(c)}</span>
-                              {selected ? (
-                                <span className="text-xs font-semibold">Terpilih</span>
-                              ) : (
-                                <span className="text-xs text-muted-foreground">Tambah</span>
-                              )}
-                            </Button>
-                          );
-                        })}
+                    <div className="scrollbar-hide max-h-56 overflow-y-auto rounded-xl border border-border bg-card p-2">
+                      <div className="space-y-1.5">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className={[
+                            'h-auto w-full justify-between rounded-lg px-3 py-2.5 text-left',
+                            formData.class_ids.length === 0
+                              ? 'bg-emerald-50 text-emerald-900 hover:bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-100 dark:hover:bg-emerald-950/30'
+                              : 'hover:bg-slate-50 dark:hover:bg-zinc-900',
+                          ].join(' ')}
+                          onClick={() => setFormData((p) => ({ ...p, class_ids: [] }))}
+                        >
+                          <span className="font-medium">Semua Mahasiswa (Umum)</span>
+                          {formData.class_ids.length === 0 ? <span className="text-xs font-semibold">Terpilih</span> : null}
+                        </Button>
+                        <div className="h-px bg-muted/70" />
+                        {classes
+                          .filter((c) => c.name.toLowerCase().includes(classSearch.trim().toLowerCase()))
+                          .map((c) => {
+                            const selected = formData.class_ids.includes(c.id);
+                            return (
+                              <Button
+                                key={c.id}
+                                type="button"
+                                variant="ghost"
+                                className={[
+                                  'h-auto w-full justify-between rounded-lg px-3 py-2.5 text-left',
+                                  selected
+                                    ? 'bg-emerald-50 text-emerald-900 hover:bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-100 dark:hover:bg-emerald-950/30'
+                                    : 'hover:bg-slate-50 dark:hover:bg-zinc-900',
+                                ].join(' ')}
+                                onClick={() => {
+                                  setFormData((p) => {
+                                    const set = new Set(p.class_ids);
+                                    if (selected) set.delete(c.id);
+                                    else set.add(c.id);
+                                    return { ...p, class_ids: Array.from(set) };
+                                  });
+                                }}
+                              >
+                                <span className="font-medium">{formatClassLabel(c)}</span>
+                                {selected ? (
+                                  <span className="text-xs font-semibold">Terpilih</span>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">Tambah</span>
+                                )}
+                              </Button>
+                            );
+                          })}
+                      </div>
                       {classes.filter((c) => c.name.toLowerCase().includes(classSearch.trim().toLowerCase())).length === 0 ? (
                         <div className="px-3 py-2 text-sm text-muted-foreground">Tidak ada kelas.</div>
                       ) : null}

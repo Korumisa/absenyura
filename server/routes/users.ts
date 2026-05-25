@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getUsers, createUser, updateUser, deleteUser, importUsers, resetDeviceFingerprint } from '../controllers/user.controller.js';
+import { getUsers, getUserEnrollments, createUser, updateUser, deleteUser, importUsers, resetDeviceFingerprint } from '../controllers/user.controller.js';
 import { authenticate, authorize } from '../middlewares/auth.middleware.js';
 import { uploadExcel } from '../utils/upload.js';
 
@@ -8,6 +8,7 @@ const router = Router();
 router.use(authenticate);
 
 router.get('/', authorize(['SUPER_ADMIN']), getUsers);
+router.get('/:id/enrollments', authorize(['SUPER_ADMIN']), getUserEnrollments);
 router.post('/', authorize(['SUPER_ADMIN']), createUser);
 router.post('/import', authorize(['SUPER_ADMIN']), uploadExcel.single('file'), importUsers);
 router.put('/:id', authorize(['SUPER_ADMIN']), updateUser);

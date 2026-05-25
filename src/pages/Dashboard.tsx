@@ -15,8 +15,9 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Legend
 } from 'recharts';
+import { AttendanceChartLegend } from '@/components/charts/AttendanceChartLegend';
+import { ATTENDANCE_CHART_COLORS, type ChartFilterValue } from '@/lib/attendanceChartTheme';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -27,8 +28,6 @@ import { sessionStatusLabel } from '@/lib/sessionStatusLabel';
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-
-const COLORS = ['#4f46e5', '#f59e0b', '#ef4444'];
 
 type DashboardRecentSession = {
   id: string;
@@ -189,12 +188,15 @@ export default function Dashboard() {
               </div>
               
               {/* [UX] D-01 — kartu mobile jadwal sesi */}
-              <ul className="space-y-4 md:hidden" aria-label="Jadwal sesi terdekat">
+              <ul className="space-y-3 px-4 pb-4 pt-4 sm:px-5 sm:pb-5 md:hidden" aria-label="Jadwal sesi terdekat">
                 {!data?.recent_sessions?.length ? (
                   <li className="py-8 text-center text-muted-foreground">Belum ada sesi terdekat.</li>
                 ) : (
                   data.recent_sessions.map((session: any) => (
-                    <li key={session.id} className="rounded-2xl border border-border p-4 border-border">
+                    <li
+                      key={session.id}
+                      className="rounded-2xl border border-border bg-muted/20 p-4 dark:bg-muted/10"
+                    >
                       <p className="font-bold text-foreground">{session.title}</p>
                       <p className="text-sm text-brand text-brand">
                         {(() => {
@@ -216,7 +218,8 @@ export default function Dashboard() {
                               <Badge variant="success">Sudah absen</Badge>
                             ) : (
                               <Button
-                                className="min-h-11 w-full bg-amber-500 hover:bg-amber-600"
+                                size="lg"
+                                className="min-h-11 w-full rounded-xl bg-amber-500 hover:bg-amber-600"
                                 onClick={() =>
                                   navigate(
                                     `/attend?session=${session.id}&checkout=true&attendance=${session.attendances[0].id}`,
@@ -227,7 +230,12 @@ export default function Dashboard() {
                               </Button>
                             )
                           ) : (
-                            <Button className="min-h-11 w-full" onClick={() => navigate(`/attend?session=${session.id}`)}>
+                            <Button
+                              size="lg"
+                              className="min-h-11 w-full rounded-xl"
+                              onClick={() => navigate(`/attend?session=${session.id}`)}
+                            >
+                              <QrCode className="mr-2 h-4 w-4" aria-hidden="true" />
                               Scan QR absen
                             </Button>
                           )
@@ -240,8 +248,9 @@ export default function Dashboard() {
                 )}
               </ul>
 
-              <MobileTableHint />
-              <div className="hidden overflow-x-auto md:block">
+              <div className="hidden md:block">
+                <MobileTableHint className="hidden md:block" />
+                <div className="overflow-x-auto">
                 <Table className="min-w-[720px]">
                   <TableHeader className="sticky top-0 z-10 bg-muted/50 [&_tr]:border-b">
                     <TableRow>
@@ -336,6 +345,7 @@ export default function Dashboard() {
                     )}
                   </TableBody>
                 </Table>
+                </div>
               </div>
             </div>
         </div>
@@ -471,12 +481,11 @@ export default function Dashboard() {
                       labelFormatter={(val) => val ? format(new Date(val as string), 'dd MMMM yyyy', { locale: id }) : ''}
                       labelStyle={{ fontWeight: 'bold', color: '#1e293b', marginBottom: '4px' }}
                     />
-                    <Legend verticalAlign="bottom" height={28} />
                     {(chartFilter === 'ALL' || chartFilter === 'PRESENT') && (
                       <Bar
                         dataKey="present"
                         name="Hadir"
-                        fill="#16a34a"
+                        fill={ATTENDANCE_CHART_COLORS.present}
                         stackId={chartStacked ? 'kehadiran' : undefined}
                         barSize={chartBarSize}
                         minPointSize={4}
@@ -487,7 +496,7 @@ export default function Dashboard() {
                       <Bar
                         dataKey="late"
                         name="Terlambat"
-                        fill="#f59e0b"
+                        fill={ATTENDANCE_CHART_COLORS.late}
                         stackId={chartStacked ? 'kehadiran' : undefined}
                         barSize={chartBarSize}
                         minPointSize={4}
@@ -498,7 +507,7 @@ export default function Dashboard() {
                       <Bar
                         dataKey="sick"
                         name="Sakit"
-                        fill="#64748b"
+                        fill={ATTENDANCE_CHART_COLORS.sick}
                         stackId={chartStacked ? 'kehadiran' : undefined}
                         barSize={chartBarSize}
                         minPointSize={4}
@@ -509,7 +518,7 @@ export default function Dashboard() {
                       <Bar
                         dataKey="excused"
                         name="Izin"
-                        fill="#6366f1"
+                        fill={ATTENDANCE_CHART_COLORS.excused}
                         stackId={chartStacked ? 'kehadiran' : undefined}
                         barSize={chartBarSize}
                         minPointSize={4}
@@ -520,7 +529,7 @@ export default function Dashboard() {
                       <Bar
                         dataKey="absent"
                         name="Alfa"
-                        fill="#ef4444"
+                        fill={ATTENDANCE_CHART_COLORS.absent}
                         stackId={chartStacked ? 'kehadiran' : undefined}
                         barSize={chartBarSize}
                         minPointSize={4}
@@ -530,6 +539,9 @@ export default function Dashboard() {
                   </BarChart>
                 </ResponsiveContainer>
                 )}
+                {chartData.length > 0 ? (
+                  <AttendanceChartLegend chartFilter={chartFilter as ChartFilterValue} />
+                ) : null}
               </div>
             </div>
 

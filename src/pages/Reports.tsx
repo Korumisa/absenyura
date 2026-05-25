@@ -32,6 +32,7 @@ import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
 import { attendanceBadgeVariant, attendanceStatusLabel } from '@/lib/statusLabel';
 import { toastErrorMessage } from '@/lib/toastMessage';
+import { ConfirmModal } from '@/components/ConfirmModal';
 
 const fetcher = (url: string) => api.get(url).then(res => res.data);
 
@@ -134,6 +135,7 @@ export default function Reports() {
   const [overrideStatus, setOverrideStatus] = useState('PRESENT');
   const [overrideNotes, setOverrideNotes] = useState('');
   const [overrideSubmitting, setOverrideSubmitting] = useState(false);
+  const [isOverrideConfirmOpen, setIsOverrideConfirmOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   const exportExcelMatrix = useCallback(async (rows: Report[], fileSuffix: string, sessionMeta?: ExportSessionMeta) => {
@@ -365,6 +367,7 @@ export default function Reports() {
       });
       
       toast.success('Status kehadiran berhasil diubah');
+      setIsOverrideConfirmOpen(false);
       setIsOverrideModalOpen(false);
       
       // Refresh reports
@@ -726,7 +729,11 @@ export default function Reports() {
                 <Button type="button" variant="outline" onClick={() => setIsOverrideModalOpen(false)} disabled={overrideSubmitting}>
                   Batal
                 </Button>
-                <Button type="submit" disabled={overrideSubmitting} aria-busy={overrideSubmitting}>
+                <Button
+                  type="button"
+                  disabled={overrideSubmitting}
+                  onClick={() => setIsOverrideConfirmOpen(true)}
+                >
                   {overrideSubmitting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
@@ -740,6 +747,22 @@ export default function Reports() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmModal
+        isOpen={isOverrideConfirmOpen}
+        onClose={() => setIsOverrideConfirmOpen(false)}
+        onConfirm={() => {
+          void handleOverrideSubmit({ preventDefault: () => {} } as React.FormEvent);
+        }}
+        title="Ubah status kehadiran?"
+        description={
+          selectedReport
+            ? `Status ${selectedReport.user_name} pada sesi "${selectedReport.session_title}" akan diubah menjadi ${attendanceStatusLabel(overrideStatus)}.`
+            : 'Status kehadiran akan diubah secara manual.'
+        }
+        confirmText="Ya, Ubah Status"
+        variant="warning"
+      />
     </AdminPageShell>
   );
 }

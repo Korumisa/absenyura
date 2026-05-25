@@ -14,3 +14,18 @@ export function formatClassLabel(cls: ClassLabelSource | null | undefined): stri
   return '';
 }
 
+export type SessionClassLabelSource = {
+  class?: ClassLabelSource | null;
+  session_classes?: { class?: ClassLabelSource | null }[] | null;
+};
+
+/** Label kelas untuk sesi: multi-kelas, legacy class_id, atau Semua Mahasiswa */
+export function sessionClassNames(session: SessionClassLabelSource | null | undefined): string {
+  const names = (session?.session_classes ?? [])
+    .map((x) => formatClassLabel(x?.class))
+    .filter(Boolean);
+  if (names.length) return names.join(', ');
+  if (session?.class) return formatClassLabel(session.class);
+  return 'Semua Mahasiswa';
+}
+

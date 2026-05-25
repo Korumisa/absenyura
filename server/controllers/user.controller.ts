@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import prisma from '../utils/prisma.js';
+import { enrollStudentInClasses, parseClassIds } from '../utils/enrollment.js';
 import ExcelJS from 'exceljs';
 import { Prisma } from '@prisma/client';
 import fs from 'fs';
@@ -114,9 +115,49 @@ export const getUsers = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
+export const getUserEnrollments = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const user = await prisma.user.findUnique({
+      where: { id },
+      select: { id: true, role: true },
+    });
+
+    if (!user) {
+      res.status(404).json({ success: false, error: 'Pengguna tidak ditemukan' });
+      return;
+    }
+
+    if (user.role !== 'USER') {
+      res.status(200).json({ success: true, data: [] });
+      return;
+    }
+
+    const enrollments = await prisma.classEnrollment.findMany({
+      where: { student_id: id },
+      include: {
+        class: { select: { id: true, name: true, semester: true } },
+      },
+      orderBy: { enrolled_at: 'desc' },
+    });
+
+    res.status(200).json({
+      success: true,
+      data: enrollments.map((e) => ({
+        id: e.class.id,
+        name: e.class.name,
+        semester: e.class.semester,
+      })),
+    });
+  } catch (error) {
+    console.error('Error fetching user enrollments:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+};
+
 export const createUser = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, email, password, role, nim_nip, department, phone, semester } = req.body;
+    const { name, email, password, role, nim_nip, department, phone, semester, class_ids } = req.body;
 
     const nameValue = typeof name === 'string' ? name.trim() : '';
     const emailValue = typeof email === 'string' ? email.trim().toLowerCase() : '';
@@ -160,25 +201,49 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
     }
 
     const hashedPassword = await bcrypt.hash(passwordValue, 12);
+    const classIdsToEnroll = roleValue === 'USER' ? parseClassIds(class_ids) : [];
 
-    const user = await prisma.user.create({
-      data: {
-        name: nameValue,
-        email: emailValue,
-        password: hashedPassword,
-        role: roleValue || 'USER',
-        nim_nip: nimValueRaw ? nimValueRaw : null,
-        department: departmentValueRaw ? departmentValueRaw : null,
-        phone: phoneValueRaw ? phoneValueRaw : null,
-        semester: roleValue === 'USER' ? semesterValue : 1,
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        is_active: true,
-      },
+    let enrolledCount = 0;
+    const user = await prisma.$transaction(async (tx) => {
+      const created = await tx.user.create({
+        data: {
+          name: nameValue,
+          email: emailValue,
+          password: hashedPassword,
+          role: roleValue || 'USER',
+          nim_nip: nimValueRaw ? nimValueRaw : null,
+          department: departmentValueRaw ? departmentValueRaw : null,
+          phone: phoneValueRaw ? phoneValueRaw : null,
+          semester: roleValue === 'USER' ? semesterValue : 1,
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          is_active: true,
+        },
+      });
+
+      if (classIdsToEnroll.length > 0) {
+        const existingClasses = await tx.class.findMany({
+          where: { id: { in: classIdsToEnroll } },
+          select: { id: true },
+        });
+        const validIds = existingClasses.map((c) => c.id);
+        enrolledCount = validIds.length;
+        if (validIds.length > 0) {
+          await tx.classEnrollment.createMany({
+            data: validIds.map((class_id) => ({
+              class_id,
+              student_id: created.id,
+            })),
+            skipDuplicates: true,
+          });
+        }
+      }
+
+      return created;
     });
 
     await prisma.auditLog.create({
@@ -187,12 +252,15 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
         action: 'CREATE_USER',
         target_table: 'User',
         target_id: user.id,
-        new_value: JSON.stringify(user),
+        new_value: JSON.stringify({ ...user, enrolled_classes: enrolledCount }),
         ip_address: req.ip,
       }
     });
 
-    res.status(201).json({ success: true, data: user });
+    res.status(201).json({
+      success: true,
+      data: { ...user, enrolled_classes: enrolledCount },
+    });
   } catch (error: unknown) {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === 'P2002') {
@@ -218,7 +286,7 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
 export const updateUser = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { name, email, role, nim_nip, department, phone, is_active, password, semester } = req.body;
+    const { name, email, role, nim_nip, department, phone, is_active, password, semester, class_ids } = req.body;
 
     if (role && typeof role === 'string' && !ALLOWED_ROLES.has(role)) {
       res.status(400).json({ success: false, error: 'Role tidak valid' });
@@ -269,6 +337,13 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
       },
     });
 
+    let enrolledAdded = 0;
+    const classIdsToAdd = nextRole === 'USER' ? parseClassIds(class_ids) : [];
+    if (classIdsToAdd.length > 0) {
+      const result = await enrollStudentInClasses(id, classIdsToAdd);
+      enrolledAdded = result.enrolled;
+    }
+
     await prisma.auditLog.create({
       data: {
         actor_id: (req as any).user.id,
@@ -276,12 +351,15 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
         target_table: 'User',
         target_id: user.id,
         old_value: JSON.stringify(oldUser),
-        new_value: JSON.stringify(user),
+        new_value: JSON.stringify({ ...user, enrolled_added: enrolledAdded }),
         ip_address: req.ip,
       }
     });
 
-    res.status(200).json({ success: true, data: user });
+    res.status(200).json({
+      success: true,
+      data: { ...user, enrolled_added: enrolledAdded },
+    });
   } catch (error: unknown) {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === 'P2002') {

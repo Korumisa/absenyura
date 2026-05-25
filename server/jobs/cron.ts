@@ -244,95 +244,97 @@ export const runCronJob = async () => {
   }
 };
 
+export const runPhotoCleanupJob = async () => {
+  console.log('[Cron] Running daily photo cleanup job...');
+  const oneWeekAgo = new Date();
+  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+  const oldAttendances = await prisma.attendance.findMany({
+    where: {
+      photo_url: { not: null },
+      check_in_time: { lt: oneWeekAgo },
+    },
+    select: { id: true, photo_url: true },
+  });
+
+  let deletedCount = 0;
+  for (const att of oldAttendances) {
+    if (!att.photo_url) continue;
+
+    if (att.photo_url.includes('cloudinary') || att.photo_url.includes('res.cloudinary.com')) {
+      try {
+        const urlParts = att.photo_url.split('/');
+        const filenameWithExt = urlParts[urlParts.length - 1];
+        const publicId = `attendance/${filenameWithExt.split('.')[0]}`;
+        await cloudinary.uploader.destroy(publicId);
+      } catch (err) {
+        console.error('[Cron] Failed to destroy cloudinary image:', err);
+      }
+    } else {
+      const fileName = path.basename(att.photo_url);
+      const filePath = path.join(process.cwd(), 'uploads', 'attendance', fileName);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    }
+
+    await prisma.attendance.update({
+      where: { id: att.id },
+      data: { photo_url: null },
+    });
+
+    deletedCount++;
+  }
+
+  if (deletedCount > 0) {
+    console.log(`[Cron] Berhasil menghapus ${deletedCount} foto bukti yang berumur lebih dari 1 minggu.`);
+  }
+};
+
+export const runSemesterUpdateJob = async () => {
+  console.log('[Cron] Running daily semester update job...');
+  const users = await prisma.user.findMany({
+    where: { role: 'USER', is_active: true },
+    select: { id: true, enrollment_date: true, semester: true },
+  });
+
+  let updatedCount = 0;
+  const now = new Date();
+
+  for (const user of users) {
+    const enrollmentDate = new Date((user as any).enrollment_date);
+    const monthsDiff =
+      (now.getFullYear() - enrollmentDate.getFullYear()) * 12 +
+      (now.getMonth() - enrollmentDate.getMonth());
+    const newSemester = Math.max(1, Math.min(14, Math.floor(monthsDiff / 6) + 1));
+
+    if (newSemester !== (user as any).semester) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { semester: newSemester },
+      });
+      updatedCount++;
+    }
+  }
+
+  console.log(`[Cron] Semester update complete. Updated ${updatedCount} users.`);
+};
+
+/** Fire-and-forget session status sync (throttled inside runCronJob). Safe on Vercel. */
+export const triggerSessionCronLazy = () => {
+  void runCronJob().catch((err) => console.error('[Cron] Lazy session sync error:', err));
+};
+
 export const startCronJobs = () => {
   console.log('[Cron] Starting session status updater (Interval: 1 minute)...');
 
-  // Check and update session statuses every minute
-  setInterval(runCronJob, 60000); // 60,000 ms = 1 minute
+  setInterval(runCronJob, 60000);
 
-  // 2. Photo Cleanup Job - Runs daily at 02:00 AM
-  cron.schedule('0 2 * * *', async () => {
-    try {
-      console.log('[Cron] Running daily photo cleanup job...');
-      const oneWeekAgo = new Date();
-      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-
-      // Cari absensi yang umurnya > 7 hari dan memiliki foto
-      const oldAttendances = await prisma.attendance.findMany({
-        where: {
-          photo_url: { not: null },
-          check_in_time: { lt: oneWeekAgo }
-        },
-        select: { id: true, photo_url: true }
-      });
-
-      let deletedCount = 0;
-      for (const att of oldAttendances) {
-        if (att.photo_url) {
-          if (att.photo_url.includes('cloudinary') || att.photo_url.includes('res.cloudinary.com')) {
-            try {
-              const urlParts = att.photo_url.split('/');
-              const filenameWithExt = urlParts[urlParts.length - 1];
-              const publicId = `attendance/${filenameWithExt.split('.')[0]}`;
-              await cloudinary.uploader.destroy(publicId);
-            } catch (err) {
-              console.error('[Cron] Failed to destroy cloudinary image:', err);
-            }
-          } else {
-            const fileName = path.basename(att.photo_url);
-            const filePath = path.join(process.cwd(), 'uploads', 'attendance', fileName);
-            if (fs.existsSync(filePath)) {
-              fs.unlinkSync(filePath);
-            }
-          }
-
-          // Kosongkan URL di database agar tidak ada error link patah (broken image)
-          await prisma.attendance.update({
-            where: { id: att.id },
-            data: { photo_url: null }
-          });
-          
-          deletedCount++;
-        }
-      }
-
-      if (deletedCount > 0) {
-        console.log(`[Cron] Berhasil menghapus ${deletedCount} foto bukti yang berumur lebih dari 1 minggu.`);
-      }
-    } catch (error) {
-      console.error('[Cron] Error cleaning up photos:', error);
-    }
+  cron.schedule('0 2 * * *', () => {
+    runPhotoCleanupJob().catch((err) => console.error('[Cron] Error cleaning up photos:', err));
   });
 
-  // 3. Update Semester Job - Runs daily at 01:00 AM
-  cron.schedule('0 1 * * *', async () => {
-    try {
-      console.log('[Cron] Running daily semester update job...');
-      const users = await prisma.user.findMany({
-        where: { role: 'USER', is_active: true },
-        select: { id: true, enrollment_date: true, semester: true }
-      });
-
-      let updatedCount = 0;
-      const now = new Date();
-
-      for (const user of users) {
-        const enrollmentDate = new Date((user as any).enrollment_date);
-        const monthsDiff = (now.getFullYear() - enrollmentDate.getFullYear()) * 12 + (now.getMonth() - enrollmentDate.getMonth());
-        const newSemester = Math.max(1, Math.min(14, Math.floor(monthsDiff / 6) + 1));
-
-        if (newSemester !== (user as any).semester) {
-          await prisma.user.update({
-            where: { id: user.id },
-            data: { semester: newSemester }
-          });
-          updatedCount++;
-        }
-      }
-
-      console.log(`[Cron] Semester update complete. Updated ${updatedCount} users.`);
-    } catch (error) {
-      console.error('[Cron] Error updating semesters:', error);
-    }
+  cron.schedule('0 1 * * *', () => {
+    runSemesterUpdateJob().catch((err) => console.error('[Cron] Error updating semesters:', err));
   });
 };

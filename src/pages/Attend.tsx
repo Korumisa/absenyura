@@ -714,14 +714,6 @@ export default function Attend() {
     return isIpValid() ? 'Terverifikasi' : 'Di luar jaringan kampus';
   };
 
-  const checkInReady =
-    !!scanResult &&
-    !!location &&
-    !gpsError &&
-    !!photoBlob &&
-    !isOffline &&
-    (sessionDetails?.location ? isLocationValid() : true);
-
   const actionOverlayLabel = loading
     ? 'Mengirim data absensi…'
     : checkoutSubmitting
@@ -936,32 +928,6 @@ export default function Attend() {
                 ) : null}
               </div>
             </div>
-          </div>
-        )}
-
-        {!scanning && scanResult && (
-          <div
-            className="mx-4 mt-4 rounded-xl border border-border bg-slate-50 p-4 border-border bg-background/50 sm:mx-6"
-            role="status"
-            aria-live="polite"
-          >
-            <p className="mb-3 text-sm font-semibold text-slate-800 dark:text-zinc-200">Status persiapan check-in</p>
-            <ul className="space-y-2 text-sm">
-              <li className={scanResult ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700'}>
-                {scanResult ? '✓' : '○'} QR / token sesi
-              </li>
-              <li className={location && !gpsError ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700'}>
-                {location && !gpsError ? '✓' : '○'} Lokasi GPS
-              </li>
-              <li className={photoBlob ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700'}>
-                {photoBlob ? '✓' : '○'} Foto bukti
-                {!photoBlob && !cameraStarting ? ' — ketuk Buka Kamera' : ''}
-                {cameraStarting ? ' — menyiapkan kamera…' : ''}
-              </li>
-              <li className={checkInReady ? 'font-semibold text-emerald-800 dark:text-emerald-300' : 'text-muted-foreground'}>
-                {checkInReady ? '✓ Siap dikirim' : '○ Belum siap dikirim'}
-              </li>
-            </ul>
           </div>
         )}
 
