@@ -1,7 +1,11 @@
 import { Request, Response } from 'express';
 import prisma from '../utils/prisma.js';
 import crypto from 'crypto';
-import { locationAttendSelect, sessionListRelations } from '../utils/sessionQuerySelect.js';
+import {
+  sessionDetailSelect,
+  sessionListSelect,
+  stripSessionQrSecrets,
+} from '../utils/sessionQuerySelect.js';
 import { buildDynamicQrToken, QR_WINDOW_MS } from '../utils/dynamicQr.js';
 import { triggerSessionCronLazy } from '../jobs/cron.js';
 
@@ -26,7 +30,7 @@ export const getSessions = async (req: Request, res: Response): Promise<void> =>
               { session_classes: { some: { class: { enrollments: { some: { student_id: userId } } } } } },
             ]
           },
-          include: sessionListRelations({ userId, withSemester: true }),
+          select: sessionListSelect({ userId, withSemester: true }),
           orderBy: { session_start: 'asc' },
         });
       } catch (err: any) {
@@ -40,7 +44,7 @@ export const getSessions = async (req: Request, res: Response): Promise<void> =>
               { session_classes: { some: { class: { enrollments: { some: { student_id: userId } } } } } },
             ]
           },
-          include: sessionListRelations({ userId, withSemester: false }),
+          select: sessionListSelect({ userId, withSemester: false }),
           orderBy: { session_start: 'asc' },
         });
       }
@@ -49,14 +53,14 @@ export const getSessions = async (req: Request, res: Response): Promise<void> =>
       try {
         sessions = await prisma.session.findMany({
           where: user.role === 'ADMIN' ? { created_by_id: user.id } : {},
-          include: sessionListRelations({ withSemester: true }),
+          select: sessionListSelect({ withSemester: true }),
           orderBy: { created_at: 'desc' },
         });
       } catch (err: any) {
         if (!isMissingSemesterColumn(err)) throw err;
         sessions = await prisma.session.findMany({
           where: user.role === 'ADMIN' ? { created_by_id: user.id } : {},
-          include: sessionListRelations({ withSemester: false }),
+          select: sessionListSelect({ withSemester: false }),
           orderBy: { created_at: 'desc' },
         });
       }
@@ -205,7 +209,7 @@ export const createSession = async (req: Request, res: Response): Promise<void> 
       }
     }
 
-    res.status(201).json({ success: true, data: session });
+    res.status(201).json({ success: true, data: stripSessionQrSecrets(session as Record<string, unknown>) });
   } catch (error) {
     console.error('Error creating session:', error);
     res.status(500).json({ success: false, error: 'Internal server error' });
@@ -260,7 +264,7 @@ export const updateSession = async (req: Request, res: Response): Promise<void> 
       }
     }
 
-    res.status(200).json({ success: true, data: session });
+    res.status(200).json({ success: true, data: stripSessionQrSecrets(session as Record<string, unknown>) });
   } catch (error) {
     console.error('Error updating session:', error);
     res.status(500).json({ success: false, error: 'Internal server error' });
@@ -292,17 +296,19 @@ export const getSessionById = async (req: Request, res: Response): Promise<void>
   try {
     const { id } = req.params;
     const user = (req as any).user;
-    const session = await prisma.session.findUnique({
-      where: { id },
-      include: {
-        location: { select: locationAttendSelect },
-        creator: { select: { name: true } },
-        class: { select: { id: true, name: true, semester: true } },
-        session_classes: {
-          select: { class: { select: { id: true, name: true, semester: true } } },
-        },
-      },
-    });
+    let session;
+    try {
+      session = await prisma.session.findUnique({
+        where: { id },
+        select: sessionDetailSelect({ withSemester: true }),
+      });
+    } catch (err: any) {
+      if (!isMissingSemesterColumn(err)) throw err;
+      session = await prisma.session.findUnique({
+        where: { id },
+        select: sessionDetailSelect({ withSemester: false }),
+      });
+    }
 
     if (!session) {
       res.status(404).json({ success: false, error: 'Session not found' });

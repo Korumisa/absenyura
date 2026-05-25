@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { Prisma } from '@prisma/client';
 import prisma from '../utils/prisma.js';
 import { fillChartData, getWibRangeUtc, type ChartRow } from '../utils/dashboardChart.js';
-import { sessionListRelations } from '../utils/sessionQuerySelect.js';
+import { sessionApiSelect, sessionListSelect } from '../utils/sessionQuerySelect.js';
 import { triggerSessionCronLazy } from '../jobs/cron.js';
 
 const isMissingSemesterColumn = (err: any) =>
@@ -49,7 +49,7 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
           },
           orderBy: { session_start: 'asc' },
           take: 5,
-          include: sessionListRelations({ userId, withSemester: true }),
+          select: sessionListSelect({ userId, withSemester: true }),
         });
       } catch (err: any) {
         if (!isMissingSemesterColumn(err)) throw err;
@@ -64,7 +64,7 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
           },
           orderBy: { session_start: 'asc' },
           take: 5,
-          include: sessionListRelations({ userId, withSemester: false }),
+          select: sessionListSelect({ userId, withSemester: false }),
         });
       }
 
@@ -127,10 +127,11 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
         where: user.role === 'ADMIN' ? { created_by_id: user.id } : undefined,
         orderBy: { created_at: 'desc' },
         take: 5,
-        include: {
+        select: {
+          ...sessionApiSelect,
           _count: { select: { attendances: true } },
-          location: { select: { name: true } }
-        }
+          location: { select: { name: true } },
+        },
       });
 
       const { startUtc, endUtc } = getWibRangeUtc({ rangeDays: rangeDays, now: new Date() });
