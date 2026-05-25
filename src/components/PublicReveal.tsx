@@ -1,9 +1,7 @@
-import React from 'react';
-import { motion } from 'framer-motion';
+import React, { useEffect, useRef, useState } from 'react';
 import { useReducedMotion } from '@/lib/useReducedMotion';
-import { REVEAL_VIEWPORT, motionTransition } from '@/lib/motionPresets';
 
-/** [IxD] P2 — scroll reveal halaman publik; hormati prefers-reduced-motion */
+/** Scroll reveal halaman publik (CSS + Intersection Observer; tanpa framer-motion) */
 export default function PublicReveal({
   children,
   className,
@@ -16,20 +14,46 @@ export default function PublicReveal({
   shiftY?: number;
 }) {
   const reducedMotion = useReducedMotion();
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(reducedMotion);
+
+  useEffect(() => {
+    if (reducedMotion) return;
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '0px 0px -8% 0px', threshold: 0.08 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [reducedMotion]);
 
   if (reducedMotion) {
     return <div className={className}>{children}</div>;
   }
 
+  const delaySec = `${delay}s`;
+
   return (
-    <motion.div
+    <div
+      ref={ref}
       className={className}
-      initial={shiftY ? { opacity: 0, y: shiftY } : { opacity: 0 }}
-      whileInView={shiftY ? { opacity: 1, y: 0 } : { opacity: 1 }}
-      viewport={REVEAL_VIEWPORT}
-      transition={motionTransition(false, { duration: 0.45, ease: 'easeOut', delay })}
+      style={{
+        opacity: visible ? 1 : 0,
+        transform: visible ? 'translateY(0)' : `translateY(${shiftY}px)`,
+        transitionProperty: 'opacity, transform',
+        transitionDuration: '0.45s',
+        transitionTimingFunction: 'ease-out',
+        transitionDelay: `${delaySec}, ${delaySec}`,
+      }}
     >
       {children}
-    </motion.div>
+    </div>
   );
 }

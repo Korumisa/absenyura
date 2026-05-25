@@ -10,17 +10,12 @@ import PublicReveal from '@/components/PublicReveal';
 import PublicCoverImage from '@/components/PublicCoverImage';
 import PublicProgramCard from '@/components/PublicProgramCard';
 import useHorizontalWheelScroll from '@/lib/useHorizontalWheelScroll';
-import { AnimatePresence, motion } from 'framer-motion';
 import { useReducedMotion } from '@/lib/useReducedMotion';
-import { fadeTransition } from '@/lib/motionPresets';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { PublicPageError } from '@/components/public/PublicPageError';
 import { Skeleton } from '@/components/ui/skeleton';
 import { hasText, showPublicSection } from '@/lib/publicContent';
 import { BrandLogoImage } from '@/components/public/BrandLogoImage';
-import { ensureHttpsUrl } from '@/lib/ensureHttpsUrl';
-import { optimizeCloudinaryUrl } from '@/lib/cloudinaryImage';
-
 function HorizontalSnapRail({
   children,
   ariaLabel,
@@ -154,43 +149,25 @@ function DivisionRail({
           {label}
         </div>
         <div className="mt-5">
-          {reducedMotion ? (
-            <>
-              <div className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">
-                <span className="text-[var(--public-primary)]">{activeTitle}</span>
-              </div>
-              <div className="relative mx-auto mt-4 h-px w-full max-w-5xl bg-gradient-to-r from-transparent via-[var(--public-primary)]/35 to-transparent" />
-              <p className="mt-3 text-sm font-medium text-muted-foreground">{tagline}</p>
-            </>
-          ) : (
-            <>
-              <AnimatePresence mode="wait" initial={false}>
-                <motion.div
-                  key={activeTitle}
-                  initial={{ opacity: 0, y: 10, filter: 'blur(6px)' }}
-                  animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-                  exit={{ opacity: 0, y: -10, filter: 'blur(6px)' }}
-                  transition={fadeTransition(false)}
-                  className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl"
-                >
-                  <span className="text-[var(--public-primary)]">{activeTitle}</span>
-                </motion.div>
-              </AnimatePresence>
-              <div className="relative mx-auto mt-4 h-px w-full max-w-5xl bg-gradient-to-r from-transparent via-[var(--public-primary)]/35 to-transparent" />
-              <AnimatePresence mode="wait" initial={false}>
-                <motion.div
-                  key={tagline}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  transition={fadeTransition(false)}
-                  className="mt-3 text-sm font-medium text-muted-foreground"
-                >
-                  {tagline}
-                </motion.div>
-              </AnimatePresence>
-            </>
-          )}
+          <div
+            key={activeTitle}
+            className={[
+              'text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl',
+              reducedMotion ? '' : 'animate-in fade-in slide-in-from-bottom-2 duration-300',
+            ].join(' ')}
+          >
+            <span className="text-[var(--public-primary)]">{activeTitle}</span>
+          </div>
+          <div className="relative mx-auto mt-4 h-px w-full max-w-5xl bg-gradient-to-r from-transparent via-[var(--public-primary)]/35 to-transparent" />
+          <p
+            key={tagline}
+            className={[
+              'mt-3 text-sm font-medium text-muted-foreground',
+              reducedMotion ? '' : 'animate-in fade-in slide-in-from-bottom-1 duration-300',
+            ].join(' ')}
+          >
+            {tagline}
+          </p>
         </div>
       </div>
 
@@ -369,20 +346,6 @@ export default function PublicHome() {
     { revalidateOnFocus: false },
   );
 
-  useEffect(() => {
-    const raw = profile?.home_image_url;
-    if (!raw) return;
-    const href = optimizeCloudinaryUrl(ensureHttpsUrl(raw), { width: 828 });
-    const link = document.createElement('link');
-    link.rel = 'preload';
-    link.as = 'image';
-    link.href = href;
-    document.head.appendChild(link);
-    return () => {
-      link.remove();
-    };
-  }, [profile?.home_image_url]);
-
   if (isProfileError && !profile) {
     return <PublicPageError title="Gagal memuat beranda" error={profileSwr.error} onRetry={retryProfile} />;
   }
@@ -454,7 +417,7 @@ export default function PublicHome() {
             className="relative overflow-hidden bg-[radial-gradient(circle_at_20%_20%,rgba(37,99,235,0.18),transparent_50%),radial-gradient(circle_at_70%_10%,rgba(59,130,246,0.14),transparent_55%),linear-gradient(180deg,rgba(15,23,42,0.02),transparent)]"
           >
             <div className="pointer-events-none absolute inset-0 opacity-70 [background:radial-gradient(circle_at_18%_15%,rgba(37,99,235,0.10),transparent_56%),radial-gradient(circle_at_78%_10%,rgba(56,189,248,0.08),transparent_60%)]" />
-            <PublicEnter className="mx-auto grid max-w-7xl items-center gap-12 px-4 py-16 sm:px-6 md:grid-cols-2 md:py-24">
+            <PublicEnter instant className="mx-auto grid max-w-7xl items-center gap-12 px-4 py-16 sm:px-6 md:grid-cols-2 md:py-24">
               <div className="flex items-start gap-6">
                 <BrandMark className="hidden h-28 w-28 shrink-0 sm:block" src={logoSrc} name={orgName || campusName} />
                 <div>

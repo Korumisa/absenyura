@@ -1,24 +1,22 @@
 import React from 'react';
-import { motion } from 'framer-motion';
 import { useReducedMotion } from '@/lib/useReducedMotion';
-import { motionTransition } from '@/lib/motionPresets';
 
-/** [IxD] P2 — masuk halaman login/publik ringan */
-export default function PublicEnter({ children, className }: { children: React.ReactNode; className?: string }) {
+/** Masuk halaman publik — animasi CSS ringan (hindari opacity:0 di above-the-fold / LCP) */
+export default function PublicEnter({
+  children,
+  className,
+  /** true = tanpa animasi masuk (untuk hero / elemen LCP) */
+  instant,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  instant?: boolean;
+}) {
   const reducedMotion = useReducedMotion();
 
-  if (reducedMotion) {
+  if (reducedMotion || instant) {
     return <div className={className}>{children}</div>;
   }
 
-  return (
-    <motion.div
-      className={className}
-      initial={{ opacity: 0, y: 14 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={motionTransition(false, { duration: 0.42, ease: 'easeOut' })}
-    >
-      {children}
-    </motion.div>
-  );
+  return <div className={['public-enter', className].filter(Boolean).join(' ')}>{children}</div>;
 }

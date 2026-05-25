@@ -37,7 +37,7 @@ Uji di **jendela penyamaran / Incognito** agar IndexedDB/PWA tidak memengaruhi s
 Target: LCP &lt; 2.5s, FCP &lt; 1.8s.
 
 Catatan perbaikan performa:
-- **Beranda `/`**: logo `logo-hmsdp.webp` (~KB, bukan PNG 636KB), Cloudinary `f_auto,q_auto,w_*`, hero LCP `priority` + preload, API bawah-fold ditunda (`requestIdleCallback`)
+- **Beranda `/`**: logo `logo-hmsdp.webp` (~KB, bukan PNG 636KB), Cloudinary `f_auto,q_auto,w_*`, hero LCP `priority` + preload (PublicLayout), hero tanpa animasi opacity-0, navbar/overlay tanpa framer-motion, API bawah-fold ditunda (`requestIdleCallback`), PWA `registerSW` defer, Analytics/Speed Insights idle
 - **Dashboard**: font Plus Jakarta non-blocking; Cormorant ditunda; Recharts lazy-load
 - Uji ulang beranda di Incognito — target Performance &gt; 70 setelah deploy
 

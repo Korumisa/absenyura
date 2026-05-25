@@ -21,6 +21,7 @@ export default defineConfig(({ mode }) => {
       }),
       tsconfigPaths(),
       VitePWA({
+        injectRegister: 'script-defer',
         registerType: 'autoUpdate',
         includeAssets: ['favicon.svg'],
         manifest: {

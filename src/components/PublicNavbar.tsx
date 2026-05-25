@@ -5,9 +5,7 @@ import { ChevronDown, Menu, X } from 'lucide-react';
 import useSWR from 'swr';
 import api from '@/services/api';
 import type { PublicProfile } from '@/types/publicSite';
-import { AnimatePresence, motion } from 'framer-motion';
 import { useReducedMotion } from '@/lib/useReducedMotion';
-import { fadeTransition } from '@/lib/motionPresets';
 import { BrandLogoImage } from '@/components/public/BrandLogoImage';
 import { DEFAULT_BRAND_LOGO_PNG } from '@/lib/staticBrandAssets';
 
@@ -188,109 +186,44 @@ export default function PublicNavbar() {
           aria-label={isMobileMenuOpen ? 'Tutup menu' : 'Buka menu'}
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         >
-          {reducedMotion ? (
-            isMobileMenuOpen ? <X size={26} aria-hidden="true" /> : <Menu size={26} aria-hidden="true" />
-          ) : (
-            <AnimatePresence initial={false} mode="wait">
-              {isMobileMenuOpen ? (
-                <motion.span
-                  key="close"
-                  initial={{ opacity: 0, rotate: -90 }}
-                  animate={{ opacity: 1, rotate: 0 }}
-                  exit={{ opacity: 0, rotate: 90 }}
-                  transition={fadeTransition(false)}
-                  className="inline-flex"
-                >
-                  <X size={26} aria-hidden="true" />
-                </motion.span>
-              ) : (
-                <motion.span
-                  key="open"
-                  initial={{ opacity: 0, rotate: 90 }}
-                  animate={{ opacity: 1, rotate: 0 }}
-                  exit={{ opacity: 0, rotate: -90 }}
-                  transition={fadeTransition(false)}
-                  className="inline-flex"
-                >
-                  <Menu size={26} aria-hidden="true" />
-                </motion.span>
-              )}
-            </AnimatePresence>
-          )}
+          {isMobileMenuOpen ? <X size={26} aria-hidden="true" /> : <Menu size={26} aria-hidden="true" />}
         </button>
       </div>
 
-      {reducedMotion ? (
-        isMobileMenuOpen ? (
-          <div
-            ref={mobileMenuRef}
-            id="public-mobile-nav"
-            className="absolute left-0 top-[4.25rem] flex max-h-[min(70vh,calc(100vh-4.25rem))] w-full flex-col gap-1 overflow-y-auto border-t border-black/10 bg-white px-2 py-3 shadow-lg md:hidden"
-            role="dialog"
-            aria-label="Menu navigasi"
-          >
-            {MOBILE_NAV.map((item) => {
-              const active = location.pathname === item.to || (item.to !== '/' && location.pathname.startsWith(item.to));
-              return (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  className={`flex min-h-11 items-center rounded-xl px-4 text-base font-semibold ${
-                    active ? 'bg-[var(--public-primary)]/10 text-[var(--public-primary)]' : 'text-slate-800'
-                  }`}
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
-            <div className="my-2 h-px bg-black/10" />
-            <Link
-              to={loginCta.to}
-              className="mx-2 flex min-h-11 items-center justify-center rounded-full bg-[var(--public-primary)] px-5 text-sm font-semibold text-white"
-            >
-              {loginCta.label}
-            </Link>
-          </div>
-        ) : null
-      ) : (
-        <AnimatePresence>
-          {isMobileMenuOpen ? (
-            <motion.div
-              ref={mobileMenuRef}
-              id="public-mobile-nav"
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={fadeTransition(false, 0.2)}
-              className="absolute left-0 top-[4.25rem] flex max-h-[min(70vh,calc(100vh-4.25rem))] w-full flex-col gap-1 overflow-y-auto border-t border-black/10 bg-white px-2 py-3 shadow-lg md:hidden"
-              role="dialog"
-              aria-label="Menu navigasi"
-            >
-              {MOBILE_NAV.map((item) => {
-                const active = location.pathname === item.to || (item.to !== '/' && location.pathname.startsWith(item.to));
-                return (
-                  <Link
-                    key={item.to}
-                    to={item.to}
-                    className={`flex min-h-11 items-center rounded-xl px-4 text-base font-semibold ${
-                      active ? 'bg-[var(--public-primary)]/10 text-[var(--public-primary)]' : 'text-slate-800'
-                    }`}
-                  >
-                    {item.label}
-                  </Link>
-                );
-              })}
-              <div className="my-2 h-px bg-black/10" />
+      {isMobileMenuOpen ? (
+        <div
+          ref={mobileMenuRef}
+          id="public-mobile-nav"
+          className={[
+            'absolute left-0 top-[4.25rem] flex max-h-[min(70vh,calc(100vh-4.25rem))] w-full flex-col gap-1 overflow-y-auto border-t border-black/10 bg-white px-2 py-3 shadow-lg md:hidden',
+            reducedMotion ? '' : 'animate-in fade-in slide-in-from-top-2 duration-200',
+          ].join(' ')}
+          role="dialog"
+          aria-label="Menu navigasi"
+        >
+          {MOBILE_NAV.map((item) => {
+            const active = location.pathname === item.to || (item.to !== '/' && location.pathname.startsWith(item.to));
+            return (
               <Link
-                to={loginCta.to}
-                className="mx-2 flex min-h-11 items-center justify-center rounded-full bg-[var(--public-primary)] px-5 text-sm font-semibold text-white"
+                key={item.to}
+                to={item.to}
+                className={`flex min-h-11 items-center rounded-xl px-4 text-base font-semibold ${
+                  active ? 'bg-[var(--public-primary)]/10 text-[var(--public-primary)]' : 'text-slate-800'
+                }`}
               >
-                {loginCta.label}
+                {item.label}
               </Link>
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
-      )}
+            );
+          })}
+          <div className="my-2 h-px bg-black/10" />
+          <Link
+            to={loginCta.to}
+            className="mx-2 flex min-h-11 items-center justify-center rounded-full bg-[var(--public-primary)] px-5 text-sm font-semibold text-white"
+          >
+            {loginCta.label}
+          </Link>
+        </div>
+      ) : null}
     </nav>
   );
 }

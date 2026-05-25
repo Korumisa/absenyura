@@ -4,6 +4,50 @@ import prisma from '../utils/prisma.js';
 const isMissingSemesterColumn = (err: any) =>
   Boolean(err && err.code === 'P2022' && String(err?.meta?.column || '').includes('Class.semester'));
 
+const classInclude = {
+  lecturer: { select: { id: true, name: true } },
+  _count: { select: { enrollments: true, sessions: true } },
+} as const;
+
+async function findClassById(id: string) {
+  try {
+    return await prisma.class.findUnique({ where: { id }, include: classInclude });
+  } catch (err: any) {
+    if (!isMissingSemesterColumn(err)) throw err;
+    const row = await prisma.class.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        name: true,
+        course_code: true,
+        description: true,
+        lecturer_id: true,
+        lecturer: { select: { id: true, name: true } },
+        _count: { select: { enrollments: true, sessions: true } },
+      },
+    });
+    if (!row) return null;
+    return { ...(row as any), semester: 1 };
+  }
+}
+
+async function userCanAccessClass(user: { id: string; role: string }, classId: string): Promise<boolean> {
+  if (user.role === 'SUPER_ADMIN') return true;
+  const cls = await prisma.class.findUnique({
+    where: { id: classId },
+    select: { lecturer_id: true },
+  });
+  if (!cls) return false;
+  if (user.role === 'ADMIN') return cls.lecturer_id === user.id;
+  if (user.role === 'USER') {
+    const enrollment = await prisma.classEnrollment.findFirst({
+      where: { class_id: classId, student_id: user.id },
+    });
+    return Boolean(enrollment);
+  }
+  return false;
+}
+
 export const getClasses = async (req: Request, res: Response): Promise<void> => {
   try {
     const user = (req as any).user;
@@ -162,12 +206,69 @@ export const deleteClass = async (req: Request, res: Response): Promise<void> =>
   }
 };
 
+export const getClassById = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const user = (req as any).user;
+    const cls = await findClassById(id);
+    if (!cls) {
+      res.status(404).json({ success: false, error: 'Kelas tidak ditemukan' });
+      return;
+    }
+    const allowed = await userCanAccessClass(user, id);
+    if (!allowed) {
+      res.status(403).json({ success: false, error: 'Akses ditolak' });
+      return;
+    }
+    res.status(200).json({ success: true, data: cls });
+  } catch (error) {
+    console.error('Error fetching class:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+};
+
+/** Daftar mahasiswa aktif untuk form enrollment (ADMIN & SUPER_ADMIN) */
+export const getEnrollmentOptions = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const user = (req as any).user;
+    const students = await prisma.user.findMany({
+      where: { role: 'USER', is_active: true },
+      select: { id: true, name: true, nim_nip: true, email: true, is_active: true, department: true },
+      orderBy: { name: 'asc' },
+    });
+
+    let lecturers: { id: string; name: string }[] = [];
+    if (user.role === 'SUPER_ADMIN') {
+      lecturers = await prisma.user.findMany({
+        where: { role: { in: ['ADMIN', 'SUPER_ADMIN'] }, is_active: true },
+        select: { id: true, name: true },
+        orderBy: { name: 'asc' },
+      });
+    }
+
+    res.status(200).json({ success: true, data: { students, lecturers } });
+  } catch (error) {
+    console.error('Error fetching enrollment options:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+};
+
 export const getStudents = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
+    const user = (req as any).user;
+    const allowed = await userCanAccessClass(user, id);
+    if (!allowed) {
+      res.status(403).json({ success: false, error: 'Akses ditolak' });
+      return;
+    }
     const enrollments = await prisma.classEnrollment.findMany({
       where: { class_id: id },
-      include: { student: { select: { id: true, name: true, email: true, nim_nip: true } } }
+      include: {
+        student: {
+          select: { id: true, name: true, email: true, nim_nip: true, is_active: true },
+        },
+      },
     });
     const students = enrollments.map(e => e.student);
     res.status(200).json({ success: true, data: students });
@@ -180,6 +281,12 @@ export const getStudents = async (req: Request, res: Response): Promise<void> =>
 export const enrollStudents = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
+    const user = (req as any).user;
+    const allowed = await userCanAccessClass(user, id);
+    if (!allowed || user.role === 'USER') {
+      res.status(403).json({ success: false, error: 'Akses ditolak' });
+      return;
+    }
     const { student_ids } = req.body; // Array of student IDs
 
     if (!Array.isArray(student_ids)) {
@@ -222,6 +329,12 @@ export const enrollStudents = async (req: Request, res: Response): Promise<void>
 export const removeStudent = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id, student_id } = req.params;
+    const user = (req as any).user;
+    const allowed = await userCanAccessClass(user, id);
+    if (!allowed || user.role === 'USER') {
+      res.status(403).json({ success: false, error: 'Akses ditolak' });
+      return;
+    }
     await prisma.classEnrollment.delete({
       where: { class_id_student_id: { class_id: id, student_id } }
     });

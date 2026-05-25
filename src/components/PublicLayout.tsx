@@ -9,6 +9,8 @@ import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 import { PublicPageMeta } from '@/components/public/PublicPageMeta';
 import { useLocation } from 'react-router-dom';
 import { loadCormorantDisplayFont } from '@/lib/loadFonts';
+import { ensureHttpsUrl } from '@/lib/ensureHttpsUrl';
+import { isCloudinaryUrl, optimizeCloudinaryUrl } from '@/lib/cloudinaryImage';
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
@@ -25,6 +27,25 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
   React.useEffect(() => {
     loadCormorantDisplayFont();
   }, []);
+
+  React.useEffect(() => {
+    const raw = profile?.home_image_url;
+    if (!raw) return;
+    const href = optimizeCloudinaryUrl(ensureHttpsUrl(raw), { width: 828 });
+    const existing = document.querySelector('link[data-public-hero-preload]');
+    if (existing?.getAttribute('href') === href) return;
+    existing?.remove();
+    const link = document.createElement('link');
+    link.rel = 'preload';
+    link.as = 'image';
+    link.href = href;
+    link.setAttribute('data-public-hero-preload', '1');
+    if (isCloudinaryUrl(href)) link.crossOrigin = 'anonymous';
+    document.head.appendChild(link);
+    return () => {
+      link.remove();
+    };
+  }, [profile?.home_image_url]);
 
   React.useEffect(() => {
     if (typeof window === 'undefined') return;
