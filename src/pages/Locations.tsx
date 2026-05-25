@@ -19,6 +19,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ConfirmModal } from '@/components/ConfirmModal';
+import ActionLoadingOverlay from '@/components/ActionLoadingOverlay';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import AdminPageShell from '@/components/AdminPageShell';
 import type { Location } from '@/types/location';
@@ -37,6 +38,9 @@ export default function Locations() {
   // Delete Confirmation Modal state
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [locationToDelete, setLocationToDelete] = useState<string | null>(null);
+
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   
   // Custom Map hook state to force re-render map center
   const [mapCenter, setMapCenter] = useState<[number, number]>([-8.11475, 115.08865]);
@@ -81,6 +85,8 @@ export default function Locations() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (saving) return;
+    setSaving(true);
     try {
       const payload = {
         ...formData,
@@ -98,6 +104,8 @@ export default function Locations() {
       mutate();
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Terjadi kesalahan');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -107,7 +115,8 @@ export default function Locations() {
   };
 
   const confirmDelete = async () => {
-    if (!locationToDelete) return;
+    if (!locationToDelete || deleting) return;
+    setDeleting(true);
     try {
       await api.delete(`/locations/${locationToDelete}`);
       toast.success('Lokasi berhasil dihapus');
@@ -116,6 +125,8 @@ export default function Locations() {
       mutate();
     } catch (error) {
       toast.error('Gagal menghapus lokasi');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -234,7 +245,15 @@ export default function Locations() {
     resetDeps: [searchTerm, wifiFilter],
   });
 
+  const actionOverlayLabel = saving
+    ? (editingLocation ? 'Menyimpan perubahan lokasi…' : 'Menambah lokasi…')
+    : deleting
+      ? 'Menghapus lokasi…'
+      : null;
+
   return (
+    <>
+    <ActionLoadingOverlay show={!!actionOverlayLabel} label={actionOverlayLabel ?? ''} />
     <AdminPageShell
       title="Manajemen Lokasi"
       description="Atur geofencing dan batasan WiFi untuk absensi."
@@ -550,11 +569,11 @@ export default function Locations() {
                   </div>
                 </div>
                 <div className="flex shrink-0 justify-end gap-3 p-5">
-                  <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
+                  <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)} disabled={saving}>
                     Batal
                   </Button>
-                  <Button type="submit">
-                    Simpan Lokasi
+                  <Button type="submit" disabled={saving} aria-busy={saving}>
+                    {saving ? 'Menyimpan…' : 'Simpan Lokasi'}
                   </Button>
                 </div>
               </div>
@@ -570,7 +589,10 @@ export default function Locations() {
         description="Apakah Anda yakin ingin menghapus lokasi ini? Data yang dihapus tidak dapat dikembalikan."
         confirmText="Ya, Hapus Lokasi"
         variant="danger"
+        loading={deleting}
+        loadingText="Menghapus…"
       />
     </AdminPageShell>
+    </>
   );
 }

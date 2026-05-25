@@ -15,6 +15,8 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ConfirmModal } from '@/components/ConfirmModal';
+import ActionLoadingOverlay from '@/components/ActionLoadingOverlay';
+import { toastErrorMessage } from '@/lib/toastMessage';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -48,6 +50,12 @@ export default function Classes() {
   // Delete Confirmation Modal state
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [classToDelete, setClassToDelete] = useState<string | null>(null);
+
+  // Loading state untuk aksi tulis
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [enrolling, setEnrolling] = useState(false);
+  const [removingStudent, setRemovingStudent] = useState(false);
 
   // Save / enroll / remove confirmation
   const [isSaveConfirmOpen, setIsSaveConfirmOpen] = useState(false);
@@ -109,10 +117,12 @@ export default function Classes() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (saving) return;
     if (!formData.lecturer_id) {
       toast.error('Silakan pilih dosen pengampu');
       return;
     }
+    setSaving(true);
     try {
       if (editingClass) {
         await api.put(`/classes/${editingClass.id}`, formData);
@@ -124,8 +134,10 @@ export default function Classes() {
       setIsSaveConfirmOpen(false);
       setIsModalOpen(false);
       mutate();
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Terjadi kesalahan');
+    } catch (error: unknown) {
+      toast.error(toastErrorMessage(error, 'Terjadi kesalahan'));
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -135,7 +147,8 @@ export default function Classes() {
   };
 
   const confirmDeleteClass = async () => {
-    if (!classToDelete) return;
+    if (!classToDelete || deleting) return;
+    setDeleting(true);
     try {
       await api.delete(`/classes/${classToDelete}`);
       toast.success('Kelas berhasil dihapus');
@@ -144,6 +157,8 @@ export default function Classes() {
       mutate();
     } catch (error) {
       toast.error('Gagal menghapus kelas');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -159,7 +174,8 @@ export default function Classes() {
   };
 
   const handleEnrollStudent = async () => {
-    if (!selectedStudentId || !selectedClassId) return;
+    if (!selectedStudentId || !selectedClassId || enrolling) return;
+    setEnrolling(true);
     try {
       await api.post(`/classes/${selectedClassId}/enroll`, { student_ids: [selectedStudentId] });
       toast.success('Mahasiswa berhasil ditambahkan');
@@ -170,6 +186,8 @@ export default function Classes() {
       setIsEnrollConfirmOpen(false);
     } catch (error) {
       toast.error('Gagal menambahkan mahasiswa');
+    } finally {
+      setEnrolling(false);
     }
   };
 
@@ -179,7 +197,8 @@ export default function Classes() {
   };
 
   const confirmRemoveStudent = async () => {
-    if (!selectedClassId || !studentToRemove) return;
+    if (!selectedClassId || !studentToRemove || removingStudent) return;
+    setRemovingStudent(true);
     try {
       await api.delete(`/classes/${selectedClassId}/enroll/${studentToRemove.id}`);
       toast.success('Mahasiswa berhasil dikeluarkan');
@@ -189,8 +208,20 @@ export default function Classes() {
       setStudentToRemove(null);
     } catch (error) {
       toast.error('Gagal mengeluarkan mahasiswa');
+    } finally {
+      setRemovingStudent(false);
     }
   };
+
+  const actionOverlayLabel = saving
+    ? (editingClass ? 'Menyimpan perubahan kelas…' : 'Menambah kelas…')
+    : deleting
+      ? 'Menghapus kelas…'
+      : enrolling
+        ? 'Mendaftarkan mahasiswa…'
+        : removingStudent
+          ? 'Mengeluarkan mahasiswa…'
+          : null;
 
   const selectedStudentName =
     allStudents.find((s) => s.id === selectedStudentId)?.name ?? 'mahasiswa ini';
@@ -210,6 +241,8 @@ export default function Classes() {
   });
 
   return (
+    <>
+    <ActionLoadingOverlay show={!!actionOverlayLabel} label={actionOverlayLabel ?? ''} />
     <AdminPageShell
       title="Manajemen Kelas"
       description="Atur kelas, dosen pengampu, dan daftar mahasiswa."
@@ -518,11 +551,11 @@ export default function Classes() {
               </div>
               
               <DialogFooter className="mt-6">
-                <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
+                <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)} disabled={saving}>
                   Batal
                 </Button>
-                <Button type="button" onClick={() => setIsSaveConfirmOpen(true)}>
-                  Simpan
+                <Button type="button" onClick={() => setIsSaveConfirmOpen(true)} disabled={saving} aria-busy={saving}>
+                  {saving ? 'Menyimpan…' : 'Simpan'}
                 </Button>
               </DialogFooter>
           </form>
@@ -627,6 +660,9 @@ export default function Classes() {
             : `Kelas "${formData.name || 'tanpa nama'}" akan ditambahkan ke sistem.`
         }
         confirmText={editingClass ? 'Ya, Simpan' : 'Ya, Tambah'}
+        variant="primary"
+        loading={saving}
+        loadingText="Menyimpan…"
       />
 
       <ConfirmModal
@@ -636,6 +672,9 @@ export default function Classes() {
         title="Tambah mahasiswa ke kelas?"
         description={`${selectedStudentName} akan didaftarkan ke kelas ini.`}
         confirmText="Ya, Tambahkan"
+        variant="primary"
+        loading={enrolling}
+        loadingText="Mendaftarkan…"
       />
 
       <ConfirmModal
@@ -653,6 +692,8 @@ export default function Classes() {
         }
         confirmText="Ya, Keluarkan"
         variant="danger"
+        loading={removingStudent}
+        loadingText="Mengeluarkan…"
       />
 
       {/* Delete Class Confirmation Modal */}
@@ -664,7 +705,10 @@ export default function Classes() {
         description="Apakah Anda yakin ingin menghapus kelas ini? Semua data pendaftaran (enrollment) mahasiswa akan ikut terhapus secara permanen."
         confirmText="Ya, Hapus Kelas"
         variant="danger"
+        loading={deleting}
+        loadingText="Menghapus…"
       />
     </AdminPageShell>
+    </>
   );
 }

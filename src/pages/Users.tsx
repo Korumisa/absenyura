@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
 import { ConfirmModal } from '@/components/ConfirmModal';
+import ActionLoadingOverlay from '@/components/ActionLoadingOverlay';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -73,6 +74,11 @@ export default function Users() {
   // Delete Modal state
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
+
+  // Loading state untuk aksi tulis
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   const queryParams = new URLSearchParams({
     page: page.toString(),
@@ -139,6 +145,8 @@ export default function Users() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (saving) return;
+    setSaving(true);
     try {
       const payload = {
         ...formData,
@@ -167,6 +175,8 @@ export default function Users() {
       mutate();
     } catch (error: unknown) {
       toast.error(toastErrorMessage(error, 'Terjadi kesalahan'));
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -176,7 +186,8 @@ export default function Users() {
   };
 
   const confirmDeleteUser = async () => {
-    if (!userToDelete) return;
+    if (!userToDelete || deleting) return;
+    setDeleting(true);
     try {
       await api.delete(`/users/${userToDelete}`);
       toast.success('Pengguna berhasil dihapus');
@@ -184,7 +195,9 @@ export default function Users() {
       setUserToDelete(null);
       mutate();
     } catch (error) {
-      toast.error('Gagal menghapus pengguna');
+      toast.error(toastErrorMessage(error, 'Gagal menghapus pengguna'));
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -279,7 +292,8 @@ export default function Users() {
   };
 
   const confirmResetDevice = async () => {
-    if (!userToReset) return;
+    if (!userToReset || resetting) return;
+    setResetting(true);
     try {
       await api.post(`/users/${userToReset}/reset-device`);
       toast.success('Perangkat berhasil di-reset');
@@ -287,11 +301,23 @@ export default function Users() {
       setUserToReset(null);
       mutate();
     } catch (error) {
-      toast.error('Gagal mereset perangkat');
+      toast.error(toastErrorMessage(error, 'Gagal mereset perangkat'));
+    } finally {
+      setResetting(false);
     }
   };
 
+  const actionOverlayLabel = saving
+    ? (editingUser ? 'Menyimpan perubahan pengguna…' : 'Menambah pengguna…')
+    : deleting
+      ? 'Menghapus pengguna…'
+      : resetting
+        ? 'Mereset perangkat…'
+        : null;
+
   return (
+    <>
+    <ActionLoadingOverlay show={!!actionOverlayLabel} label={actionOverlayLabel ?? ''} />
     <AdminPageShell
       title="Manajemen Pengguna"
       description="Kelola user, import Excel, dan reset perangkat."
@@ -664,10 +690,12 @@ export default function Users() {
             </div>
 
             <DialogFooter className="mt-6">
-              <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
+              <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)} disabled={saving}>
                 Batal
               </Button>
-              <Button type="submit">{editingUser ? 'Simpan' : 'Tambah'}</Button>
+              <Button type="submit" disabled={saving} aria-busy={saving}>
+                {saving ? 'Menyimpan…' : editingUser ? 'Simpan' : 'Tambah'}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -719,6 +747,8 @@ export default function Users() {
         description="Apakah Anda yakin ingin mereset perangkat mahasiswa ini? Mereka akan diminta login ulang dan mengikat perangkat baru pada sesi absensi berikutnya."
         confirmText="Ya, Reset Perangkat"
         variant="warning"
+        loading={resetting}
+        loadingText="Mereset…"
       />
 
       {/* Delete User Confirmation Modal */}
@@ -730,7 +760,10 @@ export default function Users() {
         description="Apakah Anda yakin ingin menghapus pengguna ini? Seluruh data yang terkait dengan pengguna ini akan dihapus secara permanen."
         confirmText="Ya, Hapus Pengguna"
         variant="danger"
+        loading={deleting}
+        loadingText="Menghapus…"
       />
     </AdminPageShell>
+    </>
   );
 }

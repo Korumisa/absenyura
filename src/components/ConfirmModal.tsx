@@ -1,3 +1,4 @@
+import { Loader2 } from 'lucide-react'
 import { ConfirmModalProps } from '@/types/confirmodal'
 import {
   AlertDialog,
@@ -18,7 +19,9 @@ export function ConfirmModal({
   description,
   confirmText = 'Ya, Konfirmasi',
   cancelText = 'Batal',
-  variant = 'danger'
+  variant = 'danger',
+  loading = false,
+  loadingText = 'Memproses…',
 }: ConfirmModalProps) {
   const actionClassName =
     variant === 'danger'
@@ -28,16 +31,41 @@ export function ConfirmModal({
         : 'bg-brand hover:bg-brand/90'
 
   return (
-    <AlertDialog open={isOpen} onOpenChange={(open) => (!open ? onClose() : undefined)}>
+    <AlertDialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open && !loading) onClose();
+      }}
+    >
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={onClose}>{cancelText}</AlertDialogCancel>
-          <AlertDialogAction className={actionClassName} onClick={onConfirm}>
-            {confirmText}
+          <AlertDialogCancel onClick={onClose} disabled={loading}>
+            {cancelText}
+          </AlertDialogCancel>
+          <AlertDialogAction
+            className={actionClassName}
+            onClick={(e) => {
+              if (loading) {
+                e.preventDefault();
+                return;
+              }
+              onConfirm();
+            }}
+            disabled={loading}
+            aria-busy={loading}
+          >
+            {loading ? (
+              <span className="inline-flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                {loadingText}
+              </span>
+            ) : (
+              confirmText
+            )}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

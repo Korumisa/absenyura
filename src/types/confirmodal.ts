@@ -8,4 +8,8 @@ export interface ConfirmModalProps {
   confirmText?: string;
   cancelText?: string;
   variant?: 'danger' | 'warning' | 'primary';
+  /** Saat true: tombol confirm dinonaktifkan, label diganti, modal tidak bisa ditutup */
+  loading?: boolean;
+  /** Label tombol confirm saat loading (default: "Memproses…") */
+  loadingText?: string;
 }

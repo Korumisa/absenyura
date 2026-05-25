@@ -11,7 +11,7 @@ export const runCronJob = async () => {
   // Prevent concurrent runs and enforce 1-minute minimum interval
   const nowTime = Date.now();
   if (isRunning || nowTime - lastRunTime < 60000) return;
-  
+
   isRunning = true;
   lastRunTime = nowTime;
 

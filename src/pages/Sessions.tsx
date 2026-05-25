@@ -16,6 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { ConfirmModal } from '@/components/ConfirmModal';
+import ActionLoadingOverlay from '@/components/ActionLoadingOverlay';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -113,6 +114,7 @@ export default function Sessions() {
   // Delete Session Confirmation Modal
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [isSaveConfirmOpen, setIsSaveConfirmOpen] = useState(false);
 
   // Nilai minimum untuk input datetime-local (waktu sekarang dalam zona lokal)
@@ -297,7 +299,8 @@ export default function Sessions() {
   };
 
   const confirmDeleteSession = async () => {
-    if (!sessionToDelete) return;
+    if (!sessionToDelete || deleting) return;
+    setDeleting(true);
     try {
       await api.delete(`/sessions/${sessionToDelete}`);
       toast.success('Sesi berhasil dihapus');
@@ -305,7 +308,9 @@ export default function Sessions() {
       setSessionToDelete(null);
       mutate();
     } catch (error) {
-      toast.error('Gagal menghapus sesi');
+      toast.error(toastErrorMessage(error, 'Gagal menghapus sesi'));
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -339,7 +344,15 @@ export default function Sessions() {
     resetDeps: [searchTerm, filterDate, filterLocation, filterClass],
   });
 
+  const actionOverlayLabel = saving
+    ? (editingSession ? 'Menyimpan perubahan sesi…' : 'Membuat sesi…')
+    : deleting
+      ? 'Menghapus sesi…'
+      : null;
+
   return (
+    <>
+    <ActionLoadingOverlay show={!!actionOverlayLabel} label={actionOverlayLabel ?? ''} />
     <AdminPageShell
       title="Sesi Kehadiran"
       description="Kelola sesi, jadwal, lokasi, dan QR."
@@ -1028,6 +1041,9 @@ export default function Sessions() {
             : `Sesi "${formData.title || 'tanpa judul'}" akan dibuat. Pastikan jadwal dan kelas sudah benar.`
         }
         confirmText={editingSession ? 'Ya, Simpan' : 'Ya, Buat Sesi'}
+        variant="primary"
+        loading={saving}
+        loadingText="Menyimpan…"
       />
 
       {/* Delete Session Confirmation Modal */}
@@ -1039,7 +1055,10 @@ export default function Sessions() {
         description="Apakah Anda yakin ingin menghapus sesi absensi ini? Seluruh data yang terkait dengan sesi ini akan ikut terhapus."
         confirmText="Ya, Hapus Sesi"
         variant="danger"
+        loading={deleting}
+        loadingText="Menghapus…"
       />
     </AdminPageShell>
+    </>
   );
 }
