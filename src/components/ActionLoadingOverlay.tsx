@@ -8,5 +8,5 @@ export default function ActionLoadingOverlay({
   show: boolean;
   label: string;
 }) {
-  return <PublicLoadingOverlay show={show} label={label} className="z-[80]" />;
+  return <PublicLoadingOverlay show={show} label={label} className="z-[100]" />;
 }

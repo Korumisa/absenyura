@@ -32,6 +32,7 @@ import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { useClientPagination } from '@/hooks/useClientPagination';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
 import { TablePagination } from '@/components/ui/TablePagination';
+import { applyApiFieldErrors, firstFieldErrorMessage } from '@/lib/apiFieldErrors';
 
 const WIZARD_LABELS = ['Info & Lokasi', 'Jadwal', 'Aturan Absen', 'Kelas'] as const;
 const WIZARD_HINTS = [
@@ -67,22 +68,6 @@ function sessionStatusBadgeVariant(status: string): 'success' | 'outline' | 'sec
   if (status === 'ACTIVE') return 'success';
   if (status === 'UPCOMING') return 'outline';
   return 'secondary';
-}
-
-function applyValidationErrors(err: unknown, setFormErrors: (e: FormFieldErrors) => void): boolean {
-  const status = (err as { response?: { status?: number } })?.response?.status;
-  const data = (err as { response?: { data?: { errors?: Record<string, unknown> } } })?.response?.data;
-  if (status !== 422 || !data?.errors || typeof data.errors !== 'object') return false;
-
-  const mapped: FormFieldErrors = {};
-  for (const [key, val] of Object.entries(data.errors)) {
-    const field = key as FormFieldKey;
-    const msg = Array.isArray(val) ? val[0] : typeof val === 'string' ? val : null;
-    if (msg) mapped[field] = String(msg);
-  }
-  if (Object.keys(mapped).length === 0) return false;
-  setFormErrors(mapped);
-  return true;
 }
 
 export default function Sessions() {
@@ -139,6 +124,7 @@ export default function Sessions() {
   const canProceedWizard = (step: number) => {
     if (step === 1) return Boolean(formData.title.trim() && formData.location_id);
     if (step === 2) return Boolean(formData.session_start && formData.session_end);
+    if (step === 3) return Boolean(formData.check_in_open_at && formData.check_in_close_at);
     return true;
   };
 
@@ -219,61 +205,117 @@ export default function Sessions() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const validateSessionForm = (): Record<string, string> => {
+    const openAtMs = new Date(formData.check_in_open_at).getTime();
+    const closeAtMs = new Date(formData.check_in_close_at).getTime();
+    const sessionStartMs = new Date(formData.session_start).getTime();
+    const sessionEndMs = new Date(formData.session_end).getTime();
+    const nowMs = Date.now();
+    const isEditOngoing = Boolean(editingSession) && editingSession?.status !== 'UPCOMING';
+
+    const errors: Record<string, string> = {};
+    if (!formData.title.trim()) {
+      errors.title = 'Judul sesi wajib diisi.';
+    }
+    if (!formData.location_id) {
+      errors.location_id = 'Pilih lokasi sesi.';
+    }
+    if (Number.isNaN(closeAtMs) || Number.isNaN(openAtMs)) {
+      errors.check_in_close_at = 'Format waktu tidak valid.';
+    } else {
+      if (!isEditOngoing && closeAtMs <= nowMs + 60_000) {
+        errors.check_in_close_at = 'Tutup absen harus minimal 1 menit ke depan dari sekarang.';
+      }
+      if (closeAtMs <= openAtMs) {
+        errors.check_in_close_at = 'Tutup absen harus setelah Buka absen.';
+      }
+      if (!Number.isNaN(sessionEndMs) && sessionEndMs < sessionStartMs) {
+        errors.session_end = 'Berakhir sesi tidak boleh sebelum mulai sesi.';
+      }
+    }
+    return errors;
+  };
+
+  const focusWizardStepForErrors = (errors: Record<string, string>) => {
+    if (errors.title || errors.location_id || errors.qr_mode) {
+      setWizardStep(1);
+    } else if (errors.session_start || errors.session_end) {
+      setWizardStep(2);
+    } else if (errors.check_in_open_at || errors.check_in_close_at || errors.late_threshold_minutes) {
+      setWizardStep(3);
+    }
+  };
+
+  const buildSessionPayload = () => {
+    const base = {
+      title: formData.title.trim(),
+      description: formData.description || undefined,
+      location_id: formData.location_id,
+      qr_mode: formData.qr_mode,
+      session_start: new Date(formData.session_start).toISOString(),
+      session_end: new Date(formData.session_end).toISOString(),
+      check_in_open_at: new Date(formData.check_in_open_at).toISOString(),
+      check_in_close_at: new Date(formData.check_in_close_at).toISOString(),
+      late_threshold_minutes: Number(formData.late_threshold_minutes),
+      require_checkout: formData.require_checkout,
+      class_ids: formData.class_ids,
+    };
+    if (editingSession) {
+      return { ...base, status: formData.status };
+    }
+    return base;
+  };
+
+  const openSaveConfirm = () => {
+    const errors = validateSessionForm();
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      focusWizardStepForErrors(errors);
+      toast.error(Object.values(errors)[0]);
+      return;
+    }
+    setIsSaveConfirmOpen(true);
+  };
+
+  const saveSession = async () => {
     if (saving) return;
     setSaving(true);
     setFormErrors({});
 
     try {
-      const openAtMs = new Date(formData.check_in_open_at).getTime();
-      const closeAtMs = new Date(formData.check_in_close_at).getTime();
-      const sessionStartMs = new Date(formData.session_start).getTime();
-      const sessionEndMs = new Date(formData.session_end).getTime();
-      const nowMs = Date.now();
-      const isEditOngoing = Boolean(editingSession) && editingSession?.status !== 'UPCOMING';
-
-      const errors: Record<string, string> = {};
-      if (Number.isNaN(closeAtMs) || Number.isNaN(openAtMs)) {
-        errors.check_in_close_at = 'Format waktu tidak valid.';
-      } else {
-        if (!isEditOngoing && closeAtMs <= nowMs + 60_000) {
-          errors.check_in_close_at = 'Tutup absen harus minimal 1 menit ke depan dari sekarang.';
-        }
-        if (closeAtMs <= openAtMs) {
-          errors.check_in_close_at = 'Tutup absen harus setelah Buka absen.';
-        }
-        if (!Number.isNaN(sessionEndMs) && sessionEndMs < sessionStartMs) {
-          errors.session_end = 'Berakhir sesi tidak boleh sebelum mulai sesi.';
-        }
-      }
+      const errors = validateSessionForm();
       if (Object.keys(errors).length > 0) {
         setFormErrors(errors);
-        setSaving(false);
+        focusWizardStepForErrors(errors);
+        toast.error(Object.values(errors)[0]);
+        setIsSaveConfirmOpen(false);
         return;
       }
 
-      const payload = {
-        ...formData,
-        session_start: new Date(formData.session_start).toISOString(),
-        session_end: new Date(formData.session_end).toISOString(),
-        check_in_open_at: new Date(formData.check_in_open_at).toISOString(),
-        check_in_close_at: new Date(formData.check_in_close_at).toISOString(),
-        class_ids: formData.class_ids,
-      };
+      const payload = buildSessionPayload();
 
       if (editingSession) {
-        await api.put(`/sessions/${editingSession.id}`, payload);
+        const res = await api.put(`/sessions/${editingSession.id}`, payload);
+        if (res.data?.success === false) {
+          throw new Error(res.data?.message || res.data?.error || 'Gagal memperbarui sesi');
+        }
         toast.success('Sesi berhasil diperbarui');
       } else {
-        await api.post('/sessions', payload);
+        const res = await api.post('/sessions', payload);
+        if (res.data?.success === false) {
+          throw new Error(res.data?.message || res.data?.error || 'Gagal membuat sesi');
+        }
         toast.success('Sesi berhasil dibuat');
       }
       setIsSaveConfirmOpen(false);
       setIsModalOpen(false);
-      mutate();
+      await mutate();
     } catch (error: unknown) {
-      if (!applyValidationErrors(error, setFormErrors)) {
+      const fieldErrors = applyApiFieldErrors(error, setFormErrors);
+      if (fieldErrors) {
+        focusWizardStepForErrors(fieldErrors);
+        toast.error(firstFieldErrorMessage(fieldErrors) ?? toastErrorMessage(error, 'Gagal menyimpan sesi'));
+      } else {
         toast.error(toastErrorMessage(error, 'Gagal menyimpan sesi'));
       }
     } finally {
@@ -1018,7 +1060,7 @@ export default function Sessions() {
                     disabled={saving}
                     aria-busy={saving}
                     className="min-h-11"
-                    onClick={() => setIsSaveConfirmOpen(true)}
+                    onClick={openSaveConfirm}
                   >
                     {saving ? 'Menyimpan…' : editingSession ? 'Simpan Perubahan' : 'Buat Sesi'}
                   </Button>
@@ -1030,10 +1072,8 @@ export default function Sessions() {
 
       <ConfirmModal
         isOpen={isSaveConfirmOpen}
-        onClose={() => setIsSaveConfirmOpen(false)}
-        onConfirm={() => {
-          void handleSubmit({ preventDefault: () => {} } as React.FormEvent);
-        }}
+        onClose={() => !saving && setIsSaveConfirmOpen(false)}
+        onConfirm={saveSession}
         title={editingSession ? 'Simpan perubahan sesi?' : 'Buat sesi baru?'}
         description={
           editingSession

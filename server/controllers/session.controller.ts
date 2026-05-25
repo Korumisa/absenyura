@@ -117,6 +117,15 @@ export const createSession = async (req: Request, res: Response): Promise<void> 
     const uniqueClassIds = Array.from(new Set(incomingClassIds));
     const useMultiClass = uniqueClassIds.length > 0;
 
+    if (!title || !String(title).trim()) {
+      sendSessionTimeError(res, { field: 'title', message: 'Judul sesi wajib diisi.', error_code: 'MISSING_TITLE' });
+      return;
+    }
+    if (!location_id) {
+      sendSessionTimeError(res, { field: 'location_id', message: 'Lokasi sesi wajib dipilih.', error_code: 'MISSING_LOCATION' });
+      return;
+    }
+
     const timeError = validateSessionTimes(
       { session_start, session_end, check_in_open_at, check_in_close_at },
       { allowPastClose: false },
@@ -182,14 +191,18 @@ export const createSession = async (req: Request, res: Response): Promise<void> 
     }
 
     if (expectedUserIds.length > 0) {
-      await prisma.notification.createMany({
-        data: expectedUserIds.map(id => ({
-          user_id: id,
-          title: 'Jadwal Sesi Baru',
-          message: `Sesi baru "${title}" telah dijadwalkan pada ${new Date(session_start).toLocaleString('id-ID')}.`,
-          type: 'INFO'
-        }))
-      });
+      try {
+        await prisma.notification.createMany({
+          data: expectedUserIds.map(id => ({
+            user_id: id,
+            title: 'Jadwal Sesi Baru',
+            message: `Sesi baru "${title}" telah dijadwalkan pada ${new Date(session_start).toLocaleString('id-ID')}.`,
+            type: 'INFO'
+          }))
+        });
+      } catch (notifyErr) {
+        console.error('Error sending session notifications (session saved):', notifyErr);
+      }
     }
 
     res.status(201).json({ success: true, data: session });

@@ -2,7 +2,7 @@ import { ReactNode } from 'react';
 export interface ConfirmModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: () => void;
+  onConfirm: () => void | Promise<void>;
   title: string;
   description: ReactNode;
   confirmText?: string;
