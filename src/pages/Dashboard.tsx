@@ -7,7 +7,10 @@ import { Users, Calendar, CheckCircle2, Clock, MapPin, FileText, BarChart3, QrCo
 import AdminPageShell from '@/components/AdminPageShell';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
 import { AttendanceChartLegend } from '@/components/charts/AttendanceChartLegend';
+import { AttendanceChartLoadingOverlay } from '@/components/charts/AttendanceChartLoadingOverlay';
+import { AttendanceChartSkeleton } from '@/components/charts/AttendanceChartSkeleton';
 import { type ChartFilterValue } from '@/lib/attendanceChartTheme';
+import { cn } from '@/lib/utils';
 
 const DashboardAttendanceBarChart = lazy(
   () => import('@/components/charts/DashboardAttendanceBarChart'),
@@ -69,7 +72,13 @@ export default function Dashboard() {
   const [dateRange, setDateRange] = useState('30');
 
   const fetcher = (url: string) => api.get(url).then(res => res.data.data);
-  const { data, error, isLoading: loading, isValidating, mutate } = useSWR(user?.id ? `/dashboard?range=${dateRange}` : null, fetcher, { revalidateOnFocus: false });
+  const { data, error, isLoading: loading, isValidating, mutate } = useSWR(
+    user?.id ? `/dashboard?range=${dateRange}` : null,
+    fetcher,
+    { revalidateOnFocus: false, keepPreviousData: true },
+  );
+
+  const chartRefreshing = isValidating && data !== undefined;
 
   const activeSession = useMemo(() => {
     const sessions = data?.recent_sessions ?? [];
@@ -440,32 +449,33 @@ export default function Dashboard() {
                 </div>
               </div>
               
-              <div className="relative min-h-[320px] w-full min-w-0" aria-busy={isValidating}>
-                {isValidating ? (
-                  <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-background/60">
-                    <p className="text-sm font-medium text-muted-foreground dark:text-zinc-300">Memperbarui grafik…</p>
-                  </div>
-                ) : null}
+              <div className="relative min-h-[320px] w-full min-w-0" aria-busy={chartRefreshing}>
+                {chartRefreshing ? <AttendanceChartLoadingOverlay /> : null}
                 {chartData.length === 0 ? (
-                  <div className="flex h-[320px] items-center justify-center text-sm text-muted-foreground">
-                    Belum ada data grafik untuk rentang ini.
-                  </div>
+                  chartRefreshing ? (
+                    <AttendanceChartSkeleton />
+                  ) : (
+                    <div className="flex h-[320px] items-center justify-center text-sm text-muted-foreground">
+                      Belum ada data grafik untuk rentang ini.
+                    </div>
+                  )
                 ) : (
-                  <Suspense
-                    fallback={
-                      <div className="flex h-[320px] items-center justify-center text-sm text-muted-foreground">
-                        Memuat grafik…
-                      </div>
-                    }
+                  <div
+                    className={cn(
+                      'transition-opacity duration-200',
+                      chartRefreshing && 'pointer-events-none opacity-40',
+                    )}
                   >
-                    <DashboardAttendanceBarChart
-                      chartData={chartData}
-                      chartFilter={chartFilter}
-                      chartStacked={chartStacked}
-                      chartBarSize={chartBarSize}
-                      chartPointCount={chartPointCount}
-                    />
-                  </Suspense>
+                    <Suspense fallback={<AttendanceChartSkeleton />}>
+                      <DashboardAttendanceBarChart
+                        chartData={chartData}
+                        chartFilter={chartFilter}
+                        chartStacked={chartStacked}
+                        chartBarSize={chartBarSize}
+                        chartPointCount={chartPointCount}
+                      />
+                    </Suspense>
+                  </div>
                 )}
                 {chartData.length > 0 ? (
                   <AttendanceChartLegend chartFilter={chartFilter as ChartFilterValue} />
