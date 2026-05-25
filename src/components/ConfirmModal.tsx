@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Loader2 } from 'lucide-react'
-import { ConfirmModalProps } from '@/types/confirmodal'
+import { ConfirmModalProps } from '@/types/confirmModal'
 import {
   AlertDialog,
   AlertDialogAction,

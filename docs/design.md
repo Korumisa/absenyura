@@ -6,6 +6,7 @@ Dokumen singkat untuk menjaga konsistensi UI. **Dua halaman berbeda** di bawah i
 |-----------|---------------|------------|
 | **Publik** | `/` (beranda) | [`PublicHome.tsx`](../src/pages/public/PublicHome.tsx), [`PublicLayout.tsx`](../src/components/PublicLayout.tsx) |
 | **Admin** | `/classes` | [`Classes.tsx`](../src/pages/Classes.tsx), [`AdminPageShell.tsx`](../src/components/AdminPageShell.tsx), [`ClassCard.tsx`](../src/components/classes/ClassCard.tsx) |
+| **Publik (modular)** | `/` section | [`src/components/public/home/`](../src/components/public/home/) — hero, struktur, section CMS |
 
 Token global: [`src/index.css`](../src/index.css), [`tailwind.config.js`](../tailwind.config.js).
 

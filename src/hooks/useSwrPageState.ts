@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { SWRResponse } from 'swr';
-
-const SLOW_LOADING_MS = 5000;
-const AUTO_RETRY_INTERVAL_MS = 6000;
-const MAX_AUTO_RETRIES = 4;
+import {
+  AUTO_RETRY_INTERVAL_MS,
+  MAX_AUTO_RETRIES,
+  SLOW_LOADING_MS,
+  computeIsPending,
+  shouldShowErrorUi,
+  shouldShowSlowLoadingHint,
+} from './swrPageStateLogic';
 
 /** [UX] State SWR terstandar: skeleton saat menunggu, retry otomatis, error UI setelah percobaan habis */
 export function useSwrPageState<T>(swr: Pick<SWRResponse<T>, 'data' | 'error' | 'isLoading' | 'isValidating' | 'mutate'>) {
@@ -83,20 +87,20 @@ export function useSwrPageState<T>(swr: Pick<SWRResponse<T>, 'data' | 'error' | 
   }, [isSlowLoading, isFetchFailed, autoRetryCount, showErrorUi, scheduleAutoRetry, clearRetryTimer]);
 
   useEffect(() => {
-    // Hanya tampilkan error merah jika fetch benar-benar gagal — bukan karena lambat saja
-    if (isFetchFailed && autoRetryCount >= MAX_AUTO_RETRIES) {
+    if (shouldShowErrorUi(isFetchFailed, autoRetryCount)) {
       setShowErrorUi(true);
     }
   }, [autoRetryCount, isFetchFailed]);
 
-  /** Tampilkan skeleton (termasuk saat retry otomatis) */
-  const isPending =
-    isInitialLoading || ((isSlowLoading || isFetchFailed) && !showErrorUi);
-
+  const isPending = computeIsPending(isInitialLoading, isSlowLoading, isFetchFailed, showErrorUi);
   const isRefreshing = isValidating && data !== undefined;
   const isError = showErrorUi;
-  const showSlowLoadingHint =
-    isSlowLoading && !isFetchFailed && data === undefined && autoRetryCount >= MAX_AUTO_RETRIES;
+  const showSlowLoadingHint = shouldShowSlowLoadingHint(
+    isSlowLoading,
+    isFetchFailed,
+    data !== undefined,
+    autoRetryCount,
+  );
 
   return {
     data,

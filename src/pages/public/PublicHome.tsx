@@ -1,353 +1,60 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useMemo } from 'react';
 import PublicLayout from '@/components/PublicLayout';
 import { ArrowRight, Lightbulb, PenLine, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import useSWR from 'swr';
-import api from '@/services/api';
-import type { PublicGalleryAlbum, PublicPost, PublicProfile, PublicProgram, PublicRecruitment, PublicStructureGroup } from '@/types/publicSite';
+import type { PublicPost, PublicProgram, PublicRecruitment } from '@/types/publicSite';
 import PublicEnter from '@/components/PublicEnter';
 import PublicReveal from '@/components/PublicReveal';
 import PublicCoverImage from '@/components/PublicCoverImage';
 import PublicProgramCard from '@/components/PublicProgramCard';
-import useHorizontalWheelScroll from '@/lib/useHorizontalWheelScroll';
-import { useReducedMotion } from '@/lib/useReducedMotion';
-import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { PublicPageError } from '@/components/public/PublicPageError';
 import { Skeleton } from '@/components/ui/skeleton';
 import { hasText, showPublicSection } from '@/lib/publicContent';
-import { BrandLogoImage } from '@/components/public/BrandLogoImage';
-function HorizontalSnapRail({
-  children,
-  ariaLabel,
-  setScroller,
-  onScroll,
-}: {
-  children: React.ReactNode;
-  ariaLabel: string;
-  setScroller?: (el: HTMLDivElement | null) => void;
-  onScroll?: React.UIEventHandler<HTMLDivElement>;
-}) {
-  const wheel = useHorizontalWheelScroll(true);
-  return (
-    <div
-      ref={(node) => {
-        wheel.ref(node);
-        setScroller?.(node as HTMLDivElement | null);
-      }}
-      onWheelCapture={wheel.onWheel}
-      onScroll={onScroll}
-      className="overflow-x-auto overflow-y-hidden pb-2 scrollbar-hide"
-      style={{
-        touchAction: 'pan-x',
-        overscrollBehaviorX: 'contain',
-        overscrollBehaviorY: 'contain',
-        WebkitOverflowScrolling: 'touch' as any,
-      }}
-      role="region"
-      aria-label={ariaLabel}
-      tabIndex={0}
-    >
-      {children}
-    </div>
-  );
-}
-
-function getDivisionDisplayTitle(input: string) {
-  const raw = String(input ?? '').trim();
-  const lower = raw.toLowerCase();
-  if (lower.includes('badan pengurus harian') || lower === 'bph') return 'Pengurus Inti';
-  return raw || 'Divisi';
-}
-
-function getDivisionTagline(input: string) {
-  const title = getDivisionDisplayTitle(input);
-  const t = title.toLowerCase();
-  if (t.includes('pengurus inti') || t.includes('inti')) return 'Arah strategis, koordinasi, dan pengambilan keputusan organisasi.';
-  if (t.includes('kominfo')) return 'Publikasi, dokumentasi, dan pengelolaan media organisasi.';
-  if (t.includes('psdm')) return 'Pengembangan anggota, pelatihan, dan internal organisasi.';
-  if (t.includes('humas')) return 'Kemitraan, komunikasi, dan relasi eksternal organisasi.';
-  if (t.includes('minat') || t.includes('bakat')) return 'Wadah kegiatan, lomba, dan pengembangan prestasi anggota.';
-  return 'Kolaborasi dan eksekusi program kerja divisi.';
-}
-
-function DivisionRail({
-  label,
-  groups,
-}: {
-  label: string;
-  groups: PublicStructureGroup[];
-}) {
-  const ordered = useMemo(
-    () =>
-      groups
-        .slice()
-        .sort((a, b) => (Number(a.sort_order ?? 999) || 999) - (Number(b.sort_order ?? 999) || 999))
-        .filter((g) => (g.members ?? []).length > 0),
-    [groups],
-  );
-
-  const scrollerRef = useRef<HTMLDivElement | null>(null);
-  const groupRefs = useRef<Array<HTMLDivElement | null>>([]);
-  const offsets = useRef<number[]>([]);
-  const rafScroll = useRef<number | null>(null);
-  const [activeTitle, setActiveTitle] = useState(() => getDivisionDisplayTitle(ordered[0]?.title ?? ''));
-  const reducedMotion = useReducedMotion();
-
-  const recalc = () => {
-    offsets.current = groupRefs.current.map((el) => el?.offsetLeft ?? 0);
-  };
-
-  const updateActive = () => {
-    const el = scrollerRef.current;
-    if (!el) return;
-    const left = el.scrollLeft;
-    const list = offsets.current;
-    if (!list.length) return;
-    let best = 0;
-    let bestDist = Infinity;
-    for (let i = 0; i < list.length; i++) {
-      const d = Math.abs(list[i] - left);
-      if (d < bestDist) {
-        bestDist = d;
-        best = i;
-      }
-    }
-    const next = getDivisionDisplayTitle(ordered[best]?.title ?? '');
-    if (next && next !== activeTitle) setActiveTitle(next);
-  };
-
-  useEffect(() => {
-    setActiveTitle(getDivisionDisplayTitle(ordered[0]?.title ?? ''));
-    requestAnimationFrame(() => {
-      recalc();
-      updateActive();
-    });
-    const onResize = () => {
-      recalc();
-      updateActive();
-    };
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, [ordered.length]);
-
-  const onScroll = () => {
-    if (rafScroll.current) return;
-    rafScroll.current = requestAnimationFrame(() => {
-      rafScroll.current = null;
-      updateActive();
-    });
-  };
-
-  if (!ordered.length) return null;
-
-  const tagline = getDivisionTagline(activeTitle);
-
-  return (
-    <div>
-      <div className="mx-auto max-w-3xl text-center">
-        <div className="inline-flex items-center rounded-full bg-[var(--public-primary)]/10 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-[var(--public-primary)]">
-          {label}
-        </div>
-        <div className="mt-5">
-          <div
-            key={activeTitle}
-            className={[
-              'text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl',
-              reducedMotion ? '' : 'animate-in fade-in slide-in-from-bottom-2 duration-300',
-            ].join(' ')}
-          >
-            <span className="text-[var(--public-primary)]">{activeTitle}</span>
-          </div>
-          <div className="relative mx-auto mt-4 h-px w-full max-w-5xl bg-gradient-to-r from-transparent via-[var(--public-primary)]/35 to-transparent" />
-          <p
-            key={tagline}
-            className={[
-              'mt-3 text-sm font-medium text-muted-foreground',
-              reducedMotion ? '' : 'animate-in fade-in slide-in-from-bottom-1 duration-300',
-            ].join(' ')}
-          >
-            {tagline}
-          </p>
-        </div>
-      </div>
-
-      <div className="mt-8 relative -mr-4 pr-4 sm:-mr-6 sm:pr-6">
-        <div className="pointer-events-none absolute inset-y-0 left-0 w-12 bg-gradient-to-r from-slate-50/95 to-transparent" />
-        <div className="pointer-events-none absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-slate-50/95 to-transparent" />
-        <HorizontalSnapRail
-          ariaLabel={label}
-          setScroller={(el) => {
-            scrollerRef.current = el;
-          }}
-          onScroll={onScroll}
-        >
-          <div className="flex w-max gap-8 px-2">
-            {ordered.map((group, gi) => {
-              const members = (group.members ?? []).slice(0, 8);
-              return (
-                <div
-                  key={group.id}
-                  ref={(el) => {
-                    groupRefs.current[gi] = el;
-                  }}
-                  className="flex snap-start gap-4"
-                >
-                  {members.map((m) => {
-                    const initial = String(m.name ?? '').trim().slice(0, 1).toUpperCase() || 'A';
-                    return (
-                      <Link
-                        key={m.id}
-                        to="/struktur-organisasi"
-                        className="group relative w-[240px] shrink-0 overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-[var(--public-primary)]/25 sm:w-[260px]"
-                      >
-                        <div className="relative aspect-[4/5] w-full bg-slate-100">
-                          {m.photo_url ? (
-                            <PublicCoverImage
-                              url={m.photo_url}
-                              alt={m.name}
-                              imgClassName="object-cover grayscale transition duration-500 group-hover:grayscale-0"
-                            />
-                          ) : (
-                            <div className="grid h-full w-full place-items-center bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.02))]">
-                              <div className="grid h-20 w-20 place-items-center rounded-2xl bg-white/80 text-4xl font-extrabold text-[var(--public-primary)] ring-1 ring-black/10">
-                                {initial}
-                              </div>
-                            </div>
-                          )}
-                          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/80 via-black/15 to-transparent" />
-                          <div className="absolute inset-x-0 bottom-0 p-4">
-                            <div className="truncate text-sm font-extrabold tracking-tight text-white">{m.role}</div>
-                            <div className="mt-1 truncate text-xs font-semibold text-white/90">{m.name}</div>
-                          </div>
-                        </div>
-                      </Link>
-                    );
-                  })}
-                </div>
-              );
-            })}
-          </div>
-        </HorizontalSnapRail>
-      </div>
-    </div>
-  );
-}
-
-function BrandMark({ className, src, name }: { className?: string; src: string; name: string }) {
-  if (src)
-    return (
-      <div className={className}>
-        <BrandLogoImage src={src} alt={name || 'Logo'} className="h-full w-full" />
-      </div>
-    );
-  const first = String(name || '').trim().slice(0, 1).toUpperCase() || 'H';
-  return (
-    <div
-      className={[
-        className,
-        'grid place-items-center rounded-2xl bg-[var(--public-primary)]/15 text-[var(--public-primary)] ring-1 ring-black/10',
-      ].join(' ')}
-    >
-      <div className="text-2xl font-extrabold">{first}</div>
-    </div>
-  );
-}
-
-function normalizeYoutubeEmbedUrl(input: string) {
-  const raw = String(input ?? '').trim();
-  if (!raw) return '';
-  if (raw.includes('tiktok.com/embed')) return raw.startsWith('http://') ? raw.replace(/^http:\/\//, 'https://') : raw;
-  if (raw.includes('instagram.com') && raw.includes('/embed')) return raw.startsWith('http://') ? raw.replace(/^http:\/\//, 'https://') : raw;
-  if (raw.includes('youtube.com/embed/') || raw.includes('youtube-nocookie.com/embed/')) return raw;
-  const directId = raw.match(/^[a-zA-Z0-9_-]{6,}$/)?.[0];
-  if (directId) return `https://www.youtube.com/embed/${directId}`;
-  try {
-    const url = new URL(raw.startsWith('http') ? raw : `https://${raw}`);
-    const host = url.hostname.replace(/^www\./, '');
-    let id = '';
-    if (host.endsWith('tiktok.com')) {
-      const m = url.pathname.match(/\/video\/(\d+)/);
-      const vid = m?.[1] || '';
-      if (vid) return `https://www.tiktok.com/embed/v2/${vid}`;
-      const embed = url.pathname.match(/\/embed\/v2\/(\d+)/)?.[1] || url.pathname.match(/\/embed\/(\d+)/)?.[1] || '';
-      if (embed) return `https://www.tiktok.com/embed/v2/${embed}`;
-      return '';
-    }
-    if (host.endsWith('instagram.com')) {
-      const parts = url.pathname.split('/').filter(Boolean);
-      const kind = parts[0] || '';
-      const code = parts[1] || '';
-      if (!kind || !code) return '';
-      if (kind !== 'p' && kind !== 'reel' && kind !== 'tv') return '';
-      return `https://www.instagram.com/${kind}/${code}/embed/`;
-    }
-    if (host === 'youtu.be') id = url.pathname.split('/').filter(Boolean)[0] || '';
-    if (host.endsWith('youtube.com')) {
-      if (url.pathname === '/watch') id = url.searchParams.get('v') || '';
-      else if (url.pathname.startsWith('/shorts/')) id = url.pathname.split('/')[2] || '';
-      else if (url.pathname.startsWith('/embed/')) id = url.pathname.split('/')[2] || '';
-      else if (url.pathname.startsWith('/live/')) id = url.pathname.split('/')[2] || '';
-    }
-    id = id.trim();
-    if (!id) return '';
-    return `https://www.youtube.com/embed/${id}`;
-  } catch {
-    return '';
-  }
-}
-
+import { BrandMark } from '@/components/public/home/BrandMark';
+import { DivisionRail } from '@/components/public/home/DivisionRail';
+import { isCoreStructureGroup } from '@/components/public/home/divisionUtils';
+import { PublicHomeCmsHint } from '@/components/public/home/PublicHomeCmsHint';
+import { normalizeYoutubeEmbedUrl } from '@/lib/normalizeYoutubeEmbedUrl';
+import { PublicSlowLoadingHint } from '@/components/public/PublicSlowLoadingHint';
+import { usePublicHomeData, isPublicProfileSparse } from '@/hooks/usePublicHomeData';
 export default function PublicHome() {
-  const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
-  const profileSwr = useSWR<PublicProfile | null>('/public-site/profile', fetcher, { revalidateOnFocus: false });
-  const { data: profile, isInitialLoading: isLoadingProfile, isError: isProfileError, retry: retryProfile } =
-    useSwrPageState(profileSwr);
+  const {
+    profile: profileState,
+    programs: programsState,
+    structure: structureState,
+    latest: latestState,
+    recruitments: recruitmentsState,
+    galleries: galleriesState,
+    lombaPaged: lombaState,
+  } = usePublicHomeData();
 
-  const [loadBelowFold, setLoadBelowFold] = useState(false);
-  useEffect(() => {
-    if (isLoadingProfile && !profile) return;
-    const run = () => setLoadBelowFold(true);
-    if ('requestIdleCallback' in window) {
-      const id = window.requestIdleCallback(run, { timeout: 1800 });
-      return () => window.cancelIdleCallback(id);
-    }
-    const t = setTimeout(run, 400);
-    return () => clearTimeout(t);
-  }, [isLoadingProfile, profile]);
+  const profile = profileState.data;
+  const isLoadingProfile = profileState.isPending;
+  const isProfileError = profileState.isError;
+  const retryProfile = profileState.retry;
+  const showProfileSlowHint = profileState.showSlowLoadingHint;
 
-  const belowFoldKey = loadBelowFold ? true : null;
-  const { data: programs = [], isLoading: isLoadingPrograms } = useSWR<PublicProgram[]>(
-    belowFoldKey ? '/public-site/programs' : null,
-    fetcher,
-    { revalidateOnFocus: false },
-  );
-  const { data: structure = [], isLoading: isLoadingStructure } = useSWR<PublicStructureGroup[]>(
-    belowFoldKey ? '/public-site/structure' : null,
-    fetcher,
-    { revalidateOnFocus: false },
-  );
-  const { data: latest, isLoading: isLoadingLatest } = useSWR<{ items: PublicPost[] }>(
-    belowFoldKey ? '/public-site/posts?type=BERITA&page=1&pageSize=3' : null,
-    (url) => api.get(url).then((r) => r.data.data),
-    { revalidateOnFocus: false },
-  );
-  const { data: recruitments = [], isLoading: isLoadingRecruitments } = useSWR<PublicRecruitment[]>(
-    belowFoldKey ? '/public-site/recruitments' : null,
-    fetcher,
-    { revalidateOnFocus: false },
-  );
-  const { data: galleries = [], isLoading: isLoadingGalleries } = useSWR<PublicGalleryAlbum[]>(
-    belowFoldKey ? '/public-site/galleries' : null,
-    fetcher,
-    { revalidateOnFocus: false },
-  );
-  const { data: lombaPaged, isLoading: isLoadingLomba } = useSWR<{ items: PublicPost[] }>(
-    belowFoldKey ? '/public-site/posts?type=LOMBA&page=1&pageSize=6' : null,
-    (url) => api.get(url).then((r) => r.data.data),
-    { revalidateOnFocus: false },
-  );
+  const programs = programsState.data ?? [];
+  const isLoadingPrograms = programsState.isPending;
+  const structure = structureState.data ?? [];
+  const isLoadingStructure = structureState.isPending;
+  const latest = latestState.data;
+  const isLoadingLatest = latestState.isPending;
+  const recruitments = recruitmentsState.data ?? [];
+  const isLoadingRecruitments = recruitmentsState.isPending;
+  const galleries = galleriesState.data ?? [];
+  const isLoadingGalleries = galleriesState.isPending;
+  const lombaPaged = lombaState.data;
+  const isLoadingLomba = lombaState.isPending;
 
   if (isProfileError && !profile) {
-    return <PublicPageError title="Gagal memuat beranda" error={profileSwr.error} onRetry={retryProfile} />;
+    return (
+      <PublicPageError
+        title="Gagal memuat beranda"
+        error={profileState.swr.error}
+        onRetry={retryProfile}
+      />
+    );
   }
 
   const orgName = profile?.org_name ?? '';
@@ -378,11 +85,9 @@ export default function PublicHome() {
   const misiRole = profile?.misi_role ?? '';
 
   const coreMembers = useMemo(() => {
-    const isCoreByTitle = (title: string) => {
-      const t = String(title ?? '').toLowerCase();
-      return t.includes('inti') || t.includes('badan pengurus harian') || t === 'bph';
-    };
-    const coreGroups = structure.filter((g) => Boolean((g as any).is_core) || isCoreByTitle(g.title));
+    const coreGroups = structure.filter(
+      (g) => Boolean((g as { is_core?: boolean }).is_core) || isCoreStructureGroup(g.title),
+    );
     return coreGroups.flatMap((g) => (g.members ?? []) as any[]);
   }, [structure]);
 
@@ -410,6 +115,7 @@ export default function PublicHome() {
 
   return (
     <PublicLayout>
+      {!isLoadingProfile && isPublicProfileSparse(profile) ? <PublicHomeCmsHint /> : null}
       <div className="relative">
         <div>
           <section
@@ -428,6 +134,10 @@ export default function PublicHome() {
                       <Skeleton className="h-4 w-40" />
                       <Skeleton className="h-4 w-56" />
                       <Skeleton className="h-4 w-48" />
+                    </div>
+                  ) : showProfileSlowHint ? (
+                    <div className="mt-4 max-w-md">
+                      <PublicSlowLoadingHint onRetry={retryProfile} />
                     </div>
                   ) : (
                     <>
@@ -682,7 +392,7 @@ export default function PublicHome() {
             <div className="pointer-events-none absolute -left-10 top-10 h-44 w-44 rounded-full bg-[var(--public-primary)]/10 blur-3xl" />
             <div className="pointer-events-none absolute -right-10 bottom-8 h-52 w-52 rounded-full bg-sky-400/10 blur-3xl" />
             {isLoadingPrograms ? (
-              <div className="h-40" />
+              <div className="h-40" aria-busy="true" />
             ) : programs.length === 0 ? (
               <div className="relative overflow-hidden rounded-2xl border border-dashed border-black/15 bg-white/60 p-6 text-left text-sm text-muted-foreground sm:p-10">
                 <div className="pointer-events-none absolute -left-16 -top-16 h-52 w-52 rounded-[48%_52%_58%_42%/44%_43%_57%_56%] bg-[var(--public-primary)]/14 blur-3xl" />
@@ -845,11 +555,9 @@ export default function PublicHome() {
               const ordered = structure
                 .slice()
                 .sort((a, b) => (Number(a.sort_order ?? 999) || 999) - (Number(b.sort_order ?? 999) || 999));
-              const isCore = (title: string) => {
-                const t = String(title ?? '').toLowerCase();
-                return t.includes('badan pengurus harian') || t === 'bph' || t.includes('inti');
-              };
-              const core = ordered.filter((g) => Boolean((g as any).is_core) || isCore(g.title) || (Number(g.sort_order ?? 999) || 999) === 0);
+              const core = ordered.filter(
+                (g) => Boolean((g as { is_core?: boolean }).is_core) || isCoreStructureGroup(g.title) || (Number(g.sort_order ?? 999) || 999) === 0,
+              );
               const coreIds = new Set(core.map((g) => g.id));
               const support = ordered.filter((g) => !coreIds.has(g.id));
               return (

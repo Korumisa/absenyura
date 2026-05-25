@@ -23,6 +23,7 @@ import AdminPageShell from '@/components/AdminPageShell';
 import { TablePagination } from '@/components/ui/TablePagination';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
+import { SlowLoadingHint } from '@/components/admin/SlowLoadingHint';
 import type { User } from '@/types/user';
 import type { PaginationMeta } from '@/types/common';
 import { ClassMultiSelect, type ClassOption } from '@/components/ClassMultiSelect';
@@ -89,7 +90,7 @@ export default function Users() {
   });
 
   const swr = useSWR(`/users?${queryParams.toString()}`, fetcher, { revalidateOnFocus: false });
-  const { isInitialLoading: loading, isError, retry } = useSwrPageState(swr);
+  const { isPending: loading, isError, showSlowLoadingHint, retry } = useSwrPageState(swr);
   const { data, mutate, isValidating } = swr;
 
   const users: User[] = Array.isArray(data?.data) ? data.data : [];
@@ -342,6 +343,8 @@ export default function Users() {
     >
       {isError ? (
         <ErrorWithRetry title="Gagal memuat pengguna" error={swr.error} onRetry={retry} />
+      ) : showSlowLoadingHint ? (
+        <SlowLoadingHint onRetry={retry} />
       ) : (
       <div className="overflow-hidden rounded-xl border border-border bg-card shadow-card dark:shadow-none dark:ring-1 dark:ring-white/10">
         <div className="flex flex-col items-center justify-between gap-3 border-b border-border p-5 md:flex-row">

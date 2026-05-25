@@ -67,8 +67,19 @@ Aplikasi Frontend dapat diakses di `http://localhost:5173` (atau 5174) dan Backe
 
 ---
 
-## 🌍 Panduan Deployment ke VPS (Production)
-Sangat disarankan mendeploy aplikasi ini ke **VPS (Virtual Private Server)** seperti DigitalOcean, AWS EC2, Niagahoster, atau IDCloudHost karena aplikasi ini perlu **menyimpan foto selfie mahasiswa ke dalam folder lokal** (`/uploads/attendance`).
+## 🌍 Deployment Production
+
+### Opsi A — Vercel + Cloudinary (disarankan)
+
+Deploy utama memakai **Vercel** (frontend + API serverless). Foto selfie dan aset CMS diunggah ke **Cloudinary** — `CLOUDINARY_URL` **wajib** di production (lihat `.env.example`).
+
+- Tidak perlu folder `/uploads/` di server
+- HTTPS otomatis (wajib untuk kamera & GPS di browser)
+- Cron sesi: lihat bagian [Cron status sesi](#️-cron-status-sesi-vercel-hobby--gratis) di bawah
+
+### Opsi B — VPS + penyimpanan lokal (alternatif)
+
+Untuk VPS (DigitalOcean, AWS EC2, Niagahoster, dll.) tanpa Cloudinary, foto selfie dapat disimpan di **`/uploads/attendance`** di disk server. Pastikan Nginx mem-proxy path `/uploads/` ke backend (contoh di bawah).
 
 ### Langkah 1: Persiapkan VPS Anda
 1. Login ke VPS Anda via SSH.

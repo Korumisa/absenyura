@@ -9,6 +9,7 @@ import useSWR from 'swr';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { useClientPagination } from '@/hooks/useClientPagination';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
+import { SlowLoadingHint } from '@/components/admin/SlowLoadingHint';
 import { TablePagination } from '@/components/ui/TablePagination';
 import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -56,7 +57,7 @@ export default function Locations() {
 
   const fetcher = (url: string) => api.get(url).then(res => res.data.data);
   const swr = useSWR<Location[]>('/locations', fetcher, { revalidateOnFocus: false });
-  const { data: locations = [], isInitialLoading: loading, isError, retry, mutate } = useSwrPageState(swr);
+  const { data: locations = [], isPending: loading, isError, showSlowLoadingHint, retry, mutate } = useSwrPageState(swr);
 
   const hasFilters = Boolean(searchTerm.trim()) || wifiFilter !== 'ALL';
 
@@ -268,6 +269,8 @@ export default function Locations() {
     >
       {isError ? (
         <ErrorWithRetry title="Gagal memuat lokasi" error={swr.error} onRetry={retry} />
+      ) : showSlowLoadingHint ? (
+        <SlowLoadingHint onRetry={retry} />
       ) : (
       <div className="overflow-hidden rounded-xl border border-border bg-card shadow-card dark:shadow-none dark:ring-1 dark:ring-white/10">
         <div className="flex flex-col gap-5 border-b border-border p-5 sm:flex-row">

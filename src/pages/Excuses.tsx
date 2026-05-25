@@ -19,6 +19,7 @@ import { formatClassLabel } from '@/lib/classLabel';
 import AdminPageShell from '@/components/AdminPageShell';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
+import { SlowLoadingHint } from '@/components/admin/SlowLoadingHint';
 import { excuseStatusLabel } from '@/lib/statusLabel';
 import { toastErrorMessage } from '@/lib/toastMessage';
 import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
@@ -83,7 +84,7 @@ export default function Excuses() {
 
   const fetcher = (url: string) => api.get(url).then(res => res.data.data);
   const swr = useSWR<Excuse[]>('/excuses', fetcher, { revalidateOnFocus: false });
-  const { data: excuses = [], isInitialLoading: loading, isError, retry, mutate } = useSwrPageState(swr);
+  const { data: excuses = [], isPending: loading, isError, showSlowLoadingHint, retry, mutate } = useSwrPageState(swr);
   const hasFilters = Boolean(searchTerm.trim()) || statusFilter !== 'ALL' || reasonFilter !== 'ALL';
 
   const resolveProofUrl = (proofUrl: string | null | undefined) => {
@@ -288,6 +289,8 @@ export default function Excuses() {
           error={swr.error}
           onRetry={retry}
         />
+      ) : showSlowLoadingHint ? (
+        <SlowLoadingHint onRetry={retry} />
       ) : (
       <div className="overflow-hidden rounded-xl border border-border bg-card shadow-card dark:shadow-none dark:ring-1 dark:ring-white/10">
         <div className="flex flex-col gap-5 border-b border-border p-5 sm:flex-row">

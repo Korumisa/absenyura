@@ -4,6 +4,7 @@ import useSWR from 'swr';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { useClientPagination } from '@/hooks/useClientPagination';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
+import { SlowLoadingHint } from '@/components/admin/SlowLoadingHint';
 import { TablePagination } from '@/components/ui/TablePagination';
 import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
 import api from '@/services/api';
@@ -54,7 +55,7 @@ export default function Classes() {
 
   const fetcher = (url: string) => api.get(url).then(res => res.data.data);
   const swr = useSWR<ClassItem[]>('/classes', fetcher, { revalidateOnFocus: false });
-  const { data: classes = [], isInitialLoading: loading, isError, retry, mutate } = useSwrPageState(swr);
+  const { data: classes = [], isPending: loading, isError, showSlowLoadingHint, retry, mutate } = useSwrPageState(swr);
   const hasSearch = Boolean(searchTerm.trim());
 
   const fetchLecturers = async () => {
@@ -209,6 +210,8 @@ export default function Classes() {
     >
       {isError ? (
         <ErrorWithRetry title="Gagal memuat kelas" error={swr.error} onRetry={retry} />
+      ) : showSlowLoadingHint ? (
+        <SlowLoadingHint onRetry={retry} />
       ) : (
       <div className="overflow-hidden rounded-xl border border-border bg-card shadow-card dark:shadow-none dark:ring-1 dark:ring-white/10">
         <div className="flex flex-col gap-3 border-b border-border p-5 sm:flex-row sm:flex-wrap sm:items-center">
