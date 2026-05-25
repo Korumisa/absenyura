@@ -324,20 +324,20 @@ export default function Users() {
       variant="plain"
       icon={<UsersIcon className="h-5 w-5" />}
       actions={
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto">
+        <>
           <Button
             type="button"
             onClick={() => setIsImportModalOpen(true)}
-            className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700"
+            className="bg-emerald-600 hover:bg-emerald-700"
           >
             <Upload size={18} className="mr-2" />
             Import Excel
           </Button>
-          <Button type="button" onClick={() => handleOpenModal()} className="w-full sm:w-auto">
+          <Button type="button" onClick={() => handleOpenModal()}>
             <Plus size={18} className="mr-2" />
             Tambah Pengguna
           </Button>
-        </div>
+        </>
       }
     >
       {isError ? (

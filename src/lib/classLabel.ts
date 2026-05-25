@@ -3,6 +3,21 @@ export type ClassLabelSource = {
   semester?: number | null;
 };
 
+export type ClassDetailSource = ClassLabelSource & {
+  description?: string | null;
+  course_code?: string | null;
+};
+
+/** Baris bawah nama kelas: deskripsi, atau kode MK jika deskripsi kosong (tanpa strip `-`). */
+export function classDetailLine(cls: ClassDetailSource | null | undefined): string | null {
+  if (!cls) return null;
+  const desc = String(cls.description ?? '').trim();
+  if (desc) return desc;
+  const code = String(cls.course_code ?? '').trim();
+  if (code) return code;
+  return null;
+}
+
 export function formatClassLabel(cls: ClassLabelSource | null | undefined): string {
   if (!cls) return '';
   const name = String(cls.name ?? '').trim();

@@ -23,6 +23,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import AdminPageShell from '@/components/AdminPageShell';
 import type { ClassItem } from '@/types/class';
 import type { User } from '@/types/user';
+import { classDetailLine } from '@/lib/classLabel';
 
 export default function Classes() {
   const { user: currentUser } = useAuthStore();
@@ -40,7 +41,7 @@ export default function Classes() {
   const [selectedStudentId, setSelectedStudentId] = useState<string>('');
 
   const [lecturers, setLecturers] = useState<User[]>([]);
-  const [subjectsData, setSubjectsData] = useState<{code: string, name: string}[]>([]);
+  const [subjectsData, setSubjectsData] = useState<{ code: string; name: string }[]>([]);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -104,12 +105,16 @@ export default function Classes() {
         semester: cls.semester || 1,
         course_code: cls.course_code || '',
         description: cls.description || '',
-        lecturer_id: cls.lecturer_id
+        lecturer_id: cls.lecturer_id,
       });
     } else {
       setEditingClass(null);
       setFormData({
-        name: '', semester: 1, course_code: '', description: '', lecturer_id: currentUser?.role === 'ADMIN' ? currentUser.id : ''
+        name: '',
+        semester: 1,
+        course_code: '',
+        description: '',
+        lecturer_id: currentUser?.role === 'ADMIN' ? currentUser.id : '',
       });
     }
     setIsModalOpen(true);
@@ -250,7 +255,7 @@ export default function Classes() {
       icon={<BookOpen className="h-5 w-5" />}
       actions={
         currentUser?.role !== 'USER' ? (
-          <Button onClick={() => handleOpenModal()} className="w-full sm:w-auto">
+          <Button onClick={() => handleOpenModal()}>
             <Plus className="w-4 h-4 mr-2" />
             Buat Kelas Baru
           </Button>
@@ -296,13 +301,17 @@ export default function Classes() {
                   />
                 </li>
               )
-            : paginatedClasses.map((c) => (
+            : paginatedClasses.map((c) => {
+                const detail = classDetailLine(c);
+                return (
                 <li key={c.id} className="rounded-2xl border border-border bg-card p-4">
                   <div className="flex items-start gap-2">
                     <BookOpen size={18} className="mt-0.5 shrink-0 text-indigo-500" />
                     <div className="min-w-0 flex-1">
                       <p className="font-bold text-foreground">{c.name}</p>
-                      <p className="text-sm text-muted-foreground">{c.course_code || '—'} · Semester {c.semester}</p>
+                      {detail ? (
+                        <p className="text-sm text-muted-foreground">{detail}</p>
+                      ) : null}
                       <p className="mt-1 text-sm text-muted-foreground">Dosen: {c.lecturer.name}</p>
                       <div className="mt-2 flex flex-wrap gap-2">
                         <Badge variant="secondary">{c._count.enrollments} mahasiswa</Badge>
@@ -333,7 +342,8 @@ export default function Classes() {
                     </div>
                   ) : null}
                 </li>
-              ))}
+              );
+              })}
         </ul>
 
         <div className="hidden overflow-x-auto md:block">
@@ -380,7 +390,9 @@ export default function Classes() {
                   </TableCell>
                 </TableRow>
               ) : (
-                paginatedClasses.map((c) => (
+                paginatedClasses.map((c) => {
+                  const detail = classDetailLine(c);
+                  return (
                   <TableRow key={c.id}>
                     <TableCell>
                       <div className="flex items-center gap-2 font-medium text-foreground">
@@ -390,9 +402,9 @@ export default function Classes() {
                           Sem {c.semester}
                         </Badge>
                       </div>
-                      <div className="text-sm text-muted-foreground mt-1">
-                        {c.course_code || '-'}
-                      </div>
+                      {detail ? (
+                        <div className="mt-1 text-sm text-muted-foreground">{detail}</div>
+                      ) : null}
                     </TableCell>
                     <TableCell className="text-muted-foreground dark:text-zinc-300">
                       {c.lecturer.name}
@@ -445,7 +457,8 @@ export default function Classes() {
                       <TableCell className="text-right">-</TableCell>
                     )}
                   </TableRow>
-                ))
+                );
+                })
               )}
             </TableBody>
           </Table>
@@ -474,16 +487,16 @@ export default function Classes() {
               <div className="space-y-2">
                 <Label>Pilih Mata Kuliah <span className="text-red-500">*</span></Label>
                 {subjectsData.length > 0 ? (
-                  <Select 
-                    required 
-                    value={formData.course_code} 
-                    onValueChange={val => {
-                      const selectedSubject = subjectsData.find(s => s.code === val);
+                  <Select
+                    required
+                    value={formData.course_code}
+                    onValueChange={(val) => {
+                      const selectedSubject = subjectsData.find((s) => s.code === val);
                       if (selectedSubject) {
                         setFormData({
-                          ...formData, 
+                          ...formData,
                           course_code: selectedSubject.code,
-                          name: selectedSubject.name // Auto-fill class name with subject name
+                          name: selectedSubject.name,
                         });
                       }
                     }}
@@ -492,7 +505,7 @@ export default function Classes() {
                       <SelectValue placeholder="Pilih Mata Kuliah" />
                     </SelectTrigger>
                     <SelectContent>
-                      {subjectsData.map(s => (
+                      {subjectsData.map((s) => (
                         <SelectItem key={s.code} value={s.code}>
                           {s.code} - {s.name}
                         </SelectItem>

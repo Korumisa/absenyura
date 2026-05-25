@@ -31,7 +31,11 @@ export default function AdminPageShell({
             {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
           </div>
         </div>
-        {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
+        {actions ? (
+          <div className="flex w-full flex-col gap-2 sm:ml-auto sm:w-auto sm:flex-row sm:flex-wrap sm:items-center [&_button]:min-h-11 [&_button]:w-full [&_button]:sm:w-auto [&>div]:flex [&>div]:w-full [&>div]:flex-col [&>div]:gap-2 sm:[&>div]:w-auto sm:[&>div]:flex-row sm:[&>div]:flex-wrap">
+            {actions}
+          </div>
+        ) : null}
       </div>
     ) : heroVariant === 'gradient' ? (
       <div className="relative overflow-hidden rounded-xl border border-border bg-card shadow-card dark:shadow-none dark:ring-1 dark:ring-white/10">
@@ -48,7 +52,11 @@ export default function AdminPageShell({
               {description ? <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{description}</p> : null}
             </div>
           </div>
-          {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
+          {actions ? (
+            <div className="flex w-full flex-col gap-2 sm:ml-auto sm:w-auto sm:flex-row sm:flex-wrap sm:items-center [&_button]:min-h-11 [&_button]:w-full [&_button]:sm:w-auto [&>div]:flex [&>div]:w-full [&>div]:flex-col [&>div]:gap-2 sm:[&>div]:w-auto sm:[&>div]:flex-row sm:[&>div]:flex-wrap">
+              {actions}
+            </div>
+          ) : null}
         </div>
       </div>
     ) : (
@@ -65,7 +73,11 @@ export default function AdminPageShell({
               {description ? <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{description}</p> : null}
             </div>
           </div>
-          {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
+          {actions ? (
+            <div className="flex w-full flex-col gap-2 sm:ml-auto sm:w-auto sm:flex-row sm:flex-wrap sm:items-center [&_button]:min-h-11 [&_button]:w-full [&_button]:sm:w-auto [&>div]:flex [&>div]:w-full [&>div]:flex-col [&>div]:gap-2 sm:[&>div]:w-auto sm:[&>div]:flex-row sm:[&>div]:flex-wrap">
+              {actions}
+            </div>
+          ) : null}
         </div>
       </div>
     );

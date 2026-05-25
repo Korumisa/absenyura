@@ -32,6 +32,7 @@ import { ErrorWithRetry } from '@/components/ErrorWithRetry';
 import { attendanceBadgeVariant, attendanceStatusLabel } from '@/lib/statusLabel';
 import { toastErrorMessage } from '@/lib/toastMessage';
 import { ConfirmModal } from '@/components/ConfirmModal';
+import { DatePicker } from '@/components/ui/date-picker';
 
 const fetcher = (url: string) => api.get(url).then(res => res.data);
 
@@ -385,11 +386,11 @@ export default function Reports() {
       variant="plain"
       icon={<FileText className="h-5 w-5" />}
       actions={
-        <div className="flex gap-2">
+        <>
           <Button
             onClick={handleExportExcel}
             disabled={exporting !== 'none'}
-            className="min-h-11 bg-emerald-600 text-white hover:bg-emerald-700"
+            className="bg-emerald-600 text-white hover:bg-emerald-700"
             aria-busy={exporting === 'excel'}
           >
             <Download className="mr-2 h-4 w-4" aria-hidden="true" />
@@ -399,13 +400,12 @@ export default function Reports() {
             onClick={handleExportPDF}
             disabled={exporting !== 'none'}
             variant="destructive"
-            className="min-h-11"
             aria-busy={exporting === 'pdf'}
           >
             <FileText className="mr-2 h-4 w-4" aria-hidden="true" />
             {exporting === 'pdf' ? 'Menyiapkan PDF…' : 'Export PDF'}
           </Button>
-        </div>
+        </>
       }
     >
       {isError ? (
@@ -435,20 +435,20 @@ export default function Reports() {
             />
           </div>
           <div className="flex w-full items-center gap-2 sm:w-auto">
-            <Input
-              type="date"
+            <DatePicker
               value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="w-full sm:w-[150px]"
+              onChange={setStartDate}
+              placeholder="Dari tanggal"
+              className="w-full sm:w-[160px]"
             />
-            <span className="flex h-10 shrink-0 items-center px-0.5 text-muted-foreground" aria-hidden="true">
+            <span className="flex h-11 shrink-0 items-center px-0.5 text-muted-foreground" aria-hidden="true">
               –
             </span>
-            <Input
-              type="date"
+            <DatePicker
               value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="w-full sm:w-[150px]"
+              onChange={setEndDate}
+              placeholder="Sampai tanggal"
+              className="w-full sm:w-[160px]"
             />
           </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>

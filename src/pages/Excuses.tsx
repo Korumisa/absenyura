@@ -266,20 +266,20 @@ export default function Excuses() {
       variant="plain"
       icon={<FileText className="h-5 w-5" />}
       actions={
-        <div className="flex flex-wrap gap-2">
+        <>
           {currentUser?.role !== 'USER' ? (
-            <Button variant="outline" className="min-h-11" onClick={exportCsv} disabled={loading || filteredExcuses.length === 0}>
+            <Button variant="outline" onClick={exportCsv} disabled={loading || filteredExcuses.length === 0}>
               <Download className="mr-2 h-4 w-4" aria-hidden="true" />
               Unduh CSV
             </Button>
           ) : null}
           {currentUser?.role === 'USER' ? (
-            <Button className="min-h-11" onClick={() => setIsModalOpen(true)}>
+            <Button onClick={() => setIsModalOpen(true)}>
               <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
               Pengajuan baru
             </Button>
           ) : null}
-        </div>
+        </>
       }
     >
       {isError ? (

@@ -23,7 +23,11 @@ export default function AdminCard({
             {title ? <div className="text-sm font-semibold text-foreground">{title}</div> : null}
             {description ? <CardDescription>{description}</CardDescription> : null}
           </div>
-          {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
+          {actions ? (
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center [&_button]:min-h-11 [&_button]:w-full [&_button]:sm:w-auto">
+              {actions}
+            </div>
+          ) : null}
         </CardHeader>
       ) : null}
       <CardContent className="flex flex-col gap-6 p-5 sm:p-6">{children}</CardContent>
