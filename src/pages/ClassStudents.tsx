@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import useSWR from 'swr';
 import { ArrowLeft, Plus, Search, Trash2, UserCircle, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
@@ -9,6 +9,7 @@ import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { useClientPagination } from '@/hooks/useClientPagination';
 import AdminPageShell from '@/components/AdminPageShell';
 import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
+import { AdminBreadcrumbs } from '@/components/admin/AdminBreadcrumbs';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
 import ActionLoadingOverlay from '@/components/ActionLoadingOverlay';
 import { ConfirmModal } from '@/components/ConfirmModal';
@@ -201,14 +202,16 @@ export default function ClassStudents() {
       <AdminPageShell
         title="Daftar Mahasiswa Kelas"
         description="Kelola mahasiswa terdaftar di kelas ini."
+        breadcrumb={
+          <AdminBreadcrumbs
+            items={[
+              { label: 'Kelas', href: '/classes' },
+              { label: classInfo?.name ? classInfo.name : 'Detail Kelas' },
+            ]}
+          />
+        }
         variant="plain"
         icon={<UserCircle className="size-5" />}
-        actions={
-          <Button variant="outline" onClick={() => navigate('/classes')}>
-            <ArrowLeft className="mr-2 size-4" />
-            Kembali ke Kelas
-          </Button>
-        }
       >
         <div className="mb-6 overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-border dark:bg-card">
           <div className="border-b border-slate-200 bg-slate-50/80 px-5 py-5 sm:px-6 dark:border-border dark:bg-muted/30">
@@ -250,8 +253,26 @@ export default function ClassStudents() {
                   options={notEnrolled}
                   value={selectedStudentId}
                   onChange={setSelectedStudentId}
+                  placeholder="Pilih mahasiswa…"
+                  emptyLabel="Tidak ada mahasiswa tersisa"
                   disabled={notEnrolled.length === 0}
                 />
+                {notEnrolled.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    Semua mahasiswa yang tersedia sudah terdaftar di kelas ini.{` `}
+                    {currentUser?.role === 'SUPER_ADMIN' ? (
+                      <>
+                        Tambahkan mahasiswa baru lewat menu{' '}
+                        <Link to="/users" className="font-medium text-brand hover:underline">
+                          Pengguna
+                        </Link>
+                        .
+                      </>
+                    ) : (
+                      'Minta Super Admin menambahkan mahasiswa baru.'
+                    )}
+                  </p>
+                ) : null}
               </div>
               <Button
                 type="button"

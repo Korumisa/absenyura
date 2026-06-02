@@ -23,6 +23,7 @@ export function DatePicker({
   className,
   id,
   disabled,
+  popoverAlign = 'start',
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -30,6 +31,7 @@ export function DatePicker({
   className?: string;
   id?: string;
   disabled?: boolean;
+  popoverAlign?: 'start' | 'center' | 'end';
 }) {
   const selected = parseDateValue(value);
 
@@ -51,7 +53,7 @@ export function DatePicker({
           {selected ? format(selected, 'dd MMM yyyy', { locale: dateFnsId }) : placeholder}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
+      <PopoverContent className="w-auto p-0" align={popoverAlign}>
         <Calendar
           mode="single"
           selected={selected}

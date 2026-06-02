@@ -1,12 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import useSWR from 'swr';
 import { ArrowLeft, FileText, Smartphone, User } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '@/services/api';
+import { useAuthStore } from '@/stores/authStore';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
 import AdminPageShell from '@/components/AdminPageShell';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
+import { AdminBreadcrumbs } from '@/components/admin/AdminBreadcrumbs';
 import ActionLoadingOverlay from '@/components/ActionLoadingOverlay';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import { Button } from '@/components/ui/button';
@@ -44,6 +46,7 @@ export default function StudentDetail() {
   const { studentId = '' } = useParams<{ studentId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  const { user: currentUser } = useAuthStore();
 
   const backTo =
     (location.state as { from?: string } | null)?.from ||
@@ -64,12 +67,34 @@ export default function StudentDetail() {
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
   const [facultiesData, setFacultiesData] = useState<{ name: string; departments: string[] }[]>([]);
+  const [departmentQuery, setDepartmentQuery] = useState('');
   const [saving, setSaving] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
   const [resettingDevice, setResettingDevice] = useState(false);
   const [isSaveConfirmOpen, setIsSaveConfirmOpen] = useState(false);
   const [isPasswordConfirmOpen, setIsPasswordConfirmOpen] = useState(false);
   const [isResetDeviceOpen, setIsResetDeviceOpen] = useState(false);
+
+  const totalDepartments = useMemo(() => {
+    return facultiesData.reduce((acc, f) => acc + (f?.departments?.length ?? 0), 0);
+  }, [facultiesData]);
+
+  const filteredFacultiesData = useMemo(() => {
+    const q = departmentQuery.trim().toLowerCase();
+    if (!q) return facultiesData;
+    return facultiesData
+      .map((f) => {
+        const filteredDepartments = (f?.departments ?? []).filter((d) => {
+          const name =
+            typeof d === 'object' && d !== null
+              ? ((d as { name?: string }).name ?? String(d))
+              : String(d);
+          return String(name).toLowerCase().includes(q);
+        });
+        return { ...f, departments: filteredDepartments };
+      })
+      .filter((f) => (f?.departments?.length ?? 0) > 0);
+  }, [facultiesData, departmentQuery]);
 
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
 
@@ -222,6 +247,17 @@ export default function StudentDetail() {
       <AdminPageShell
         title="Biodata Mahasiswa"
         description="Perbarui data akun mahasiswa langsung dari halaman ini."
+        breadcrumb={
+          <AdminBreadcrumbs
+            items={[
+              { label: 'Kelas', href: '/classes' },
+              ...(classIdFromState
+                ? [{ label: 'Detail Kelas', href: `/classes/${classIdFromState}` }]
+                : []),
+              { label: profile?.name ?? 'Biodata Mahasiswa' },
+            ]}
+          />
+        }
         variant="plain"
         icon={<User className="size-5" />}
         actions={
@@ -240,10 +276,6 @@ export default function StudentDetail() {
                 Rekap Kehadiran
               </Button>
             ) : null}
-            <Button variant="outline" onClick={() => navigate(backTo)}>
-              <ArrowLeft className="mr-2 size-4" />
-              Kembali
-            </Button>
           </div>
         }
       >
@@ -251,7 +283,7 @@ export default function StudentDetail() {
           <aside className="space-y-4">
             <section className="rounded-lg border border-border bg-card p-5">
               <h2 className="text-sm font-semibold text-foreground">Ringkasan</h2>
-              <div className="mt-4 grid size-20 place-items-center rounded-full bg-brand/15 text-2xl font-bold text-brand">
+              <div className="mt-4 mx-auto grid size-20 place-items-center rounded-full bg-brand/15 text-2xl font-bold text-brand">
                 {isInitialLoading ? (
                   <Skeleton className="size-20 rounded-full" />
                 ) : (
@@ -268,11 +300,11 @@ export default function StudentDetail() {
                 </div>
               ) : (
                 <>
-                  <p className="mt-4 text-lg font-bold text-foreground">{form.name}</p>
-                  <p className="font-mono text-sm text-muted-foreground">
+                  <p className="mt-4 text-center text-lg font-bold text-foreground">{form.name}</p>
+                  <p className="text-center font-mono text-sm text-muted-foreground">
                     {form.nim_nip || 'Tanpa NIM'}
                   </p>
-                  <div className="mt-3 flex flex-wrap gap-2">
+                  <div className="mt-3 flex flex-wrap justify-center gap-2">
                     <Badge variant={form.is_active ? 'secondary' : 'outline'}>
                       {form.is_active ? 'Aktif' : 'Nonaktif'}
                     </Badge>
@@ -286,7 +318,7 @@ export default function StudentDetail() {
                     )}
                   </div>
                   {enrolledDate ? (
-                    <p className="mt-4 text-xs text-muted-foreground">
+                    <p className="mt-4 text-center text-xs text-muted-foreground">
                       Terdaftar sejak {enrolledDate}
                     </p>
                   ) : null}
@@ -403,41 +435,72 @@ export default function StudentDetail() {
                     <Label>
                       Program / Prodi <span className="text-destructive">*</span>
                     </Label>
-                    {facultiesData.length > 0 ? (
-                      <Select
-                        value={form.department || undefined}
-                        onValueChange={(val) => setForm((p) => ({ ...p, department: val }))}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Pilih prodi" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {facultiesData.map((f) => (
-                            <SelectGroup key={f.name}>
-                              <SelectLabel>{f.name}</SelectLabel>
-                              {f.departments?.map((d) => {
-                                const deptName =
-                                  typeof d === 'object' && d !== null
-                                    ? ((d as { name?: string }).name ?? String(d))
-                                    : String(d);
-                                return (
-                                  <SelectItem key={deptName} value={deptName}>
-                                    {deptName}
-                                  </SelectItem>
-                                );
-                              })}
-                            </SelectGroup>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <Input
-                        required
-                        value={form.department}
-                        onChange={(e) => setForm((p) => ({ ...p, department: e.target.value }))}
-                        placeholder="Nama prodi"
-                      />
-                    )}
+                    <Select
+                      value={form.department}
+                      onValueChange={(val) => setForm((p) => ({ ...p, department: val }))}
+                      disabled={facultiesData.length === 0}
+                      onOpenChange={(open) => {
+                        if (!open) setDepartmentQuery('');
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue
+                          placeholder={facultiesData.length ? 'Pilih prodi' : 'Belum ada prodi'}
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {totalDepartments > 10 ? (
+                          <div className="sticky top-0 z-10 border-b border-border bg-popover p-2">
+                            <Input
+                              value={departmentQuery}
+                              onChange={(e) => setDepartmentQuery(e.target.value)}
+                              placeholder="Cari prodi…"
+                              className="h-9"
+                            />
+                          </div>
+                        ) : null}
+                        {filteredFacultiesData.length === 0 && departmentQuery.trim() ? (
+                          <div className="px-3 py-4 text-sm text-muted-foreground">
+                            Tidak ada hasil
+                          </div>
+                        ) : null}
+                        {filteredFacultiesData.map((f) => (
+                          <SelectGroup key={f.name}>
+                            <SelectLabel>{f.name}</SelectLabel>
+                            {f.departments?.map((d) => {
+                              const deptName =
+                                typeof d === 'object' && d !== null
+                                  ? ((d as { name?: string }).name ?? String(d))
+                                  : String(d);
+                              return (
+                                <SelectItem key={deptName} value={deptName}>
+                                  {deptName}
+                                </SelectItem>
+                              );
+                            })}
+                          </SelectGroup>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {facultiesData.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">
+                        Data prodi belum tersedia.{` `}
+                        {currentUser?.role === 'SUPER_ADMIN' ? (
+                          <>
+                            Kelola di{' '}
+                            <Link
+                              to="/master-data"
+                              className="font-medium text-brand hover:underline"
+                            >
+                              Master Data
+                            </Link>
+                            .
+                          </>
+                        ) : (
+                          'Minta Super Admin menambahkan prodi.'
+                        )}
+                      </p>
+                    ) : null}
                   </div>
                   <div className="flex items-center gap-3 sm:col-span-2">
                     <Checkbox

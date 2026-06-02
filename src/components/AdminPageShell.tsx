@@ -3,6 +3,7 @@ import React from 'react';
 export default function AdminPageShell({
   title,
   description,
+  breadcrumb,
   actions,
   icon,
   variant = 'plain',
@@ -11,6 +12,7 @@ export default function AdminPageShell({
 }: {
   title: string;
   description?: React.ReactNode;
+  breadcrumb?: React.ReactNode;
   actions?: React.ReactNode;
   icon?: React.ReactNode;
   variant?: 'hero' | 'plain';
@@ -27,6 +29,7 @@ export default function AdminPageShell({
             </div>
           ) : null}
           <div className="space-y-1">
+            {breadcrumb ? <div className="pt-0.5">{breadcrumb}</div> : null}
             <h1 className="text-2xl font-bold text-foreground">{title}</h1>
             {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
           </div>
@@ -48,6 +51,7 @@ export default function AdminPageShell({
               </div>
             ) : null}
             <div className="min-w-0">
+              {breadcrumb ? <div className="pb-1">{breadcrumb}</div> : null}
               <h1 className="text-2xl font-bold tracking-tight text-foreground">{title}</h1>
               {description ? (
                 <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{description}</p>
@@ -71,6 +75,7 @@ export default function AdminPageShell({
               </div>
             ) : null}
             <div className="min-w-0">
+              {breadcrumb ? <div className="pb-1">{breadcrumb}</div> : null}
               <h1 className="text-2xl font-bold text-foreground">{title}</h1>
               {description ? (
                 <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{description}</p>

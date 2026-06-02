@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import useSWR from 'swr';
-import { ArrowLeft, FileText, Search, UserCircle2 } from 'lucide-react';
+import { FileText, Search, UserCircle2 } from 'lucide-react';
 import api from '@/services/api';
 import AdminPageShell from '@/components/AdminPageShell';
+import { AdminBreadcrumbs } from '@/components/admin/AdminBreadcrumbs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -151,16 +152,17 @@ export default function StudentAttendanceRecap() {
       description="Lihat ringkasan dan detail absensi mahasiswa sesuai scope akses Anda."
       variant="plain"
       icon={<FileText className="size-5" />}
-      actions={
-        <div className="flex flex-wrap gap-2">
-          <Button
-            variant="outline"
-            onClick={() => navigate(backToStudent || `/students/${studentId}`)}
-          >
-            <ArrowLeft className="mr-2 size-4" />
-            Kembali
-          </Button>
-        </div>
+      breadcrumb={
+        <AdminBreadcrumbs
+          items={[
+            { label: 'Kelas', href: '/classes' },
+            ...(classIdFromState
+              ? [{ label: 'Detail Kelas', href: `/classes/${classIdFromState}` }]
+              : []),
+            { label: 'Mahasiswa', href: backToStudent || `/students/${studentId}` },
+            { label: 'Rekap Kehadiran' },
+          ]}
+        />
       }
     >
       {isError ? (
@@ -270,6 +272,7 @@ export default function StudentAttendanceRecap() {
                     onChange={setEndDate}
                     placeholder="Sampai tanggal"
                     className="w-full sm:w-[160px]"
+                    popoverAlign="end"
                   />
                 </div>
               </div>

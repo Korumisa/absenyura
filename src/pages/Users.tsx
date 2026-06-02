@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import api from '@/services/api';
 import useSWR from 'swr';
 import { useAuthStore } from '@/stores/authStore';
@@ -104,6 +105,7 @@ export default function Users() {
     semester: 1,
   });
   const [facultiesData, setFacultiesData] = useState<{ name: string; departments: string[] }[]>([]);
+  const [departmentQuery, setDepartmentQuery] = useState('');
   const [classIds, setClassIds] = useState<string[]>([]);
   const [enrolledClasses, setEnrolledClasses] = useState<ClassOption[]>([]);
 
@@ -150,6 +152,25 @@ export default function Users() {
   useEffect(() => {
     fetchFaculties();
   }, []);
+
+  const totalDepartments = useMemo(() => {
+    return facultiesData.reduce((acc, f) => acc + (f?.departments?.length ?? 0), 0);
+  }, [facultiesData]);
+
+  const filteredFacultiesData = useMemo(() => {
+    const q = departmentQuery.trim().toLowerCase();
+    if (!q) return facultiesData;
+    return facultiesData
+      .map((f) => {
+        const filteredDepartments = (f?.departments ?? []).filter((d) => {
+          const name =
+            typeof d === 'object' && d !== null ? (d as any).name || (d as any).id : String(d);
+          return String(name).toLowerCase().includes(q);
+        });
+        return { ...f, departments: filteredDepartments };
+      })
+      .filter((f) => (f?.departments?.length ?? 0) > 0);
+  }, [facultiesData, departmentQuery]);
 
   const handleOpenModal = async (user: User | null = null) => {
     setClassIds([]);
@@ -732,46 +753,65 @@ export default function Users() {
                   <Label>
                     Departemen / Prodi <span className="text-red-500">*</span>
                   </Label>
-                  {facultiesData.length > 0 ? (
-                    <Select
-                      required
-                      value={formData.department}
-                      onValueChange={(val) => setFormData({ ...formData, department: val })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pilih Prodi" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {facultiesData.map((f) => {
-                          if (!f) return null;
-                          return (
-                            <SelectGroup key={f.name}>
-                              <SelectLabel>{f.name}</SelectLabel>
-                              {f.departments?.map((d) => {
-                                const deptName =
-                                  typeof d === 'object' && d !== null
-                                    ? (d as any).name || (d as any).id
-                                    : d;
-                                return (
-                                  <SelectItem key={deptName} value={deptName}>
-                                    {deptName}
-                                  </SelectItem>
-                                );
-                              })}
-                            </SelectGroup>
-                          );
-                        })}
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <Input
-                      type="text"
-                      required
-                      value={formData.department}
-                      onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                      placeholder="Masukkan Prodi"
-                    />
-                  )}
+                  <Select
+                    value={formData.department}
+                    onValueChange={(val) => setFormData({ ...formData, department: val })}
+                    disabled={facultiesData.length === 0}
+                    onOpenChange={(open) => {
+                      if (!open) setDepartmentQuery('');
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue
+                        placeholder={facultiesData.length ? 'Pilih Prodi' : 'Belum ada Prodi'}
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {totalDepartments > 10 ? (
+                        <div className="sticky top-0 z-10 border-b border-border bg-popover p-2">
+                          <Input
+                            value={departmentQuery}
+                            onChange={(e) => setDepartmentQuery(e.target.value)}
+                            placeholder="Cari prodi…"
+                            className="h-9"
+                          />
+                        </div>
+                      ) : null}
+                      {filteredFacultiesData.length === 0 && departmentQuery.trim() ? (
+                        <div className="px-3 py-4 text-sm text-muted-foreground">
+                          Tidak ada hasil
+                        </div>
+                      ) : null}
+                      {filteredFacultiesData.map((f) => {
+                        if (!f) return null;
+                        return (
+                          <SelectGroup key={f.name}>
+                            <SelectLabel>{f.name}</SelectLabel>
+                            {f.departments?.map((d) => {
+                              const deptName =
+                                typeof d === 'object' && d !== null
+                                  ? (d as any).name || (d as any).id
+                                  : d;
+                              return (
+                                <SelectItem key={deptName} value={deptName}>
+                                  {deptName}
+                                </SelectItem>
+                              );
+                            })}
+                          </SelectGroup>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                  {facultiesData.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">
+                      Data prodi belum tersedia. Tambahkan dulu di{' '}
+                      <Link to="/master-data" className="font-medium text-brand hover:underline">
+                        Master Data
+                      </Link>
+                      .
+                    </p>
+                  ) : null}
                 </div>
                 {formData.role === 'USER' ? (
                   <div className="space-y-2">

@@ -553,6 +553,7 @@ export default function Reports() {
                   onChange={setEndDate}
                   placeholder="Sampai tanggal"
                   className="w-full sm:w-[160px]"
+                  popoverAlign="end"
                 />
               </div>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
