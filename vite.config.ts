@@ -45,6 +45,7 @@ export default defineConfig(({ mode }) => {
           cleanupOutdatedCaches: true,
           clientsClaim: true,
           skipWaiting: true,
+          navigateFallbackDenylist: [/^\/assets\//],
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/api\.ipify\.org\/.*/i,

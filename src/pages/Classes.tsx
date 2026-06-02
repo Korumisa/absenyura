@@ -9,7 +9,7 @@ import { TablePagination } from '@/components/ui/TablePagination';
 import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
 import api from '@/services/api';
 import { useAuthStore } from '@/stores/authStore';
-import { Plus, Search, BookOpen } from 'lucide-react';
+import { Plus, Search, BookOpen, Pencil, Trash2 } from 'lucide-react';
 import ClassCard from '@/components/classes/ClassCard';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -27,6 +27,14 @@ import ActionLoadingOverlay from '@/components/ActionLoadingOverlay';
 import { toastErrorMessage } from '@/lib/utils/toastMessage';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -35,6 +43,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import AdminPageShell from '@/components/AdminPageShell';
+import { AdminTableShell, adminTableHeaderClass } from '@/components/admin/AdminTableShell';
 import type { ClassItem } from '@/types/class';
 import type { User } from '@/types/user';
 
@@ -239,87 +248,197 @@ export default function Classes() {
         ) : showSlowLoadingHint ? (
           <SlowLoadingHint onRetry={retry} />
         ) : (
-          <div className="overflow-hidden rounded-xl border border-border bg-card shadow-card dark:shadow-none dark:ring-1 dark:ring-white/10">
-            <div className="flex flex-col gap-3 border-b border-border p-5 sm:flex-row sm:flex-wrap sm:items-center">
-              <div className="relative w-full min-w-0 flex-1">
-                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  type="search"
-                  placeholder="Cari nama kelas, kode MK, atau dosen…"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-              {semesterOptions.length > 1 ? (
-                <Select value={semesterFilter} onValueChange={setSemesterFilter}>
-                  <SelectTrigger className="w-full sm:w-[180px]">
-                    <SelectValue placeholder="Semester" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">Semua semester</SelectItem>
-                    {semesterOptions.map((s) => (
-                      <SelectItem key={s} value={String(s)}>
-                        Semester {s}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : null}
-            </div>
-
-            <div
-              className="grid items-stretch gap-4 p-5 sm:grid-cols-2 xl:grid-cols-3"
-              aria-label="Daftar kelas"
-            >
-              {loading ? (
-                Array.from({ length: 6 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="flex h-full min-h-[220px] flex-col rounded-2xl border border-border p-5"
-                  >
-                    <Skeleton className="mb-4 size-14 rounded-full" />
-                    <Skeleton className="mb-2 h-6 w-40" />
-                    <Skeleton className="h-4 w-28" />
-                  </div>
-                ))
-              ) : filteredClasses.length === 0 ? (
-                <div className="col-span-full">
-                  <AdminEmptyState
-                    compact
-                    icon={BookOpen}
-                    title={
-                      hasSearch || semesterFilter !== 'ALL' ? 'Tidak ada hasil' : 'Belum ada kelas'
-                    }
-                    description={
-                      hasSearch || semesterFilter !== 'ALL'
-                        ? 'Ubah filter atau kata kunci pencarian.'
-                        : canManage
-                          ? 'Buat kelas baru untuk mengelola mahasiswa dan sesi.'
-                          : 'Anda belum terdaftar di kelas manapun.'
-                    }
+          <AdminTableShell
+            filter={
+              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                <div className="relative w-full min-w-0 flex-1">
+                  <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    type="search"
+                    placeholder="Cari nama kelas, kode MK, atau dosen…"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-9"
                   />
                 </div>
+                {semesterOptions.length > 1 ? (
+                  <Select value={semesterFilter} onValueChange={setSemesterFilter}>
+                    <SelectTrigger className="w-full sm:w-[180px]">
+                      <SelectValue placeholder="Semester" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ALL">Semua semester</SelectItem>
+                      {semesterOptions.map((s) => (
+                        <SelectItem key={s} value={String(s)}>
+                          Semester {s}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : null}
+              </div>
+            }
+            mobile={
+              loading ? (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="flex h-full min-h-[220px] flex-col rounded-2xl border border-border p-5"
+                    >
+                      <Skeleton className="mb-4 size-14 rounded-full" />
+                      <Skeleton className="mb-2 h-6 w-40" />
+                      <Skeleton className="h-4 w-28" />
+                    </div>
+                  ))}
+                </div>
+              ) : filteredClasses.length === 0 ? (
+                <AdminEmptyState
+                  compact
+                  icon={BookOpen}
+                  title={
+                    hasSearch || semesterFilter !== 'ALL' ? 'Tidak ada hasil' : 'Belum ada kelas'
+                  }
+                  description={
+                    hasSearch || semesterFilter !== 'ALL'
+                      ? 'Ubah filter atau kata kunci pencarian.'
+                      : canManage
+                        ? 'Buat kelas baru untuk mengelola mahasiswa dan sesi.'
+                        : 'Anda belum terdaftar di kelas manapun.'
+                  }
+                />
               ) : (
-                paginatedClasses.map((c) => (
-                  <ClassCard
-                    key={c.id}
-                    classItem={c}
-                    canManage={canManage}
-                    isSuperAdmin={isSuperAdmin}
-                    onOpen={() => openClassStudents(c.id)}
-                    onEdit={canManage ? () => handleOpenModal(c) : undefined}
-                    onDelete={isSuperAdmin ? () => openDeleteConfirm(c.id) : undefined}
-                  />
-                ))
-              )}
-            </div>
-            <TablePagination
-              meta={classesPaginationMeta}
-              onPageChange={setClassesPage}
-              itemLabel="kelas"
-            />
-          </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {paginatedClasses.map((c) => (
+                    <ClassCard
+                      key={c.id}
+                      classItem={c}
+                      canManage={canManage}
+                      isSuperAdmin={isSuperAdmin}
+                      onOpen={() => openClassStudents(c.id)}
+                      onEdit={canManage ? () => handleOpenModal(c) : undefined}
+                      onDelete={isSuperAdmin ? () => openDeleteConfirm(c.id) : undefined}
+                    />
+                  ))}
+                </div>
+              )
+            }
+            footer={
+              <TablePagination
+                meta={classesPaginationMeta}
+                onPageChange={setClassesPage}
+                itemLabel="kelas"
+              />
+            }
+          >
+            <Table>
+              <TableHeader className={adminTableHeaderClass}>
+                <TableRow>
+                  <TableHead className="w-12">No</TableHead>
+                  <TableHead>Nama Kelas</TableHead>
+                  <TableHead>Semester</TableHead>
+                  <TableHead>Kode MK</TableHead>
+                  <TableHead>Pengampu</TableHead>
+                  <TableHead className="text-right">Mahasiswa</TableHead>
+                  <TableHead className="text-right">Sesi</TableHead>
+                  <TableHead className="text-right">Aksi</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  Array.from({ length: 6 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell colSpan={8}>
+                        <Skeleton className="h-10 w-full" />
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : filteredClasses.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="p-0">
+                      <AdminEmptyState
+                        compact
+                        icon={BookOpen}
+                        title={
+                          hasSearch || semesterFilter !== 'ALL'
+                            ? 'Tidak ada hasil'
+                            : 'Belum ada kelas'
+                        }
+                        description={
+                          hasSearch || semesterFilter !== 'ALL'
+                            ? 'Ubah filter atau kata kunci pencarian.'
+                            : canManage
+                              ? 'Buat kelas baru untuk mengelola mahasiswa dan sesi.'
+                              : 'Anda belum terdaftar di kelas manapun.'
+                        }
+                        className="border-0 shadow-none"
+                      />
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  paginatedClasses.map((c, idx) => (
+                    <TableRow
+                      key={c.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => openClassStudents(c.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') openClassStudents(c.id);
+                      }}
+                      className="cursor-pointer"
+                    >
+                      <TableCell className="text-muted-foreground">
+                        {(classesPaginationMeta.page - 1) * classesPaginationMeta.limit + idx + 1}
+                      </TableCell>
+                      <TableCell className="font-medium">{c.name}</TableCell>
+                      <TableCell className="text-muted-foreground">Sem {c.semester}</TableCell>
+                      <TableCell className="font-mono text-sm text-muted-foreground">
+                        {c.course_code || '—'}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{c.lecturer.name}</TableCell>
+                      <TableCell className="text-right text-muted-foreground">
+                        {c._count.enrollments}
+                      </TableCell>
+                      <TableCell className="text-right text-muted-foreground">
+                        {c._count.sessions}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div
+                          className="flex justify-end gap-1"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {canManage ? (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="size-9"
+                              onClick={() => handleOpenModal(c)}
+                              title="Edit kelas"
+                            >
+                              <Pencil className="size-4" />
+                            </Button>
+                          ) : null}
+                          {isSuperAdmin ? (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="size-9 text-destructive hover:text-destructive"
+                              onClick={() => openDeleteConfirm(c.id)}
+                              title="Hapus kelas"
+                            >
+                              <Trash2 className="size-4" />
+                            </Button>
+                          ) : null}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </AdminTableShell>
         )}
 
         {/* Modal Form */}

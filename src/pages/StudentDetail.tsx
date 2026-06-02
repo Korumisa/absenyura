@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import useSWR from 'swr';
-import { ArrowLeft, Smartphone, User } from 'lucide-react';
+import { ArrowLeft, FileText, Smartphone, User } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '@/services/api';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
@@ -50,6 +50,7 @@ export default function StudentDetail() {
     ((location.state as { classId?: string } | null)?.classId
       ? `/classes/${(location.state as { classId: string }).classId}`
       : '/classes');
+  const classIdFromState = (location.state as { classId?: string } | null)?.classId;
 
   const [form, setForm] = useState<ProfileForm>({
     name: '',
@@ -224,10 +225,26 @@ export default function StudentDetail() {
         variant="plain"
         icon={<User className="size-5" />}
         actions={
-          <Button variant="outline" onClick={() => navigate(backTo)}>
-            <ArrowLeft className="mr-2 size-4" />
-            Kembali
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            {profile?.role === 'USER' ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() =>
+                  navigate(`/students/${studentId}/attendance`, {
+                    state: { backToStudent: `/students/${studentId}`, classId: classIdFromState },
+                  })
+                }
+              >
+                <FileText className="mr-2 size-4" />
+                Rekap Kehadiran
+              </Button>
+            ) : null}
+            <Button variant="outline" onClick={() => navigate(backTo)}>
+              <ArrowLeft className="mr-2 size-4" />
+              Kembali
+            </Button>
+          </div>
         }
       >
         <div className="grid gap-6 lg:grid-cols-[minmax(0,280px)_1fr]">

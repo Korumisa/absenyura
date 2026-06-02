@@ -23,6 +23,7 @@ const Users = lazyWithRetry(() => import('@/pages/Users'));
 const Classes = lazyWithRetry(() => import('@/pages/Classes'));
 const ClassStudents = lazyWithRetry(() => import('@/pages/ClassStudents'));
 const StudentDetail = lazyWithRetry(() => import('@/pages/StudentDetail'));
+const StudentAttendanceRecap = lazyWithRetry(() => import('@/pages/StudentAttendanceRecap'));
 const Excuses = lazyWithRetry(() => import('@/pages/Excuses'));
 const Locations = lazyWithRetry(() => import('@/pages/Locations'));
 const Sessions = lazyWithRetry(() => import('@/pages/Sessions'));
@@ -394,6 +395,16 @@ export default function App() {
                     <PageSuspense>
                       <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}>
                         <StudentDetail />
+                      </ProtectedRoute>
+                    </PageSuspense>
+                  }
+                />
+                <Route
+                  path="/students/:studentId/attendance"
+                  element={
+                    <PageSuspense>
+                      <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}>
+                        <StudentAttendanceRecap />
                       </ProtectedRoute>
                     </PageSuspense>
                   }

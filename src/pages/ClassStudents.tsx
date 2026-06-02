@@ -260,7 +260,7 @@ export default function ClassStudents() {
                 onClick={() => setIsEnrollConfirmOpen(true)}
               >
                 <Plus className="mr-2 size-4" />
-                Tambah Siswa
+                Tambah Mahasiswa
               </Button>
             </div>
           ) : null}
@@ -268,7 +268,7 @@ export default function ClassStudents() {
 
         <div className="overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-border dark:bg-card">
           <div className="flex flex-col gap-3 border-b border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between dark:border-border">
-            <h3 className="font-semibold text-foreground">Daftar Siswa Kelas</h3>
+            <h3 className="font-semibold text-foreground">Daftar Mahasiswa</h3>
             <div className="relative w-full sm:max-w-xl sm:flex-1">
               <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input

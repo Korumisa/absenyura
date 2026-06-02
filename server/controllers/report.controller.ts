@@ -17,30 +17,63 @@ export const getReports = async (req: Request, res: Response): Promise<void> => 
     const startDate = req.query.startDate as string;
     const endDate = req.query.endDate as string;
     const sessionId = (req.query.sessionId || req.query.session_id) as string | undefined;
+    const classId = (req.query.classId || req.query.class_id) as string | undefined;
+    const userId = (req.query.userId ||
+      req.query.user_id ||
+      req.query.studentId ||
+      req.query.student_id) as string | undefined;
 
-    let whereClause: any = {};
+    const andFilters: any[] = [];
+
     if (user.role === 'USER') {
-      whereClause = { user_id: user.id };
+      andFilters.push({ user_id: user.id });
     } else if (user.role === 'ADMIN') {
-      whereClause = { session: { created_by_id: user.id } };
+      andFilters.push({
+        OR: [
+          { session: { class: { lecturer_id: user.id } } },
+          { session: { session_classes: { some: { class: { lecturer_id: user.id } } } } },
+          { session: { created_by_id: user.id } },
+        ],
+      });
     }
 
     if (sessionId) {
-      whereClause.session_id = sessionId;
+      andFilters.push({ session_id: sessionId });
+    }
+
+    if (classId) {
+      andFilters.push({
+        OR: [
+          { session: { class_id: classId } },
+          { session: { session_classes: { some: { class_id: classId } } } },
+        ],
+      });
+    }
+
+    if (user.role !== 'USER' && userId) {
+      andFilters.push({ user_id: userId });
     }
 
     if (startDate && endDate) {
-      whereClause.session = {
-        ...whereClause.session,
-        session_start: {
-          gte: new Date(startDate),
-          lte: new Date(new Date(endDate).setHours(23, 59, 59, 999)),
+      andFilters.push({
+        session: {
+          session_start: {
+            gte: new Date(startDate),
+            lte: new Date(new Date(endDate).setHours(23, 59, 59, 999)),
+          },
         },
-      };
+      });
     }
+
+    const whereClause: any = andFilters.length ? { AND: andFilters } : {};
 
     let attendances: any[] = [];
     const total = await prisma.attendance.count({ where: whereClause });
+    const grouped = await prisma.attendance.groupBy({
+      by: ['status'],
+      where: whereClause,
+      _count: { _all: true },
+    });
     try {
       attendances = await prisma.attendance.findMany({
         where: whereClause,
@@ -90,6 +123,21 @@ export const getReports = async (req: Request, res: Response): Promise<void> => 
       return '';
     };
 
+    const summary = grouped.reduce(
+      (acc, row) => {
+        const key = String(row.status ?? '').toUpperCase();
+        const value = Number(row._count?._all ?? 0) || 0;
+        if (key === 'PRESENT') acc.present += value;
+        else if (key === 'LATE') acc.late += value;
+        else if (key === 'ABSENT') acc.absent += value;
+        else if (key === 'SICK') acc.sick += value;
+        else if (key === 'EXCUSED') acc.excused += value;
+        else acc.other += value;
+        return acc;
+      },
+      { total, present: 0, late: 0, absent: 0, sick: 0, excused: 0, other: 0 }
+    );
+
     const formattedData = attendances.map((a) => ({
       id: a.id,
       user_id: a.user_id,
@@ -126,6 +174,7 @@ export const getReports = async (req: Request, res: Response): Promise<void> => 
         page,
         limit,
         totalPages: Math.ceil(total / limit),
+        summary,
       },
     });
   } catch (error) {
