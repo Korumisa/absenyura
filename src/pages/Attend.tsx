@@ -27,7 +27,6 @@ import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-le
 import 'leaflet/dist/leaflet.css';
 import { saveOfflineAttendance, saveOfflinePhoto } from '@/lib/storage/idb';
 import { AttendPrivacyBanner } from '@/components/attend/AttendPrivacyBanner';
-import { AttendStepIndicator } from '@/components/attend/AttendStepIndicator';
 import { track } from '@vercel/analytics';
 import { getDeviceFingerprint } from '@/lib/storage/deviceFingerprint';
 import {
@@ -915,15 +914,6 @@ export default function Attend() {
         </div>
 
         <AttendPrivacyBanner />
-
-        <AttendStepIndicator
-          currentStep={(() => {
-            if (!scanResult) return 1;
-            if (!location || gpsError) return 2;
-            if (!photoBlob) return 3;
-            return 4;
-          })()}
-        />
 
         <div className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-card">
           {isOffline && (

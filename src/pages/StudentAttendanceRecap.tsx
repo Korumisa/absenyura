@@ -267,6 +267,12 @@ export default function StudentAttendanceRecap() {
                     placeholder="Dari tanggal"
                     className="w-full sm:w-[160px]"
                   />
+                  <span
+                    className="flex h-11 shrink-0 items-center px-0.5 text-muted-foreground"
+                    aria-hidden="true"
+                  >
+                    –
+                  </span>
                   <DatePicker
                     value={endDate}
                     onChange={setEndDate}
