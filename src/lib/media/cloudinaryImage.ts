@@ -5,7 +5,7 @@ export function isCloudinaryUrl(url: string): boolean {
 
 export function optimizeCloudinaryUrl(
   url: string,
-  opts?: { width?: number; quality?: 'auto' | number },
+  opts?: { width?: number; quality?: 'auto' | number }
 ): string {
   if (!url || !isCloudinaryUrl(url)) return url;
 
@@ -20,10 +20,7 @@ export function optimizeCloudinaryUrl(
   return url.replace('/upload/', `/upload/${segment}/`);
 }
 
-export function buildCloudinarySrcSet(
-  url: string,
-  widths: number[],
-): string | undefined {
+export function buildCloudinarySrcSet(url: string, widths: number[]): string | undefined {
   if (!isCloudinaryUrl(url)) return undefined;
   const unique = [...new Set(widths.filter((w) => w > 0))].sort((a, b) => a - b);
   if (unique.length === 0) return undefined;

@@ -5,7 +5,14 @@ import { useAuthStore } from '@/stores/authStore';
 import api from '@/services/api';
 import { ArrowRight, Eye, EyeOff, Loader2, LogIn } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,8 +21,8 @@ import PublicEnter from '@/components/PublicEnter';
 import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 import useSWR from 'swr';
 import type { PublicProfile } from '@/types/publicSite';
-import { getErrorMessage } from '@/lib/errorMessage';
-import { getDeviceFingerprint } from '@/lib/deviceFingerprint';
+import { getErrorMessage } from '@/lib/http/errorMessage';
+import { getDeviceFingerprint } from '@/lib/storage/deviceFingerprint';
 import { BrandLogoImage } from '@/components/public/BrandLogoImage';
 
 export default function Login() {
@@ -29,7 +36,11 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
-  const { data: profile, isLoading: profileLoading } = useSWR<PublicProfile | null>('/public-site/profile', fetcher, { revalidateOnFocus: false });
+  const { data: profile, isLoading: profileLoading } = useSWR<PublicProfile | null>(
+    '/public-site/profile',
+    fetcher,
+    { revalidateOnFocus: false }
+  );
 
   // Halaman publik — selalu tampilan terang meski preferensi admin mode gelap
   React.useEffect(() => {
@@ -53,7 +64,7 @@ export default function Login() {
       const { user } = res.data.data;
       setAuth(user);
       toast.success('Berhasil masuk!');
-      
+
       let target = location.state?.from?.pathname;
       if (!target || target === '/dashboard') {
         // [IA] #10 — redirect konsisten ke dashboard (kecuali content admin)
@@ -80,156 +91,165 @@ export default function Login() {
       <PublicEnter>
         <PublicLoadingOverlay show={loading} label="Memverifikasi akun…" />
         <section className="relative flex flex-1 items-center overflow-hidden bg-[radial-gradient(circle_at_20%_20%,rgba(37,99,235,0.18),transparent_50%),radial-gradient(circle_at_70%_10%,rgba(59,130,246,0.14),transparent_55%),linear-gradient(180deg,rgba(15,23,42,0.02),transparent)] px-4 py-10">
-          <div className="absolute -left-12 top-16 h-72 w-72 rounded-full bg-[var(--public-primary)]/20 blur-3xl" />
-          <div className="absolute -right-16 bottom-10 h-80 w-80 rounded-full bg-sky-400/15 blur-3xl" />
+          <div className="absolute -left-12 top-16 size-72 rounded-full bg-[var(--public-primary)]/20 blur-3xl" />
+          <div className="absolute -right-16 bottom-10 size-80 rounded-full bg-sky-400/15 blur-3xl" />
 
           <div className="relative mx-auto grid w-full max-w-5xl items-stretch gap-8 md:grid-cols-2">
-          <div className="flex flex-col justify-center">
-            <div className="inline-flex items-center gap-3">
-              {profileLoading ? (
-                <>
-                  <Skeleton className="h-14 w-14 rounded-2xl" />
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-36" />
-                    <Skeleton className="h-3 w-28" />
-                  </div>
-                </>
-              ) : (
-                <>
-                  <BrandLogoImage
-                    src={profile?.logo_light_url}
-                    alt="Logo"
-                    className="h-14 w-14 rounded-2xl bg-white/70 p-2 ring-1 ring-black/10"
-                    priority
-                  />
-                  <div>
-                    <div className="text-sm font-extrabold tracking-tight text-slate-900">
-                      {profile?.org_name ? profile.org_name : 'Profil belum diatur'}
+            <div className="flex flex-col justify-center">
+              <div className="inline-flex items-center gap-3">
+                {profileLoading ? (
+                  <>
+                    <Skeleton className="size-14 rounded-2xl" />
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-36" />
+                      <Skeleton className="h-3 w-28" />
                     </div>
-                    <div className="text-xs font-medium text-muted-foreground">
-                      {profile?.campus_name ? profile.campus_name : 'Konten Website'}
+                  </>
+                ) : (
+                  <>
+                    <BrandLogoImage
+                      src={profile?.logo_light_url}
+                      alt="Logo"
+                      className="size-14 rounded-2xl bg-white/70 p-2 ring-1 ring-black/10"
+                      priority
+                    />
+                    <div>
+                      <div className="text-sm font-extrabold tracking-tight text-slate-900">
+                        {profile?.org_name ? profile.org_name : 'Profil belum diatur'}
+                      </div>
+                      <div className="text-xs font-medium text-muted-foreground">
+                        {profile?.campus_name ? profile.campus_name : 'Konten Website'}
+                      </div>
                     </div>
-                  </div>
-                </>
-              )}
-            </div>
-
-            <div className="mt-6 font-display text-4xl italic tracking-tight text-slate-900 md:text-5xl">Masuk</div>
-            <div className="mt-1 text-5xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] md:text-6xl">
-              Dashboard
-            </div>
-            <div className="mt-4 max-w-md text-sm text-slate-700">
-              Masuk untuk absen, lihat riwayat kehadiran, dan persentase kehadiran Anda.
-            </div>
-
-            <div className="mt-8">
-              <Link
-                to="/"
-                className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--public-primary)] hover:brightness-110"
-              >
-                Kembali ke Beranda
-                <ArrowRight size={18} />
-              </Link>
-            </div>
-          </div>
-
-          <div className="relative overflow-hidden rounded-3xl border border-black/10 bg-white/85 p-7 shadow-[0_28px_70px_-52px_rgba(15,23,42,0.5)] backdrop-blur">
-            <div className="pointer-events-none absolute -top-12 left-10 h-40 w-40 rounded-full bg-[var(--public-primary)]/14 blur-3xl" />
-            <div className="pointer-events-none absolute -bottom-16 right-6 h-48 w-48 rounded-full bg-sky-400/12 blur-3xl" />
-
-            <div className="relative">
-              <div className="flex items-center gap-3">
-                <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--public-primary)]/12 text-[var(--public-primary)]">
-                  <LogIn size={22} />
-                </div>
-                <div>
-                  <div className="text-lg font-extrabold tracking-tight text-slate-900">Masuk Akun</div>
-                  <div className="text-sm text-muted-foreground">Gunakan email/NIM dan kata sandi.</div>
-                </div>
+                  </>
+                )}
               </div>
 
-              <form onSubmit={handleLogin} className="mt-8 space-y-5" aria-busy={loading}>
-                {loginError ? (
-                  <div
-                    className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900"
-                    role="alert"
-                  >
-                    {loginError}
-                  </div>
-                ) : null}
-                <div
-                  className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900"
-                  role="note"
+              <div className="mt-6 font-display text-4xl italic tracking-tight text-slate-900 md:text-5xl">
+                Masuk
+              </div>
+              <div className="mt-1 text-5xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] md:text-6xl">
+                Dashboard
+              </div>
+              <div className="mt-4 max-w-md text-sm text-slate-700">
+                Masuk untuk absen, lihat riwayat kehadiran, dan persentase kehadiran Anda.
+              </div>
+
+              <div className="mt-8">
+                <Link
+                  to="/"
+                  className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--public-primary)] hover:brightness-110"
                 >
-                  Akun dibuat oleh admin kampus. Belum punya akun? Hubungi pengurus HM atau bagian akademik fakultas Anda.
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email atau NIM</Label>
-                  <Input
-                    id="email"
-                    type="text"
-                    name="email"
-                    autoComplete="email"
-                    spellCheck={false}
-                    required
-                    placeholder="email@kampus.ac.id atau NIM Anda"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="h-11"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password">Kata Sandi</Label>
-                  <div className="relative">
-                    <Input
-                      id="password"
-                      type={showPassword ? 'text' : 'password'}
-                      name="password"
-                      autoComplete="current-password"
-                      required
-                      placeholder="••••••••"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="h-11 pr-12"
-                    />
-                    <button
-                      type="button"
-                      aria-label={showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-slate-50 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/35"
-                      onClick={() => setShowPassword((v) => !v)}
-                    >
-                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
+                  Kembali ke Beranda
+                  <ArrowRight size={18} />
+                </Link>
+              </div>
+            </div>
+
+            <div className="relative overflow-hidden rounded-3xl border border-black/10 bg-white/85 p-7 shadow-[0_28px_70px_-52px_rgba(15,23,42,0.5)] backdrop-blur">
+              <div className="pointer-events-none absolute -top-12 left-10 size-40 rounded-full bg-[var(--public-primary)]/14 blur-3xl" />
+              <div className="pointer-events-none absolute -bottom-16 right-6 size-48 rounded-full bg-sky-400/12 blur-3xl" />
+
+              <div className="relative">
+                <div className="flex items-center gap-3">
+                  <div className="inline-flex size-11 items-center justify-center rounded-2xl bg-[var(--public-primary)]/12 text-[var(--public-primary)]">
+                    <LogIn size={22} />
                   </div>
-                  <div className="flex justify-end">
-                    <button
-                      type="button"
-                      onClick={() => setForgotOpen(true)}
-                      className="text-sm font-semibold text-[var(--public-primary)] hover:brightness-110"
-                    >
-                      Lupa kata sandi?
-                    </button>
+                  <div>
+                    <div className="text-lg font-extrabold tracking-tight text-slate-900">
+                      Masuk Akun
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      Gunakan email/NIM dan kata sandi.
+                    </div>
                   </div>
                 </div>
 
-                <Button
-                  type="submit"
-                  disabled={loading}
-                  aria-busy={loading}
-                  className="h-11 w-full bg-[var(--public-primary)] text-white shadow-[0_16px_32px_rgba(37,99,235,0.35)] hover:brightness-110"
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
-                      Memverifikasi…
-                    </>
-                  ) : (
-                    'Masuk'
-                  )}
-                </Button>
-              </form>
+                <form onSubmit={handleLogin} className="mt-8 space-y-5" aria-busy={loading}>
+                  {loginError ? (
+                    <div
+                      className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900"
+                      role="alert"
+                    >
+                      {loginError}
+                    </div>
+                  ) : null}
+                  <div
+                    className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900"
+                    role="note"
+                  >
+                    Akun dibuat oleh admin kampus. Belum punya akun? Hubungi pengurus HM atau bagian
+                    akademik fakultas Anda.
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email atau NIM</Label>
+                    <Input
+                      id="email"
+                      type="text"
+                      name="email"
+                      autoComplete="email"
+                      spellCheck={false}
+                      required
+                      placeholder="email@kampus.ac.id atau NIM Anda"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="h-11"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Kata Sandi</Label>
+                    <div className="relative">
+                      <Input
+                        id="password"
+                        type={showPassword ? 'text' : 'password'}
+                        name="password"
+                        autoComplete="current-password"
+                        required
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="h-11 pr-12"
+                      />
+                      <button
+                        type="button"
+                        aria-label={
+                          showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'
+                        }
+                        className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex size-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-slate-50 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/35"
+                        onClick={() => setShowPassword((v) => !v)}
+                      >
+                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setForgotOpen(true)}
+                        className="text-sm font-semibold text-[var(--public-primary)] hover:brightness-110"
+                      >
+                        Lupa kata sandi?
+                      </button>
+                    </div>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    disabled={loading}
+                    aria-busy={loading}
+                    className="h-11 w-full bg-[var(--public-primary)] text-white shadow-[0_16px_32px_rgba(37,99,235,0.35)] hover:brightness-110"
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="mr-2 size-4 animate-spin" aria-hidden="true" />
+                        Memverifikasi…
+                      </>
+                    ) : (
+                      'Masuk'
+                    )}
+                  </Button>
+                </form>
+              </div>
             </div>
-          </div>
           </div>
         </section>
       </PublicEnter>
@@ -246,7 +266,10 @@ export default function Login() {
             {profile?.email ? (
               <p>
                 Email:{' '}
-                <a href={`mailto:${profile.email}`} className="font-semibold text-[var(--public-primary)]">
+                <a
+                  href={`mailto:${profile.email}`}
+                  className="font-semibold text-[var(--public-primary)]"
+                >
                   {profile.email}
                 </a>
               </p>
@@ -254,13 +277,19 @@ export default function Login() {
             {profile?.phone ? (
               <p>
                 Telepon:{' '}
-                <a href={`tel:${profile.phone}`} className="font-semibold text-[var(--public-primary)]">
+                <a
+                  href={`tel:${profile.phone}`}
+                  className="font-semibold text-[var(--public-primary)]"
+                >
                   {profile.phone}
                 </a>
               </p>
             ) : null}
             {!profile?.email && !profile?.phone ? (
-              <p>Kontak admin belum diatur di profil situs publik. Silakan hubungi pengurus HM langsung.</p>
+              <p>
+                Kontak admin belum diatur di profil situs publik. Silakan hubungi pengurus HM
+                langsung.
+              </p>
             ) : null}
           </div>
           <DialogFooter>

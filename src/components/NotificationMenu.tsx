@@ -34,8 +34,8 @@ export function NotificationMenu() {
   const markAsRead = async (idStr: string) => {
     try {
       await api.put(`/notifications/${idStr}/read`);
-      setNotifications(prev => prev.map(n => n.id === idStr ? { ...n, is_read: true } : n));
-      setUnreadCount(prev => Math.max(0, prev - 1));
+      setNotifications((prev) => prev.map((n) => (n.id === idStr ? { ...n, is_read: true } : n)));
+      setUnreadCount((prev) => Math.max(0, prev - 1));
     } catch (error) {
       console.error(error);
     }
@@ -44,7 +44,7 @@ export function NotificationMenu() {
   const markAllAsRead = async () => {
     try {
       await api.put('/notifications/read-all');
-      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
       setUnreadCount(0);
     } catch (error) {
       console.error(error);
@@ -61,7 +61,7 @@ export function NotificationMenu() {
       >
         <Bell size={22} />
         {unreadCount > 0 && (
-          <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 border-2 border-white dark:border-zinc-950 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+          <span className="absolute top-1 right-1 size-4 bg-red-500 border-2 border-white dark:border-zinc-950 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
@@ -74,7 +74,7 @@ export function NotificationMenu() {
             <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 bg-muted/50">
               <h3 className="font-bold text-foreground">Notifikasi</h3>
               {unreadCount > 0 && (
-                <button 
+                <button
                   onClick={markAllAsRead}
                   className="text-xs text-brand hover:text-indigo-700 text-brand font-medium flex items-center gap-1"
                 >
@@ -91,8 +91,8 @@ export function NotificationMenu() {
               ) : (
                 <div className="divide-y divide-slate-100 dark:divide-zinc-700/50">
                   {notifications.map((notif) => (
-                    <div 
-                      key={notif.id} 
+                    <div
+                      key={notif.id}
                       onClick={() => !notif.is_read && markAsRead(notif.id)}
                       className={`p-4 hover:bg-slate-50 dark:hover:bg-zinc-700/30 transition-colors cursor-pointer relative ${!notif.is_read ? 'bg-indigo-50/50 dark:bg-indigo-900/10' : ''}`}
                     >
@@ -101,14 +101,19 @@ export function NotificationMenu() {
                       )}
                       <div className="flex gap-3">
                         <div className="flex-1 min-w-0">
-                          <p className={`text-sm font-medium mb-1 truncate ${!notif.is_read ? 'text-foreground font-bold' : 'text-muted-foreground'}`}>
+                          <p
+                            className={`text-sm font-medium mb-1 truncate ${!notif.is_read ? 'text-foreground font-bold' : 'text-muted-foreground'}`}
+                          >
                             {notif.title}
                           </p>
                           <p className="text-xs text-muted-foreground line-clamp-2">
                             {notif.message}
                           </p>
                           <p className="text-[10px] text-slate-400 text-muted-foreground mt-2 font-medium">
-                            {formatDistanceToNow(new Date(notif.created_at), { addSuffix: true, locale: id })}
+                            {formatDistanceToNow(new Date(notif.created_at), {
+                              addSuffix: true,
+                              locale: id,
+                            })}
                           </p>
                         </div>
                       </div>
@@ -117,9 +122,12 @@ export function NotificationMenu() {
                 </div>
               )}
             </div>
-            
+
             <div className="bg-muted/50 p-2 text-center">
-              <button onClick={() => setIsOpen(false)} className="text-xs text-muted-foreground hover:text-slate-700 text-muted-foreground dark:hover:text-zinc-200">
+              <button
+                onClick={() => setIsOpen(false)}
+                className="text-xs text-muted-foreground hover:text-slate-700 text-muted-foreground dark:hover:text-zinc-200"
+              >
                 Tutup
               </button>
             </div>

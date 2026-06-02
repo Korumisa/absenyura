@@ -3,10 +3,7 @@ export type CameraDevice = { id: string; label: string };
 /** Jeda setelah melepaskan kamera (mis. dari pemindai QR) sebelum membuka lagi */
 export const CAMERA_RELEASE_DELAY_MS = 700;
 
-export const pickPreferredCameraId = (
-  devices: CameraDevice[],
-  opts?: { preferRear?: boolean }
-) => {
+export const pickPreferredCameraId = (devices: CameraDevice[], opts?: { preferRear?: boolean }) => {
   if (!devices.length) return null;
 
   const preferRear = opts?.preferRear !== false;
@@ -116,11 +113,17 @@ export async function acquireCameraStream(opts: AcquireCameraOptions = {}): Prom
   const attempts: MediaStreamConstraints[] = [];
 
   if (deviceId) {
-    attempts.push({ video: { deviceId: { ideal: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } } });
+    attempts.push({
+      video: { deviceId: { ideal: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } },
+    });
   }
   if (opts.facingMode) {
     attempts.push({
-      video: { facingMode: { ideal: opts.facingMode }, width: { ideal: 1280 }, height: { ideal: 720 } },
+      video: {
+        facingMode: { ideal: opts.facingMode },
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+      },
     });
   }
   attempts.push({ video: { facingMode: { ideal: preferRear ? 'environment' : 'user' } } });

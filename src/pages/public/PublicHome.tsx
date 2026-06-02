@@ -9,12 +9,12 @@ import PublicCoverImage from '@/components/PublicCoverImage';
 import PublicProgramCard from '@/components/PublicProgramCard';
 import { PublicPageError } from '@/components/public/PublicPageError';
 import { Skeleton } from '@/components/ui/skeleton';
-import { hasText, showPublicSection } from '@/lib/publicContent';
+import { hasText, showPublicSection } from '@/lib/utils/publicContent';
 import { BrandMark } from '@/components/public/home/BrandMark';
 import { DivisionRail } from '@/components/public/home/DivisionRail';
 import { isCoreStructureGroup } from '@/components/public/home/divisionUtils';
 import { PublicHomeCmsHint } from '@/components/public/home/PublicHomeCmsHint';
-import { normalizeYoutubeEmbedUrl } from '@/lib/normalizeYoutubeEmbedUrl';
+import { normalizeYoutubeEmbedUrl } from '@/lib/media/normalizeYoutubeEmbedUrl';
 import { PublicSlowLoadingHint } from '@/components/public/PublicSlowLoadingHint';
 import { usePublicHomeData, isPublicProfileSparse } from '@/hooks/usePublicHomeData';
 export default function PublicHome() {
@@ -47,16 +47,6 @@ export default function PublicHome() {
   const lombaPaged = lombaState.data;
   const isLoadingLomba = lombaState.isPending;
 
-  if (isProfileError && !profile) {
-    return (
-      <PublicPageError
-        title="Gagal memuat beranda"
-        error={profileState.swr.error}
-        onRetry={retryProfile}
-      />
-    );
-  }
-
   const orgName = profile?.org_name ?? '';
   const campusName = profile?.campus_name ?? '';
   const kabinetName = profile?.kabinet_name ?? '';
@@ -66,17 +56,20 @@ export default function PublicHome() {
   const videoSrc = normalizeYoutubeEmbedUrl(youtubeEmbedUrl);
   const aboutTitle = profile?.about_title ?? '';
   const aboutContent = profile?.about_content ?? '';
-  const aboutParagraphs = aboutContent.split('\n').map((x) => x.trim()).filter(Boolean);
+  const aboutParagraphs = aboutContent.split('\n').flatMap((x) => {
+    const result = x.trim()
+    return result ? [result] : []
+  })
   const homeCardLeftTitle = profile?.home_card_left_title ?? '';
   const homeCardLeftBody = profile?.home_card_left_body ?? '';
   const homeCardRightTitle = profile?.home_card_right_title ?? '';
   const homeCardRightBody = profile?.home_card_right_body ?? '';
   const vision = profile?.vision ?? '';
   const mission = profile?.mission ?? '';
-  const missionItems = mission
-    .split('\n')
-    .map((x) => x.trim())
-    .filter(Boolean);
+  const missionItems = mission.split('\n').flatMap((x) => {
+    const result = x.trim()
+    return result ? [result] : []
+  })
   const visiPhotoUrl = profile?.visi_photo_url ?? '';
   const visiName = profile?.visi_name ?? '';
   const visiRole = profile?.visi_role ?? '';
@@ -99,6 +92,10 @@ export default function PublicHome() {
   const wakil = useMemo(() => {
     return coreMembers.find((m) => String(m.role ?? '').toLowerCase().includes('wakil')) ?? null;
   }, [coreMembers]);
+
+  if (isProfileError && !profile) {
+    return <PublicPageError title="Gagal memuat beranda" error={profileState.swr.error} onRetry={retryProfile} />;
+  }
 
   const logoSrc = profile?.logo_light_url ?? '';
   const posts = latest?.items ?? [];
@@ -125,7 +122,7 @@ export default function PublicHome() {
             <div className="pointer-events-none absolute inset-0 opacity-70 [background:radial-gradient(circle_at_18%_15%,rgba(37,99,235,0.10),transparent_56%),radial-gradient(circle_at_78%_10%,rgba(56,189,248,0.08),transparent_60%)]" />
             <PublicEnter instant className="mx-auto grid max-w-7xl items-center gap-12 px-4 py-16 sm:px-6 md:grid-cols-2 md:py-24">
               <div className="flex items-start gap-6">
-                <BrandMark className="hidden h-28 w-28 shrink-0 sm:block" src={logoSrc} name={orgName || campusName} />
+                <BrandMark className="hidden size-28 shrink-0 sm:block" src={logoSrc} name={orgName || campusName} />
                 <div>
                   <div className="font-display text-4xl italic tracking-tight text-slate-900 md:text-5xl">Kabinet</div>
                   {isLoadingProfile ? (
@@ -234,14 +231,14 @@ export default function PublicHome() {
 
             <div className="relative mx-auto max-w-7xl px-4 sm:px-6">
               <div className="pointer-events-none absolute left-0 top-0 -translate-y-1/2">
-                <div className="h-16 w-16 rounded-full bg-[var(--public-primary)]/14 blur-2xl" />
+                <div className="size-16 rounded-full bg-[var(--public-primary)]/14 blur-2xl" />
               </div>
               <div className="pointer-events-none absolute right-0 top-0 -translate-y-1/2">
-                <div className="h-16 w-16 rounded-full bg-sky-400/12 blur-2xl" />
+                <div className="size-16 rounded-full bg-sky-400/12 blur-2xl" />
               </div>
               <div className="relative h-10 w-full">
                 <div className="absolute left-1/2 top-1/2 h-10 w-44 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--public-primary)]/18 blur-2xl" />
-                <div className="absolute left-1/2 top-1/2 h-1 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--public-primary)]/70" />
+                <div className="absolute left-1/2 top-1/2 size-1 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--public-primary)]/70" />
               </div>
             </div>
           </section>
@@ -253,7 +250,7 @@ export default function PublicHome() {
               <div className="mx-auto max-w-5xl text-center">
                 <div className="mx-auto flex max-w-xl items-center justify-center gap-4">
                   <div className="h-px flex-1 bg-slate-200" />
-                  <div className="grid h-10 w-10 place-items-center rounded-full bg-[var(--public-primary)]/10 text-[var(--public-primary)]">
+                  <div className="grid size-10 place-items-center rounded-full bg-[var(--public-primary)]/10 text-[var(--public-primary)]">
                     <Lightbulb size={18} />
                   </div>
                   <div className="h-px flex-1 bg-slate-200" />
@@ -358,7 +355,7 @@ export default function PublicHome() {
                       <div className="mt-6 space-y-5">
                         {missionItems.map((item, idx) => (
                           <div key={`${idx}-${item}`} className="flex gap-4">
-                            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-black/10 bg-white text-sm font-extrabold text-[var(--public-primary)]">
+                            <div className="grid size-9 shrink-0 place-items-center rounded-lg border border-black/10 bg-white text-sm font-extrabold text-[var(--public-primary)]">
                               {idx + 1}
                             </div>
                             <div className="min-w-0 text-[17px] leading-relaxed text-slate-700 sm:text-[18px]">{item}</div>
@@ -376,10 +373,10 @@ export default function PublicHome() {
           <section className="relative bg-slate-50/55 py-20">
             <PublicReveal className="mx-auto max-w-7xl px-4 text-center sm:px-6">
           <div className="pointer-events-none absolute left-0 top-12 hidden md:block">
-            <div className="h-24 w-24 rounded-full bg-[var(--public-primary)]/16 blur-2xl" />
+            <div className="size-24 rounded-full bg-[var(--public-primary)]/16 blur-2xl" />
           </div>
           <div className="pointer-events-none absolute right-0 top-12 hidden md:block">
-            <div className="h-24 w-24 rounded-full bg-sky-400/14 blur-2xl" />
+            <div className="size-24 rounded-full bg-sky-400/14 blur-2xl" />
           </div>
 
           <div className="font-display text-5xl italic tracking-tight text-slate-900 sm:text-6xl md:text-7xl">Program</div>
@@ -389,14 +386,14 @@ export default function PublicHome() {
           </div>
 
           <div className="relative mx-auto mt-10 max-w-5xl">
-            <div className="pointer-events-none absolute -left-10 top-10 h-44 w-44 rounded-full bg-[var(--public-primary)]/10 blur-3xl" />
-            <div className="pointer-events-none absolute -right-10 bottom-8 h-52 w-52 rounded-full bg-sky-400/10 blur-3xl" />
+            <div className="pointer-events-none absolute -left-10 top-10 size-44 rounded-full bg-[var(--public-primary)]/10 blur-3xl" />
+            <div className="pointer-events-none absolute -right-10 bottom-8 size-52 rounded-full bg-sky-400/10 blur-3xl" />
             {isLoadingPrograms ? (
               <div className="h-40" aria-busy="true" />
             ) : programs.length === 0 ? (
               <div className="relative overflow-hidden rounded-2xl border border-dashed border-black/15 bg-white/60 p-6 text-left text-sm text-muted-foreground sm:p-10">
-                <div className="pointer-events-none absolute -left-16 -top-16 h-52 w-52 rounded-[48%_52%_58%_42%/44%_43%_57%_56%] bg-[var(--public-primary)]/14 blur-3xl" />
-                <div className="pointer-events-none absolute -right-16 -bottom-16 h-56 w-56 rounded-[53%_47%_45%_55%/48%_56%_44%_52%] bg-sky-400/10 blur-3xl" />
+                <div className="pointer-events-none absolute -left-16 -top-16 size-52 rounded-[48%_52%_58%_42%/44%_43%_57%_56%] bg-[var(--public-primary)]/14 blur-3xl" />
+                <div className="pointer-events-none absolute -right-16 -bottom-16 size-56 rounded-[53%_47%_45%_55%/48%_56%_44%_52%] bg-sky-400/10 blur-3xl" />
                 <div className="relative">
                   <div className="text-base font-extrabold tracking-tight text-slate-900">Belum ada program kerja</div>
                   <div className="mt-2 max-w-2xl">
@@ -439,9 +436,9 @@ export default function PublicHome() {
       <section className="relative overflow-hidden bg-white py-20">
         <div className="pointer-events-none absolute inset-0 opacity-70 [background:radial-gradient(circle_at_14%_18%,rgba(37,99,235,0.10),transparent_56%),radial-gradient(circle_at_86%_14%,rgba(56,189,248,0.10),transparent_60%)]" />
         <div className="pointer-events-none absolute left-6 top-10 hidden lg:block">
-          <div className="h-24 w-24 rotate-6 rounded-[28px] bg-[linear-gradient(135deg,rgba(37,99,235,0.16),rgba(255,255,255,0.9))] shadow-[0_26px_70px_-55px_rgba(15,23,42,0.55)] ring-1 ring-black/10 backdrop-blur" />
-          <div className="-mt-10 ml-14 h-20 w-20 -rotate-6 rounded-[26px] bg-[linear-gradient(135deg,rgba(56,189,248,0.14),rgba(255,255,255,0.92))] shadow-[0_26px_70px_-55px_rgba(15,23,42,0.55)] ring-1 ring-black/10 backdrop-blur" />
-          <div className="-mt-10 ml-3 h-12 w-12 rotate-12 rounded-[18px] bg-[linear-gradient(135deg,rgba(99,102,241,0.12),rgba(255,255,255,0.94))] ring-1 ring-black/10 backdrop-blur" />
+          <div className="size-24 rotate-6 rounded-[28px] bg-[linear-gradient(135deg,rgba(37,99,235,0.16),rgba(255,255,255,0.9))] shadow-[0_26px_70px_-55px_rgba(15,23,42,0.55)] ring-1 ring-black/10 backdrop-blur" />
+          <div className="-mt-10 ml-14 size-20 -rotate-6 rounded-[26px] bg-[linear-gradient(135deg,rgba(56,189,248,0.14),rgba(255,255,255,0.92))] shadow-[0_26px_70px_-55px_rgba(15,23,42,0.55)] ring-1 ring-black/10 backdrop-blur" />
+          <div className="-mt-10 ml-3 size-12 rotate-12 rounded-[18px] bg-[linear-gradient(135deg,rgba(99,102,241,0.12),rgba(255,255,255,0.94))] ring-1 ring-black/10 backdrop-blur" />
         </div>
         <PublicReveal className="mx-auto max-w-7xl px-4 sm:px-6" shiftY={0}>
           <div className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
@@ -532,13 +529,13 @@ export default function PublicHome() {
         <div className="pointer-events-none absolute inset-0 opacity-70 [background:radial-gradient(circle_at_12%_18%,rgba(37,99,235,0.10),transparent_55%),radial-gradient(circle_at_86%_12%,rgba(56,189,248,0.10),transparent_60%)]" />
         <div className="pointer-events-none absolute inset-0 opacity-[0.35] [background:linear-gradient(rgba(15,23,42,0.06)_1px,transparent_1px),linear-gradient(90deg,rgba(15,23,42,0.06)_1px,transparent_1px)] [background-size:44px_44px]" />
         <div className="pointer-events-none absolute left-5 top-10 hidden md:block">
-          <div className="h-24 w-24 rotate-6 rounded-[28px] bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(255,255,255,0.88))] shadow-[0_26px_70px_-55px_rgba(15,23,42,0.55)] ring-1 ring-black/10 backdrop-blur" />
-          <div className="-mt-9 ml-14 h-20 w-20 -rotate-6 rounded-[26px] bg-[linear-gradient(135deg,rgba(56,189,248,0.16),rgba(255,255,255,0.9))] shadow-[0_26px_70px_-55px_rgba(15,23,42,0.55)] ring-1 ring-black/10 backdrop-blur" />
-          <div className="-mt-10 ml-3 h-12 w-12 rotate-12 rounded-[18px] bg-[linear-gradient(135deg,rgba(99,102,241,0.14),rgba(255,255,255,0.92))] ring-1 ring-black/10 backdrop-blur" />
+          <div className="size-24 rotate-6 rounded-[28px] bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(255,255,255,0.88))] shadow-[0_26px_70px_-55px_rgba(15,23,42,0.55)] ring-1 ring-black/10 backdrop-blur" />
+          <div className="-mt-9 ml-14 size-20 -rotate-6 rounded-[26px] bg-[linear-gradient(135deg,rgba(56,189,248,0.16),rgba(255,255,255,0.9))] shadow-[0_26px_70px_-55px_rgba(15,23,42,0.55)] ring-1 ring-black/10 backdrop-blur" />
+          <div className="-mt-10 ml-3 size-12 rotate-12 rounded-[18px] bg-[linear-gradient(135deg,rgba(99,102,241,0.14),rgba(255,255,255,0.92))] ring-1 ring-black/10 backdrop-blur" />
         </div>
         <div className="pointer-events-none absolute right-6 top-14 hidden lg:block">
-          <div className="h-20 w-20 -rotate-12 rounded-[26px] bg-[linear-gradient(135deg,rgba(99,102,241,0.14),rgba(255,255,255,0.9))] shadow-[0_26px_70px_-55px_rgba(15,23,42,0.55)] ring-1 ring-black/10 backdrop-blur" />
-          <div className="-mt-6 ml-12 h-14 w-14 rotate-6 rounded-[22px] bg-[linear-gradient(135deg,rgba(37,99,235,0.12),rgba(255,255,255,0.92))] ring-1 ring-black/10 backdrop-blur" />
+          <div className="size-20 -rotate-12 rounded-[26px] bg-[linear-gradient(135deg,rgba(99,102,241,0.14),rgba(255,255,255,0.9))] shadow-[0_26px_70px_-55px_rgba(15,23,42,0.55)] ring-1 ring-black/10 backdrop-blur" />
+          <div className="-mt-6 ml-12 size-14 rotate-6 rounded-[22px] bg-[linear-gradient(135deg,rgba(37,99,235,0.12),rgba(255,255,255,0.92))] ring-1 ring-black/10 backdrop-blur" />
         </div>
         <PublicReveal className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="text-center">

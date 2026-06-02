@@ -1,15 +1,7 @@
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
-import { ATTENDANCE_CHART_COLORS } from '@/lib/attendanceChartTheme';
+import { ATTENDANCE_CHART_COLORS } from '@/lib/utils/attendanceChartTheme';
 
 export type DashboardChartPoint = {
   date: string;

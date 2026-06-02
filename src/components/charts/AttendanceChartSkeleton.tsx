@@ -1,5 +1,5 @@
 import { Skeleton } from '@/components/ui/skeleton';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/utils';
 
 const BAR_HEIGHTS = ['45%', '70%', '55%', '85%', '40%', '65%', '50%', '75%', '60%', '48%'] as const;
 

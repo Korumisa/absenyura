@@ -29,7 +29,7 @@ export interface OfflineAttendance {
 }
 
 export const saveOfflineAttendance = async (
-  data: Omit<OfflineAttendance, 'id' | 'timestamp'>,
+  data: Omit<OfflineAttendance, 'id' | 'timestamp'>
 ): Promise<number> => {
   const db = await initDB();
   const timestamp = new Date().toISOString();

@@ -11,9 +11,9 @@ import PublicEnter from '@/components/PublicEnter';
 import PublicReveal from '@/components/PublicReveal';
 import PublicPageHero from '@/components/PublicPageHero';
 import PublicCoverImage from '@/components/PublicCoverImage';
-import useLockBodyScroll from '@/lib/useLockBodyScroll';
-import { motion } from 'framer-motion';
-import { useReducedMotion } from '@/lib/useReducedMotion';
+import useLockBodyScroll from '@/lib/a11y/useLockBodyScroll';
+import { m } from 'framer-motion';
+import { useReducedMotion } from '@/lib/a11y/useReducedMotion';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { PublicPageError } from '@/components/public/PublicPageError';
 import { PublicEmptyState } from '@/components/public/PublicEmptyState';
@@ -87,7 +87,7 @@ export default function Kegiatan() {
                       reducedMotion ? (
                         <div className="absolute inset-0 rounded-lg bg-[var(--public-primary)]" aria-hidden="true" />
                       ) : (
-                        <motion.div
+                        <m.div
                           layoutId="kegiatan-tab"
                           className="absolute inset-0 rounded-lg bg-[var(--public-primary)]"
                           transition={{ type: 'spring', stiffness: 460, damping: 44 }}
@@ -210,4 +210,3 @@ export default function Kegiatan() {
     </PublicLayout>
   );
 }
-

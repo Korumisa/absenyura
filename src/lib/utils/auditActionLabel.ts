@@ -34,7 +34,7 @@ export function getAuditTableLabel(table: string | null): string {
 }
 
 export function getAuditActionVariant(
-  action: string,
+  action: string
 ): 'success' | 'warning' | 'destructive' | 'default' {
   const upper = action.toUpperCase();
   if (upper.includes('DELETE') || upper.includes('FAILED')) return 'destructive';

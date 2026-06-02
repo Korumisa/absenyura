@@ -4,4 +4,3 @@ export function ensureHttpsUrl(url: string | null | undefined) {
   if (raw.startsWith('http://')) return `https://${raw.slice('http://'.length)}`;
   return raw;
 }
-

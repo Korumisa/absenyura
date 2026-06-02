@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
-import { cn } from '@/lib/utils';
-import { ensureHttpsUrl } from '@/lib/ensureHttpsUrl';
-import { optimizeCloudinaryUrl } from '@/lib/cloudinaryImage';
-import { DEFAULT_BRAND_LOGO_PNG, DEFAULT_BRAND_LOGO_WEBP } from '@/lib/staticBrandAssets';
+import { cn } from '@/lib/utils/utils';
+import { ensureHttpsUrl } from '@/lib/http/ensureHttpsUrl';
+import { optimizeCloudinaryUrl } from '@/lib/media/cloudinaryImage';
+import { DEFAULT_BRAND_LOGO_PNG, DEFAULT_BRAND_LOGO_WEBP } from '@/lib/media/staticBrandAssets';
 
 type BrandLogoImageProps = {
   src?: string | null;

@@ -1,12 +1,6 @@
-import { Request, Response, NextFunction } from 'express';
+import { Response, NextFunction } from 'express';
 import { verifyAccessToken } from '../utils/jwt.js';
-
-export interface AuthRequest extends Request {
-  user?: {
-    id: string;
-    role: string;
-  };
-}
+import type { AuthRequest } from '../types/index.js';
 
 export const authenticate = (req: AuthRequest, res: Response, next: NextFunction): void => {
   const bypass =
@@ -23,7 +17,7 @@ export const authenticate = (req: AuthRequest, res: Response, next: NextFunction
 
   // Read token from cookies first, fallback to Authorization header
   let token = req.cookies.accessToken;
-  
+
   if (!token) {
     const authHeader = req.headers.authorization;
     if (authHeader?.startsWith('Bearer ')) {

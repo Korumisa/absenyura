@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { Search, X } from 'lucide-react';
 import api from '@/services/api';
-import { formatClassLabel } from '@/lib/classLabel';
+import { formatClassLabel } from '@/lib/utils/classLabel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -29,29 +29,32 @@ export function ClassMultiSelect({
 }: ClassMultiSelectProps) {
   const [classSearch, setClassSearch] = useState('');
   const fetcher = (url: string) => api.get(url).then((res) => res.data.data as ClassOption[]);
-  const { data: classes = [] } = useSWR<ClassOption[]>('/classes', fetcher, { revalidateOnFocus: false });
+  const { data: classes = [] } = useSWR<ClassOption[]>('/classes', fetcher, {
+    revalidateOnFocus: false,
+  });
 
   const excludeSet = useMemo(() => new Set(excludeClassIds), [excludeClassIds]);
 
   const availableClasses = useMemo(
     () => classes.filter((c) => !excludeSet.has(c.id)),
-    [classes, excludeSet],
+    [classes, excludeSet]
   );
 
   const filteredClasses = useMemo(
     () =>
       availableClasses.filter((c) =>
-        c.name.toLowerCase().includes(classSearch.trim().toLowerCase()),
+        c.name.toLowerCase().includes(classSearch.trim().toLowerCase())
       ),
-    [availableClasses, classSearch],
+    [availableClasses, classSearch]
   );
 
   const selectedClasses = useMemo(
     () =>
-      value
-        .map((id) => classes.find((c) => c.id === id))
-        .filter(Boolean) as ClassOption[],
-    [value, classes],
+      value.flatMap((id) => {
+        const result = classes.find((c) => c.id === id);
+        return result ? [result] : [];
+      }),
+    [value, classes]
   );
 
   const toggleClass = (classId: string) => {
@@ -65,7 +68,7 @@ export function ClassMultiSelect({
     <div className="space-y-2 md:col-span-2">
       <Label>{label}</Label>
       <div className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
         <Input
           value={classSearch}
           onChange={(e) => setClassSearch(e.target.value)}
@@ -125,11 +128,11 @@ export function ClassMultiSelect({
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="ml-1 h-5 w-5"
+                    className="ml-1 size-5"
                     onClick={() => onChange(value.filter((x) => x !== c.id))}
                     aria-label="Hapus kelas"
                   >
-                    <X className="h-3 w-3" />
+                    <X className="size-3" />
                   </Button>
                 ) : null}
               </Badge>

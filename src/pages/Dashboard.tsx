@@ -1,31 +1,56 @@
-import React, { lazy, Suspense, useMemo, useState } from "react";
+import React, { lazy, Suspense, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useSWR from 'swr';
 import { useAuthStore } from '@/stores/authStore';
 import api from '@/services/api';
-import { Users, Calendar, CheckCircle2, Clock, MapPin, FileText, BarChart3, QrCode } from 'lucide-react';
+import {
+  Users,
+  Calendar,
+  CheckCircle2,
+  Clock,
+  MapPin,
+  FileText,
+  BarChart3,
+  QrCode,
+} from 'lucide-react';
 import AdminPageShell from '@/components/AdminPageShell';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
 import { AttendanceChartLegend } from '@/components/charts/AttendanceChartLegend';
 import { AttendanceChartLoadingOverlay } from '@/components/charts/AttendanceChartLoadingOverlay';
 import { AttendanceChartSkeleton } from '@/components/charts/AttendanceChartSkeleton';
-import { type ChartFilterValue } from '@/lib/attendanceChartTheme';
-import { cn } from '@/lib/utils';
+import { type ChartFilterValue } from '@/lib/utils/attendanceChartTheme';
+import { cn } from '@/lib/utils/utils';
 
 const DashboardAttendanceBarChart = lazy(
-  () => import('@/components/charts/DashboardAttendanceBarChart'),
+  () => import('@/components/charts/DashboardAttendanceBarChart')
 );
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
-import { DashboardAdminSkeleton, DashboardUserSkeleton } from '@/components/admin/DashboardSkeleton';
+import {
+  DashboardAdminSkeleton,
+  DashboardUserSkeleton,
+} from '@/components/admin/DashboardSkeleton';
 import { Badge } from '@/components/ui/badge';
-import { formatClassLabel } from '@/lib/classLabel';
-import { sessionStatusLabel } from '@/lib/sessionStatusLabel';
+import { formatClassLabel } from '@/lib/utils/classLabel';
+import { sessionStatusLabel } from '@/lib/utils/sessionStatusLabel';
 import { AttendOnboardingBanner } from '@/components/attend/AttendOnboardingBanner';
 
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 type DashboardRecentSession = {
   id: string;
@@ -49,7 +74,12 @@ function dashboardSessionClass(session: DashboardRecentSession): string | null {
   if (!session.class) return null;
   if (typeof session.class === 'object' && session.class !== null) {
     const c = session.class as { name?: string; id?: string };
-    return formatClassLabel(session.class as Parameters<typeof formatClassLabel>[0]) || c.name || c.id || null;
+    return (
+      formatClassLabel(session.class as Parameters<typeof formatClassLabel>[0]) ||
+      c.name ||
+      c.id ||
+      null
+    );
   }
   return String(session.class);
 }
@@ -71,12 +101,17 @@ export default function Dashboard() {
 
   const [dateRange, setDateRange] = useState('30');
 
-  const fetcher = (url: string) => api.get(url).then(res => res.data.data);
-  const { data, error, isLoading: loading, isValidating, mutate } = useSWR(
-    user?.id ? `/dashboard?range=${dateRange}` : null,
-    fetcher,
-    { revalidateOnFocus: false, keepPreviousData: true },
-  );
+  const fetcher = (url: string) => api.get(url).then((res) => res.data.data);
+  const {
+    data,
+    error,
+    isLoading: loading,
+    isValidating,
+    mutate,
+  } = useSWR(user?.id ? `/dashboard?range=${dateRange}` : null, fetcher, {
+    revalidateOnFocus: false,
+    keepPreviousData: true,
+  });
 
   const chartRefreshing = isValidating && data !== undefined;
 
@@ -105,10 +140,14 @@ export default function Dashboard() {
           <span className="font-medium text-brand text-brand">{user?.name}</span>!
         </>
       }
-      icon={<BarChart3 className="h-5 w-5" />}
+      icon={<BarChart3 className="size-5" />}
     >
       {loading && !data ? (
-        isUser ? <DashboardUserSkeleton /> : <DashboardAdminSkeleton />
+        isUser ? (
+          <DashboardUserSkeleton />
+        ) : (
+          <DashboardAdminSkeleton />
+        )
       ) : error && !data ? (
         <ErrorWithRetry title="Gagal memuat dashboard" error={error} onRetry={() => mutate()} />
       ) : !data ? null : isUser ? (
@@ -121,11 +160,19 @@ export default function Dashboard() {
           />
           {/* [UX] quick action — sesi aktif */}
           {activeSession ? (
-            <section className="rounded-3xl border-2 border-indigo-500 bg-gradient-to-r from-indigo-600 to-violet-600 p-6 text-white shadow-xl sm:p-8" aria-label="Sesi absensi aktif">
-              <p className="text-sm font-semibold uppercase tracking-wide text-indigo-100">Sesi berlangsung sekarang</p>
+            <section
+              className="rounded-3xl border-2 border-indigo-500 bg-gradient-to-r from-indigo-600 to-violet-600 p-6 text-white shadow-xl sm:p-8"
+              aria-label="Sesi absensi aktif"
+            >
+              <p className="text-sm font-semibold uppercase tracking-wide text-indigo-100">
+                Sesi berlangsung sekarang
+              </p>
               <h2 className="mt-1 text-2xl font-extrabold sm:text-3xl">{activeSession.title}</h2>
               <p className="mt-2 text-indigo-100">
-                {format(new Date(activeSession.session_start), 'EEEE, dd MMM · HH:mm', { locale: id })} WIB
+                {format(new Date(activeSession.session_start), 'EEEE, dd MMM · HH:mm', {
+                  locale: id,
+                })}{' '}
+                WIB
               </p>
               <Button
                 type="button"
@@ -133,7 +180,7 @@ export default function Dashboard() {
                 className="mt-6 min-h-12 w-full bg-white font-bold text-indigo-700 hover:bg-indigo-50 sm:w-auto"
                 onClick={() => navigate(`/attend?session=${activeSession.id}`)}
               >
-                <QrCode className="mr-2 h-5 w-5" aria-hidden="true" />
+                <QrCode className="mr-2 size-5" aria-hidden="true" />
                 Absen sekarang
               </Button>
             </section>
@@ -142,7 +189,8 @@ export default function Dashboard() {
               <div className="relative z-10">
                 <h2 className="mb-2 text-3xl font-extrabold sm:text-4xl">Halo, {user?.name}!</h2>
                 <p className="max-w-xl text-lg text-indigo-100">
-                  Ringkasan kehadiranmu. Pertahankan persentase kehadiran untuk hasil maksimal di akhir semester.
+                  Ringkasan kehadiranmu. Pertahankan persentase kehadiran untuk hasil maksimal di
+                  akhir semester.
                 </p>
               </div>
             </div>
@@ -151,21 +199,21 @@ export default function Dashboard() {
           {/* Stats Grid */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
             <div className="bg-card text-card-foreground p-4 sm:p-6 rounded-3xl border border-border shadow-sm hover:shadow-md transition-shadow group">
-              <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center text-brand text-brand mb-4 group-hover:scale-110 transition-transform">
+              <div className="size-12 bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center text-brand text-brand mb-4 group-hover:scale-110 transition-transform">
                 <Calendar size={24} />
               </div>
               <p className="text-sm text-muted-foreground font-medium mb-1">Total Sesi</p>
               <p className="text-3xl font-extrabold text-foreground">{data?.stats.total}</p>
             </div>
             <div className="bg-card text-card-foreground p-4 sm:p-6 rounded-3xl border border-border shadow-sm hover:shadow-md transition-shadow group">
-              <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-900/30 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 mb-4 group-hover:scale-110 transition-transform">
+              <div className="size-12 bg-emerald-50 dark:bg-emerald-900/30 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 mb-4 group-hover:scale-110 transition-transform">
                 <CheckCircle2 size={24} />
               </div>
               <p className="text-sm text-muted-foreground font-medium mb-1">Hadir Tepat Waktu</p>
               <p className="text-3xl font-extrabold text-foreground">{data?.stats.present}</p>
             </div>
             <div className="bg-card text-card-foreground p-4 sm:p-6 rounded-3xl border border-border shadow-sm hover:shadow-md transition-shadow group">
-              <div className="w-12 h-12 bg-amber-50 dark:bg-amber-900/30 rounded-2xl flex items-center justify-center text-amber-600 dark:text-amber-400 mb-4 group-hover:scale-110 transition-transform">
+              <div className="size-12 bg-amber-50 dark:bg-amber-900/30 rounded-2xl flex items-center justify-center text-amber-600 dark:text-amber-400 mb-4 group-hover:scale-110 transition-transform">
                 <FileText size={24} />
               </div>
               <p className="text-sm text-muted-foreground font-medium mb-1">Total Izin / Sakit</p>
@@ -175,90 +223,103 @@ export default function Dashboard() {
             </div>
 
             <div className="bg-card text-card-foreground p-4 sm:p-6 rounded-3xl border border-border shadow-sm hover:shadow-md transition-shadow group">
-              <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center text-blue-600 dark:text-blue-400 mb-4 group-hover:scale-110 transition-transform">
+              <div className="size-12 bg-blue-50 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center text-blue-600 dark:text-blue-400 mb-4 group-hover:scale-110 transition-transform">
                 <BarChart3 size={24} />
               </div>
               <p className="text-sm text-muted-foreground font-medium mb-1">Rasio Kehadiran</p>
               <div className="flex items-end gap-2">
                 <p className="text-3xl font-extrabold text-foreground">{data?.stats.percentage}%</p>
-                <span className={`text-xs font-bold mb-1.5 ${data?.stats.percentage >= 80 ? 'text-green-500' : 'text-red-500'}`}>
+                <span
+                  className={`text-xs font-bold mb-1.5 ${data?.stats.percentage >= 80 ? 'text-green-500' : 'text-red-500'}`}
+                >
                   {data?.stats.percentage >= 80 ? 'Aman' : 'Perlu perhatian'}
                 </span>
               </div>
             </div>
           </div>
 
-            <div className="overflow-hidden rounded-xl border border-border bg-card shadow-card dark:shadow-none dark:ring-1 dark:ring-white/10">
-              <div className="flex items-center justify-between border-b border-border px-6 py-5">
-                <h2 className="text-xl font-bold text-foreground">Jadwal Sesi Terdekat</h2>
-                <span className="bg-indigo-50 dark:bg-indigo-900/30 text-brand text-brand py-1 px-3 rounded-full text-xs font-bold">
-                  {data?.recent_sessions?.length || 0} Sesi
-                </span>
-              </div>
-              
-              {/* [UX] D-01 — kartu mobile jadwal sesi */}
-              <ul className="space-y-3 px-4 pb-4 pt-4 sm:px-5 sm:pb-5 md:hidden" aria-label="Jadwal sesi terdekat">
-                {!data?.recent_sessions?.length ? (
-                  <li className="py-8 text-center text-muted-foreground">Belum ada sesi terdekat.</li>
-                ) : (
-                  data.recent_sessions.map((session: any) => (
-                    <li
-                      key={session.id}
-                      className="rounded-2xl border border-border bg-muted/20 p-4 dark:bg-muted/10"
-                    >
-                      <p className="font-bold text-foreground">{session.title}</p>
-                      <p className="text-sm text-brand text-brand">
-                        {(() => {
-                          const labels = (session.session_classes ?? []).map((x: any) => formatClassLabel(x?.class)).filter(Boolean);
-                          if (labels.length) return labels.join(', ');
-                          return session.class ? formatClassLabel(session.class) : 'Semua Mahasiswa';
-                        })()}
-                      </p>
-                      <p className="mt-2 text-sm text-muted-foreground">
-                        {format(new Date(session.session_start), 'dd MMM yyyy · HH:mm', { locale: id })} WIB
-                      </p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {typeof session.location === 'object' ? session.location?.name : session.location || '-'}
-                      </p>
-                      <div className="mt-3">
-                        {session.status === 'ACTIVE' ? (
-                          session.attendances?.length > 0 ? (
-                            session.attendances[0].check_out_time || !session.require_checkout ? (
-                              <Badge variant="success">Sudah absen</Badge>
-                            ) : (
-                              <Button
-                                size="lg"
-                                className="min-h-11 w-full rounded-xl bg-amber-500 hover:bg-amber-600"
-                                onClick={() =>
-                                  navigate(
-                                    `/attend?session=${session.id}&checkout=true&attendance=${session.attendances[0].id}`,
-                                  )
-                                }
-                              >
-                                Check-out
-                              </Button>
-                            )
+          <div className="overflow-hidden rounded-xl border border-border bg-card shadow-card dark:shadow-none dark:ring-1 dark:ring-white/10">
+            <div className="flex items-center justify-between border-b border-border px-6 py-5">
+              <h2 className="text-xl font-bold text-foreground">Jadwal Sesi Terdekat</h2>
+              <span className="bg-indigo-50 dark:bg-indigo-900/30 text-brand text-brand py-1 px-3 rounded-full text-xs font-bold">
+                {data?.recent_sessions?.length || 0} Sesi
+              </span>
+            </div>
+
+            {/* [UX] D-01 — kartu mobile jadwal sesi */}
+            <ul
+              className="space-y-3 px-4 pb-4 pt-4 sm:px-5 sm:pb-5 md:hidden"
+              aria-label="Jadwal sesi terdekat"
+            >
+              {!data?.recent_sessions?.length ? (
+                <li className="py-8 text-center text-muted-foreground">Belum ada sesi terdekat.</li>
+              ) : (
+                data.recent_sessions.map((session: any) => (
+                  <li
+                    key={session.id}
+                    className="rounded-2xl border border-border bg-muted/20 p-4 dark:bg-muted/10"
+                  >
+                    <p className="font-bold text-foreground">{session.title}</p>
+                    <p className="text-sm text-brand text-brand">
+                      {(() => {
+                        const labels = (session.session_classes ?? []).flatMap((x: any) => {
+                          const result = formatClassLabel(x?.class);
+                          return result ? [result] : [];
+                        });
+                        if (labels.length) return labels.join(', ');
+                        return session.class ? formatClassLabel(session.class) : 'Semua Mahasiswa';
+                      })()}
+                    </p>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      {format(new Date(session.session_start), 'dd MMM yyyy · HH:mm', {
+                        locale: id,
+                      })}{' '}
+                      WIB
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {typeof session.location === 'object'
+                        ? session.location?.name
+                        : session.location || '-'}
+                    </p>
+                    <div className="mt-3">
+                      {session.status === 'ACTIVE' ? (
+                        session.attendances?.length > 0 ? (
+                          session.attendances[0].check_out_time || !session.require_checkout ? (
+                            <Badge variant="success">Sudah absen</Badge>
                           ) : (
                             <Button
                               size="lg"
-                              className="min-h-11 w-full rounded-xl"
-                              onClick={() => navigate(`/attend?session=${session.id}`)}
+                              className="min-h-11 w-full rounded-xl bg-amber-500 hover:bg-amber-600"
+                              onClick={() =>
+                                navigate(
+                                  `/attend?session=${session.id}&checkout=true&attendance=${session.attendances[0].id}`
+                                )
+                              }
                             >
-                              <QrCode className="mr-2 h-4 w-4" aria-hidden="true" />
-                              Scan QR absen
+                              Check-out
                             </Button>
                           )
                         ) : (
-                          <Badge variant="secondary">Belum mulai</Badge>
-                        )}
-                      </div>
-                    </li>
-                  ))
-                )}
-              </ul>
+                          <Button
+                            size="lg"
+                            className="min-h-11 w-full rounded-xl"
+                            onClick={() => navigate(`/attend?session=${session.id}`)}
+                          >
+                            <QrCode className="mr-2 size-4" aria-hidden="true" />
+                            Scan QR absen
+                          </Button>
+                        )
+                      ) : (
+                        <Badge variant="secondary">Belum mulai</Badge>
+                      )}
+                    </div>
+                  </li>
+                ))
+              )}
+            </ul>
 
-              <div className="hidden md:block">
-                <div className="overflow-x-auto">
+            <div className="hidden md:block">
+              <div className="overflow-x-auto">
                 <Table className="min-w-[720px]">
                   <TableHeader className="sticky top-0 z-10 bg-muted/50 [&_tr]:border-b">
                     <TableRow>
@@ -283,17 +344,29 @@ export default function Dashboard() {
                         <TableRow key={session.id}>
                           <TableCell>
                             <div className="font-bold text-foreground text-base">
-                              {typeof session.title === 'object' && session.title !== null ? ((session.title as any).name || (session.title as any).id) : session.title}
+                              {typeof session.title === 'object' && session.title !== null
+                                ? (session.title as any).name || (session.title as any).id
+                                : session.title}
                             </div>
                             <p className="text-sm font-semibold text-brand text-brand mt-0.5">
                               {(() => {
-                                const labels = (session.session_classes ?? []).map((x: any) => formatClassLabel(x?.class)).filter(Boolean);
+                                const labels = (session.session_classes ?? []).flatMap((x: any) => {
+                                  const result = formatClassLabel(x?.class);
+                                  return result ? [result] : [];
+                                });
                                 if (labels.length) return labels.join(', ');
                                 if (session.class) {
                                   if (typeof session.class === 'object' && session.class !== null) {
-                                    return formatClassLabel(session.class as any) || ((session.class as any).name || (session.class as any).id || '-');
+                                    return (
+                                      formatClassLabel(session.class as any) ||
+                                      (session.class as any).name ||
+                                      (session.class as any).id ||
+                                      '-'
+                                    );
                                   }
-                                  return String((session.class as any)?.name || session.class || '-');
+                                  return String(
+                                    (session.class as any)?.name || session.class || '-'
+                                  );
                                 }
                                 return 'Semua Mahasiswa';
                               })()}
@@ -303,70 +376,87 @@ export default function Dashboard() {
                             <div className="flex flex-col gap-1.5 text-muted-foreground">
                               <div className="flex items-center gap-2">
                                 <Calendar size={14} className="text-indigo-500" />
-                                <span className="font-medium">{format(new Date(session.session_start), 'dd MMM yyyy', { locale: id })}</span>
+                                <span className="font-medium">
+                                  {format(new Date(session.session_start), 'dd MMM yyyy', {
+                                    locale: id,
+                                  })}
+                                </span>
                               </div>
                               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                 <Clock size={14} />
-                                {format(new Date(session.session_start), 'HH:mm')} - {format(new Date(session.session_end), 'HH:mm')} WIB
+                                {format(new Date(session.session_start), 'HH:mm')} -{' '}
+                                {format(new Date(session.session_end), 'HH:mm')} WIB
                               </div>
                             </div>
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-1.5 mt-1 text-muted-foreground">
-                                <MapPin size={14} className="shrink-0" />
-                                <span className="truncate max-w-[200px]">{typeof session.location === 'object' && session.location !== null ? ((session.location as any).name || (session.location as any).id) : (session.location?.name || session.location || '-')}</span>
-                              </div>
+                              <MapPin size={14} className="shrink-0" />
+                              <span className="truncate max-w-[200px]">
+                                {typeof session.location === 'object' && session.location !== null
+                                  ? (session.location as any).name || (session.location as any).id
+                                  : session.location?.name || session.location || '-'}
+                              </span>
+                            </div>
                           </TableCell>
                           <TableCell className="text-right">
                             {session.status === 'ACTIVE' ? (
-                                <div className="flex gap-2 justify-end">
-                                  {session.attendances && session.attendances.length > 0 ? (
-                                    session.attendances[0].check_out_time || (!session.require_checkout) ? (
-                                      <Badge variant="success" className="px-3 py-1">Sudah Absen</Badge>
-                                    ) : (
-                                      <Button 
-                                        onClick={() =>
-                                          navigate(
-                                            `/attend?session=${session.id}&checkout=true&attendance=${session.attendances[0].id}`,
-                                          )
-                                        }
-                                        className="h-auto min-h-11 bg-amber-500 px-3 py-1.5 text-xs text-white shadow-lg shadow-amber-600/20 hover:bg-amber-600"
-                                      >
-                                        Check-out
-                                      </Button>
-                                    )
+                              <div className="flex gap-2 justify-end">
+                                {session.attendances && session.attendances.length > 0 ? (
+                                  session.attendances[0].check_out_time ||
+                                  !session.require_checkout ? (
+                                    <Badge variant="success" className="px-3 py-1">
+                                      Sudah Absen
+                                    </Badge>
                                   ) : (
-                                    <Button 
-                                      onClick={() => navigate(`/attend?session=${session.id}`)}
-                                      className="h-auto min-h-11 bg-brand px-3 py-1.5 text-xs text-white shadow-lg shadow-indigo-600/20 hover:bg-brand/90"
+                                    <Button
+                                      onClick={() =>
+                                        navigate(
+                                          `/attend?session=${session.id}&checkout=true&attendance=${session.attendances[0].id}`
+                                        )
+                                      }
+                                      className="h-auto min-h-11 bg-amber-500 px-3 py-1.5 text-xs text-white shadow-lg shadow-amber-600/20 hover:bg-amber-600"
                                     >
-                                      Scan QR Absen
+                                      Check-out
                                     </Button>
-                                  )}
-                                </div>
-                              ) : (
-                                <Badge variant="secondary" className="px-3 py-1">Belum Mulai</Badge>
-                              )}
+                                  )
+                                ) : (
+                                  <Button
+                                    onClick={() => navigate(`/attend?session=${session.id}`)}
+                                    className="h-auto min-h-11 bg-brand px-3 py-1.5 text-xs text-white shadow-lg shadow-indigo-600/20 hover:bg-brand/90"
+                                  >
+                                    Scan QR Absen
+                                  </Button>
+                                )}
+                              </div>
+                            ) : (
+                              <Badge variant="secondary" className="px-3 py-1">
+                                Belum Mulai
+                              </Badge>
+                            )}
                           </TableCell>
                         </TableRow>
                       ))
                     )}
                   </TableBody>
                 </Table>
-                </div>
               </div>
             </div>
+          </div>
         </div>
       ) : (
         // ================= ADMIN DASHBOARD (Modern & Clean) =================
         <div className="space-y-8">
           {/* Welcome Banner Admin */}
           <div className="bg-gradient-to-r from-slate-900 to-indigo-950 dark:from-indigo-950 dark:to-zinc-950 rounded-3xl p-8 sm:p-10 text-white shadow-xl relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/20 blur-[80px] rounded-full pointer-events-none"></div>
+            <div className="absolute top-0 right-0 size-64 bg-indigo-500/20 blur-[80px] rounded-full pointer-events-none"></div>
             <div className="relative z-10">
-              <h2 className="text-3xl sm:text-4xl font-extrabold mb-2">Selamat Datang, {user?.name}!</h2>
+              <h2 className="text-3xl sm:text-4xl font-extrabold mb-2">
+                Selamat Datang, {user?.name}!
+              </h2>
               <p className="text-indigo-200 text-lg max-w-2xl">
-                Pantau aktivitas akademik, kelola jadwal sesi, dan tinjau metrik kehadiran secara real-time dari satu dasbor pusat.
+                Pantau aktivitas akademik, kelola jadwal sesi, dan tinjau metrik kehadiran secara
+                real-time dari satu dasbor pusat.
               </p>
             </div>
           </div>
@@ -376,45 +466,55 @@ export default function Dashboard() {
             <div className="bg-card text-card-foreground p-6 rounded-3xl border border-border shadow-sm hover:shadow-md transition-shadow group">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-medium text-muted-foreground">Total Pengguna</h3>
-                <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center text-brand text-brand group-hover:scale-110 transition-transform">
+                <div className="size-12 bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center text-brand text-brand group-hover:scale-110 transition-transform">
                   <Users size={24} />
                 </div>
               </div>
               <p className="text-3xl font-extrabold text-foreground">{data?.stats.total_users}</p>
-              <p className="text-xs text-slate-400 text-muted-foreground mt-2 font-medium">Mahasiswa terdaftar</p>
+              <p className="text-xs text-slate-400 text-muted-foreground mt-2 font-medium">
+                Mahasiswa terdaftar
+              </p>
             </div>
-            
+
             <div className="bg-card text-card-foreground p-6 rounded-3xl border border-border shadow-sm hover:shadow-md transition-shadow group">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-medium text-muted-foreground">Total Sesi</h3>
-                <div className="w-12 h-12 bg-purple-50 dark:bg-purple-900/30 rounded-2xl flex items-center justify-center text-purple-600 dark:text-purple-400 group-hover:scale-110 transition-transform">
+                <div className="size-12 bg-purple-50 dark:bg-purple-900/30 rounded-2xl flex items-center justify-center text-purple-600 dark:text-purple-400 group-hover:scale-110 transition-transform">
                   <Calendar size={24} />
                 </div>
               </div>
-              <p className="text-3xl font-extrabold text-foreground">{data?.stats.total_sessions}</p>
-              <p className="text-xs text-slate-400 text-muted-foreground mt-2 font-medium">Sesi kelas dibuat</p>
+              <p className="text-3xl font-extrabold text-foreground">
+                {data?.stats.total_sessions}
+              </p>
+              <p className="text-xs text-slate-400 text-muted-foreground mt-2 font-medium">
+                Sesi kelas dibuat
+              </p>
             </div>
 
             <div className="bg-card text-card-foreground p-6 rounded-3xl border border-border shadow-sm hover:shadow-md transition-shadow group">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-medium text-muted-foreground">Hadir Hari Ini</h3>
-                <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-900/30 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform">
+                <div className="size-12 bg-emerald-50 dark:bg-emerald-900/30 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform">
                   <CheckCircle2 size={24} />
                 </div>
               </div>
               <p className="text-3xl font-extrabold text-foreground">{data?.stats.today_present}</p>
-              <p className="text-xs text-slate-400 text-muted-foreground mt-2 font-medium">Peserta tepat waktu</p>
+              <p className="text-xs text-slate-400 text-muted-foreground mt-2 font-medium">
+                Peserta tepat waktu
+              </p>
             </div>
 
             <div className="bg-card text-card-foreground p-6 rounded-3xl border border-border shadow-sm hover:shadow-md transition-shadow group">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-medium text-muted-foreground">Terlambat Hari Ini</h3>
-                <div className="w-12 h-12 bg-amber-50 dark:bg-amber-900/30 rounded-2xl flex items-center justify-center text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform">
+                <div className="size-12 bg-amber-50 dark:bg-amber-900/30 rounded-2xl flex items-center justify-center text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform">
                   <Clock size={24} />
                 </div>
               </div>
               <p className="text-3xl font-extrabold text-foreground">{data?.stats.today_late}</p>
-              <p className="text-xs text-slate-400 text-muted-foreground mt-2 font-medium">Peserta terlambat</p>
+              <p className="text-xs text-slate-400 text-muted-foreground mt-2 font-medium">
+                Peserta terlambat
+              </p>
             </div>
           </div>
 
@@ -448,7 +548,7 @@ export default function Dashboard() {
                   </Select>
                 </div>
               </div>
-              
+
               <div className="relative min-h-[320px] w-full min-w-0" aria-busy={chartRefreshing}>
                 {chartRefreshing ? <AttendanceChartLoadingOverlay /> : null}
                 {chartData.length === 0 ? (
@@ -463,7 +563,7 @@ export default function Dashboard() {
                   <div
                     className={cn(
                       'transition-opacity duration-200',
-                      chartRefreshing && 'pointer-events-none opacity-40',
+                      chartRefreshing && 'pointer-events-none opacity-40'
                     )}
                   >
                     <Suspense fallback={<AttendanceChartSkeleton />}>
@@ -503,9 +603,13 @@ export default function Dashboard() {
                     >
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
-                          <p className="font-bold text-foreground">{dashboardSessionTitle(session)}</p>
+                          <p className="font-bold text-foreground">
+                            {dashboardSessionTitle(session)}
+                          </p>
                           {dashboardSessionClass(session) ? (
-                            <p className="mt-0.5 text-sm text-muted-foreground">{dashboardSessionClass(session)}</p>
+                            <p className="mt-0.5 text-sm text-muted-foreground">
+                              {dashboardSessionClass(session)}
+                            </p>
                           ) : null}
                         </div>
                         <Badge

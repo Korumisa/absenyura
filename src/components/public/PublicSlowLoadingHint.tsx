@@ -18,7 +18,7 @@ export function PublicSlowLoadingHint({
       role="status"
       aria-live="polite"
     >
-      <Clock className="mx-auto mb-2 h-8 w-8 text-[var(--public-primary)]" aria-hidden />
+      <Clock className="mx-auto mb-2 size-8 text-[var(--public-primary)]" aria-hidden />
       <p className="text-sm font-semibold text-slate-900">Memuat lebih lama dari biasanya</p>
       <p className="mt-1 text-xs text-muted-foreground">
         Koneksi atau server sedang lambat. Anda bisa menunggu atau memuat ulang.
@@ -29,7 +29,7 @@ export function PublicSlowLoadingHint({
         className="mt-4 min-h-11 border-black/10"
         onClick={onRetry}
       >
-        <RefreshCw className="mr-2 h-4 w-4" aria-hidden />
+        <RefreshCw className="mr-2 size-4" aria-hidden />
         Muat ulang
       </Button>
     </div>

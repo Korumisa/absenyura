@@ -2,7 +2,7 @@ import {
   ATTENDANCE_LEGEND_ITEMS,
   legendKeysForFilter,
   type ChartFilterValue,
-} from '@/lib/attendanceChartTheme';
+} from '@/lib/utils/attendanceChartTheme';
 
 type AttendanceChartLegendProps = {
   chartFilter: ChartFilterValue;

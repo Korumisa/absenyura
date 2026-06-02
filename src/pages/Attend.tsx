@@ -3,54 +3,68 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import api from '@/services/api';
 import { toast } from 'sonner';
-import { MapPin, QrCode, ShieldAlert, Camera, RefreshCw, WifiOff, AlertCircle, LogOut, Loader2 } from 'lucide-react';
+import {
+  MapPin,
+  QrCode,
+  ShieldAlert,
+  Camera,
+  RefreshCw,
+  WifiOff,
+  AlertCircle,
+  LogOut,
+  Loader2,
+} from 'lucide-react';
 import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 import type { Report } from '@/types/report';
-import { APP_ONLINE_EVENT, OFFLINE_USER_MESSAGE, ONLINE_USER_MESSAGE } from '@/lib/networkEvents';
-import { getErrorMessage } from '@/lib/errorMessage';
+import {
+  APP_ONLINE_EVENT,
+  OFFLINE_USER_MESSAGE,
+  ONLINE_USER_MESSAGE,
+} from '@/lib/perf/networkEvents';
+import { getErrorMessage } from '@/lib/http/errorMessage';
 import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import { saveOfflineAttendance, saveOfflinePhoto } from '@/lib/idb';
+import { saveOfflineAttendance, saveOfflinePhoto } from '@/lib/storage/idb';
 import { AttendPrivacyBanner } from '@/components/attend/AttendPrivacyBanner';
 import { AttendStepIndicator } from '@/components/attend/AttendStepIndicator';
 import { track } from '@vercel/analytics';
-import { getDeviceFingerprint } from '@/lib/deviceFingerprint';
+import { getDeviceFingerprint } from '@/lib/storage/deviceFingerprint';
 import {
   acquireCameraStream,
   humanizeCameraError,
   pickPreferredCameraId,
   releaseMediaStream,
   waitForCameraRelease,
-} from '@/lib/camera';
+} from '@/lib/media/camera';
 import ActionLoadingOverlay from '@/components/ActionLoadingOverlay';
 
 import { Button } from '@/components/ui/button';
 
-import { fixLeafletDefaultIcons } from '@/lib/leafletIcon';
+import { fixLeafletDefaultIcons } from '@/lib/media/leafletIcon';
 
 fixLeafletDefaultIcons();
 
 const getDistanceMeters = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) => {
-    const R = 6371000;
-    const toRad = (v: number) => (v * Math.PI) / 180;
-    const dLat = toRad(b.lat - a.lat);
-    const dLng = toRad(b.lng - a.lng);
-    const lat1 = toRad(a.lat);
-    const lat2 = toRad(b.lat);
-    const h =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
-    return 2 * R * Math.asin(Math.sqrt(h));
-  };
+  const R = 6371000;
+  const toRad = (v: number) => (v * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const lat1 = toRad(a.lat);
+  const lat2 = toRad(b.lat);
+  const h =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  return 2 * R * Math.asin(Math.sqrt(h));
+};
 
 const MapUpdater = ({ center }: { center: [number, number] }) => {
-    const map = useMap();
-    useEffect(() => {
-      map.setView(center);
-    }, [center, map]);
-    return null;
-  };
+  const map = useMap();
+  useEffect(() => {
+    map.setView(center);
+  }, [center, map]);
+  return null;
+};
 
 export default function Attend() {
   const [searchParams] = useSearchParams();
@@ -119,11 +133,13 @@ export default function Attend() {
   // Derived session ID from parameter or scan result
   const extractSessionIdAndToken = (rawResult: string | null) => {
     if (!rawResult) return { sid: sessionParam, tkn: tokenParam };
-    
+
     try {
       // 1. Check if it's a URL
       if (rawResult.includes('http') || rawResult.includes('?session=')) {
-        const urlObj = new URL(rawResult.startsWith('http') ? rawResult : `http://localhost${rawResult}`);
+        const urlObj = new URL(
+          rawResult.startsWith('http') ? rawResult : `http://localhost${rawResult}`
+        );
         const sid = urlObj.searchParams.get('session');
         const tkn = urlObj.searchParams.get('token');
         return { sid: sid || sessionParam, tkn: tkn || rawResult };
@@ -146,7 +162,10 @@ export default function Attend() {
   const [sessionDetails, setSessionDetails] = useState<any>(null);
   const [sessionLoading, setSessionLoading] = useState(Boolean(sessionParam && !tokenParam));
   const [sessionLoadError, setSessionLoadError] = useState<string | null>(null); // [UX] A-03
-  const [myAttendance, setMyAttendance] = useState<Pick<Report, 'id' | 'check_in_time' | 'session_title'> | null>(null);
+  const [myAttendance, setMyAttendance] = useState<Pick<
+    Report,
+    'id' | 'check_in_time' | 'session_title'
+  > | null>(null);
   const [checkoutLoading, setCheckoutLoading] = useState(isCheckoutMode);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [checkoutSubmitting, setCheckoutSubmitting] = useState(false);
@@ -254,9 +273,9 @@ export default function Attend() {
 
   useEffect(() => {
     fetch('https://api.ipify.org?format=json')
-      .then(res => res.json())
-      .then(data => setIpAddress(data.ip))
-      .catch(err => console.error('Gagal mengambil IP', err));
+      .then((res) => res.json())
+      .then((data) => setIpAddress(data.ip))
+      .catch((err) => console.error('Gagal mengambil IP', err));
   }, []);
 
   const isSpoofedLocation = (pos: GeolocationPosition) => {
@@ -266,10 +285,7 @@ export default function Attend() {
       return true;
     }
     // 2. Suspiciously round coordinates often seen in emulators
-    if (
-      pos.coords.latitude % 1 === 0 &&
-      pos.coords.longitude % 1 === 0
-    ) {
+    if (pos.coords.latitude % 1 === 0 && pos.coords.longitude % 1 === 0) {
       return true;
     }
     return false;
@@ -282,7 +298,7 @@ export default function Attend() {
       setLocation(null);
       return;
     }
-    
+
     const acc = pos.coords.accuracy;
     setGpsAccuracy(acc);
 
@@ -292,7 +308,7 @@ export default function Attend() {
       setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
       return;
     }
-    
+
     setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
     setGpsError(null);
   };
@@ -403,7 +419,7 @@ export default function Attend() {
           },
           () => {
             // Abaikan kegagalan scan berulang sampai QR terbaca
-          },
+          }
         );
         if (cancelled || bootGen !== qrBootGenRef.current) {
           try {
@@ -529,17 +545,17 @@ export default function Attend() {
     if (videoRef.current && canvasRef.current) {
       const video = videoRef.current;
       const canvas = canvasRef.current;
-      
+
       // Calculate scaled dimensions to prevent massive payloads
       const MAX_WIDTH = 800;
       let width = video.videoWidth;
       let height = video.videoHeight;
-      
+
       if (width > MAX_WIDTH) {
         height = Math.round((height * MAX_WIDTH) / width);
         width = MAX_WIDTH;
       }
-      
+
       canvas.width = width;
       canvas.height = height;
       const ctx = canvas.getContext('2d');
@@ -549,15 +565,15 @@ export default function Attend() {
           ctx.translate(canvas.width, 0);
           ctx.scale(-1, 1);
         }
-        
+
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        
+
         // Kembalikan transformasi sebelum menulis teks agar teks tidak terbalik
         if (facingMode === 'user') {
           ctx.translate(canvas.width, 0);
           ctx.scale(-1, 1);
         }
-        
+
         // Add watermark
         ctx.font = '14px Arial';
         ctx.fillStyle = 'yellow';
@@ -565,17 +581,25 @@ export default function Attend() {
         ctx.shadowBlur = 4;
         ctx.fillText(`${new Date().toLocaleString()}`, 10, canvas.height - 30);
         if (location) {
-          ctx.fillText(`Lat: ${location.lat.toFixed(5)}, Lng: ${location.lng.toFixed(5)}`, 10, canvas.height - 10);
+          ctx.fillText(
+            `Lat: ${location.lat.toFixed(5)}, Lng: ${location.lng.toFixed(5)}`,
+            10,
+            canvas.height - 10
+          );
         }
         ctx.shadowBlur = 0; // reset
 
-        canvas.toBlob((blob) => {
-          if (blob) {
-            setPhotoBlob(blob);
-            setPhotoPreview(URL.createObjectURL(blob));
-            stopCamera();
-          }
-        }, 'image/jpeg', 0.7); // Compress to 70% quality
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              setPhotoBlob(blob);
+              setPhotoPreview(URL.createObjectURL(blob));
+              stopCamera();
+            }
+          },
+          'image/jpeg',
+          0.7
+        ); // Compress to 70% quality
       }
     }
   };
@@ -616,7 +640,7 @@ export default function Attend() {
       if (!sessionId) {
         throw new Error('Sesi tidak ditemukan dalam QR Code atau URL.');
       }
-      
+
       // Bersihkan whitespace jika ada (misal dari hasil scan)
       sessionId = sessionId.trim();
 
@@ -671,22 +695,23 @@ export default function Attend() {
       formData.append('device_fingerprint', deviceFingerprint);
       formData.append('nonce', nonce);
       formData.append('signature', signature);
-      
+
       if (photoBlob) {
         formData.append('photo', photoBlob, 'attendance.jpg');
       }
 
       const res = await api.post('/attendance/check-in', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
-      
+
       toast.success(res.data.message || 'Check-in berhasil!');
       track('checkin_success');
       navigate('/dashboard');
     } catch (error: unknown) {
       const apiMsg = getErrorMessage(error, 'Absensi gagal dikirim');
       const lower = apiMsg.toLowerCase();
-      const isQrError = lower.includes('qr') || lower.includes('token') || lower.includes('kadaluarsa');
+      const isQrError =
+        lower.includes('qr') || lower.includes('token') || lower.includes('kadaluarsa');
       // [UX] #1 — jangan reset seluruh alur; pertahankan QR & foto kecuali error QR
       if (isQrError) {
         setScanResult(null);
@@ -712,9 +737,9 @@ export default function Attend() {
 
   const isLocationValid = () => {
     if (!location || !sessionDetails?.location) return false;
-    const dist = getDistanceMeters(location, { 
-      lat: sessionDetails.location.latitude, 
-      lng: sessionDetails.location.longitude 
+    const dist = getDistanceMeters(location, {
+      lat: sessionDetails.location.latitude,
+      lng: sessionDetails.location.longitude,
     });
     return dist <= sessionDetails.location.radius;
   };
@@ -739,7 +764,7 @@ export default function Attend() {
   if (sessionLoadError && (sessionParam || isCheckoutMode)) {
     return (
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-lg flex-col items-center justify-center p-6 text-center">
-        <AlertCircle className="mb-4 h-12 w-12 text-red-500" aria-hidden="true" />
+        <AlertCircle className="mb-4 size-12 text-red-500" aria-hidden="true" />
         <h1 className="text-xl font-bold text-foreground">Gagal memuat sesi</h1>
         <p className="mt-2 text-sm text-muted-foreground" role="alert">
           {sessionLoadError}
@@ -759,13 +784,20 @@ export default function Attend() {
                   setSessionDetails(res.data.data);
                   setSessionLoadError(null);
                 })
-                .catch((err) => setSessionLoadError(getErrorMessage(err, 'Gagal memuat data sesi absensi.')))
+                .catch((err) =>
+                  setSessionLoadError(getErrorMessage(err, 'Gagal memuat data sesi absensi.'))
+                )
                 .finally(() => setSessionLoading(false));
             }}
           >
             Muat ulang
           </Button>
-          <Button type="button" variant="outline" className="min-h-11" onClick={() => navigate('/dashboard')}>
+          <Button
+            type="button"
+            variant="outline"
+            className="min-h-11"
+            onClick={() => navigate('/dashboard')}
+          >
             Kembali ke dashboard
           </Button>
         </div>
@@ -778,69 +810,95 @@ export default function Attend() {
       <>
         <ActionLoadingOverlay show={!!actionOverlayLabel} label={actionOverlayLabel ?? ''} />
         <div className="mx-auto min-h-[calc(100vh-4rem)] max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
-        <div className="mb-8 space-y-2">
-          <h1 className="text-2xl font-bold text-foreground">Check-out Kehadiran</h1>
-          <p className="text-muted-foreground">Konfirmasi untuk menyelesaikan kehadiran di sesi ini.</p>
-        </div>
+          <div className="mb-8 space-y-2">
+            <h1 className="text-2xl font-bold text-foreground">Check-out Kehadiran</h1>
+            <p className="text-muted-foreground">
+              Konfirmasi untuk menyelesaikan kehadiran di sesi ini.
+            </p>
+          </div>
 
-        <div className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-card">
-          {isOffline && (
-            <div className="flex items-center justify-center gap-2 bg-amber-100 p-3 text-center text-sm font-medium text-amber-900" role="status">
-              <WifiOff size={16} aria-hidden="true" />
-              {OFFLINE_USER_MESSAGE}
-            </div>
-          )}
-
-          {checkoutLoading || sessionLoading ? (
-            <div className="flex flex-1 flex-col items-center justify-center gap-3 p-10" aria-busy="true">
-              <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600" />
-              <p className="text-sm text-muted-foreground">Memuat data…</p>
-            </div>
-          ) : checkoutError || !myAttendance ? (
-            <div className="p-6" role="alert">
-              <p className="font-semibold text-red-800 dark:text-red-300">
-                {checkoutError || 'Data check-in tidak ditemukan.'}
-              </p>
-              <Button type="button" variant="outline" className="mt-4 min-h-11 w-full" onClick={() => navigate('/dashboard')}>
-                Kembali ke dashboard
-              </Button>
-            </div>
-          ) : (
-            <div className="flex flex-1 flex-col items-center gap-6 p-6 sm:p-8">
-              <div className="w-full space-y-4 text-center">
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Kelas / Sesi</p>
-                <p className="text-lg font-bold text-foreground">
-                  {sessionDetails?.title || myAttendance.session_title}
-                </p>
-                <p className="pt-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Waktu check-in</p>
-                <p className="text-base font-medium text-brand text-brand">
-                  {format(new Date(myAttendance.check_in_time), 'dd MMM yyyy · HH:mm', { locale: idLocale })} WIB
-                </p>
-              </div>
-              <div className="w-full space-y-3 pt-2">
-              <Button
-                type="button"
-                size="lg"
-                className="w-full py-6 text-lg font-bold shadow-lg shadow-indigo-200 dark:shadow-indigo-900/20"
-                onClick={() => void handleCheckOut()}
-                disabled={checkoutSubmitting || isOffline}
-                aria-busy={checkoutSubmitting}
+          <div className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-card">
+            {isOffline && (
+              <div
+                className="flex items-center justify-center gap-2 bg-amber-100 p-3 text-center text-sm font-medium text-amber-900"
+                role="status"
               >
-                {checkoutSubmitting ? (
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" aria-hidden="true" />
-                ) : (
-                  <LogOut size={20} className="mr-2" aria-hidden="true" />
-                )}
-                {checkoutSubmitting ? 'Memproses…' : 'Kirim Check-out'}
-              </Button>
-              <Button type="button" variant="outline" className="min-h-11 w-full" disabled={checkoutSubmitting} onClick={() => navigate('/dashboard')}>
-                Batal
-              </Button>
+                <WifiOff size={16} aria-hidden="true" />
+                {OFFLINE_USER_MESSAGE}
               </div>
-            </div>
-          )}
+            )}
+
+            {checkoutLoading || sessionLoading ? (
+              <div
+                className="flex flex-1 flex-col items-center justify-center gap-3 p-10"
+                aria-busy="true"
+              >
+                <div className="size-10 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600" />
+                <p className="text-sm text-muted-foreground">Memuat data…</p>
+              </div>
+            ) : checkoutError || !myAttendance ? (
+              <div className="p-6" role="alert">
+                <p className="font-semibold text-red-800 dark:text-red-300">
+                  {checkoutError || 'Data check-in tidak ditemukan.'}
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="mt-4 min-h-11 w-full"
+                  onClick={() => navigate('/dashboard')}
+                >
+                  Kembali ke dashboard
+                </Button>
+              </div>
+            ) : (
+              <div className="flex flex-1 flex-col items-center gap-6 p-6 sm:p-8">
+                <div className="w-full space-y-4 text-center">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Kelas / Sesi
+                  </p>
+                  <p className="text-lg font-bold text-foreground">
+                    {sessionDetails?.title || myAttendance.session_title}
+                  </p>
+                  <p className="pt-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Waktu check-in
+                  </p>
+                  <p className="text-base font-medium text-brand text-brand">
+                    {format(new Date(myAttendance.check_in_time), 'dd MMM yyyy · HH:mm', {
+                      locale: idLocale,
+                    })}{' '}
+                    WIB
+                  </p>
+                </div>
+                <div className="w-full space-y-3 pt-2">
+                  <Button
+                    type="button"
+                    size="lg"
+                    className="w-full py-6 text-lg font-bold shadow-lg shadow-indigo-200 dark:shadow-indigo-900/20"
+                    onClick={() => void handleCheckOut()}
+                    disabled={checkoutSubmitting || isOffline}
+                    aria-busy={checkoutSubmitting}
+                  >
+                    {checkoutSubmitting ? (
+                      <Loader2 className="mr-2 size-5 animate-spin" aria-hidden="true" />
+                    ) : (
+                      <LogOut size={20} className="mr-2" aria-hidden="true" />
+                    )}
+                    {checkoutSubmitting ? 'Memproses…' : 'Kirim Check-out'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="min-h-11 w-full"
+                    disabled={checkoutSubmitting}
+                    onClick={() => navigate('/dashboard')}
+                  >
+                    Batal
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
       </>
     );
   }
@@ -848,314 +906,405 @@ export default function Attend() {
   return (
     <>
       <ActionLoadingOverlay show={!!actionOverlayLabel} label={actionOverlayLabel ?? ''} />
-    <div className="mx-auto min-h-[calc(100vh-4rem)] max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
-      <div className="mb-8 space-y-2">
-        <h1 className="text-2xl font-bold text-foreground">Check-in Kehadiran</h1>
-        <p className="text-sm text-muted-foreground">Scan QR Code kelas dan pastikan Anda berada di lokasi.</p>
-      </div>
-
-      <AttendPrivacyBanner />
-
-      <AttendStepIndicator
-        currentStep={(() => {
-          if (!scanResult) return 1;
-          if (!location || gpsError) return 2;
-          if (!photoBlob) return 3;
-          return 4;
-        })()}
-      />
-
-      <div className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-card">
-        {isOffline && (
-          <div className="flex items-center justify-center gap-2 bg-amber-100 p-3 text-center text-sm font-medium text-amber-900" role="status">
-            <WifiOff size={16} aria-hidden="true" />
-            {OFFLINE_USER_MESSAGE}
-          </div>
-        )}
-
-        {submitError && (
-          <div
-            className="mx-5 mt-5 rounded-xl border border-red-200 bg-red-50 p-5 dark:border-red-900/50 dark:bg-red-950/40"
-            role="alert"
-            aria-live="assertive"
-          >
-            <div className="flex gap-3">
-              <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-600" aria-hidden="true" />
-              <div className="min-w-0 flex-1">
-                <p className="font-semibold text-red-800 dark:text-red-300">{submitError.message}</p>
-                {submitError.hint ? <p className="mt-1 text-sm text-red-700 dark:text-red-400">{submitError.hint}</p> : null}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="mt-3 min-h-11 border-red-300"
-                  onClick={() => {
-                    setSubmitError(null);
-                    void handleCheckIn();
-                  }}
-                  disabled={loading}
-                >
-                  Coba kirim lagi
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Status Indicators */}
-        <div className="grid grid-cols-2 divide-x divide-y divide-border border-b border-border bg-muted/40 md:grid-cols-4 md:divide-y-0">
-          <div className="flex flex-col items-center gap-2 p-5 text-center">
-            <QrCode className={scanResult ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'} size={24} aria-hidden="true" />
-            <span className="text-xs font-medium text-muted-foreground">QR Code</span>
-            <span className="text-xs font-semibold text-foreground">
-              {sessionDetails?.qr_mode === 'NONE' ? 'Tidak Perlu' : scanResult ? 'Terscan' : 'Menunggu'}
-            </span>
-          </div>
-          <div className="flex flex-col items-center gap-2 p-5 text-center">
-            <MapPin className={!location ? 'text-amber-600 animate-pulse dark:text-amber-400' : isLocationValid() ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} size={24} aria-hidden="true" />
-            <span className="text-xs font-medium text-muted-foreground">GPS Lokasi</span>
-            <span className="text-xs font-semibold text-foreground">
-              {!location ? (gpsError ? 'Error' : 'Mencari…') : isLocationValid() ? 'Akurat' : 'Di Luar Radius'}
-            </span>
-          </div>
-          <div className="flex flex-col items-center gap-2 p-5 text-center">
-            <ShieldAlert className={!ipAddress ? 'text-muted-foreground' : isIpValid() ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} size={24} aria-hidden="true" />
-            <span className="text-xs font-medium text-muted-foreground">IP Validasi</span>
-            <span className="text-xs font-semibold text-foreground">
-              {ipStatusLabel()}
-            </span>
-          </div>
-          <div className="flex flex-col items-center gap-2 p-5 text-center">
-            <Camera className={photoBlob ? 'text-green-600 dark:text-green-400' : cameraStarting ? 'text-brand animate-pulse' : 'text-amber-600 dark:text-amber-400'} size={24} aria-hidden="true" />
-            <span className="text-xs font-medium text-muted-foreground">Foto Bukti</span>
-            <span className="text-xs font-semibold text-foreground">
-              {photoBlob ? 'Tersimpan' : cameraStarting ? 'Menyiapkan…' : 'Menunggu'}
-            </span>
-          </div>
+      <div className="mx-auto min-h-[calc(100vh-4rem)] max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
+        <div className="mb-8 space-y-2">
+          <h1 className="text-2xl font-bold text-foreground">Check-in Kehadiran</h1>
+          <p className="text-sm text-muted-foreground">
+            Scan QR Code kelas dan pastikan Anda berada di lokasi.
+          </p>
         </div>
 
-        {(cameraPermissionError || gpsError) && (
-          <div
-            className="mx-4 mt-4 rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-900/50 dark:bg-red-950/40 sm:mx-6"
-            role="alert"
-            aria-live="assertive"
-          >
-            <div className="flex gap-3">
-              <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-600" aria-hidden="true" />
-              <div className="min-w-0 space-y-1">
-                <p className="font-semibold text-red-800 dark:text-red-300">Perlu perbaikan sebelum absen</p>
-                {gpsError ? <p className="text-sm text-red-700 dark:text-red-400">GPS: {gpsError}</p> : null}
-                {cameraPermissionError ? (
-                  <p className="text-sm text-red-700 dark:text-red-400">Kamera: {cameraPermissionError}</p>
-                ) : null}
-              </div>
-            </div>
-          </div>
-        )}
+        <AttendPrivacyBanner />
 
-        <div className="flex flex-1 flex-col gap-8 p-5 sm:p-8">
-          {location && sessionDetails?.location && (
-            <div className="z-0 h-52 w-full overflow-hidden rounded-xl border border-border shadow-inner border-border">
-              <MapContainer 
-                center={[location.lat, location.lng]} 
-                zoom={16} 
-                style={{ height: '100%', width: '100%' }}
-                scrollWheelZoom={false}
-              >
-                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                <MapUpdater center={[location.lat, location.lng]} />
-                
-                <Marker position={[location.lat, location.lng]}>
-                  <Popup>Lokasi Anda Saat Ini</Popup>
-                </Marker>
+        <AttendStepIndicator
+          currentStep={(() => {
+            if (!scanResult) return 1;
+            if (!location || gpsError) return 2;
+            if (!photoBlob) return 3;
+            return 4;
+          })()}
+        />
 
-                {sessionDetails?.location && (
-                  <Circle 
-                    center={[sessionDetails.location.latitude, sessionDetails.location.longitude]} 
-                    radius={sessionDetails.location.radius} 
-                    pathOptions={{ color: isLocationValid() ? 'green' : 'red', fillColor: isLocationValid() ? 'green' : 'red', fillOpacity: 0.2 }}
-                  >
-                    <Popup>Area Absensi ({sessionDetails.location.radius}m)</Popup>
-                  </Circle>
-                )}
-              </MapContainer>
+        <div className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-card">
+          {isOffline && (
+            <div
+              className="flex items-center justify-center gap-2 bg-amber-100 p-3 text-center text-sm font-medium text-amber-900"
+              role="status"
+            >
+              <WifiOff size={16} aria-hidden="true" />
+              {OFFLINE_USER_MESSAGE}
             </div>
           )}
 
-          <div className="flex flex-1 flex-col items-center justify-center">
-            {scanning ? (
-              <div className="attend-qr-root w-full max-w-md">
-                <div className="relative overflow-hidden rounded-2xl border-4 border-border bg-slate-900 shadow-2xl border-border">
-                  <div className="pointer-events-none absolute inset-0 z-10 m-8 rounded-xl border-[3px] border-dashed border-indigo-500/50" />
-                  <div id="qr-reader" className="min-h-[300px] w-full bg-black" />
+          {submitError && (
+            <div
+              className="mx-5 mt-5 rounded-xl border border-red-200 bg-red-50 p-5 dark:border-red-900/50 dark:bg-red-950/40"
+              role="alert"
+              aria-live="assertive"
+            >
+              <div className="flex gap-3">
+                <AlertCircle className="mt-0.5 size-5 shrink-0 text-red-600" aria-hidden="true" />
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-red-800 dark:text-red-300">
+                    {submitError.message}
+                  </p>
+                  {submitError.hint ? (
+                    <p className="mt-1 text-sm text-red-700 dark:text-red-400">
+                      {submitError.hint}
+                    </p>
+                  ) : null}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="mt-3 min-h-11 border-red-300"
+                    onClick={() => {
+                      setSubmitError(null);
+                      void handleCheckIn();
+                    }}
+                    disabled={loading}
+                  >
+                    Coba kirim lagi
+                  </Button>
                 </div>
-                <div className="mt-8 space-y-4 text-center">
-                  {qrScannerError ? (
-                    <div
-                      className="rounded-xl border border-red-200 bg-red-50 p-4 text-left text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300"
-                      role="alert"
+              </div>
+            </div>
+          )}
+
+          {/* Status Indicators */}
+          <div className="grid grid-cols-2 divide-x divide-y divide-border border-b border-border bg-muted/40 md:grid-cols-4 md:divide-y-0">
+            <div className="flex flex-col items-center gap-2 p-5 text-center">
+              <QrCode
+                className={
+                  scanResult ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'
+                }
+                size={24}
+                aria-hidden="true"
+              />
+              <span className="text-xs font-medium text-muted-foreground">QR Code</span>
+              <span className="text-xs font-semibold text-foreground">
+                {sessionDetails?.qr_mode === 'NONE'
+                  ? 'Tidak Perlu'
+                  : scanResult
+                    ? 'Terscan'
+                    : 'Menunggu'}
+              </span>
+            </div>
+            <div className="flex flex-col items-center gap-2 p-5 text-center">
+              <MapPin
+                className={
+                  !location
+                    ? 'text-amber-600 animate-pulse dark:text-amber-400'
+                    : isLocationValid()
+                      ? 'text-green-600 dark:text-green-400'
+                      : 'text-red-600 dark:text-red-400'
+                }
+                size={24}
+                aria-hidden="true"
+              />
+              <span className="text-xs font-medium text-muted-foreground">GPS Lokasi</span>
+              <span className="text-xs font-semibold text-foreground">
+                {!location
+                  ? gpsError
+                    ? 'Error'
+                    : 'Mencari…'
+                  : isLocationValid()
+                    ? 'Akurat'
+                    : 'Di Luar Radius'}
+              </span>
+            </div>
+            <div className="flex flex-col items-center gap-2 p-5 text-center">
+              <ShieldAlert
+                className={
+                  !ipAddress
+                    ? 'text-muted-foreground'
+                    : isIpValid()
+                      ? 'text-green-600 dark:text-green-400'
+                      : 'text-red-600 dark:text-red-400'
+                }
+                size={24}
+                aria-hidden="true"
+              />
+              <span className="text-xs font-medium text-muted-foreground">IP Validasi</span>
+              <span className="text-xs font-semibold text-foreground">{ipStatusLabel()}</span>
+            </div>
+            <div className="flex flex-col items-center gap-2 p-5 text-center">
+              <Camera
+                className={
+                  photoBlob
+                    ? 'text-green-600 dark:text-green-400'
+                    : cameraStarting
+                      ? 'text-brand animate-pulse'
+                      : 'text-amber-600 dark:text-amber-400'
+                }
+                size={24}
+                aria-hidden="true"
+              />
+              <span className="text-xs font-medium text-muted-foreground">Foto Bukti</span>
+              <span className="text-xs font-semibold text-foreground">
+                {photoBlob ? 'Tersimpan' : cameraStarting ? 'Menyiapkan…' : 'Menunggu'}
+              </span>
+            </div>
+          </div>
+
+          {(cameraPermissionError || gpsError) && (
+            <div
+              className="mx-4 mt-4 rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-900/50 dark:bg-red-950/40 sm:mx-6"
+              role="alert"
+              aria-live="assertive"
+            >
+              <div className="flex gap-3">
+                <AlertCircle className="mt-0.5 size-5 shrink-0 text-red-600" aria-hidden="true" />
+                <div className="min-w-0 space-y-1">
+                  <p className="font-semibold text-red-800 dark:text-red-300">
+                    Perlu perbaikan sebelum absen
+                  </p>
+                  {gpsError ? (
+                    <p className="text-sm text-red-700 dark:text-red-400">GPS: {gpsError}</p>
+                  ) : null}
+                  {cameraPermissionError ? (
+                    <p className="text-sm text-red-700 dark:text-red-400">
+                      Kamera: {cameraPermissionError}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="flex flex-1 flex-col gap-8 p-5 sm:p-8">
+            {location && sessionDetails?.location && (
+              <div className="z-0 h-52 w-full overflow-hidden rounded-xl border border-border shadow-inner border-border">
+                <MapContainer
+                  center={[location.lat, location.lng]}
+                  zoom={16}
+                  style={{ height: '100%', width: '100%' }}
+                  scrollWheelZoom={false}
+                >
+                  <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                  <MapUpdater center={[location.lat, location.lng]} />
+
+                  <Marker position={[location.lat, location.lng]}>
+                    <Popup>Lokasi Anda Saat Ini</Popup>
+                  </Marker>
+
+                  {sessionDetails?.location && (
+                    <Circle
+                      center={[sessionDetails.location.latitude, sessionDetails.location.longitude]}
+                      radius={sessionDetails.location.radius}
+                      pathOptions={{
+                        color: isLocationValid() ? 'green' : 'red',
+                        fillColor: isLocationValid() ? 'green' : 'red',
+                        fillOpacity: 0.2,
+                      }}
                     >
-                      <p className="font-semibold">Kamera QR tidak dapat dibuka</p>
-                      <p className="mt-1">{qrScannerError}</p>
+                      <Popup>Area Absensi ({sessionDetails.location.radius}m)</Popup>
+                    </Circle>
+                  )}
+                </MapContainer>
+              </div>
+            )}
+
+            <div className="flex flex-1 flex-col items-center justify-center">
+              {scanning ? (
+                <div className="attend-qr-root w-full max-w-md">
+                  <div className="relative overflow-hidden rounded-2xl border-4 border-border bg-slate-900 shadow-2xl border-border">
+                    <div className="pointer-events-none absolute inset-0 z-10 m-8 rounded-xl border-[3px] border-dashed border-indigo-500/50" />
+                    <div id="qr-reader" className="min-h-[300px] w-full bg-black" />
+                  </div>
+                  <div className="mt-8 space-y-4 text-center">
+                    {qrScannerError ? (
+                      <div
+                        className="rounded-xl border border-red-200 bg-red-50 p-4 text-left text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300"
+                        role="alert"
+                      >
+                        <p className="font-semibold">Kamera QR tidak dapat dibuka</p>
+                        <p className="mt-1">{qrScannerError}</p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="mt-3 min-h-11"
+                          onClick={() => {
+                            void releaseQrScanner().then(() => {
+                              setQrScannerError(null);
+                              setScanning(true);
+                              setQrBootNonce((n) => n + 1);
+                            });
+                          }}
+                        >
+                          Coba lagi
+                        </Button>
+                      </div>
+                    ) : (
+                      <p className="text-sm font-medium text-muted-foreground">
+                        Arahkan kamera ke QR Code yang ditampilkan oleh Dosen.
+                      </p>
+                    )}
+                    <div className="flex justify-center">
                       <Button
                         type="button"
                         variant="outline"
-                        size="sm"
-                        className="mt-3 min-h-11"
-                        onClick={() => {
-                          void releaseQrScanner().then(() => {
-                            setQrScannerError(null);
-                            setScanning(true);
-                            setQrBootNonce((n) => n + 1);
-                          });
-                        }}
+                        onClick={() => void switchQrCamera()}
+                        className="min-h-11 gap-2"
                       >
-                        Coba lagi
+                        <RefreshCw size={16} aria-hidden="true" />
+                        Kamera QR {qrFacingMode === 'environment' ? 'Belakang' : 'Depan'}
                       </Button>
                     </div>
-                  ) : (
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Arahkan kamera ke QR Code yang ditampilkan oleh Dosen.
-                    </p>
-                  )}
-                  <div className="flex justify-center">
-                    <Button type="button" variant="outline" onClick={() => void switchQrCamera()} className="min-h-11 gap-2">
-                      <RefreshCw size={16} aria-hidden="true" />
-                      Kamera QR {qrFacingMode === 'environment' ? 'Belakang' : 'Depan'}
-                    </Button>
                   </div>
                 </div>
-              </div>
-            ) : !photoBlob ? (
-              <div className="flex w-full max-w-md animate-in flex-col items-center gap-6 duration-300 zoom-in">
-                <h2 className="text-center text-xl font-bold text-foreground">Ambil Foto Bukti Kehadiran</h2>
-                
-                <div className="relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-2xl border border-border bg-black shadow-inner border-border">
-                  <video 
-                    ref={videoRef} 
-                    autoPlay 
-                    playsInline 
-                    muted 
-                    className={`w-full h-full object-cover absolute inset-0 z-10 ${isCameraActive ? 'block' : 'hidden'} ${facingMode === 'user' ? 'scale-x-[-1]' : ''}`}
-                  ></video>
-                  
-                  {!isCameraActive && (
-                    <div className="relative z-20 flex flex-col items-center justify-center gap-3 p-6 text-center text-muted-foreground">
-                      {cameraStarting ? (
-                        <Loader2 className="h-10 w-10 animate-spin text-indigo-500" aria-hidden="true" />
-                      ) : (
-                        <Camera size={48} className="opacity-50" aria-hidden="true" />
-                      )}
-                      <p className="max-w-xs text-sm leading-relaxed">
-                        {cameraStarting
-                          ? 'Menyiapkan kamera… Izinkan akses jika diminta browser.'
-                          : cameraPermissionError
-                            ? cameraPermissionError
-                            : 'Ketuk tombol di bawah untuk membuka kamera.'}
-                      </p>
-                    </div>
-                  )}
-                  <canvas ref={canvasRef} className="hidden"></canvas>
-                </div>
-                
-                <div className="relative z-10 flex w-full flex-col justify-center gap-3 sm:flex-row">
-                  {!isCameraActive ? (
-                    <Button
-                      type="button"
-                      className="min-h-11 w-full gap-2 sm:w-auto"
-                      disabled={cameraStarting}
-                      onClick={() => void startCamera()}
-                    >
-                      {cameraStarting ? (
-                        <Loader2 size={20} className="animate-spin" aria-hidden="true" />
-                      ) : (
-                        <Camera size={20} aria-hidden="true" />
-                      )}
-                      {cameraStarting ? 'Menyiapkan…' : 'Buka Kamera'}
-                    </Button>
-                  ) : (
-                    <>
-                      <Button type="button" variant="secondary" className="min-h-11 w-full gap-2 sm:w-auto" onClick={() => switchCamera()}>
-                        <RefreshCw size={20} aria-hidden="true" />
-                        Kamera {facingMode === 'user' ? 'Depan' : 'Belakang'}
-                      </Button>
-                      <Button type="button" className="min-h-11 w-full gap-2 bg-emerald-600 hover:bg-emerald-700 sm:w-auto" onClick={() => takePhoto()}>
-                        <Camera size={20} aria-hidden="true" />
-                        Ambil Foto
-                      </Button>
-                    </>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="flex w-full max-w-md animate-in flex-col items-center gap-6 duration-300 zoom-in">
-                <div className="aspect-video w-full overflow-hidden rounded-2xl border border-border shadow-md border-border">
-                  <img 
-                    src={photoPreview!} 
-                    alt="Bukti Kehadiran" 
-                    className="w-full h-full object-cover" 
-                  />
-                </div>
-                
-                <div className="space-y-2 px-2 text-center">
-                <h2 className="text-xl font-bold text-foreground">Data Siap Dikirim</h2>
-                <p className="text-sm leading-relaxed text-muted-foreground">
-                  Sistem telah mendapatkan token QR, lokasi GPS, foto bukti, dan informasi perangkat Anda.
-                </p>
-                </div>
-                
-                <div className="w-full space-y-4">
-                  <Button
-                    size="lg"
-                    onClick={handleCheckIn}
-                    disabled={loading || !location || !!gpsError || isOffline}
-                    className="w-full py-6 text-lg font-bold shadow-lg shadow-indigo-200 dark:shadow-indigo-900/20"
-                    aria-busy={loading}
-                  >
-                    {loading ? (
-                      <>
-                        <Loader2 className="mr-2 h-5 w-5 animate-spin" aria-hidden="true" />
-                        Mengirim absensi…
-                      </>
-                    ) : (
-                      'Kirim Data Absensi'
+              ) : !photoBlob ? (
+                <div className="flex w-full max-w-md animate-in flex-col items-center gap-6 duration-300 zoom-in">
+                  <h2 className="text-center text-xl font-bold text-foreground">
+                    Ambil Foto Bukti Kehadiran
+                  </h2>
+
+                  <div className="relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-2xl border border-border bg-black shadow-inner border-border">
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className={`w-full h-full object-cover absolute inset-0 z-10 ${isCameraActive ? 'block' : 'hidden'} ${facingMode === 'user' ? 'scale-x-[-1]' : ''}`}
+                    ></video>
+
+                    {!isCameraActive && (
+                      <div className="relative z-20 flex flex-col items-center justify-center gap-3 p-6 text-center text-muted-foreground">
+                        {cameraStarting ? (
+                          <Loader2
+                            className="size-10 animate-spin text-indigo-500"
+                            aria-hidden="true"
+                          />
+                        ) : (
+                          <Camera size={48} className="opacity-50" aria-hidden="true" />
+                        )}
+                        <p className="max-w-xs text-sm leading-relaxed">
+                          {cameraStarting
+                            ? 'Menyiapkan kamera… Izinkan akses jika diminta browser.'
+                            : cameraPermissionError
+                              ? cameraPermissionError
+                              : 'Ketuk tombol di bawah untuk membuka kamera.'}
+                        </p>
+                      </div>
                     )}
-                  </Button>
-                  <div className="grid grid-cols-2 gap-3">
-                    <Button variant="outline" size="lg" onClick={retakePhoto} disabled={loading} className="w-full font-bold">
-                      <Camera size={18} className="mr-2" /> Ulang Foto
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="lg"
-                      onClick={() => {
-                        stopCamera();
-                        setPhotoBlob(null);
-                        setPhotoPreview(null);
-                        if (sessionDetails?.qr_mode === 'NONE') {
-                          setScanResult(NO_QR_TOKEN);
-                          setScanning(false);
-                        } else {
-                          setScanResult(null);
-                          void releaseQrScanner().then(() => {
-                            setScanning(true);
-                            setQrBootNonce((n) => n + 1);
-                          });
-                        }
-                      }}
-                      disabled={loading}
-                      className="w-full font-bold"
-                    >
-                      <QrCode size={18} className="mr-2" /> Ulang QR
-                    </Button>
+                    <canvas ref={canvasRef} className="hidden"></canvas>
+                  </div>
+
+                  <div className="relative z-10 flex w-full flex-col justify-center gap-3 sm:flex-row">
+                    {!isCameraActive ? (
+                      <Button
+                        type="button"
+                        className="min-h-11 w-full gap-2 sm:w-auto"
+                        disabled={cameraStarting}
+                        onClick={() => void startCamera()}
+                      >
+                        {cameraStarting ? (
+                          <Loader2 size={20} className="animate-spin" aria-hidden="true" />
+                        ) : (
+                          <Camera size={20} aria-hidden="true" />
+                        )}
+                        {cameraStarting ? 'Menyiapkan…' : 'Buka Kamera'}
+                      </Button>
+                    ) : (
+                      <>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          className="min-h-11 w-full gap-2 sm:w-auto"
+                          onClick={() => switchCamera()}
+                        >
+                          <RefreshCw size={20} aria-hidden="true" />
+                          Kamera {facingMode === 'user' ? 'Depan' : 'Belakang'}
+                        </Button>
+                        <Button
+                          type="button"
+                          className="min-h-11 w-full gap-2 bg-emerald-600 hover:bg-emerald-700 sm:w-auto"
+                          onClick={() => takePhoto()}
+                        >
+                          <Camera size={20} aria-hidden="true" />
+                          Ambil Foto
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </div>
-              </div>
-            )}
+              ) : (
+                <div className="flex w-full max-w-md animate-in flex-col items-center gap-6 duration-300 zoom-in">
+                  <div className="aspect-video w-full overflow-hidden rounded-2xl border border-border shadow-md border-border">
+                    <img
+                      src={photoPreview!}
+                      alt="Bukti Kehadiran"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+
+                  <div className="space-y-2 px-2 text-center">
+                    <h2 className="text-xl font-bold text-foreground">Data Siap Dikirim</h2>
+                    <p className="text-sm leading-relaxed text-muted-foreground">
+                      Sistem telah mendapatkan token QR, lokasi GPS, foto bukti, dan informasi
+                      perangkat Anda.
+                    </p>
+                  </div>
+
+                  <div className="w-full space-y-4">
+                    <Button
+                      size="lg"
+                      onClick={handleCheckIn}
+                      disabled={loading || !location || !!gpsError || isOffline}
+                      className="w-full py-6 text-lg font-bold shadow-lg shadow-indigo-200 dark:shadow-indigo-900/20"
+                      aria-busy={loading}
+                    >
+                      {loading ? (
+                        <>
+                          <Loader2 className="mr-2 size-5 animate-spin" aria-hidden="true" />
+                          Mengirim absensi…
+                        </>
+                      ) : (
+                        'Kirim Data Absensi'
+                      )}
+                    </Button>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Button
+                        variant="outline"
+                        size="lg"
+                        onClick={retakePhoto}
+                        disabled={loading}
+                        className="w-full font-bold"
+                      >
+                        <Camera size={18} className="mr-2" /> Ulang Foto
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="lg"
+                        onClick={() => {
+                          stopCamera();
+                          setPhotoBlob(null);
+                          setPhotoPreview(null);
+                          if (sessionDetails?.qr_mode === 'NONE') {
+                            setScanResult(NO_QR_TOKEN);
+                            setScanning(false);
+                          } else {
+                            setScanResult(null);
+                            void releaseQrScanner().then(() => {
+                              setScanning(true);
+                              setQrBootNonce((n) => n + 1);
+                            });
+                          }
+                        }}
+                        disabled={loading}
+                        className="w-full font-bold"
+                      >
+                        <QrCode size={18} className="mr-2" /> Ulang QR
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
-    </div>
     </>
   );
 }

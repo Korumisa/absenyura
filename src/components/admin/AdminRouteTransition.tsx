@@ -1,7 +1,7 @@
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, m } from 'framer-motion';
 import { useLocation } from 'react-router-dom';
-import { fadeTransition } from '@/lib/motionPresets';
-import { useReducedMotion } from '@/lib/useReducedMotion';
+import { fadeTransition } from '@/lib/perf/motionPresets';
+import { useReducedMotion } from '@/lib/a11y/useReducedMotion';
 
 /** [IxD] R1 — transisi antar halaman di area admin */
 export function AdminRouteTransition({ children }: { children: React.ReactNode }) {
@@ -14,7 +14,7 @@ export function AdminRouteTransition({ children }: { children: React.ReactNode }
 
   return (
     <AnimatePresence mode="wait">
-      <motion.div
+      <m.div
         key={location.pathname}
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
@@ -23,7 +23,7 @@ export function AdminRouteTransition({ children }: { children: React.ReactNode }
         className="min-h-full"
       >
         {children}
-      </motion.div>
+      </m.div>
     </AnimatePresence>
   );
 }

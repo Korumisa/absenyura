@@ -30,15 +30,24 @@ export default function PublicSiteStructurePreview({ groups }: { groups: GroupPr
                   .filter((p) => p.name.trim() || p.role.trim())
                   .map((p, pi) => (
                     <li key={pi} className="flex items-center gap-2">
-                      <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full bg-muted">
-                        {p.photoUrl ? <img src={p.photoUrl} alt="" className="h-full w-full object-cover" /> : null}
+                      <div className="size-9 shrink-0 overflow-hidden rounded-full bg-muted">
+                        {p.photoUrl ? (
+                          <img src={p.photoUrl} alt="" className="h-full w-full object-cover" />
+                        ) : null}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-xs font-semibold text-foreground">{p.name || '—'}</p>
-                        <p className="truncate text-[10px] text-muted-foreground">{p.role || 'Jabatan'}</p>
+                        <p className="truncate text-xs font-semibold text-foreground">
+                          {p.name || '—'}
+                        </p>
+                        <p className="truncate text-[10px] text-muted-foreground">
+                          {p.role || 'Jabatan'}
+                        </p>
                       </div>
                       {p.isSpotlight ? (
-                        <span className="text-[10px] font-semibold text-amber-600" title="Spotlight">
+                        <span
+                          className="text-[10px] font-semibold text-amber-600"
+                          title="Spotlight"
+                        >
                           ★
                         </span>
                       ) : null}

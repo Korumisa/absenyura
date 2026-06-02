@@ -1,4 +1,4 @@
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/utils';
 
 export type CmsTabItem<T extends string> = { id: T; label: string };
 
@@ -15,7 +15,10 @@ export function CmsTabNav<T extends string>({
   ariaLabel?: string;
 }) {
   return (
-    <nav aria-label={ariaLabel} className="flex flex-wrap gap-2 border-b border-border pb-3 border-border">
+    <nav
+      aria-label={ariaLabel}
+      className="flex flex-wrap gap-2 border-b border-border pb-3 border-border"
+    >
       {tabs.map((tab) => (
         <button
           key={tab.id}
@@ -25,7 +28,7 @@ export function CmsTabNav<T extends string>({
             'min-h-11 rounded-full px-4 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2',
             value === tab.id
               ? 'bg-brand text-white'
-              : 'bg-slate-100 text-muted-foreground hover:bg-slate-200 bg-muted dark:text-zinc-300 dark:hover:bg-zinc-700',
+              : 'bg-slate-100 text-muted-foreground hover:bg-slate-200 bg-muted dark:text-zinc-300 dark:hover:bg-zinc-700'
           )}
           aria-current={value === tab.id ? 'true' : undefined}
         >

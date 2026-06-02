@@ -21,7 +21,12 @@ export function classDetailLine(cls: ClassDetailSource | null | undefined): stri
 export function formatClassLabel(cls: ClassLabelSource | null | undefined): string {
   if (!cls) return '';
   const name = String(cls.name ?? '').trim();
-  const sem = cls.semester == null ? null : Number.isFinite(Number(cls.semester)) ? Number(cls.semester) : null;
+  const sem =
+    cls.semester == null
+      ? null
+      : Number.isFinite(Number(cls.semester))
+        ? Number(cls.semester)
+        : null;
 
   if (name && sem != null) return `Sem ${sem} - ${name}`;
   if (name) return name;
@@ -36,11 +41,11 @@ export type SessionClassLabelSource = {
 
 /** Label kelas untuk sesi: multi-kelas, legacy class_id, atau Semua Mahasiswa */
 export function sessionClassNames(session: SessionClassLabelSource | null | undefined): string {
-  const names = (session?.session_classes ?? [])
-    .map((x) => formatClassLabel(x?.class))
-    .filter(Boolean);
+  const names = (session?.session_classes ?? []).flatMap((x) => {
+    const result = formatClassLabel(x?.class);
+    return result ? [result] : [];
+  });
   if (names.length) return names.join(', ');
   if (session?.class) return formatClassLabel(session.class);
   return 'Semua Mahasiswa';
 }
-

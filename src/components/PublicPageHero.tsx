@@ -1,6 +1,6 @@
 import React from 'react';
-import { motion } from 'framer-motion';
-import { useReducedMotion } from '@/lib/useReducedMotion';
+import { m } from 'framer-motion';
+import { useReducedMotion } from '@/lib/a11y/useReducedMotion';
 
 export default function PublicPageHero({
   top,
@@ -22,7 +22,9 @@ export default function PublicPageHero({
     'pointer-events-none absolute -right-28 bottom-6 h-80 w-80 rounded-[53%_47%_45%_55%/48%_56%_44%_52%] bg-sky-400/12 blur-3xl';
 
   return (
-    <section className={`relative overflow-hidden bg-white ${compact ? 'py-7 sm:py-8' : 'py-12 sm:py-14'}`}>
+    <section
+      className={`relative overflow-hidden bg-white ${compact ? 'py-7 sm:py-8' : 'py-12 sm:py-14'}`}
+    >
       <div className="pointer-events-none absolute inset-0 opacity-70 [background:radial-gradient(circle_at_18%_15%,rgba(37,99,235,0.14),transparent_56%),radial-gradient(circle_at_78%_10%,rgba(56,189,248,0.10),transparent_60%)]" />
       {reducedMotion ? (
         <>
@@ -31,13 +33,13 @@ export default function PublicPageHero({
         </>
       ) : (
         <>
-          <motion.div
+          <m.div
             className={blobClassLeft}
             aria-hidden="true"
             animate={{ y: [0, -10, 0] }}
             transition={{ duration: 6, ease: 'easeInOut', repeat: Infinity }}
           />
-          <motion.div
+          <m.div
             className={blobClassRight}
             aria-hidden="true"
             animate={{ y: [0, 12, 0] }}
@@ -61,15 +63,27 @@ export default function PublicPageHero({
           </div>
           <div
             className={`font-extrabold uppercase tracking-tight text-[var(--public-primary)] ${
-              compact ? '-mt-1 text-3xl sm:-mt-1.5 sm:text-4xl md:text-5xl' : '-mt-1 text-4xl sm:-mt-2 sm:text-5xl md:text-6xl'
+              compact
+                ? '-mt-1 text-3xl sm:-mt-1.5 sm:text-4xl md:text-5xl'
+                : '-mt-1 text-4xl sm:-mt-2 sm:text-5xl md:text-6xl'
             }`}
           >
             {bottom}
           </div>
           {subtitle ? (
-            <div className={`mx-auto max-w-2xl text-sm leading-relaxed text-slate-700 ${compact ? 'mt-3' : 'mt-4'}`}>{subtitle}</div>
+            <div
+              className={`mx-auto max-w-2xl text-sm leading-relaxed text-slate-700 ${compact ? 'mt-3' : 'mt-4'}`}
+            >
+              {subtitle}
+            </div>
           ) : null}
-          {children ? <div className={`mx-auto flex flex-wrap justify-center gap-3 ${compact ? 'mt-5' : 'mt-7'}`}>{children}</div> : null}
+          {children ? (
+            <div
+              className={`mx-auto flex flex-wrap justify-center gap-3 ${compact ? 'mt-5' : 'mt-7'}`}
+            >
+              {children}
+            </div>
+          ) : null}
         </div>
         <div className={`relative mx-auto max-w-3xl ${compact ? 'mt-5 h-7' : 'mt-8 h-10'}`}>
           <div
@@ -78,7 +92,7 @@ export default function PublicPageHero({
             }`}
           />
           <div className="pointer-events-none absolute left-1/2 top-1/2 h-px w-full -translate-x-1/2 -translate-y-1/2 bg-gradient-to-r from-transparent via-[var(--public-primary)]/35 to-transparent" />
-          <div className="pointer-events-none absolute left-1/2 top-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--public-primary)]/70" />
+          <div className="pointer-events-none absolute left-1/2 top-1/2 size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--public-primary)]/70" />
         </div>
       </div>
     </section>

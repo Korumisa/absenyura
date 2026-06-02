@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import type { PaginationMeta } from '@/types/common';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/utils';
 
 type TablePaginationProps = {
   meta: PaginationMeta;
@@ -27,7 +27,7 @@ export function TablePagination({
     <div
       className={cn(
         'flex flex-col gap-3 bg-muted/50 p-4 sm:flex-row sm:items-center sm:justify-between',
-        className,
+        className
       )}
       aria-label="Paginasi tabel"
     >

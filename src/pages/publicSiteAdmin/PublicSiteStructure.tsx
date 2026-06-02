@@ -7,8 +7,8 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import type { PublicStructureGroup } from '@/types/publicSite';
-import { getErrorMessage } from '@/lib/errorMessage';
-import { prepareImageForUpload } from '@/lib/imageUpload';
+import { getErrorMessage } from '@/lib/http/errorMessage';
+import { prepareImageForUpload } from '@/lib/media/imageUpload';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import AdminPageShell from '@/components/AdminPageShell';
 import AdminCard from '@/components/AdminCard';
@@ -19,7 +19,11 @@ import { Layers } from 'lucide-react';
 
 export default function PublicSiteStructure() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
-  const { data: structure = [], mutate } = useSWR<PublicStructureGroup[]>('/public-site/admin/structure', fetcher, { revalidateOnFocus: false });
+  const { data: structure = [], mutate } = useSWR<PublicStructureGroup[]>(
+    '/public-site/admin/structure',
+    fetcher,
+    { revalidateOnFocus: false }
+  );
 
   type MemberDraft = { name: string; role: string; photoUrl: string; isSpotlight: boolean };
   type GroupDraft = { title: string; isCore: boolean; people: MemberDraft[] };
@@ -63,10 +67,16 @@ export default function PublicSiteStructure() {
   }>({ open: false, title: '', description: '' });
 
   const uploadImage = async (file: File) => {
-    const prepared = await prepareImageForUpload(file, { maxBytes: 4 * 1024 * 1024, maxWidth: 1200, quality: 0.82 });
+    const prepared = await prepareImageForUpload(file, {
+      maxBytes: 4 * 1024 * 1024,
+      maxWidth: 1200,
+      quality: 0.82,
+    });
     const form = new FormData();
     form.append('file', prepared);
-    const res = await api.post('/public-site/admin/upload', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+    const res = await api.post('/public-site/admin/upload', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
     return res.data.data.url as string;
   };
 
@@ -77,7 +87,12 @@ export default function PublicSiteStructure() {
       const url = await uploadImage(file);
       setGroupsDirty((prev) =>
         prev.map((g, gidx) =>
-          gidx === gi ? { ...g, people: g.people.map((p, pidx) => (pidx === pi ? { ...p, photoUrl: url } : p)) } : g
+          gidx === gi
+            ? {
+                ...g,
+                people: g.people.map((p, pidx) => (pidx === pi ? { ...p, photoUrl: url } : p)),
+              }
+            : g
         )
       );
       toast.success('Upload foto anggota berhasil');
@@ -152,250 +167,324 @@ export default function PublicSiteStructure() {
         variant={confirm.variant}
       />
 
-      <CmsEditorLayout
-        preview={<PublicSiteStructurePreview groups={groups} />}
-      >
-      <AdminCard
-        title="Grup Struktur"
-        description="Atur grup, tandai divisi inti, lalu tentukan spotlight per anggota (maks 1 anggota per grup). Tips: buat grup bernama “Dosen Pembimbing” untuk tampil di atas INTI; untuk foto Visi/Misi di beranda, isi jabatan mengandung “Ketua” dan “Wakil”."
-        actions={
-          <Button
-            type="button"
-            variant="outline"
-            className="min-h-11 w-full sm:w-auto"
-            onClick={() =>
-              setGroupsDirty((prev) => [...prev, { title: '', isCore: false, people: [{ name: '', role: '', photoUrl: '', isSpotlight: false }] }])
-            }
-          >
-            Tambah Grup
-          </Button>
-        }
-      >
-
-        {groups.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border bg-muted/30 p-6 text-sm text-muted-foreground">
-            Belum ada struktur. Klik “Tambah Grup” untuk mulai.
-          </div>
-        ) : (
-          <div className="space-y-5">
-            {groups.map((g, gi) => (
-              <div key={gi} className="rounded-2xl border border-border bg-muted/20 p-4">
-                <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-                  <div className="w-full space-y-2">
-                    <Label>Nama Grup</Label>
-                    <Input
-                      value={g.title}
-                      onChange={(e) =>
-                        setGroupsDirty((prev) =>
-                          prev.map((x, idx) => (idx === gi ? { ...x, title: e.target.value } : x))
-                        )
-                      }
-                      placeholder="Contoh: INTI"
-                    />
-                    <div className="flex items-center gap-2 text-sm text-foreground">
-                      <Checkbox
-                        checked={Boolean(g.isCore)}
-                        onCheckedChange={(checked) =>
-                          setGroupsDirty((prev) => prev.map((x, idx) => (idx === gi ? { ...x, isCore: Boolean(checked) } : x)))
-                        }
-                      />
-                      <span>Divisi inti</span>
-                    </div>
-                  </div>
-                  <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-end md:w-auto">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="w-full sm:w-auto"
-                      onClick={() =>
-                        setGroupsDirty((prev) =>
-                          prev.map((x, idx) =>
-                            idx === gi ? { ...x, people: [...x.people, { name: '', role: '', photoUrl: '', isSpotlight: false }] } : x
-                          )
-                        )
-                      }
-                    >
-                      Tambah Anggota
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      className="w-full sm:w-auto"
-                      onClick={() =>
-                        setConfirm({
-                          open: true,
-                          title: 'Hapus grup ini?',
-                          description: 'Semua anggota di dalam grup ini juga akan ikut terhapus.',
-                          confirmText: 'Hapus Grup',
-                          variant: 'danger',
-                          onConfirm: () => setGroupsDirty((prev) => prev.filter((_, idx) => idx !== gi)),
-                        })
-                      }
-                    >
-                      Hapus Grup
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="mt-4 space-y-3">
-                  <div className="hidden grid gap-3 md:grid-cols-4 md:grid">
-                    <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Foto</div>
-                    <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Nama</div>
-                    <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Jabatan</div>
-                    <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Spotlight</div>
-                  </div>
-                  {g.people.map((p, pi) => (
-                    <div
-                      key={pi}
-                      className="grid gap-3 rounded-2xl border border-border/70 bg-muted/25 p-3 md:grid-cols-4 md:border-0 md:bg-transparent md:p-0"
-                    >
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                        <div className="h-12 w-12 overflow-hidden rounded-full border border-border bg-muted">
-                          {p.photoUrl ? <img src={p.photoUrl} alt="Foto" className="h-full w-full object-cover" /> : null}
-                        </div>
-                        <Input
-                          id={`structure-photo-${gi}-${pi}`}
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          disabled={saving || uploadingKey === `${gi}:${pi}`}
-                          onChange={(e) => {
-                            const file = e.currentTarget.files?.[0];
-                            if (!file) return;
-                            onPickMemberPhoto(gi, pi, file);
-                            e.currentTarget.value = '';
-                          }}
-                        />
-                        <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center">
-                          <Button asChild variant="outline" disabled={saving || uploadingKey === `${gi}:${pi}`} className="w-full sm:w-auto">
-                            <Label htmlFor={`structure-photo-${gi}-${pi}`} className="cursor-pointer">
-                              {uploadingKey === `${gi}:${pi}` ? 'Uploading...' : p.photoUrl ? 'Ganti Foto' : 'Upload Foto'}
-                            </Label>
-                          </Button>
-                          {p.photoUrl ? (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              className="w-full sm:w-auto"
-                              disabled={saving || uploadingKey === `${gi}:${pi}`}
-                              onClick={() =>
-                                setGroupsDirty((prev) =>
-                                  prev.map((x, idx) =>
-                                    idx === gi ? { ...x, people: x.people.map((pp, pidx) => (pidx === pi ? { ...pp, photoUrl: '' } : pp)) } : x
-                                  )
-                                )
-                              }
-                            >
-                              Hapus Foto
-                            </Button>
-                          ) : null}
-                        </div>
-                      </div>
+      <CmsEditorLayout preview={<PublicSiteStructurePreview groups={groups} />}>
+        <AdminCard
+          title="Grup Struktur"
+          description="Atur grup, tandai divisi inti, lalu tentukan spotlight per anggota (maks 1 anggota per grup). Tips: buat grup bernama “Dosen Pembimbing” untuk tampil di atas INTI; untuk foto Visi/Misi di beranda, isi jabatan mengandung “Ketua” dan “Wakil”."
+          actions={
+            <Button
+              type="button"
+              variant="outline"
+              className="min-h-11 w-full sm:w-auto"
+              onClick={() =>
+                setGroupsDirty((prev) => [
+                  ...prev,
+                  {
+                    title: '',
+                    isCore: false,
+                    people: [{ name: '', role: '', photoUrl: '', isSpotlight: false }],
+                  },
+                ])
+              }
+            >
+              Tambah Grup
+            </Button>
+          }
+        >
+          {groups.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-border bg-muted/30 p-6 text-sm text-muted-foreground">
+              Belum ada struktur. Klik “Tambah Grup” untuk mulai.
+            </div>
+          ) : (
+            <div className="space-y-5">
+              {groups.map((g, gi) => (
+                <div key={gi} className="rounded-2xl border border-border bg-muted/20 p-4">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                    <div className="w-full space-y-2">
+                      <Label>Nama Grup</Label>
                       <Input
-                        value={p.name}
+                        value={g.title}
                         onChange={(e) =>
+                          setGroupsDirty((prev) =>
+                            prev.map((x, idx) => (idx === gi ? { ...x, title: e.target.value } : x))
+                          )
+                        }
+                        placeholder="Contoh: INTI"
+                      />
+                      <div className="flex items-center gap-2 text-sm text-foreground">
+                        <Checkbox
+                          checked={Boolean(g.isCore)}
+                          onCheckedChange={(checked) =>
+                            setGroupsDirty((prev) =>
+                              prev.map((x, idx) =>
+                                idx === gi ? { ...x, isCore: Boolean(checked) } : x
+                              )
+                            )
+                          }
+                        />
+                        <span>Divisi inti</span>
+                      </div>
+                    </div>
+                    <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-end md:w-auto">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full sm:w-auto"
+                        onClick={() =>
                           setGroupsDirty((prev) =>
                             prev.map((x, idx) =>
                               idx === gi
-                                ? { ...x, people: x.people.map((pp, pidx) => (pidx === pi ? { ...pp, name: e.target.value } : pp)) }
+                                ? {
+                                    ...x,
+                                    people: [
+                                      ...x.people,
+                                      { name: '', role: '', photoUrl: '', isSpotlight: false },
+                                    ],
+                                  }
                                 : x
                             )
                           )
                         }
-                        placeholder="Nama"
-                      />
-                      <div className="flex flex-col gap-2 sm:flex-row">
-                        <Input
-                          value={p.role}
-                          onChange={(e) =>
-                            setGroupsDirty((prev) =>
-                              prev.map((x, idx) =>
-                                idx === gi
-                                  ? { ...x, people: x.people.map((pp, pidx) => (pidx === pi ? { ...pp, role: e.target.value } : pp)) }
-                                  : x
-                              )
-                            )
-                          }
-                          placeholder="Jabatan"
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="w-full sm:w-auto"
-                          onClick={() =>
-                            setConfirm({
-                              open: true,
-                              title: 'Hapus anggota ini?',
-                              description: 'Tindakan ini tidak bisa dibatalkan.',
-                              confirmText: 'Hapus',
-                              variant: 'danger',
-                              onConfirm: () =>
-                                setGroupsDirty((prev) =>
-                                  prev.map((x, idx) =>
-                                    idx === gi ? { ...x, people: x.people.filter((_, pidx) => pidx !== pi) } : x
-                                  )
-                                ),
-                            })
-                          }
-                        >
-                          Hapus
-                        </Button>
+                      >
+                        Tambah Anggota
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        className="w-full sm:w-auto"
+                        onClick={() =>
+                          setConfirm({
+                            open: true,
+                            title: 'Hapus grup ini?',
+                            description: 'Semua anggota di dalam grup ini juga akan ikut terhapus.',
+                            confirmText: 'Hapus Grup',
+                            variant: 'danger',
+                            onConfirm: () =>
+                              setGroupsDirty((prev) => prev.filter((_, idx) => idx !== gi)),
+                          })
+                        }
+                      >
+                        Hapus Grup
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 space-y-3">
+                    <div className="hidden grid gap-3 md:grid-cols-4 md:grid">
+                      <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Foto
                       </div>
-                      <div className="flex items-center justify-start gap-2 md:justify-center">
-                        <span className="text-sm font-medium text-foreground md:hidden">Spotlight</span>
-                        <Checkbox
-                          checked={Boolean(p.isSpotlight)}
-                          onCheckedChange={(checked) => {
-                            const next = Boolean(checked);
+                      <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Nama
+                      </div>
+                      <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Jabatan
+                      </div>
+                      <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Spotlight
+                      </div>
+                    </div>
+                    {g.people.map((p, pi) => (
+                      <div
+                        key={pi}
+                        className="grid gap-3 rounded-2xl border border-border/70 bg-muted/25 p-3 md:grid-cols-4 md:border-0 md:bg-transparent md:p-0"
+                      >
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                          <div className="size-12 overflow-hidden rounded-full border border-border bg-muted">
+                            {p.photoUrl ? (
+                              <img
+                                src={p.photoUrl}
+                                alt="Foto"
+                                className="h-full w-full object-cover"
+                              />
+                            ) : null}
+                          </div>
+                          <Input
+                            id={`structure-photo-${gi}-${pi}`}
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            disabled={saving || uploadingKey === `${gi}:${pi}`}
+                            onChange={(e) => {
+                              const file = e.currentTarget.files?.[0];
+                              if (!file) return;
+                              onPickMemberPhoto(gi, pi, file);
+                              e.currentTarget.value = '';
+                            }}
+                          />
+                          <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center">
+                            <Button
+                              asChild
+                              variant="outline"
+                              disabled={saving || uploadingKey === `${gi}:${pi}`}
+                              className="w-full sm:w-auto"
+                            >
+                              <Label
+                                htmlFor={`structure-photo-${gi}-${pi}`}
+                                className="cursor-pointer"
+                              >
+                                {uploadingKey === `${gi}:${pi}`
+                                  ? 'Uploading...'
+                                  : p.photoUrl
+                                    ? 'Ganti Foto'
+                                    : 'Upload Foto'}
+                              </Label>
+                            </Button>
+                            {p.photoUrl ? (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                className="w-full sm:w-auto"
+                                disabled={saving || uploadingKey === `${gi}:${pi}`}
+                                onClick={() =>
+                                  setGroupsDirty((prev) =>
+                                    prev.map((x, idx) =>
+                                      idx === gi
+                                        ? {
+                                            ...x,
+                                            people: x.people.map((pp, pidx) =>
+                                              pidx === pi ? { ...pp, photoUrl: '' } : pp
+                                            ),
+                                          }
+                                        : x
+                                    )
+                                  )
+                                }
+                              >
+                                Hapus Foto
+                              </Button>
+                            ) : null}
+                          </div>
+                        </div>
+                        <Input
+                          value={p.name}
+                          onChange={(e) =>
                             setGroupsDirty((prev) =>
                               prev.map((x, idx) =>
                                 idx === gi
                                   ? {
                                       ...x,
                                       people: x.people.map((pp, pidx) =>
-                                        pidx === pi ? { ...pp, isSpotlight: next } : { ...pp, isSpotlight: next ? false : pp.isSpotlight }
+                                        pidx === pi ? { ...pp, name: e.target.value } : pp
                                       ),
                                     }
                                   : x
                               )
-                            );
-                          }}
+                            )
+                          }
+                          placeholder="Nama"
                         />
+                        <div className="flex flex-col gap-2 sm:flex-row">
+                          <Input
+                            value={p.role}
+                            onChange={(e) =>
+                              setGroupsDirty((prev) =>
+                                prev.map((x, idx) =>
+                                  idx === gi
+                                    ? {
+                                        ...x,
+                                        people: x.people.map((pp, pidx) =>
+                                          pidx === pi ? { ...pp, role: e.target.value } : pp
+                                        ),
+                                      }
+                                    : x
+                                )
+                              )
+                            }
+                            placeholder="Jabatan"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="w-full sm:w-auto"
+                            onClick={() =>
+                              setConfirm({
+                                open: true,
+                                title: 'Hapus anggota ini?',
+                                description: 'Tindakan ini tidak bisa dibatalkan.',
+                                confirmText: 'Hapus',
+                                variant: 'danger',
+                                onConfirm: () =>
+                                  setGroupsDirty((prev) =>
+                                    prev.map((x, idx) =>
+                                      idx === gi
+                                        ? {
+                                            ...x,
+                                            people: x.people.filter((_, pidx) => pidx !== pi),
+                                          }
+                                        : x
+                                    )
+                                  ),
+                              })
+                            }
+                          >
+                            Hapus
+                          </Button>
+                        </div>
+                        <div className="flex items-center justify-start gap-2 md:justify-center">
+                          <span className="text-sm font-medium text-foreground md:hidden">
+                            Spotlight
+                          </span>
+                          <Checkbox
+                            checked={Boolean(p.isSpotlight)}
+                            onCheckedChange={(checked) => {
+                              const next = Boolean(checked);
+                              setGroupsDirty((prev) =>
+                                prev.map((x, idx) =>
+                                  idx === gi
+                                    ? {
+                                        ...x,
+                                        people: x.people.map((pp, pidx) =>
+                                          pidx === pi
+                                            ? { ...pp, isSpotlight: next }
+                                            : { ...pp, isSpotlight: next ? false : pp.isSpotlight }
+                                        ),
+                                      }
+                                    : x
+                                )
+                              );
+                            }}
+                          />
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
 
-        <AdminCardActions>
-          <Button
-            variant="outline"
-            type="button"
-            onClick={() =>
-              setConfirm({
-                open: true,
-                title: 'Reset perubahan?',
-                description: 'Semua perubahan yang belum disimpan akan dikembalikan ke data terakhir yang tersimpan.',
-                confirmText: 'Reset',
-                variant: 'primary',
-                onConfirm: handleReset,
-              })
-            }
-            disabled={saving || !dirty}
-            className="w-full sm:w-auto"
-          >
-            Reset
-          </Button>
-          <Button type="button" onClick={handleSave} disabled={saving || !dirty} className="min-h-11 w-full sm:w-auto">
-            Simpan
-          </Button>
-        </AdminCardActions>
-      </AdminCard>
+          <AdminCardActions>
+            <Button
+              variant="outline"
+              type="button"
+              onClick={() =>
+                setConfirm({
+                  open: true,
+                  title: 'Reset perubahan?',
+                  description:
+                    'Semua perubahan yang belum disimpan akan dikembalikan ke data terakhir yang tersimpan.',
+                  confirmText: 'Reset',
+                  variant: 'primary',
+                  onConfirm: handleReset,
+                })
+              }
+              disabled={saving || !dirty}
+              className="w-full sm:w-auto"
+            >
+              Reset
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSave}
+              disabled={saving || !dirty}
+              className="min-h-11 w-full sm:w-auto"
+            >
+              Simpan
+            </Button>
+          </AdminCardActions>
+        </AdminCard>
       </CmsEditorLayout>
     </AdminPageShell>
   );
 }
-

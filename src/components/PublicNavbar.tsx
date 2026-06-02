@@ -5,9 +5,9 @@ import { ChevronDown, Menu, X } from 'lucide-react';
 import useSWR from 'swr';
 import api from '@/services/api';
 import type { PublicProfile } from '@/types/publicSite';
-import { useReducedMotion } from '@/lib/useReducedMotion';
+import { useReducedMotion } from '@/lib/a11y/useReducedMotion';
 import { BrandLogoImage } from '@/components/public/BrandLogoImage';
-import { DEFAULT_BRAND_LOGO_PNG } from '@/lib/staticBrandAssets';
+import { DEFAULT_BRAND_LOGO_PNG } from '@/lib/media/staticBrandAssets';
 
 type NavItem = { label: string; to: string };
 type NavGroup = { label: string; items: NavItem[] };
@@ -54,14 +54,20 @@ const MOBILE_NAV: NavItem[] = [
 
 function BrandMark() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
-  const { data: profile } = useSWR<PublicProfile | null>('/public-site/profile', fetcher, { revalidateOnFocus: false });
+  const { data: profile } = useSWR<PublicProfile | null>('/public-site/profile', fetcher, {
+    revalidateOnFocus: false,
+  });
   const src = profile?.logo_light_url || profile?.logo_dark_url || DEFAULT_BRAND_LOGO_PNG;
-  return <BrandLogoImage src={src} alt="Logo organisasi" className="h-10 w-10" priority />;
+  return <BrandLogoImage src={src} alt="Logo organisasi" className="size-10" priority />;
 }
 
 export default function PublicNavbar() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
-  const { data: profile, isLoading: isLoadingProfile } = useSWR<PublicProfile | null>('/public-site/profile', fetcher, { revalidateOnFocus: false });
+  const { data: profile, isLoading: isLoadingProfile } = useSWR<PublicProfile | null>(
+    '/public-site/profile',
+    fetcher,
+    { revalidateOnFocus: false }
+  );
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const location = useLocation();
@@ -88,7 +94,10 @@ export default function PublicNavbar() {
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const closeMobileMenu = () => setIsMobileMenuOpen(false);
-  useDialogA11y(isMobileMenuOpen, closeMobileMenu, { containerRef: mobileMenuRef, triggerRef: menuButtonRef });
+  useDialogA11y(isMobileMenuOpen, closeMobileMenu, {
+    containerRef: mobileMenuRef,
+    triggerRef: menuButtonRef,
+  });
 
   return (
     <nav className="fixed left-0 top-0 z-50 w-full border-b border-black/10 bg-white/85 shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] backdrop-blur-xl">
@@ -97,10 +106,18 @@ export default function PublicNavbar() {
           <BrandMark />
           <div className="hidden flex-col leading-tight md:flex">
             <div className="text-sm font-extrabold tracking-tight text-slate-900">
-              {isLoadingProfile ? 'Memuat...' : profile?.org_name ? profile.org_name : 'Profil belum diatur'}
+              {isLoadingProfile
+                ? 'Memuat...'
+                : profile?.org_name
+                  ? profile.org_name
+                  : 'Profil belum diatur'}
             </div>
             <div className="text-xs font-medium text-muted-foreground">
-              {isLoadingProfile ? '' : profile?.campus_name ? profile.campus_name : 'Konten Website'}
+              {isLoadingProfile
+                ? ''
+                : profile?.campus_name
+                  ? profile.campus_name
+                  : 'Konten Website'}
             </div>
           </div>
         </Link>
@@ -138,7 +155,11 @@ export default function PublicNavbar() {
                   aria-expanded={isOpen}
                 >
                   {g.label}
-                  <ChevronDown size={16} className={`transition-transform duration-200 ease-out ${isOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+                  <ChevronDown
+                    size={16}
+                    className={`transition-transform duration-200 ease-out ${isOpen ? 'rotate-180' : ''}`}
+                    aria-hidden="true"
+                  />
                 </button>
 
                 {isOpen ? (
@@ -186,7 +207,11 @@ export default function PublicNavbar() {
           aria-label={isMobileMenuOpen ? 'Tutup menu' : 'Buka menu'}
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         >
-          {isMobileMenuOpen ? <X size={26} aria-hidden="true" /> : <Menu size={26} aria-hidden="true" />}
+          {isMobileMenuOpen ? (
+            <X size={26} aria-hidden="true" />
+          ) : (
+            <Menu size={26} aria-hidden="true" />
+          )}
         </button>
       </div>
 
@@ -202,13 +227,17 @@ export default function PublicNavbar() {
           aria-label="Menu navigasi"
         >
           {MOBILE_NAV.map((item) => {
-            const active = location.pathname === item.to || (item.to !== '/' && location.pathname.startsWith(item.to));
+            const active =
+              location.pathname === item.to ||
+              (item.to !== '/' && location.pathname.startsWith(item.to));
             return (
               <Link
                 key={item.to}
                 to={item.to}
                 className={`flex min-h-11 items-center rounded-xl px-4 text-base font-semibold ${
-                  active ? 'bg-[var(--public-primary)]/10 text-[var(--public-primary)]' : 'text-slate-800'
+                  active
+                    ? 'bg-[var(--public-primary)]/10 text-[var(--public-primary)]'
+                    : 'text-slate-800'
                 }`}
               >
                 {item.label}

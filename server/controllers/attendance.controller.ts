@@ -50,7 +50,7 @@ const uploadPhotoInBackground = async (
     if (photoUrl) {
       await prisma.attendance.update({
         where: { id: attendanceId },
-        data: { photo_url: photoUrl }
+        data: { photo_url: photoUrl },
       });
     }
   } catch (error) {
@@ -63,10 +63,10 @@ const uploadPhotoInBackground = async (
 // Helper for distance calculation (Haversine formula)
 function getDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371e3; // metres
-  const φ1 = lat1 * Math.PI / 180; // φ, λ in radians
-  const φ2 = lat2 * Math.PI / 180;
-  const Δφ = (lat2 - lat1) * Math.PI / 180;
-  const Δλ = (lon2 - lon1) * Math.PI / 180;
+  const φ1 = (lat1 * Math.PI) / 180; // φ, λ in radians
+  const φ2 = (lat2 * Math.PI) / 180;
+  const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+  const Δλ = ((lon2 - lon1) * Math.PI) / 180;
 
   const a =
     Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
@@ -82,7 +82,7 @@ export const getChallenge = async (req: Request, res: Response): Promise<void> =
     const expires_at = new Date(Date.now() + 2 * 60000); // 2 minutes expiry
 
     await prisma.challengeNonce.create({
-      data: { nonce, expires_at }
+      data: { nonce, expires_at },
     });
 
     res.status(200).json({ success: true, data: { nonce } });
@@ -97,34 +97,62 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
   const checkinStart = Date.now();
   try {
     const user_id = (req as any).user.id;
-    const { session_id, qr_token, latitude, longitude, accuracy, ip_address, device_fingerprint, nonce, signature } = req.body;
+    const {
+      session_id,
+      qr_token,
+      latitude,
+      longitude,
+      accuracy,
+      ip_address,
+      device_fingerprint,
+      nonce,
+      signature,
+    } = req.body;
 
     // --- ANTI-CHEAT LAYER 1: Server-side Accuracy Validation ---
     if (!accuracy) {
-      res.status(400).json({ success: false, error: 'Kami tidak dapat mendeteksi tingkat akurasi GPS Anda. Harap aktifkan pengaturan lokasi presisi tinggi pada perangkat Anda dan coba lagi.' });
+      res.status(400).json({
+        success: false,
+        error:
+          'Kami tidak dapat mendeteksi tingkat akurasi GPS Anda. Harap aktifkan pengaturan lokasi presisi tinggi pada perangkat Anda dan coba lagi.',
+      });
       return;
     }
     const accuracyValue = parseFloat(accuracy);
     if (accuracyValue > 150) {
-      res.status(400).json({ success: false, error: `Sinyal GPS kami kurang kuat saat ini (Akurasi: ${Math.round(accuracyValue)}m). Mari coba berpindah ke tempat yang lebih terbuka lalu segarkan kembali halaman.` });
+      res.status(400).json({
+        success: false,
+        error: `Sinyal GPS kami kurang kuat saat ini (Akurasi: ${Math.round(accuracyValue)}m). Mari coba berpindah ke tempat yang lebih terbuka lalu segarkan kembali halaman.`,
+      });
       return;
     }
 
     // --- ANTI-CHEAT LAYER 2: Cryptographic Camera Proof ---
     if (!nonce || !signature) {
-      res.status(400).json({ success: false, error: 'Security proof (nonce/signature) tidak valid. Harap update aplikasi.' });
+      res.status(400).json({
+        success: false,
+        error: 'Security proof (nonce/signature) tidak valid. Harap update aplikasi.',
+      });
       return;
     }
 
     try {
       const deletedNonce = await prisma.challengeNonce.delete({ where: { nonce } });
       if (deletedNonce.expires_at < new Date()) {
-        res.status(400).json({ success: false, error: 'Waktu pengambilan foto Anda telah habis demi keamanan. Mari ambil foto ulang untuk melanjutkan.' });
+        res.status(400).json({
+          success: false,
+          error:
+            'Waktu pengambilan foto Anda telah habis demi keamanan. Mari ambil foto ulang untuk melanjutkan.',
+        });
         return;
       }
     } catch (error: any) {
       if (error?.code === 'P2025') {
-        res.status(400).json({ success: false, error: 'Waktu pengambilan foto Anda telah habis demi keamanan. Mari ambil foto ulang untuk melanjutkan.' });
+        res.status(400).json({
+          success: false,
+          error:
+            'Waktu pengambilan foto Anda telah habis demi keamanan. Mari ambil foto ulang untuk melanjutkan.',
+        });
         return;
       }
       throw error;
@@ -135,7 +163,11 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
     const expectedSignature = crypto.createHash('sha256').update(payloadToSign).digest('hex');
 
     if (signature !== expectedSignature) {
-      res.status(400).json({ success: false, error: 'Data foto atau koordinat lokasi tidak cocok. Silakan segarkan halaman dan ambil foto ulang di lokasi kelas.' });
+      res.status(400).json({
+        success: false,
+        error:
+          'Data foto atau koordinat lokasi tidak cocok. Silakan segarkan halaman dan ambil foto ulang di lokasi kelas.',
+      });
       return;
     }
 
@@ -153,9 +185,9 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
         where: {
           user_id,
           check_in_lat: { not: null },
-          check_in_lng: { not: null }
+          check_in_lng: { not: null },
         },
-        orderBy: { check_in_time: 'desc' }
+        orderBy: { check_in_time: 'desc' },
       }),
       prisma.user.findUnique({
         where: { id: user_id },
@@ -163,29 +195,42 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
       }),
       prisma.attendance.findUnique({
         where: {
-          session_id_user_id: { session_id, user_id }
-        }
-      })
+          session_id_user_id: { session_id, user_id },
+        },
+      }),
     ]);
 
     if (!session) {
-      res.status(404).json({ success: false, error: 'Sesi absensi tidak ditemukan atau sudah dihapus.' });
+      res
+        .status(404)
+        .json({ success: false, error: 'Sesi absensi tidak ditemukan atau sudah dihapus.' });
       return;
     }
 
     if (session.status !== 'ACTIVE') {
-      res.status(400).json({ success: false, error: `Sesi tidak aktif (Status: ${session.status})` });
+      res
+        .status(400)
+        .json({ success: false, error: `Sesi tidak aktif (Status: ${session.status})` });
       return;
     }
 
     if (session.class_id || (session.session_classes ?? []).length > 0) {
-      const classIds = session.class_id ? [session.class_id] : (session.session_classes ?? []).map((x: any) => x.class_id).filter(Boolean);
+      const classIds = session.class_id
+        ? [session.class_id]
+        : (session.session_classes ?? []).flatMap((x: any) => {
+            const result = x.class_id;
+            return result ? [result] : [];
+          });
       const enrolled = await prisma.classEnrollment.findFirst({
         where: { student_id: user_id, class_id: { in: classIds } },
         select: { id: true },
       });
       if (!enrolled) {
-        res.status(403).json({ success: false, error: 'Nama Anda belum terdaftar di kelas ini. Silakan hubungi admin atau dosen pengajar untuk menambahkan Anda.' });
+        res.status(403).json({
+          success: false,
+          error:
+            'Nama Anda belum terdaftar di kelas ini. Silakan hubungi admin atau dosen pengajar untuk menambahkan Anda.',
+        });
         return;
       }
     }
@@ -202,8 +247,15 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
     if (now > closeTime) {
       // Differentiate message if the class is still running
       if (now < session.session_end) {
-        const timeStr = session.check_in_close_at.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' });
-        res.status(400).json({ success: false, error: `Batas waktu absensi telah ditutup pada pukul ${timeStr} WIB. Hubungi dosen Anda jika Anda mengalami kendala koneksi.` });
+        const timeStr = session.check_in_close_at.toLocaleTimeString('id-ID', {
+          hour: '2-digit',
+          minute: '2-digit',
+          timeZone: 'Asia/Jakarta',
+        });
+        res.status(400).json({
+          success: false,
+          error: `Batas waktu absensi telah ditutup pada pukul ${timeStr} WIB. Hubungi dosen Anda jika Anda mengalami kendala koneksi.`,
+        });
       } else {
         res.status(400).json({ success: false, error: 'Waktu absensi sudah ditutup.' });
       }
@@ -224,7 +276,9 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
         }
       } else if (session.qr_mode === 'DYNAMIC') {
         if (!session.qr_secret) {
-          res.status(500).json({ success: false, error: 'QR Secret is not configured for this session' });
+          res
+            .status(500)
+            .json({ success: false, error: 'QR Secret is not configured for this session' });
           return;
         }
 
@@ -265,16 +319,20 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
         const allowedIPs: string[] = JSON.parse(session.location.wifi_bssid as string);
         if (Array.isArray(allowedIPs) && allowedIPs.length > 0) {
           if (!ip_address) {
-            res.status(400).json({ success: false, error: 'Alamat IP perangkat Anda tidak terdeteksi' });
+            res
+              .status(400)
+              .json({ success: false, error: 'Alamat IP perangkat Anda tidak terdeteksi' });
             return;
           }
 
           // Function to check if IP is in range (e.g., 192.168.1.1-192.168.1.100)
           const isIpAllowed = allowedIPs.some((allowed) => {
             if (allowed.includes('-')) {
-              const [start, end] = allowed.split('-').map(s => s.trim());
+              const [start, end] = allowed.split('-').map((s) => s.trim());
               const ipToLong = (ip: string) => {
-                return ip.split('.').reduce((acc, octet) => (acc << 8) + parseInt(octet, 10), 0) >>> 0;
+                return (
+                  ip.split('.').reduce((acc, octet) => (acc << 8) + parseInt(octet, 10), 0) >>> 0
+                );
               };
               try {
                 const userIpLong = ipToLong(ip_address);
@@ -289,10 +347,14 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
           if (!isIpAllowed) {
             // For offline sync, bypass strict IP validation since user might be syncing from home/mobile data
             if (device_fingerprint && device_fingerprint.includes('[OFFLINE_SYNC]')) {
-               console.log(`Bypassing IP restriction for offline sync: User ${user_id}`);
+              console.log(`Bypassing IP restriction for offline sync: User ${user_id}`);
             } else {
-               res.status(400).json({ success: false, error: 'Koneksi internet Anda berada di luar jaringan kampus. Harap hubungkan perangkat Anda ke Wi-Fi resmi kampus untuk melakukan absensi.' });
-               return;
+              res.status(400).json({
+                success: false,
+                error:
+                  'Koneksi internet Anda berada di luar jaringan kampus. Harap hubungkan perangkat Anda ke Wi-Fi resmi kampus untuk melakukan absensi.',
+              });
+              return;
             }
           }
         }
@@ -310,17 +372,19 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
         lastAttendance.check_in_lat,
         lastAttendance.check_in_lng
       );
-      
-      const timeDiffHours = (Date.now() - lastAttendance.check_in_time.getTime()) / (1000 * 60 * 60);
-      
+
+      const timeDiffHours =
+        (Date.now() - lastAttendance.check_in_time.getTime()) / (1000 * 60 * 60);
+
       // If time difference is valid and within last 24 hours
-      if (timeDiffHours > 0.01 && timeDiffHours < 24) { 
-        const speedKmH = (distanceLastCheckin / 1000) / timeDiffHours;
+      if (timeDiffHours > 0.01 && timeDiffHours < 24) {
+        const speedKmH = distanceLastCheckin / 1000 / timeDiffHours;
         // Speeds > 250 km/h over short distances in a city context strongly implies GPS spoofing
         if (speedKmH > 250) {
-          res.status(400).json({ 
-            success: false, 
-            error: 'Sistem mendeteksi adanya ketidaksesuaian data GPS. Harap nonaktifkan aplikasi lokasi palsu di perangkat Anda dan coba segarkan halaman.' 
+          res.status(400).json({
+            success: false,
+            error:
+              'Sistem mendeteksi adanya ketidaksesuaian data GPS. Harap nonaktifkan aplikasi lokasi palsu di perangkat Anda dan coba segarkan halaman.',
           });
           return;
         }
@@ -328,23 +392,36 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
     }
 
     const nowTime = new Date();
-    const lateThresholdTime = new Date(session.session_start.getTime() + session.late_threshold_minutes * 60000);
+    const lateThresholdTime = new Date(
+      session.session_start.getTime() + session.late_threshold_minutes * 60000
+    );
     const status = nowTime > lateThresholdTime ? 'LATE' : 'PRESENT';
 
     // Device Fingerprint Binding Logic
-    if (user && !user.device_fingerprint && device_fingerprint && device_fingerprint !== 'unknown-device') {
+    if (
+      user &&
+      !user.device_fingerprint &&
+      device_fingerprint &&
+      device_fingerprint !== 'unknown-device'
+    ) {
       // First time check-in: Bind device
       await prisma.user.update({
         where: { id: user_id },
-        data: { device_fingerprint }
+        data: { device_fingerprint },
       });
     } else if (user && user.device_fingerprint) {
       // Compare the base fingerprint (ignoring the [OFFLINE_SYNC] tag)
       const storedDevice = user.device_fingerprint.replace(' [OFFLINE_SYNC]', '');
-      const incomingDevice = device_fingerprint ? device_fingerprint.replace(' [OFFLINE_SYNC]', '') : '';
+      const incomingDevice = device_fingerprint
+        ? device_fingerprint.replace(' [OFFLINE_SYNC]', '')
+        : '';
 
       if (storedDevice !== incomingDevice) {
-        res.status(403).json({ success: false, error: 'Sistem mendeteksi perangkat lain terhubung dengan akun Anda. Hubungi tim Admin untuk mengalihkan akun ke perangkat ini.' });
+        res.status(403).json({
+          success: false,
+          error:
+            'Sistem mendeteksi perangkat lain terhubung dengan akun Anda. Hubungi tim Admin untuk mengalihkan akun ke perangkat ini.',
+        });
         return;
       }
     }
@@ -352,21 +429,30 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
     // Check if already checked in
     if (existingAttendance) {
       if (existingAttendance.check_out_time) {
-         res.status(400).json({ success: false, error: 'Anda sudah menyelesaikan absensi (Check-in & Check-out) pada sesi ini' });
-         return;
+        res.status(400).json({
+          success: false,
+          error: 'Anda sudah menyelesaikan absensi (Check-in & Check-out) pada sesi ini',
+        });
+        return;
       }
-      
+
       if (!session.require_checkout) {
-         res.status(400).json({ success: false, error: 'Anda sudah melakukan check-in pada sesi ini (Sesi ini tidak mewajibkan check-out)' });
-         return;
+        res.status(400).json({
+          success: false,
+          error:
+            'Anda sudah melakukan check-in pada sesi ini (Sesi ini tidak mewajibkan check-out)',
+        });
+        return;
       }
-      
+
       // Valid Check-out scenario
       const updated = await prisma.attendance.update({
         where: { id: existingAttendance.id },
-        data: { check_out_time: new Date() }
+        data: { check_out_time: new Date() },
       });
-      res.status(200).json({ success: true, data: updated, message: 'Check-out berhasil dicatat!' });
+      res
+        .status(200)
+        .json({ success: true, data: updated, message: 'Check-out berhasil dicatat!' });
       return;
     }
 
@@ -406,12 +492,15 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
     res.status(201).json({ success: true, data: attendance, message: 'Check-in berhasil' });
   } catch (error: any) {
     if (error?.code === 'P2002') {
-      res.status(400).json({ success: false, error: 'Anda sudah melakukan check-in pada sesi ini' });
+      res
+        .status(400)
+        .json({ success: false, error: 'Anda sudah melakukan check-in pada sesi ini' });
       return;
     }
     res.status(500).json({
       success: false,
-      error: 'Absensi gagal diproses. Coba lagi dalam 1 menit; jika berulang, hubungi admin dengan waktu kejadian.',
+      error:
+        'Absensi gagal diproses. Coba lagi dalam 1 menit; jika berulang, hubungi admin dengan waktu kejadian.',
     });
   } finally {
     if (req.file && req.file.path && !isUploadingInBackground) {
@@ -449,7 +538,8 @@ export const checkOut = async (req: Request, res: Response): Promise<void> => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      error: 'Absensi gagal diproses. Coba lagi dalam 1 menit; jika berulang, hubungi admin dengan waktu kejadian.',
+      error:
+        'Absensi gagal diproses. Coba lagi dalam 1 menit; jika berulang, hubungi admin dengan waktu kejadian.',
     });
   }
 };

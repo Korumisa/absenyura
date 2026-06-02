@@ -1,7 +1,7 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import PublicCoverImage from '@/components/PublicCoverImage';
-import { useReducedMotion } from '@/lib/useReducedMotion';
+import { useReducedMotion } from '@/lib/a11y/useReducedMotion';
 import type { PublicStructureGroup } from '@/types/publicSite';
 import { HorizontalSnapRail } from './HorizontalSnapRail';
 import { getDivisionDisplayTitle, getDivisionTagline } from './divisionUtils';
@@ -145,7 +145,7 @@ export function DivisionRail({
                             />
                           ) : (
                             <div className="grid h-full w-full place-items-center bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.02))]">
-                              <div className="grid h-20 w-20 place-items-center rounded-2xl bg-white/80 text-4xl font-extrabold text-[var(--public-primary)] ring-1 ring-black/10">
+                              <div className="grid size-20 place-items-center rounded-2xl bg-white/80 text-4xl font-extrabold text-[var(--public-primary)] ring-1 ring-black/10">
                                 {initial}
                               </div>
                             </div>

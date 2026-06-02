@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useReducedMotion } from '@/lib/useReducedMotion';
+import { useReducedMotion } from '@/lib/a11y/useReducedMotion';
 
 /** Scroll reveal halaman publik (CSS + Intersection Observer; tanpa framer-motion) */
 export default function PublicReveal({
@@ -28,7 +28,7 @@ export default function PublicReveal({
           observer.disconnect();
         }
       },
-      { rootMargin: '0px 0px -8% 0px', threshold: 0.08 },
+      { rootMargin: '0px 0px -8% 0px', threshold: 0.08 }
     );
     observer.observe(el);
     return () => observer.disconnect();

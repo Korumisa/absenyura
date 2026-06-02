@@ -1,7 +1,7 @@
 import React from 'react';
 import { ArrowUpRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/utils';
 import type { PublicProgram } from '@/types/publicSite';
 
 type PublicProgramCardProps = {
@@ -38,11 +38,23 @@ function getProgramCardSummary(description: string | null) {
   return body || 'Rincian tersedia di halaman detail.';
 }
 
-export default function PublicProgramCard({ program, index = 0, className }: PublicProgramCardProps) {
+export default function PublicProgramCard({
+  program,
+  index = 0,
+  className,
+}: PublicProgramCardProps) {
   const blobA =
-    index % 3 === 0 ? 'bg-[var(--public-primary)]/16' : index % 3 === 1 ? 'bg-sky-400/14' : 'bg-indigo-400/14';
+    index % 3 === 0
+      ? 'bg-[var(--public-primary)]/16'
+      : index % 3 === 1
+        ? 'bg-sky-400/14'
+        : 'bg-indigo-400/14';
   const blobB =
-    index % 3 === 0 ? 'bg-sky-400/10' : index % 3 === 1 ? 'bg-[var(--public-primary)]/10' : 'bg-emerald-400/10';
+    index % 3 === 0
+      ? 'bg-sky-400/10'
+      : index % 3 === 1
+        ? 'bg-[var(--public-primary)]/10'
+        : 'bg-emerald-400/10';
   const summary = getProgramCardSummary(program.description ?? null);
 
   return (
@@ -53,15 +65,19 @@ export default function PublicProgramCard({ program, index = 0, className }: Pub
         className
       )}
     >
-      <div className={`pointer-events-none absolute -right-10 -top-12 h-32 w-32 rounded-[53%_47%_45%_55%/48%_56%_44%_52%] blur-2xl ${blobA}`} />
-      <div className={`pointer-events-none absolute -bottom-12 -left-12 h-36 w-36 rounded-[48%_52%_58%_42%/44%_43%_57%_56%] blur-3xl ${blobB}`} />
+      <div
+        className={`pointer-events-none absolute -right-10 -top-12 h-32 w-32 rounded-[53%_47%_45%_55%/48%_56%_44%_52%] blur-2xl ${blobA}`}
+      />
+      <div
+        className={`pointer-events-none absolute -bottom-12 -left-12 h-36 w-36 rounded-[48%_52%_58%_42%/44%_43%_57%_56%] blur-3xl ${blobB}`}
+      />
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[var(--public-primary)]/25 to-transparent" />
 
       <div className="relative flex h-full flex-col">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <div className="inline-flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-[var(--public-primary)]" />
+              <span className="size-2 rounded-full bg-[var(--public-primary)]" />
               <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
                 {program.date_range ?? '-'}
               </span>
@@ -71,7 +87,7 @@ export default function PublicProgramCard({ program, index = 0, className }: Pub
             </div>
           </div>
 
-          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-black/10 bg-white/70 text-muted-foreground opacity-0 shadow-sm transition group-hover:opacity-100">
+          <div className="grid size-9 shrink-0 place-items-center rounded-xl border border-black/10 bg-white/70 text-muted-foreground opacity-0 shadow-sm transition group-hover:opacity-100">
             <ArrowUpRight size={18} />
           </div>
         </div>

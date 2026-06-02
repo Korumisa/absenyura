@@ -1,9 +1,7 @@
 import { Request, Response } from 'express';
-import bcrypt from 'bcryptjs';
-import prisma from '../utils/prisma.js';
-import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../utils/jwt.js';
 import { sendInternalServerError } from '../utils/errorResponse.js';
 import crypto from 'crypto';
+import * as authService from '../services/authService.js';
 
 function setCsrfCookie(res: Response, isProduction: boolean): void {
   const token = crypto.randomBytes(32).toString('hex');
@@ -18,87 +16,18 @@ function setCsrfCookie(res: Response, isProduction: boolean): void {
 
 export const login = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { email, password, device_fingerprint } = req.body;
-
-    if (!email || !password) {
-      res.status(400).json({
-        success: false,
-        error_code: 'MISSING_CREDENTIALS',
-        message: 'Email/NIM dan kata sandi wajib diisi.',
-      });
-      return;
-    }
-
-    const user = await prisma.user.findFirst({ 
-      where: { 
-        OR: [
-          { email },
-          { nim_nip: email }
-        ]
-      } 
+    const result = await authService.login({
+      email: req.body?.email,
+      password: req.body?.password,
+      device_fingerprint: req.body?.device_fingerprint,
     });
-    if (!user) {
-      res.status(401).json({
-        success: false,
-        error_code: 'INVALID_CREDENTIALS',
-        message: 'Email/NIM atau kata sandi salah.',
-      });
+
+    if (!result.ok) {
+      res.status(result.status).json(result.body);
       return;
     }
 
-    if (!user.is_active) {
-      res.status(403).json({
-        success: false,
-        error_code: 'ACCOUNT_INACTIVE',
-        message: 'Akun Anda nonaktif. Hubungi admin.',
-      });
-      return;
-    }
-
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) {
-      res.status(401).json({
-        success: false,
-        error_code: 'INVALID_CREDENTIALS',
-        message: 'Email/NIM atau kata sandi salah.',
-      });
-      return;
-    }
-
-    // One-device policy logic (enforce block on mismatch for non-admins)
-    if (device_fingerprint && device_fingerprint !== 'unknown-device') {
-      if (user.device_fingerprint) {
-        // Compare base fingerprints (ignoring the [OFFLINE_SYNC] tag)
-        const storedDevice = user.device_fingerprint.replace(' [OFFLINE_SYNC]', '');
-        const incomingDevice = device_fingerprint.replace(' [OFFLINE_SYNC]', '');
-
-        if (storedDevice !== incomingDevice) {
-          if (user.role === 'USER') {
-            res.status(403).json({ 
-              success: false, 
-              error_code: 'DEVICE_BOUND',
-              message: 'Login ditolak: akun ini sudah terikat dengan perangkat lain. Hubungi admin untuk reset perangkat.'
-            });
-            return;
-          } else {
-            // Admins can log in from multiple devices, just update the latest
-            await prisma.user.update({
-              where: { id: user.id },
-              data: { device_fingerprint },
-            });
-          }
-        }
-      } else {
-        // Bind device on first login
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { device_fingerprint },
-        });
-      }
-    }
-
-    const accessToken = generateAccessToken(user.id, user.role);
-    const refreshToken = generateRefreshToken(user.id, user.role);
+    const { accessToken, refreshToken, user } = result.data;
 
     const isProduction = process.env.NODE_ENV === 'production';
 
@@ -126,14 +55,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     res.status(200).json({
       success: true,
       data: {
-        user: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-          avatar_url: user.avatar_url,
-          department: user.department,
-        },
+        user,
       },
     });
   } catch (error: any) {
@@ -144,30 +66,15 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
 export const refresh = async (req: Request, res: Response): Promise<void> => {
   try {
-    const refreshToken = req.cookies.refreshToken;
-    if (!refreshToken) {
-      res.status(401).json({
-        success: false,
-        error_code: 'NO_REFRESH_TOKEN',
-        message: 'Sesi login habis. Silakan login ulang.',
-      });
+    const result = await authService.refresh({ refreshToken: req.cookies?.refreshToken });
+
+    if (!result.ok) {
+      res.status(result.status).json(result.body);
       return;
     }
 
-    const decoded = verifyRefreshToken(refreshToken);
-    const user = await prisma.user.findUnique({ where: { id: decoded.id } });
-
-    if (!user || !user.is_active) {
-      res.status(401).json({
-        success: false,
-        error_code: 'INVALID_USER',
-        message: 'Sesi tidak valid. Silakan login ulang.',
-      });
-      return;
-    }
-
-    const newAccessToken = generateAccessToken(user.id, user.role);
-    const newRefreshToken = generateRefreshToken(user.id, user.role);
+    const newAccessToken = result.data.accessToken;
+    const newRefreshToken = result.data.refreshToken;
 
     const isProduction = process.env.NODE_ENV === 'production';
     const cookieOptions = {
@@ -195,12 +102,9 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
         message: 'Sesi diperbarui.',
       },
     });
-  } catch (error) {
-    res.status(401).json({
-      success: false,
-      error_code: 'INVALID_REFRESH_TOKEN',
-      message: 'Sesi login habis. Silakan login ulang.',
-    });
+  } catch (error: any) {
+    console.error('Refresh error:', error);
+    sendInternalServerError(res, error);
   }
 };
 
@@ -223,50 +127,24 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
   res.status(200).json({ success: true, message: 'Logged out successfully' });
 };
 
-function isValidSeedSecret(req: Request): boolean {
-  const incoming = String(req.headers['x-seed-secret'] || '');
-  const expected = String(process.env.SEED_SECRET || '');
-  if (!expected || expected.length < 32) return false;
-  if (incoming.length !== expected.length) return false;
-  return crypto.timingSafeEqual(Buffer.from(incoming), Buffer.from(expected));
-}
-
 // Seed endpoint for initial SUPER_ADMIN
 export const seedAdmin = async (req: Request, res: Response): Promise<void> => {
   try {
-    if (process.env.NODE_ENV === 'production') {
-      res.status(404).json({ success: false, error: 'Not found' });
-      return;
-    }
-    if (!isValidSeedSecret(req)) {
-      res.status(403).json({ success: false, error: 'Unauthorized to seed database' });
-      return;
-    }
-
-    const count = await prisma.user.count();
-    if (count > 0) {
-      res.status(400).json({ success: false, error: 'Database already seeded' });
-      return;
-    }
-
-    const email = process.env.SEED_SUPER_ADMIN_EMAIL;
-    const password = process.env.SEED_SUPER_ADMIN_PASSWORD;
-    if (!email || !password) {
-      res.status(500).json({ success: false, error: 'Seeder env belum diatur' });
-      return;
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 12);
-    const admin = await prisma.user.create({
-      data: {
-        name: process.env.SEED_SUPER_ADMIN_NAME || 'Super Admin',
-        email,
-        password: hashedPassword,
-        role: 'SUPER_ADMIN',
-      },
+    const result = await authService.seedAdmin({
+      nodeEnv: process.env.NODE_ENV,
+      incomingSeedSecret: req.headers['x-seed-secret'],
+      expectedSeedSecret: process.env.SEED_SECRET,
+      seedEmail: process.env.SEED_SUPER_ADMIN_EMAIL,
+      seedPassword: process.env.SEED_SUPER_ADMIN_PASSWORD,
+      seedName: process.env.SEED_SUPER_ADMIN_NAME,
     });
 
-    res.status(201).json({ success: true, data: admin });
+    if (!result.ok) {
+      res.status(result.status).json(result.body);
+      return;
+    }
+
+    res.status(201).json({ success: true, data: result.data });
   } catch (error: any) {
     console.error('Seed error:', error);
     sendInternalServerError(res, error);
@@ -275,39 +153,18 @@ export const seedAdmin = async (req: Request, res: Response): Promise<void> => {
 
 export const flushDb = async (req: Request, res: Response): Promise<void> => {
   try {
-    if (process.env.NODE_ENV === 'production') {
-      res.status(404).json({ success: false, error: 'Not found' });
-      return;
-    }
-    if (!isValidSeedSecret(req)) {
-      res.status(403).json({ success: false, error: 'Unauthorized to flush database' });
+    const result = await authService.flushDb({
+      nodeEnv: process.env.NODE_ENV,
+      incomingSeedSecret: req.headers['x-seed-secret'],
+      expectedSeedSecret: process.env.SEED_SECRET,
+    });
+
+    if (!result.ok) {
+      res.status(result.status).json(result.body);
       return;
     }
 
-    // We must delete in correct order due to foreign key constraints
-    await prisma.$transaction([
-      prisma.publicGalleryItem.deleteMany(),
-      prisma.publicGalleryAlbum.deleteMany(),
-      prisma.publicRecruitmentCommittee.deleteMany(),
-      prisma.publicRecruitment.deleteMany(),
-      prisma.publicPost.deleteMany(),
-      prisma.publicCategory.deleteMany(),
-      prisma.publicStructureMember.deleteMany(),
-      prisma.publicStructureGroup.deleteMany(),
-      prisma.publicProgram.deleteMany(),
-      prisma.publicSiteProfile.deleteMany(),
-      prisma.notification.deleteMany(),
-      prisma.auditLog.deleteMany(),
-      prisma.excuseRequest.deleteMany(),
-      prisma.attendance.deleteMany(),
-      prisma.classEnrollment.deleteMany(),
-      prisma.session.deleteMany(),
-      prisma.class.deleteMany(),
-      prisma.location.deleteMany(),
-      // We intentionally do NOT delete users and global settings
-    ]);
-
-    res.status(200).json({ success: true, message: 'Database flushed successfully. All transaction data removed except User accounts.' });
+    res.status(200).json({ success: true, message: result.data.message });
   } catch (error: any) {
     console.error('Flush DB error:', error);
     sendInternalServerError(res, error);

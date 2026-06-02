@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/utils';
 
 /** [UX] C-03 — pratinjau CMS dapat dilipat di layar kecil */
 export function CmsPreviewCollapsible({
@@ -29,7 +29,10 @@ export function CmsPreviewCollapsible({
         onClick={() => setOpen((v) => !v)}
       >
         Pratinjau tampilan publik
-        <ChevronDown className={cn('h-5 w-5 transition-transform', open && 'rotate-180')} aria-hidden="true" />
+        <ChevronDown
+          className={cn('h-5 w-5 transition-transform', open && 'rotate-180')}
+          aria-hidden="true"
+        />
       </button>
       <div className={cn('hidden space-y-4 xl:block', open && 'block')}>{children}</div>
     </div>

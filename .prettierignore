@@ -1,0 +1,5 @@
+dist/
+.next/
+build/
+prisma/migrations/
+public/

@@ -1,5 +1,5 @@
 import React from 'react';
-import { useReducedMotion } from '@/lib/useReducedMotion';
+import { useReducedMotion } from '@/lib/a11y/useReducedMotion';
 
 /** Masuk halaman publik — animasi CSS ringan (hindari opacity:0 di above-the-fold / LCP) */
 export default function PublicEnter({

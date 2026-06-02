@@ -10,7 +10,9 @@ import { buildDynamicQrToken, QR_WINDOW_MS } from '../utils/dynamicQr.js';
 import { triggerSessionCronLazy } from '../jobs/cron.js';
 
 const isMissingSemesterColumn = (err: any) =>
-  Boolean(err && err.code === 'P2022' && String(err?.meta?.column || '').includes('Class.semester'));
+  Boolean(
+    err && err.code === 'P2022' && String(err?.meta?.column || '').includes('Class.semester')
+  );
 
 export const getSessions = async (req: Request, res: Response): Promise<void> => {
   triggerSessionCronLazy();
@@ -27,8 +29,12 @@ export const getSessions = async (req: Request, res: Response): Promise<void> =>
             OR: [
               { class_id: null, session_classes: { none: {} } },
               { class: { enrollments: { some: { student_id: userId } } } },
-              { session_classes: { some: { class: { enrollments: { some: { student_id: userId } } } } } },
-            ]
+              {
+                session_classes: {
+                  some: { class: { enrollments: { some: { student_id: userId } } } },
+                },
+              },
+            ],
           },
           select: sessionListSelect({ userId, withSemester: true }),
           orderBy: { session_start: 'asc' },
@@ -41,8 +47,12 @@ export const getSessions = async (req: Request, res: Response): Promise<void> =>
             OR: [
               { class_id: null, session_classes: { none: {} } },
               { class: { enrollments: { some: { student_id: userId } } } },
-              { session_classes: { some: { class: { enrollments: { some: { student_id: userId } } } } } },
-            ]
+              {
+                session_classes: {
+                  some: { class: { enrollments: { some: { student_id: userId } } } },
+                },
+              },
+            ],
           },
           select: sessionListSelect({ userId, withSemester: false }),
           orderBy: { session_start: 'asc' },
@@ -83,23 +93,44 @@ const validateSessionTimes = (
     check_in_open_at: string;
     check_in_close_at: string;
   },
-  opts: { allowPastClose: boolean },
+  opts: { allowPastClose: boolean }
 ): SessionTimeError | null => {
   const openAt = new Date(body.check_in_open_at).getTime();
   const closeAt = new Date(body.check_in_close_at).getTime();
   const startAt = new Date(body.session_start).getTime();
   const endAt = new Date(body.session_end).getTime();
-  if (Number.isNaN(openAt) || Number.isNaN(closeAt) || Number.isNaN(startAt) || Number.isNaN(endAt)) {
-    return { field: 'check_in_close_at', message: 'Format waktu sesi tidak valid.', error_code: 'INVALID_TIME' };
+  if (
+    Number.isNaN(openAt) ||
+    Number.isNaN(closeAt) ||
+    Number.isNaN(startAt) ||
+    Number.isNaN(endAt)
+  ) {
+    return {
+      field: 'check_in_close_at',
+      message: 'Format waktu sesi tidak valid.',
+      error_code: 'INVALID_TIME',
+    };
   }
   if (closeAt <= openAt) {
-    return { field: 'check_in_close_at', message: 'Tutup absen harus setelah Buka absen.', error_code: 'CLOSE_BEFORE_OPEN' };
+    return {
+      field: 'check_in_close_at',
+      message: 'Tutup absen harus setelah Buka absen.',
+      error_code: 'CLOSE_BEFORE_OPEN',
+    };
   }
   if (endAt < startAt) {
-    return { field: 'session_end', message: 'Berakhir sesi tidak boleh sebelum mulai sesi.', error_code: 'END_BEFORE_START' };
+    return {
+      field: 'session_end',
+      message: 'Berakhir sesi tidak boleh sebelum mulai sesi.',
+      error_code: 'END_BEFORE_START',
+    };
   }
   if (!opts.allowPastClose && closeAt <= Date.now() + 60_000) {
-    return { field: 'check_in_close_at', message: 'Tutup absen harus minimal 1 menit ke depan.', error_code: 'CLOSE_AT_IN_PAST' };
+    return {
+      field: 'check_in_close_at',
+      message: 'Tutup absen harus minimal 1 menit ke depan.',
+      error_code: 'CLOSE_AT_IN_PAST',
+    };
   }
   return null;
 };
@@ -115,24 +146,50 @@ const sendSessionTimeError = (res: Response, v: SessionTimeError): void => {
 
 export const createSession = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { title, description, class_id, class_ids, location_id, qr_mode, session_start, session_end, check_in_open_at, check_in_close_at, late_threshold_minutes, require_checkout } = req.body;
+    const {
+      title,
+      description,
+      class_id,
+      class_ids,
+      location_id,
+      qr_mode,
+      session_start,
+      session_end,
+      check_in_open_at,
+      check_in_close_at,
+      late_threshold_minutes,
+      require_checkout,
+    } = req.body;
     const user_id = (req as any).user.id;
-    const incomingClassIds = Array.isArray(class_ids) ? class_ids.map((x: any) => String(x || '').trim()).filter(Boolean) : [];
+    const incomingClassIds = Array.isArray(class_ids)
+      ? class_ids.flatMap((x: any) => {
+          const result = String(x || '').trim();
+          return result ? [result] : [];
+        })
+      : [];
     const uniqueClassIds = Array.from(new Set(incomingClassIds));
     const useMultiClass = uniqueClassIds.length > 0;
 
     if (!title || !String(title).trim()) {
-      sendSessionTimeError(res, { field: 'title', message: 'Judul sesi wajib diisi.', error_code: 'MISSING_TITLE' });
+      sendSessionTimeError(res, {
+        field: 'title',
+        message: 'Judul sesi wajib diisi.',
+        error_code: 'MISSING_TITLE',
+      });
       return;
     }
     if (!location_id) {
-      sendSessionTimeError(res, { field: 'location_id', message: 'Lokasi sesi wajib dipilih.', error_code: 'MISSING_LOCATION' });
+      sendSessionTimeError(res, {
+        field: 'location_id',
+        message: 'Lokasi sesi wajib dipilih.',
+        error_code: 'MISSING_LOCATION',
+      });
       return;
     }
 
     const timeError = validateSessionTimes(
       { session_start, session_end, check_in_open_at, check_in_close_at },
-      { allowPastClose: false },
+      { allowPastClose: false }
     );
     if (timeError) {
       sendSessionTimeError(res, timeError);
@@ -153,7 +210,7 @@ export const createSession = async (req: Request, res: Response): Promise<void> 
       data: {
         title,
         description,
-        class_id: useMultiClass ? null : (class_id || null),
+        class_id: useMultiClass ? null : class_id || null,
         location_id,
         created_by_id: user_id,
         qr_mode,
@@ -180,36 +237,38 @@ export const createSession = async (req: Request, res: Response): Promise<void> 
     if (useMultiClass) {
       const enrollments = await prisma.classEnrollment.findMany({
         where: { class_id: { in: uniqueClassIds } },
-        select: { student_id: true }
+        select: { student_id: true },
       });
-      expectedUserIds = Array.from(new Set(enrollments.map(e => e.student_id)));
+      expectedUserIds = Array.from(new Set(enrollments.map((e) => e.student_id)));
     } else if (class_id) {
       const enrollments = await prisma.classEnrollment.findMany({
         where: { class_id },
-        select: { student_id: true }
+        select: { student_id: true },
       });
-      expectedUserIds = enrollments.map(e => e.student_id);
+      expectedUserIds = enrollments.map((e) => e.student_id);
     } else {
       const allUsers = await prisma.user.findMany({ where: { role: 'USER', is_active: true } });
-      expectedUserIds = allUsers.map(u => u.id);
+      expectedUserIds = allUsers.map((u) => u.id);
     }
 
     if (expectedUserIds.length > 0) {
       try {
         await prisma.notification.createMany({
-          data: expectedUserIds.map(id => ({
+          data: expectedUserIds.map((id) => ({
             user_id: id,
             title: 'Jadwal Sesi Baru',
             message: `Sesi baru "${title}" telah dijadwalkan pada ${new Date(session_start).toLocaleString('id-ID')}.`,
-            type: 'INFO'
-          }))
+            type: 'INFO',
+          })),
         });
       } catch (notifyErr) {
         console.error('Error sending session notifications (session saved):', notifyErr);
       }
     }
 
-    res.status(201).json({ success: true, data: stripSessionQrSecrets(session as Record<string, unknown>) });
+    res
+      .status(201)
+      .json({ success: true, data: stripSessionQrSecrets(session as Record<string, unknown>) });
   } catch (error) {
     console.error('Error creating session:', error);
     res.status(500).json({ success: false, error: 'Internal server error' });
@@ -219,9 +278,28 @@ export const createSession = async (req: Request, res: Response): Promise<void> 
 export const updateSession = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { title, description, class_id, class_ids, location_id, qr_mode, session_start, session_end, check_in_open_at, check_in_close_at, late_threshold_minutes, require_checkout, status } = req.body;
+    const {
+      title,
+      description,
+      class_id,
+      class_ids,
+      location_id,
+      qr_mode,
+      session_start,
+      session_end,
+      check_in_open_at,
+      check_in_close_at,
+      late_threshold_minutes,
+      require_checkout,
+      status,
+    } = req.body;
     const hasClassIds = Array.isArray(class_ids);
-    const incomingClassIds = hasClassIds ? class_ids.map((x: any) => String(x || '').trim()).filter(Boolean) : [];
+    const incomingClassIds = hasClassIds
+      ? class_ids.flatMap((x: any) => {
+          const result = String(x || '').trim();
+          return result ? [result] : [];
+        })
+      : [];
     const uniqueClassIds = Array.from(new Set(incomingClassIds));
 
     // Edit sesi yang sudah berjalan (ACTIVE/CLOSED) boleh punya close_at di masa lalu —
@@ -230,7 +308,7 @@ export const updateSession = async (req: Request, res: Response): Promise<void> 
     const allowPastClose = Boolean(existing && existing.status !== 'UPCOMING');
     const timeError = validateSessionTimes(
       { session_start, session_end, check_in_open_at, check_in_close_at },
-      { allowPastClose },
+      { allowPastClose }
     );
     if (timeError) {
       sendSessionTimeError(res, timeError);
@@ -242,7 +320,7 @@ export const updateSession = async (req: Request, res: Response): Promise<void> 
       data: {
         title,
         description,
-        class_id: uniqueClassIds.length > 0 ? null : (class_id || null),
+        class_id: uniqueClassIds.length > 0 ? null : class_id || null,
         location_id,
         session_start: new Date(session_start),
         session_end: new Date(session_end),
@@ -264,7 +342,9 @@ export const updateSession = async (req: Request, res: Response): Promise<void> 
       }
     }
 
-    res.status(200).json({ success: true, data: stripSessionQrSecrets(session as Record<string, unknown>) });
+    res
+      .status(200)
+      .json({ success: true, data: stripSessionQrSecrets(session as Record<string, unknown>) });
   } catch (error) {
     console.error('Error updating session:', error);
     res.status(500).json({ success: false, error: 'Internal server error' });
@@ -316,19 +396,24 @@ export const getSessionById = async (req: Request, res: Response): Promise<void>
     }
 
     if (user.role === 'USER') {
-      const classIds = session.class_id ? [session.class_id] : (session.session_classes ?? []).map((sc: any) => sc.class_id).filter(Boolean);
+      const classIds = session.class_id
+        ? [session.class_id]
+        : (session.session_classes ?? []).flatMap((sc: any) => {
+            const result = sc.class_id;
+            return result ? [result] : [];
+          });
       if (classIds.length > 0) {
         const enrolled = await prisma.classEnrollment.findFirst({
           where: {
             student_id: user.id,
-            class_id: { in: classIds }
-          }
+            class_id: { in: classIds },
+          },
         });
         if (!enrolled) {
           res.status(403).json({
             success: false,
             error_code: 'BOLA_UNAUTHORIZED_CLASS',
-            error: 'Kode QR ini bukan untuk kelas Anda. Pastikan Anda memindai kode yang benar.'
+            error: 'Kode QR ini bukan untuk kelas Anda. Pastikan Anda memindai kode yang benar.',
           });
           return;
         }
@@ -340,8 +425,6 @@ export const getSessionById = async (req: Request, res: Response): Promise<void>
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 };
-
-
 
 // Generate Dynamic QR or return Static Token
 export const getSessionQR = async (req: Request, res: Response): Promise<void> => {
@@ -368,7 +451,9 @@ export const getSessionQR = async (req: Request, res: Response): Promise<void> =
     }
 
     if (!session.qr_secret) {
-      res.status(500).json({ success: false, error: 'QR Secret is not configured for this session' });
+      res
+        .status(500)
+        .json({ success: false, error: 'QR Secret is not configured for this session' });
       return;
     }
 

@@ -1,0 +1,4 @@
+[ ! -d "node_modules" ] && exit 0
+[ ! -e "node_modules/.bin/lint-staged" ] && [ ! -e "node_modules/.bin/lint-staged.cmd" ] && exit 0
+
+npx --no-install lint-staged

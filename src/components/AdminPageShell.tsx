@@ -22,7 +22,7 @@ export default function AdminPageShell({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-3">
           {icon ? (
-            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-card text-foreground ring-1 ring-border">
+            <div className="grid size-10 shrink-0 place-items-center rounded-lg bg-card text-foreground ring-1 ring-border">
               {icon}
             </div>
           ) : null}
@@ -43,13 +43,15 @@ export default function AdminPageShell({
         <div className="relative flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-7">
           <div className="flex items-start gap-4">
             {icon ? (
-              <div className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-brand text-brand-foreground shadow-elevated ring-1 ring-border">
+              <div className="grid size-12 shrink-0 place-items-center rounded-lg bg-brand text-brand-foreground shadow-elevated ring-1 ring-border">
                 {icon}
               </div>
             ) : null}
             <div className="min-w-0">
               <h1 className="text-2xl font-bold tracking-tight text-foreground">{title}</h1>
-              {description ? <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{description}</p> : null}
+              {description ? (
+                <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{description}</p>
+              ) : null}
             </div>
           </div>
           {actions ? (
@@ -64,13 +66,15 @@ export default function AdminPageShell({
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-4">
             {icon ? (
-              <div className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-brand text-brand-foreground">
+              <div className="grid size-12 shrink-0 place-items-center rounded-lg bg-brand text-brand-foreground">
                 {icon}
               </div>
             ) : null}
             <div className="min-w-0">
               <h1 className="text-2xl font-bold text-foreground">{title}</h1>
-              {description ? <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{description}</p> : null}
+              {description ? (
+                <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{description}</p>
+              ) : null}
             </div>
           </div>
           {actions ? (

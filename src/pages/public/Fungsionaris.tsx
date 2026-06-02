@@ -6,9 +6,9 @@ import type { PublicProfile, PublicStructureGroup } from '@/types/publicSite';
 import { Skeleton } from '@/components/ui/skeleton';
 import PublicPageHero from '@/components/PublicPageHero';
 import PublicCoverImage from '@/components/PublicCoverImage';
-import { AnimatePresence, motion } from 'framer-motion';
-import { useReducedMotion } from '@/lib/useReducedMotion';
-import { fadeTransition } from '@/lib/motionPresets';
+import { AnimatePresence, m } from 'framer-motion';
+import { useReducedMotion } from '@/lib/a11y/useReducedMotion';
+import { fadeTransition } from '@/lib/perf/motionPresets';
 import PublicEnter from '@/components/PublicEnter';
 import PublicReveal from '@/components/PublicReveal';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
@@ -121,7 +121,7 @@ export default function Fungsionaris() {
                   {Array.from({ length: 6 }).map((__, idx) => (
                     <div key={idx} className="rounded-2xl border border-black/10 bg-white p-6">
                       <div className="flex items-center gap-4">
-                        <Skeleton className="h-16 w-16 rounded-full" />
+                        <Skeleton className="size-16 rounded-full" />
                         <div className="flex-1">
                           <Skeleton className="h-4 w-32" />
                           <Skeleton className="mt-2 h-4 w-44" />
@@ -270,7 +270,7 @@ export default function Fungsionaris() {
 
                     return (
                       <AnimatePresence mode="wait" initial={false}>
-                        <motion.div
+                        <m.div
                           key={activeId}
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
@@ -279,7 +279,7 @@ export default function Fungsionaris() {
                           className="mt-10"
                         >
                           {panel}
-                        </motion.div>
+                        </m.div>
                       </AnimatePresence>
                     );
                   })()

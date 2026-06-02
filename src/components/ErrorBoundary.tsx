@@ -1,9 +1,9 @@
 import React, { Component, ErrorInfo } from 'react';
 import { AlertTriangle, RefreshCw, WifiOff } from 'lucide-react';
 import { Button } from './ui/button';
-import { Props } from '@/types/errorBoundary'
-import { State } from '@/types/errorBoundary'
-import { getChunkLoadUserMessage } from '@/lib/errorMessage';
+import { Props } from '@/types/errorBoundary';
+import { State } from '@/types/errorBoundary';
+import { getChunkLoadUserMessage } from '@/lib/http/errorMessage';
 
 export class ErrorBoundary extends Component<Props, State> {
   public state: State = {

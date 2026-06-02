@@ -11,7 +11,7 @@ export function PublicHomeCmsHint() {
     >
       <div className="rounded-2xl border border-dashed border-[var(--public-primary)]/35 bg-[var(--public-primary)]/5 px-5 py-4 sm:flex sm:items-center sm:justify-between sm:gap-6">
         <div className="flex gap-3">
-          <Settings2 className="mt-0.5 h-5 w-5 shrink-0 text-[var(--public-primary)]" aria-hidden />
+          <Settings2 className="mt-0.5 size-5 shrink-0 text-[var(--public-primary)]" aria-hidden />
           <div>
             <p className="text-sm font-semibold text-slate-900">Website sedang disiapkan</p>
             <p className="mt-1 text-xs text-muted-foreground">

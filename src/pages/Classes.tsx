@@ -15,12 +15,25 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import ActionLoadingOverlay from '@/components/ActionLoadingOverlay';
-import { toastErrorMessage } from '@/lib/toastMessage';
+import { toastErrorMessage } from '@/lib/utils/toastMessage';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import AdminPageShell from '@/components/AdminPageShell';
 import type { ClassItem } from '@/types/class';
 import type { User } from '@/types/user';
@@ -40,7 +53,11 @@ export default function Classes() {
 
   // Form state
   const [formData, setFormData] = useState({
-    name: '', semester: 1, course_code: '', description: '', lecturer_id: ''
+    name: '',
+    semester: 1,
+    course_code: '',
+    description: '',
+    lecturer_id: '',
   });
 
   // Delete Confirmation Modal state
@@ -53,9 +70,16 @@ export default function Classes() {
   // Save confirmation
   const [isSaveConfirmOpen, setIsSaveConfirmOpen] = useState(false);
 
-  const fetcher = (url: string) => api.get(url).then(res => res.data.data);
+  const fetcher = (url: string) => api.get(url).then((res) => res.data.data);
   const swr = useSWR<ClassItem[]>('/classes', fetcher, { revalidateOnFocus: false });
-  const { data: classes = [], isPending: loading, isError, showSlowLoadingHint, retry, mutate } = useSwrPageState(swr);
+  const {
+    data: classes = [],
+    isPending: loading,
+    isError,
+    showSlowLoadingHint,
+    retry,
+    mutate,
+  } = useSwrPageState(swr);
   const hasSearch = Boolean(searchTerm.trim());
 
   const fetchLecturers = async () => {
@@ -160,7 +184,9 @@ export default function Classes() {
   };
 
   const actionOverlayLabel = saving
-    ? (editingClass ? 'Menyimpan perubahan kelas…' : 'Menambah kelas…')
+    ? editingClass
+      ? 'Menyimpan perubahan kelas…'
+      : 'Menambah kelas…'
     : deleting
       ? 'Menghapus kelas…'
       : null;
@@ -193,70 +219,78 @@ export default function Classes() {
 
   return (
     <>
-    <ActionLoadingOverlay show={!!actionOverlayLabel} label={actionOverlayLabel ?? ''} />
-    <AdminPageShell
-      title="Manajemen Kelas"
-      description="Pilih kartu kelas untuk melihat dan mengelola daftar mahasiswa terdaftar."
-      variant="plain"
-      icon={<BookOpen className="h-5 w-5" />}
-      actions={
-        currentUser?.role !== 'USER' ? (
-          <Button onClick={() => handleOpenModal()}>
-            <Plus className="w-4 h-4 mr-2" />
-            Buat Kelas Baru
-          </Button>
-        ) : null
-      }
-    >
-      {isError ? (
-        <ErrorWithRetry title="Gagal memuat kelas" error={swr.error} onRetry={retry} />
-      ) : showSlowLoadingHint ? (
-        <SlowLoadingHint onRetry={retry} />
-      ) : (
-      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-card dark:shadow-none dark:ring-1 dark:ring-white/10">
-        <div className="flex flex-col gap-3 border-b border-border p-5 sm:flex-row sm:flex-wrap sm:items-center">
-          <div className="relative w-full min-w-0 flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Cari nama kelas, kode MK, atau dosen…"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-          {semesterOptions.length > 1 ? (
-            <Select value={semesterFilter} onValueChange={setSemesterFilter}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder="Semester" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">Semua semester</SelectItem>
-                {semesterOptions.map((s) => (
-                  <SelectItem key={s} value={String(s)}>
-                    Semester {s}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : null}
-        </div>
+      <ActionLoadingOverlay show={!!actionOverlayLabel} label={actionOverlayLabel ?? ''} />
+      <AdminPageShell
+        title="Manajemen Kelas"
+        description="Pilih kartu kelas untuk melihat dan mengelola daftar mahasiswa terdaftar."
+        variant="plain"
+        icon={<BookOpen className="size-5" />}
+        actions={
+          currentUser?.role !== 'USER' ? (
+            <Button onClick={() => handleOpenModal()}>
+              <Plus className="size-4 mr-2" />
+              Buat Kelas Baru
+            </Button>
+          ) : null
+        }
+      >
+        {isError ? (
+          <ErrorWithRetry title="Gagal memuat kelas" error={swr.error} onRetry={retry} />
+        ) : showSlowLoadingHint ? (
+          <SlowLoadingHint onRetry={retry} />
+        ) : (
+          <div className="overflow-hidden rounded-xl border border-border bg-card shadow-card dark:shadow-none dark:ring-1 dark:ring-white/10">
+            <div className="flex flex-col gap-3 border-b border-border p-5 sm:flex-row sm:flex-wrap sm:items-center">
+              <div className="relative w-full min-w-0 flex-1">
+                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="Cari nama kelas, kode MK, atau dosen…"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              {semesterOptions.length > 1 ? (
+                <Select value={semesterFilter} onValueChange={setSemesterFilter}>
+                  <SelectTrigger className="w-full sm:w-[180px]">
+                    <SelectValue placeholder="Semester" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">Semua semester</SelectItem>
+                    {semesterOptions.map((s) => (
+                      <SelectItem key={s} value={String(s)}>
+                        Semester {s}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : null}
+            </div>
 
-        <div className="grid items-stretch gap-4 p-5 sm:grid-cols-2 xl:grid-cols-3" aria-label="Daftar kelas">
-          {loading
-            ? Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="flex h-full min-h-[220px] flex-col rounded-2xl border border-border p-5">
-                  <Skeleton className="mb-4 h-14 w-14 rounded-full" />
-                  <Skeleton className="mb-2 h-6 w-40" />
-                  <Skeleton className="h-4 w-28" />
-                </div>
-              ))
-            : filteredClasses.length === 0 ? (
+            <div
+              className="grid items-stretch gap-4 p-5 sm:grid-cols-2 xl:grid-cols-3"
+              aria-label="Daftar kelas"
+            >
+              {loading ? (
+                Array.from({ length: 6 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="flex h-full min-h-[220px] flex-col rounded-2xl border border-border p-5"
+                  >
+                    <Skeleton className="mb-4 size-14 rounded-full" />
+                    <Skeleton className="mb-2 h-6 w-40" />
+                    <Skeleton className="h-4 w-28" />
+                  </div>
+                ))
+              ) : filteredClasses.length === 0 ? (
                 <div className="col-span-full">
                   <AdminEmptyState
                     compact
                     icon={BookOpen}
-                    title={hasSearch || semesterFilter !== 'ALL' ? 'Tidak ada hasil' : 'Belum ada kelas'}
+                    title={
+                      hasSearch || semesterFilter !== 'ALL' ? 'Tidak ada hasil' : 'Belum ada kelas'
+                    }
                     description={
                       hasSearch || semesterFilter !== 'ALL'
                         ? 'Ubah filter atau kata kunci pencarian.'
@@ -266,42 +300,45 @@ export default function Classes() {
                     }
                   />
                 </div>
-              )
-            : paginatedClasses.map((c) => (
-                <ClassCard
-                  key={c.id}
-                  classItem={c}
-                  canManage={canManage}
-                  isSuperAdmin={isSuperAdmin}
-                  onOpen={() => openClassStudents(c.id)}
-                  onEdit={canManage ? () => handleOpenModal(c) : undefined}
-                  onDelete={isSuperAdmin ? () => openDeleteConfirm(c.id) : undefined}
-                />
-              ))}
-        </div>
-        <TablePagination
-          meta={classesPaginationMeta}
-          onPageChange={setClassesPage}
-          itemLabel="kelas"
-        />
-      </div>
-      )}
-
-      {/* Modal Form */}
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="max-w-lg p-0">
-          <div className="border-b border-border px-6 py-4 border-border">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-bold text-foreground">
-                {editingClass ? 'Edit Kelas' : 'Tambah Kelas Baru'}
-              </DialogTitle>
-              <DialogDescription className="sr-only">Form kelas</DialogDescription>
-            </DialogHeader>
+              ) : (
+                paginatedClasses.map((c) => (
+                  <ClassCard
+                    key={c.id}
+                    classItem={c}
+                    canManage={canManage}
+                    isSuperAdmin={isSuperAdmin}
+                    onOpen={() => openClassStudents(c.id)}
+                    onEdit={canManage ? () => handleOpenModal(c) : undefined}
+                    onDelete={isSuperAdmin ? () => openDeleteConfirm(c.id) : undefined}
+                  />
+                ))
+              )}
+            </div>
+            <TablePagination
+              meta={classesPaginationMeta}
+              onPageChange={setClassesPage}
+              itemLabel="kelas"
+            />
           </div>
+        )}
 
-          <form onSubmit={handleSubmit} className="max-h-[70vh] space-y-4 overflow-y-auto p-6">
+        {/* Modal Form */}
+        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+          <DialogContent className="max-w-lg p-0">
+            <div className="border-b border-border px-6 py-4 border-border">
+              <DialogHeader>
+                <DialogTitle className="text-xl font-bold text-foreground">
+                  {editingClass ? 'Edit Kelas' : 'Tambah Kelas Baru'}
+                </DialogTitle>
+                <DialogDescription className="sr-only">Form kelas</DialogDescription>
+              </DialogHeader>
+            </div>
+
+            <form onSubmit={handleSubmit} className="max-h-[70vh] space-y-4 overflow-y-auto p-6">
               <div className="space-y-2">
-                <Label>Pilih Mata Kuliah <span className="text-red-500">*</span></Label>
+                <Label>
+                  Pilih Mata Kuliah <span className="text-red-500">*</span>
+                </Label>
                 {subjectsData.length > 0 ? (
                   <Select
                     required
@@ -330,20 +367,30 @@ export default function Classes() {
                   </Select>
                 ) : (
                   <div className="text-sm text-amber-600 bg-amber-50 p-2 rounded border border-amber-200">
-                    Anda belum menambahkan Mata Kuliah di menu Fakultas & Prodi. Silakan tambahkan terlebih dahulu.
+                    Anda belum menambahkan Mata Kuliah di menu Fakultas & Prodi. Silakan tambahkan
+                    terlebih dahulu.
                   </div>
                 )}
               </div>
               <div className="space-y-2">
-                <Label>Nama Kelas Spesifik <span className="text-red-500">*</span></Label>
-                <Input 
-                  type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})}
+                <Label>
+                  Nama Kelas Spesifik <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  type="text"
+                  required
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="Contoh: Pemrograman Web (A)"
                 />
-                <p className="text-xs text-muted-foreground">Bisa diisi nama mata kuliah beserta grup/kelasnya (misal: Algoritma Kelas B).</p>
+                <p className="text-xs text-muted-foreground">
+                  Bisa diisi nama mata kuliah beserta grup/kelasnya (misal: Algoritma Kelas B).
+                </p>
               </div>
               <div className="space-y-2">
-                <Label>Semester <span className="text-red-500">*</span></Label>
+                <Label>
+                  Semester <span className="text-red-500">*</span>
+                </Label>
                 <Input
                   type="number"
                   min={1}
@@ -351,77 +398,103 @@ export default function Classes() {
                   required
                   value={formData.semester}
                   onChange={(e) =>
-                    setFormData((p) => ({ ...p, semester: Math.max(1, Math.min(14, Number.parseInt(e.target.value || '1', 10) || 1)) }))
+                    setFormData((p) => ({
+                      ...p,
+                      semester: Math.max(
+                        1,
+                        Math.min(14, Number.parseInt(e.target.value || '1', 10) || 1)
+                      ),
+                    }))
                   }
                 />
-                <p className="text-xs text-muted-foreground">Digunakan sebagai label “Sem X” di semua pilihan kelas.</p>
+                <p className="text-xs text-muted-foreground">
+                  Digunakan sebagai label “Sem X” di semua pilihan kelas.
+                </p>
               </div>
               <div className="space-y-2">
                 <Label>Deskripsi (Opsional)</Label>
-                <Input 
-                  type="text" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})}
+                <Input
+                  type="text"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 />
               </div>
               <div className="space-y-2">
-                <Label>Dosen Pengampu <span className="text-red-500">*</span></Label>
-                <Select 
-                  required value={formData.lecturer_id} onValueChange={val => setFormData({...formData, lecturer_id: val})}
+                <Label>
+                  Dosen Pengampu <span className="text-red-500">*</span>
+                </Label>
+                <Select
+                  required
+                  value={formData.lecturer_id}
+                  onValueChange={(val) => setFormData({ ...formData, lecturer_id: val })}
                   disabled={currentUser?.role !== 'SUPER_ADMIN'}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Pilih Dosen" />
                   </SelectTrigger>
                   <SelectContent>
-                    {lecturers.map(l => (
-                      <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
+                    {lecturers.map((l) => (
+                      <SelectItem key={l.id} value={l.id}>
+                        {l.name}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <DialogFooter className="mt-6">
-                <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)} disabled={saving}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsModalOpen(false)}
+                  disabled={saving}
+                >
                   Batal
                 </Button>
-                <Button type="button" onClick={() => setIsSaveConfirmOpen(true)} disabled={saving} aria-busy={saving}>
+                <Button
+                  type="button"
+                  onClick={() => setIsSaveConfirmOpen(true)}
+                  disabled={saving}
+                  aria-busy={saving}
+                >
                   {saving ? 'Menyimpan…' : 'Simpan'}
                 </Button>
               </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+            </form>
+          </DialogContent>
+        </Dialog>
 
-      <ConfirmModal
-        isOpen={isSaveConfirmOpen}
-        onClose={() => setIsSaveConfirmOpen(false)}
-        onConfirm={() => {
-          void handleSubmit({ preventDefault: () => {} } as React.FormEvent);
-        }}
-        title={editingClass ? 'Simpan perubahan kelas?' : 'Tambah kelas baru?'}
-        description={
-          editingClass
-            ? `Perubahan pada kelas "${formData.name || editingClass.name}" akan disimpan.`
-            : `Kelas "${formData.name || 'tanpa nama'}" akan ditambahkan ke sistem.`
-        }
-        confirmText={editingClass ? 'Ya, Simpan' : 'Ya, Tambah'}
-        variant="primary"
-        loading={saving}
-        loadingText="Menyimpan…"
-      />
+        <ConfirmModal
+          isOpen={isSaveConfirmOpen}
+          onClose={() => setIsSaveConfirmOpen(false)}
+          onConfirm={() => {
+            void handleSubmit({ preventDefault: () => {} } as React.FormEvent);
+          }}
+          title={editingClass ? 'Simpan perubahan kelas?' : 'Tambah kelas baru?'}
+          description={
+            editingClass
+              ? `Perubahan pada kelas "${formData.name || editingClass.name}" akan disimpan.`
+              : `Kelas "${formData.name || 'tanpa nama'}" akan ditambahkan ke sistem.`
+          }
+          confirmText={editingClass ? 'Ya, Simpan' : 'Ya, Tambah'}
+          variant="primary"
+          loading={saving}
+          loadingText="Menyimpan…"
+        />
 
-      {/* Delete Class Confirmation Modal */}
-      <ConfirmModal 
-        isOpen={isDeleteModalOpen}
-        onClose={() => setIsDeleteModalOpen(false)}
-        onConfirm={confirmDeleteClass}
-        title="Konfirmasi Hapus Kelas"
-        description="Apakah Anda yakin ingin menghapus kelas ini? Semua data pendaftaran (enrollment) mahasiswa akan ikut terhapus secara permanen."
-        confirmText="Ya, Hapus Kelas"
-        variant="danger"
-        loading={deleting}
-        loadingText="Menghapus…"
-      />
-    </AdminPageShell>
+        {/* Delete Class Confirmation Modal */}
+        <ConfirmModal
+          isOpen={isDeleteModalOpen}
+          onClose={() => setIsDeleteModalOpen(false)}
+          onConfirm={confirmDeleteClass}
+          title="Konfirmasi Hapus Kelas"
+          description="Apakah Anda yakin ingin menghapus kelas ini? Semua data pendaftaran (enrollment) mahasiswa akan ikut terhapus secara permanen."
+          confirmText="Ya, Hapus Kelas"
+          variant="danger"
+          loading={deleting}
+          loadingText="Menghapus…"
+        />
+      </AdminPageShell>
     </>
   );
 }

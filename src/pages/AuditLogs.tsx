@@ -5,7 +5,14 @@ import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import AdminPageShell from '@/components/AdminPageShell';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
@@ -18,7 +25,7 @@ import {
   getAuditActionLabel,
   getAuditActionVariant,
   getAuditTableLabel,
-} from '@/lib/auditActionLabel';
+} from '@/lib/utils/auditActionLabel';
 
 export default function AuditLogs() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
@@ -99,7 +106,7 @@ export default function AuditLogs() {
       title="Audit Log Sistem"
       description="Jejak aktivitas penting: masuk sistem, perubahan pengguna, dan penyesuaian kehadiran."
       variant="plain"
-      icon={<Shield className="h-5 w-5" />}
+      icon={<Shield className="size-5" />}
     >
       {fetchError ? (
         <ErrorWithRetry title="Gagal memuat audit log" error={fetchError} onRetry={loadLogs} />
@@ -107,7 +114,7 @@ export default function AuditLogs() {
         <div className="overflow-hidden rounded-xl border border-border bg-card shadow-card dark:shadow-none dark:ring-1 dark:ring-white/10">
           <div className="border-b border-border p-5">
             <div className="relative max-w-md">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
               <Input
                 type="text"
                 placeholder="Cari aktivitas, tabel, ID pengguna, atau IP..."
@@ -252,9 +259,7 @@ export default function AuditLogs() {
             </Table>
           </div>
 
-          {meta ? (
-            <TablePagination meta={meta} onPageChange={setPage} itemLabel="log" />
-          ) : null}
+          {meta ? <TablePagination meta={meta} onPageChange={setPage} itemLabel="log" /> : null}
         </div>
       )}
     </AdminPageShell>

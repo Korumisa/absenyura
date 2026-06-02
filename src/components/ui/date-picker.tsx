@@ -3,7 +3,7 @@ import { id as dateFnsId } from 'date-fns/locale';
 import { id as dayPickerId } from 'react-day-picker/locale';
 import { Calendar as CalendarIcon, X } from 'lucide-react';
 
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/utils';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -44,10 +44,10 @@ export function DatePicker({
           className={cn(
             'min-h-11 w-full justify-start text-left font-normal',
             !value && 'text-muted-foreground',
-            className,
+            className
           )}
         >
-          <CalendarIcon className="mr-2 h-4 w-4 shrink-0" aria-hidden="true" />
+          <CalendarIcon className="mr-2 size-4 shrink-0" aria-hidden="true" />
           {selected ? format(selected, 'dd MMM yyyy', { locale: dateFnsId }) : placeholder}
         </Button>
       </PopoverTrigger>
@@ -67,7 +67,7 @@ export function DatePicker({
               className="w-full justify-center text-muted-foreground"
               onClick={() => onChange('')}
             >
-              <X className="mr-2 h-4 w-4" aria-hidden="true" />
+              <X className="mr-2 size-4" aria-hidden="true" />
               Hapus tanggal
             </Button>
           </div>

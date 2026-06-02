@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/utils';
 
 /** [UX] ES-02 — empty state terstandar halaman admin */
 export function AdminEmptyState({
@@ -19,21 +19,16 @@ export function AdminEmptyState({
   compact?: boolean;
   hasFilters?: boolean;
 }) {
-  const resolvedTitle =
-    title ??
-    (hasFilters ? 'Tidak ada hasil' : 'Belum ada data');
+  const resolvedTitle = title ?? (hasFilters ? 'Tidak ada hasil' : 'Belum ada data');
   const resolvedDescription =
-    description ??
-    (hasFilters
-      ? 'Coba ubah filter pencarian.'
-      : undefined);
+    description ?? (hasFilters ? 'Coba ubah filter pencarian.' : undefined);
 
   return (
     <div
       className={cn(
         'flex flex-col items-center rounded-lg border border-border bg-card text-center shadow-card dark:shadow-none dark:ring-1 dark:ring-white/10',
         compact ? 'p-8' : 'p-12',
-        className,
+        className
       )}
       role="status"
     >

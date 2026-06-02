@@ -18,14 +18,15 @@ export function CmsListToolbar({
       <p className="text-sm text-muted-foreground">
         {count !== undefined ? (
           <>
-            <span className="font-semibold text-slate-800 dark:text-zinc-200">{count}</span> {countLabel}
+            <span className="font-semibold text-slate-800 dark:text-zinc-200">{count}</span>{' '}
+            {countLabel}
           </>
         ) : (
           'Kelola data yang sudah tersimpan'
         )}
       </p>
       <Button type="button" className="min-h-11 gap-2" onClick={onCreate}>
-        <Plus className="h-4 w-4" aria-hidden="true" />
+        <Plus className="size-4" aria-hidden="true" />
         {createLabel}
       </Button>
     </div>

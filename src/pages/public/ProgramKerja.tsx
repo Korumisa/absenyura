@@ -8,7 +8,7 @@ import PublicEnter from '@/components/PublicEnter';
 import PublicReveal from '@/components/PublicReveal';
 import PublicPageHero from '@/components/PublicPageHero';
 import PublicProgramCard from '@/components/PublicProgramCard';
-import useHorizontalWheelScroll from '@/lib/useHorizontalWheelScroll';
+import useHorizontalWheelScroll from '@/lib/a11y/useHorizontalWheelScroll';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { PublicPageError } from '@/components/public/PublicPageError';
@@ -32,9 +32,6 @@ export default function ProgramKerja() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
   const swr = useSWR<PublicProgram[]>('/public-site/programs', fetcher, { revalidateOnFocus: false });
   const { data: items = [], isInitialLoading: isLoading, isError, retry } = useSwrPageState(swr);
-  if (isError) {
-    return <PublicPageError title="Gagal memuat program kerja" error={swr.error} onRetry={retry} />;
-  }
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const groups = useMemo(() => {
     const orderedKeys: string[] = [];
@@ -50,6 +47,10 @@ export default function ProgramKerja() {
     return orderedKeys.map((k) => ({ title: k, items: map.get(k) ?? [] }));
   }, [items]);
   const wheel = useHorizontalWheelScroll(groups.length > 1);
+
+  if (isError) {
+    return <PublicPageError title="Gagal memuat program kerja" error={swr.error} onRetry={retry} />;
+  }
 
   function scrollByPage(dir: -1 | 1) {
     const el = scrollerRef.current;
@@ -100,7 +101,7 @@ export default function ProgramKerja() {
                       <button
                         type="button"
                         onClick={() => scrollByPage(-1)}
-                        className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-black/10 bg-white/70 text-slate-800 shadow-sm transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/35"
+                        className="inline-flex size-9 items-center justify-center rounded-xl border border-black/10 bg-white/70 text-slate-800 shadow-sm transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/35"
                         aria-label="Sebelumnya"
                       >
                         <ArrowLeft size={18} />
@@ -108,7 +109,7 @@ export default function ProgramKerja() {
                       <button
                         type="button"
                         onClick={() => scrollByPage(1)}
-                        className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-black/10 bg-white/70 text-slate-800 shadow-sm transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/35"
+                        className="inline-flex size-9 items-center justify-center rounded-xl border border-black/10 bg-white/70 text-slate-800 shadow-sm transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/35"
                         aria-label="Berikutnya"
                       >
                         <ArrowRight size={18} />

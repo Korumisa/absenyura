@@ -11,7 +11,7 @@ import PublicReveal from '@/components/PublicReveal';
 import PublicPageHero from '@/components/PublicPageHero';
 import PublicPhotoFrame from '@/components/PublicPhotoFrame';
 import PublicCoverImage from '@/components/PublicCoverImage';
-import useLockBodyScroll from '@/lib/useLockBodyScroll';
+import useLockBodyScroll from '@/lib/a11y/useLockBodyScroll';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { PublicPageError } from '@/components/public/PublicPageError';
 import { PublicEmptyState } from '@/components/public/PublicEmptyState';
@@ -21,9 +21,6 @@ export default function Galeri() {
   const { data: profile } = useSWR<PublicProfile | null>('/public-site/profile', fetcher, { revalidateOnFocus: false });
   const swr = useSWR<PublicGalleryAlbum[]>('/public-site/galleries', fetcher, { revalidateOnFocus: false });
   const { data: albums = [], isInitialLoading: isLoading, isError, retry } = useSwrPageState(swr);
-  if (isError) {
-    return <PublicPageError title="Gagal memuat galeri" error={swr.error} onRetry={retry} />;
-  }
   const orgName = profile?.org_name ?? '';
 
   const [activeAlbumId, setActiveAlbumId] = useState<string | null>(null);
@@ -42,6 +39,10 @@ export default function Galeri() {
     if (!lightboxAlbum || !lightbox) return null;
     return lightboxAlbum.items?.[lightbox.index] ?? null;
   }, [lightboxAlbum, lightbox]);
+
+  if (isError) {
+    return <PublicPageError title="Gagal memuat galeri" error={swr.error} onRetry={retry} />;
+  }
 
   return (
     <PublicLayout>

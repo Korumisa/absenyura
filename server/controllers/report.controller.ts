@@ -2,16 +2,18 @@ import { Request, Response } from 'express';
 import prisma from '../utils/prisma.js';
 
 const isMissingSemesterColumn = (err: any) =>
-  Boolean(err && err.code === 'P2022' && String(err?.meta?.column || '').includes('Class.semester'));
+  Boolean(
+    err && err.code === 'P2022' && String(err?.meta?.column || '').includes('Class.semester')
+  );
 
 export const getReports = async (req: Request, res: Response): Promise<void> => {
   try {
     const user = (req as any).user;
-    
+
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 50;
     const skip = (page - 1) * limit;
-    
+
     const startDate = req.query.startDate as string;
     const endDate = req.query.endDate as string;
     const sessionId = (req.query.sessionId || req.query.session_id) as string | undefined;
@@ -32,8 +34,8 @@ export const getReports = async (req: Request, res: Response): Promise<void> => 
         ...whereClause.session,
         session_start: {
           gte: new Date(startDate),
-          lte: new Date(new Date(endDate).setHours(23, 59, 59, 999))
-        }
+          lte: new Date(new Date(endDate).setHours(23, 59, 59, 999)),
+        },
       };
     }
 
@@ -51,11 +53,11 @@ export const getReports = async (req: Request, res: Response): Promise<void> => 
               session_classes: { select: { class: { select: { name: true, semester: true } } } },
             },
           },
-          user: { select: { name: true, nim_nip: true } }
+          user: { select: { name: true, nim_nip: true } },
         },
         orderBy: { check_in_time: 'desc' },
         skip,
-        take: limit
+        take: limit,
       });
     } catch (err: any) {
       if (!isMissingSemesterColumn(err)) throw err;
@@ -70,11 +72,11 @@ export const getReports = async (req: Request, res: Response): Promise<void> => 
               session_classes: { select: { class: { select: { name: true } } } },
             },
           },
-          user: { select: { name: true, nim_nip: true } }
+          user: { select: { name: true, nim_nip: true } },
         },
         orderBy: { check_in_time: 'desc' },
         skip,
-        take: limit
+        take: limit,
       });
     }
 
@@ -88,35 +90,43 @@ export const getReports = async (req: Request, res: Response): Promise<void> => 
       return '';
     };
 
-    const formattedData = attendances.map(a => ({
+    const formattedData = attendances.map((a) => ({
       id: a.id,
       user_id: a.user_id,
       session_id: a.session_id,
       user_name: a.user.name,
       nim_nip: a.user.nim_nip,
       session_title: a.session.title,
-      class_name:
-        (a.session as any).session_classes?.length
-          ? (a.session as any).session_classes.map((x: any) => formatClassLabel(x?.class)).filter(Boolean).join(', ')
-          : (a.session.class ? formatClassLabel(a.session.class) : '') || null,
+      class_name: (a.session as any).session_classes?.length
+        ? (a.session as any).session_classes
+            .flatMap((x: any) => {
+              const result = formatClassLabel(x?.class);
+              return result ? [result] : [];
+            })
+            .join(', ')
+        : (a.session.class ? formatClassLabel(a.session.class) : '') || null,
       session_date: a.session.session_start,
       check_in_time: a.check_in_time,
       status: a.status,
       ip: a.check_in_ip,
       device: a.check_in_device,
       photo_url: a.photo_url,
-      session_classes: (a.session as any).session_classes?.map((x: any) => formatClassLabel(x?.class)).filter(Boolean) ?? [],
+      session_classes:
+        (a.session as any).session_classes?.flatMap((x: any) => {
+          const result = formatClassLabel(x?.class);
+          return result ? [result] : [];
+        }) ?? [],
     }));
 
-    res.status(200).json({ 
-      success: true, 
+    res.status(200).json({
+      success: true,
       data: formattedData,
       meta: {
         total,
         page,
         limit,
-        totalPages: Math.ceil(total / limit)
-      }
+        totalPages: Math.ceil(total / limit),
+      },
     });
   } catch (error) {
     console.error('Error fetching reports:', error);

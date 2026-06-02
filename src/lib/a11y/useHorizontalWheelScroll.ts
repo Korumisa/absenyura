@@ -35,7 +35,7 @@ export default function useHorizontalWheelScroll(enabled: boolean) {
       deltaX: number,
       deltaY: number,
       preventDefault: () => void,
-      stopPropagation: () => void,
+      stopPropagation: () => void
     ) => {
       if (!enabled) return;
       const max = el.scrollWidth - el.clientWidth;
@@ -56,20 +56,32 @@ export default function useHorizontalWheelScroll(enabled: boolean) {
       targetLeft.current = Math.min(max, Math.max(0, el.scrollLeft + delta * 0.9));
       if (!rafId.current) rafId.current = requestAnimationFrame(animateToTarget);
     },
-    [enabled],
+    [enabled]
   );
 
   const onWheel = useCallback(
     (e: ReactWheelEvent<HTMLElement>) => {
-      handle(e.currentTarget, e.deltaX, e.deltaY, () => e.preventDefault(), () => e.stopPropagation());
+      handle(
+        e.currentTarget,
+        e.deltaX,
+        e.deltaY,
+        () => e.preventDefault(),
+        () => e.stopPropagation()
+      );
     },
-    [handle],
+    [handle]
   );
 
   useEffect(() => {
     if (!enabled || !node) return;
     const listener = (e: WheelEvent) => {
-      handle(node, e.deltaX, e.deltaY, () => e.preventDefault(), () => e.stopPropagation());
+      handle(
+        node,
+        e.deltaX,
+        e.deltaY,
+        () => e.preventDefault(),
+        () => e.stopPropagation()
+      );
     };
     node.addEventListener('wheel', listener, { passive: false });
     return () => node.removeEventListener('wheel', listener);
@@ -84,4 +96,3 @@ export default function useHorizontalWheelScroll(enabled: boolean) {
 
   return { ref, onWheel };
 }
-

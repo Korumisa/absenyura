@@ -1,4 +1,4 @@
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/utils';
 
 const LABELS = ['Scan QR', 'Lokasi', 'Foto'] as const;
 
@@ -26,7 +26,7 @@ export function AttendStepIndicator({
                   'flex flex-1 items-center gap-2 rounded-lg px-2 py-2 text-xs font-semibold sm:text-sm',
                   active && 'bg-brand text-white',
                   done && 'text-brand',
-                  !active && !done && 'text-muted-foreground',
+                  !active && !done && 'text-muted-foreground'
                 )}
                 aria-current={active ? 'step' : undefined}
               >
@@ -35,7 +35,7 @@ export function AttendStepIndicator({
                     'flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold',
                     active && 'bg-white/25',
                     done && 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950/50',
-                    !active && !done && 'bg-muted',
+                    !active && !done && 'bg-muted'
                   )}
                 >
                   {step}

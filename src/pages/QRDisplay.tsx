@@ -4,12 +4,12 @@ import api from '@/services/api';
 import QRCode from 'qrcode';
 import { toast } from 'sonner';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
-import { toastErrorMessage } from '@/lib/toastMessage';
+import { toastErrorMessage } from '@/lib/utils/toastMessage';
 import { Users, Clock, ArrowLeft, CheckCircle2, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 import type { Session } from '@/types/session';
-import { sessionClassNames } from '@/lib/classLabel';
+import { sessionClassNames } from '@/lib/utils/classLabel';
 import { Attendee } from '@/types/qrdisplay';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -22,7 +22,10 @@ const QR_SIZE = 380;
 export default function QRDisplay() {
   const { id: sessionId } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [session, setSession] = useState<Pick<Session, 'id' | 'title' | 'qr_mode' | 'status' | 'class' | 'session_classes'> | null>(null);
+  const [session, setSession] = useState<Pick<
+    Session,
+    'id' | 'title' | 'qr_mode' | 'status' | 'class' | 'session_classes'
+  > | null>(null);
   const [sessionLoading, setSessionLoading] = useState(true);
   const [sessionError, setSessionError] = useState<unknown>(null);
   const [qrData, setQrData] = useState('');
@@ -51,20 +54,22 @@ export default function QRDisplay() {
     try {
       const res = await api.get(`/sessions/${sessionId}/attendances?_t=${Date.now()}`);
       setAttendees(
-        res.data.data.map((att: {
-          id: string;
-          user: { name: string; nim_nip: string };
-          status: string;
-          check_in_time: string;
-          check_out_time: string | null;
-        }) => ({
-          id: att.id,
-          user_name: att.user.name,
-          nim_nip: att.user.nim_nip,
-          status: att.status,
-          check_in_time: att.check_in_time,
-          check_out_time: att.check_out_time,
-        })),
+        res.data.data.map(
+          (att: {
+            id: string;
+            user: { name: string; nim_nip: string };
+            status: string;
+            check_in_time: string;
+            check_out_time: string | null;
+          }) => ({
+            id: att.id,
+            user_name: att.user.name,
+            nim_nip: att.user.nim_nip,
+            status: att.status,
+            check_in_time: att.check_in_time,
+            check_out_time: att.check_out_time,
+          })
+        )
       );
     } catch {
       console.error('Failed to fetch attendees');
@@ -134,7 +139,7 @@ export default function QRDisplay() {
       },
       (error) => {
         if (error) console.error(error);
-      },
+      }
     );
   }, [qrData]);
 
@@ -155,7 +160,11 @@ export default function QRDisplay() {
     ctx.fillText(session?.title || 'QR Kehadiran', tempCanvas.width / 2, 40);
     ctx.fillStyle = '#64748b';
     ctx.font = '14px Arial';
-    ctx.fillText(`Mode: ${session?.qr_mode} | ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, tempCanvas.width / 2, 65);
+    ctx.fillText(
+      `Mode: ${session?.qr_mode} | ${format(new Date(), 'dd/MM/yyyy HH:mm')}`,
+      tempCanvas.width / 2,
+      65
+    );
     ctx.drawImage(sourceCanvas, 20, 80);
 
     const url = tempCanvas.toDataURL('image/png');
@@ -178,7 +187,12 @@ export default function QRDisplay() {
             onRetry={() => void fetchSession()}
           />
           <div className="mt-4 text-center">
-            <Button type="button" variant="outline" className="min-h-11" onClick={() => navigate('/sessions')}>
+            <Button
+              type="button"
+              variant="outline"
+              className="min-h-11"
+              onClick={() => navigate('/sessions')}
+            >
               Kembali ke daftar sesi
             </Button>
           </div>
@@ -189,7 +203,11 @@ export default function QRDisplay() {
 
   if (sessionLoading || !session) {
     return (
-      <FadeIn className="flex min-h-screen items-center justify-center bg-slate-100" aria-busy="true" aria-label="Memuat sesi">
+      <FadeIn
+        className="flex min-h-screen items-center justify-center bg-slate-100"
+        aria-busy="true"
+        aria-label="Memuat sesi"
+      >
         <p className="text-muted-foreground">Memuat sesi…</p>
       </FadeIn>
     );
@@ -214,14 +232,25 @@ export default function QRDisplay() {
               <ArrowLeft size={22} aria-hidden="true" />
             </Button>
             <div className="min-w-0 flex-1 space-y-1">
-              <h1 className="text-xl font-bold leading-tight text-slate-900 sm:text-2xl">{session.title}</h1>
+              <h1 className="text-xl font-bold leading-tight text-slate-900 sm:text-2xl">
+                {session.title}
+              </h1>
               <p className="text-sm text-muted-foreground">
                 Kelas: <span className="font-medium text-slate-800">{classesLabel}</span>
               </p>
               <p className="text-sm text-muted-foreground">
-                QR {session.qr_mode === 'DYNAMIC' ? 'Dinamis' : session.qr_mode === 'STATIC' ? 'Statis' : 'Nonaktif'}
+                QR{' '}
+                {session.qr_mode === 'DYNAMIC'
+                  ? 'Dinamis'
+                  : session.qr_mode === 'STATIC'
+                    ? 'Statis'
+                    : 'Nonaktif'}
                 {' · '}
-                <span className={isActive ? 'font-medium text-emerald-600' : 'font-medium text-amber-600'}>
+                <span
+                  className={
+                    isActive ? 'font-medium text-emerald-600' : 'font-medium text-amber-600'
+                  }
+                >
                   {session.status}
                 </span>
               </p>
@@ -234,10 +263,12 @@ export default function QRDisplay() {
             aria-live="polite"
             aria-label={`${attendees.length} mahasiswa sudah absen`}
           >
-            <Users className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+            <Users className="size-5 text-muted-foreground" aria-hidden="true" />
             <span>
               Sudah absen:{' '}
-              <strong className="text-base font-semibold tabular-nums text-slate-900">{attendees.length}</strong>
+              <strong className="text-base font-semibold tabular-nums text-slate-900">
+                {attendees.length}
+              </strong>
             </span>
           </p>
         </div>
@@ -246,51 +277,60 @@ export default function QRDisplay() {
       <main className="mx-auto grid max-w-6xl grid-cols-1 gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-stretch">
         <section className="flex flex-col overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-card lg:min-h-[min(72vh,680px)]">
           <div className="flex flex-1 flex-col items-center justify-center p-6 sm:p-8 lg:p-10">
-          {isActive ? (
-            <>
-              <div className="w-full max-w-[min(100%,380px)] rounded-2xl border-4 border-brand/20 bg-card p-4 shadow-inner">
-                <canvas ref={canvasRef} className="mx-auto block h-auto w-full max-w-[340px]" aria-label="Kode QR absensi" />
-              </div>
+            {isActive ? (
+              <>
+                <div className="w-full max-w-[min(100%,380px)] rounded-2xl border-4 border-brand/20 bg-card p-4 shadow-inner">
+                  <canvas
+                    ref={canvasRef}
+                    className="mx-auto block h-auto w-full max-w-[340px]"
+                    aria-label="Kode QR absensi"
+                  />
+                </div>
 
-              <h2 className="mt-8 text-center text-2xl font-bold text-slate-900">Scan untuk absen</h2>
-              <p className="mt-2 max-w-md text-center text-sm leading-relaxed text-muted-foreground sm:text-base">
-                Arahkan kamera HP mahasiswa ke layar ini. Pastikan layar tidak redup dan tidak silau.
-              </p>
+                <h2 className="mt-8 text-center text-2xl font-bold text-slate-900">
+                  Scan untuk absen
+                </h2>
+                <p className="mt-2 max-w-md text-center text-sm leading-relaxed text-muted-foreground sm:text-base">
+                  Arahkan kamera HP mahasiswa ke layar ini. Pastikan layar tidak redup dan tidak
+                  silau.
+                </p>
 
-              <div className="mt-8 flex w-full flex-wrap items-center justify-center gap-3">
-                {session.qr_mode === 'DYNAMIC' && (
-                  <div className="inline-flex items-center gap-2 rounded-full bg-indigo-50 px-5 py-2.5 text-sm font-medium text-indigo-800 ring-1 ring-indigo-100">
-                    <Clock size={18} aria-hidden="true" />
-                    QR baru dalam
-                    <span className="text-xl font-bold tabular-nums" aria-live="polite">
-                      {countdown}s
-                    </span>
-                  </div>
-                )}
-                {session.qr_mode === 'STATIC' && (
-                  <Button type="button" onClick={handleDownloadQR} className="min-h-11 gap-2">
-                    <Download size={18} aria-hidden="true" />
-                    Unduh QR
-                  </Button>
-                )}
+                <div className="mt-8 flex w-full flex-wrap items-center justify-center gap-3">
+                  {session.qr_mode === 'DYNAMIC' && (
+                    <div className="inline-flex items-center gap-2 rounded-full bg-indigo-50 px-5 py-2.5 text-sm font-medium text-indigo-800 ring-1 ring-indigo-100">
+                      <Clock size={18} aria-hidden="true" />
+                      QR baru dalam
+                      <span className="text-xl font-bold tabular-nums" aria-live="polite">
+                        {countdown}s
+                      </span>
+                    </div>
+                  )}
+                  {session.qr_mode === 'STATIC' && (
+                    <Button type="button" onClick={handleDownloadQR} className="min-h-11 gap-2">
+                      <Download size={18} aria-hidden="true" />
+                      Unduh QR
+                    </Button>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="py-16 text-center">
+                <Clock size={48} className="mx-auto mb-4 text-slate-300" aria-hidden="true" />
+                <h2 className="text-xl font-bold text-slate-800">Sesi belum aktif</h2>
+                <p className="mt-2 text-muted-foreground">
+                  QR hanya ditampilkan saat status sesi ACTIVE.
+                </p>
               </div>
-            </>
-          ) : (
-            <div className="py-16 text-center">
-              <Clock size={48} className="mx-auto mb-4 text-slate-300" aria-hidden="true" />
-              <h2 className="text-xl font-bold text-slate-800">Sesi belum aktif</h2>
-              <p className="mt-2 text-muted-foreground">QR hanya ditampilkan saat status sesi ACTIVE.</p>
-            </div>
-          )}
+            )}
           </div>
         </section>
 
         <aside className="flex flex-col overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-card lg:min-h-[min(72vh,680px)]">
           <div className="flex shrink-0 items-center justify-between border-b border-border bg-slate-50 px-5 py-4">
             <h2 className="font-bold text-slate-800">Kehadiran live</h2>
-            <span className="relative flex h-2.5 w-2.5" aria-hidden="true">
+            <span className="relative flex size-2.5" aria-hidden="true">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+              <span className="relative inline-flex size-2.5 rounded-full bg-emerald-500" />
             </span>
           </div>
           <div className="flex min-h-0 flex-1 flex-col justify-start space-y-3 overflow-y-auto p-5">
@@ -304,7 +344,9 @@ export default function QRDisplay() {
                 >
                   <div
                     className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
-                      att.check_out_time ? 'bg-emerald-100 text-emerald-600' : 'bg-indigo-100 text-brand'
+                      att.check_out_time
+                        ? 'bg-emerald-100 text-emerald-600'
+                        : 'bg-indigo-100 text-brand'
                     }`}
                   >
                     {att.check_out_time ? (
@@ -318,7 +360,9 @@ export default function QRDisplay() {
                     <p className="text-xs text-muted-foreground">{att.nim_nip || '-'}</p>
                   </div>
                   <Badge variant="secondary" className="shrink-0 tabular-nums">
-                    {format(new Date(att.check_out_time || att.check_in_time), 'HH:mm', { locale: idLocale })}
+                    {format(new Date(att.check_out_time || att.check_in_time), 'HH:mm', {
+                      locale: idLocale,
+                    })}
                   </Badge>
                 </div>
               ))

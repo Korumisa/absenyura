@@ -1,5 +1,5 @@
-import { describe, expect, test } from 'vitest'
-import { pickPreferredCameraId } from './camera'
+import { describe, expect, test } from 'vitest';
+import { pickPreferredCameraId } from './camera';
 
 describe('pickPreferredCameraId', () => {
   test('prefers back/rear/environment camera when available', () => {
@@ -8,8 +8,8 @@ describe('pickPreferredCameraId', () => {
         { id: 'front', label: 'Front Camera' },
         { id: 'back', label: 'Back Camera' },
       ])
-    ).toBe('back')
-  })
+    ).toBe('back');
+  });
 
   test('can prefer front camera when requested', () => {
     expect(
@@ -20,8 +20,8 @@ describe('pickPreferredCameraId', () => {
         ],
         { preferRear: false }
       )
-    ).toBe('front')
-  })
+    ).toBe('front');
+  });
 
   test('falls back to first device when labels are empty', () => {
     expect(
@@ -29,6 +29,6 @@ describe('pickPreferredCameraId', () => {
         { id: 'a', label: '' },
         { id: 'b', label: '' },
       ])
-    ).toBe('a')
-  })
-})
+    ).toBe('a');
+  });
+});

@@ -1,5 +1,5 @@
 ﻿import { Check } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/utils';
 
 /** [IA] Stepper — label langkah + penjelasan singkat fungsi langkah aktif */
 export function WizardStepIndicator({
@@ -16,7 +16,10 @@ export function WizardStepIndicator({
 }) {
   const hint = hints?.[currentStep - 1];
   return (
-    <nav aria-label="Progres langkah" className={cn('border-b border-border pb-4 border-border', className)}>
+    <nav
+      aria-label="Progres langkah"
+      className={cn('border-b border-border pb-4 border-border', className)}
+    >
       <ol className="flex flex-wrap items-center gap-2 sm:gap-0">
         {labels.map((label, i) => {
           const step = i + 1;
@@ -29,7 +32,7 @@ export function WizardStepIndicator({
                   'flex items-center gap-2 rounded-full px-3 py-2 text-sm font-medium',
                   active && 'bg-brand text-white',
                   done && 'text-brand text-brand',
-                  !active && !done && 'text-muted-foreground',
+                  !active && !done && 'text-muted-foreground'
                 )}
                 aria-current={active ? 'step' : undefined}
               >
@@ -37,18 +40,24 @@ export function WizardStepIndicator({
                   className={cn(
                     'flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold',
                     active && 'bg-white/20 text-white',
-                    done && 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300',
-                    !active && !done && 'bg-slate-100 text-muted-foreground bg-muted text-muted-foreground',
+                    done &&
+                      'bg-indigo-100 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300',
+                    !active &&
+                      !done &&
+                      'bg-slate-100 text-muted-foreground bg-muted text-muted-foreground'
                   )}
                   aria-hidden="true"
                 >
-                  {done ? <Check className="h-4 w-4" /> : step}
+                  {done ? <Check className="size-4" /> : step}
                 </span>
                 <span className="hidden sm:inline">{label}</span>
                 <span className="sm:hidden">{step}</span>
               </div>
               {i < labels.length - 1 ? (
-                <span className="mx-1 hidden h-px w-6 bg-slate-200 sm:inline-block bg-muted" aria-hidden="true" />
+                <span
+                  className="mx-1 hidden h-px w-6 bg-slate-200 sm:inline-block bg-muted"
+                  aria-hidden="true"
+                />
               ) : null}
             </li>
           );

@@ -4,7 +4,7 @@
 /** Memetakan field_errors / errors dari respons API; mengembalikan map jika berhasil. */
 export function applyApiFieldErrors(
   err: unknown,
-  setFormErrors: (errors: Record<string, string>) => void,
+  setFormErrors: (errors: Record<string, string>) => void
 ): Record<string, string> | null {
   const status = (err as { response?: { status?: number } })?.response?.status;
   const data = (err as { response?: { data?: Record<string, unknown> } })?.response?.data;

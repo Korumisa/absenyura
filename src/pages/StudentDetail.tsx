@@ -25,8 +25,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import type { User as AppUser } from '@/types/user';
-import { formatClassLabel } from '@/lib/classLabel';
-import { toastErrorMessage } from '@/lib/toastMessage';
+import { formatClassLabel } from '@/lib/utils/classLabel';
+import { toastErrorMessage } from '@/lib/utils/toastMessage';
 
 type EnrollmentRow = { id: string; name: string; semester: number };
 
@@ -75,12 +75,19 @@ export default function StudentDetail() {
   const profileSwr = useSWR<AppUser>(studentId ? `/users/${studentId}` : null, fetcher, {
     revalidateOnFocus: false,
   });
-  const { data: profile, isInitialLoading, isError, retry, error, mutate } = useSwrPageState(profileSwr);
+  const {
+    data: profile,
+    isInitialLoading,
+    isError,
+    retry,
+    error,
+    mutate,
+  } = useSwrPageState(profileSwr);
 
   const enrollSwr = useSWR<EnrollmentRow[]>(
     studentId && profile?.role === 'USER' ? `/users/${studentId}/enrollments` : null,
     fetcher,
-    { revalidateOnFocus: false },
+    { revalidateOnFocus: false }
   );
   const { data: enrollments = [], isInitialLoading: loadingClasses } = useSwrPageState(enrollSwr);
 
@@ -193,7 +200,7 @@ export default function StudentDetail() {
           onRetry={retry}
         />
         <Button variant="outline" className="mt-4" onClick={() => navigate(backTo)}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
+          <ArrowLeft className="mr-2 size-4" />
           Kembali
         </Button>
       </AdminPageShell>
@@ -215,10 +222,10 @@ export default function StudentDetail() {
         title="Biodata Mahasiswa"
         description="Perbarui data akun mahasiswa langsung dari halaman ini."
         variant="plain"
-        icon={<User className="h-5 w-5" />}
+        icon={<User className="size-5" />}
         actions={
           <Button variant="outline" onClick={() => navigate(backTo)}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
+            <ArrowLeft className="mr-2 size-4" />
             Kembali
           </Button>
         }
@@ -227,9 +234,9 @@ export default function StudentDetail() {
           <aside className="space-y-4">
             <section className="rounded-lg border border-border bg-card p-5">
               <h2 className="text-sm font-semibold text-foreground">Ringkasan</h2>
-              <div className="mt-4 grid h-20 w-20 place-items-center rounded-full bg-brand/15 text-2xl font-bold text-brand">
+              <div className="mt-4 grid size-20 place-items-center rounded-full bg-brand/15 text-2xl font-bold text-brand">
                 {isInitialLoading ? (
-                  <Skeleton className="h-20 w-20 rounded-full" />
+                  <Skeleton className="size-20 rounded-full" />
                 ) : (
                   String(form.name || '?')
                     .trim()
@@ -245,14 +252,16 @@ export default function StudentDetail() {
               ) : (
                 <>
                   <p className="mt-4 text-lg font-bold text-foreground">{form.name}</p>
-                  <p className="font-mono text-sm text-muted-foreground">{form.nim_nip || 'Tanpa NIM'}</p>
+                  <p className="font-mono text-sm text-muted-foreground">
+                    {form.nim_nip || 'Tanpa NIM'}
+                  </p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <Badge variant={form.is_active ? 'secondary' : 'outline'}>
                       {form.is_active ? 'Aktif' : 'Nonaktif'}
                     </Badge>
                     {profile?.device_fingerprint ? (
                       <Badge variant="outline" className="gap-1">
-                        <Smartphone className="h-3 w-3" />
+                        <Smartphone className="size-3" />
                         Perangkat terikat
                       </Badge>
                     ) : (
@@ -260,7 +269,9 @@ export default function StudentDetail() {
                     )}
                   </div>
                   {enrolledDate ? (
-                    <p className="mt-4 text-xs text-muted-foreground">Terdaftar sejak {enrolledDate}</p>
+                    <p className="mt-4 text-xs text-muted-foreground">
+                      Terdaftar sejak {enrolledDate}
+                    </p>
                   ) : null}
                 </>
               )}
@@ -279,7 +290,7 @@ export default function StudentDetail() {
                   className="mt-3 w-full border-orange-300 text-orange-700"
                   onClick={() => setIsResetDeviceOpen(true)}
                 >
-                  <Smartphone className="mr-2 h-4 w-4" />
+                  <Smartphone className="mr-2 size-4" />
                   Reset perangkat
                 </Button>
               </section>
@@ -290,7 +301,12 @@ export default function StudentDetail() {
             <section className="rounded-lg border border-border bg-card p-5 sm:p-6">
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
                 <h2 className="text-sm font-semibold text-foreground">Informasi akun</h2>
-                <Button type="button" size="sm" disabled={isInitialLoading} onClick={() => setIsSaveConfirmOpen(true)}>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={isInitialLoading}
+                  onClick={() => setIsSaveConfirmOpen(true)}
+                >
                   Simpan perubahan
                 </Button>
               </div>
@@ -336,7 +352,10 @@ export default function StudentDetail() {
                       onChange={(e) =>
                         setForm((p) => ({
                           ...p,
-                          semester: Math.max(1, Math.min(14, Number.parseInt(e.target.value || '1', 10) || 1)),
+                          semester: Math.max(
+                            1,
+                            Math.min(14, Number.parseInt(e.target.value || '1', 10) || 1)
+                          ),
                         }))
                       }
                     />
@@ -407,7 +426,9 @@ export default function StudentDetail() {
                     <Checkbox
                       id="student-active"
                       checked={form.is_active}
-                      onCheckedChange={(checked) => setForm((p) => ({ ...p, is_active: Boolean(checked) }))}
+                      onCheckedChange={(checked) =>
+                        setForm((p) => ({ ...p, is_active: Boolean(checked) }))
+                      }
                     />
                     <Label htmlFor="student-active" className="cursor-pointer font-normal">
                       Akun aktif (mahasiswa dapat login &amp; absen)
@@ -421,7 +442,9 @@ export default function StudentDetail() {
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
                 <div>
                   <h2 className="text-sm font-semibold text-foreground">Kata sandi</h2>
-                  <p className="mt-0.5 text-xs text-muted-foreground">Kosongkan jika tidak ingin mengubah.</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Kosongkan jika tidak ingin mengubah.
+                  </p>
                 </div>
                 <Button
                   type="button"
@@ -469,7 +492,9 @@ export default function StudentDetail() {
                   <Skeleton className="h-10 w-full" />
                 </div>
               ) : enrollments.length === 0 ? (
-                <p className="mt-4 text-sm text-muted-foreground">Belum terdaftar di kelas manapun.</p>
+                <p className="mt-4 text-sm text-muted-foreground">
+                  Belum terdaftar di kelas manapun.
+                </p>
               ) : (
                 <ul className="mt-4 divide-y divide-border rounded-md border border-border">
                   {enrollments.map((c) => (

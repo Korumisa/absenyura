@@ -1,18 +1,13 @@
 import { Skeleton } from '@/components/ui/skeleton';
 import { CardSkeletonList } from '@/components/admin/CardSkeleton';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/utils';
 
 function StatCardSkeleton({ className }: { className?: string }) {
   return (
-    <div
-      className={cn(
-        'rounded-3xl border border-border bg-card p-4 shadow-sm sm:p-6',
-        className,
-      )}
-    >
+    <div className={cn('rounded-3xl border border-border bg-card p-4 shadow-sm sm:p-6', className)}>
       <div className="mb-4 flex items-center justify-between">
         <Skeleton className="h-4 w-28" />
-        <Skeleton className="h-12 w-12 rounded-2xl" />
+        <Skeleton className="size-12 rounded-2xl" />
       </div>
       <Skeleton className="h-9 w-20" />
       <Skeleton className="mt-2 h-3 w-32" />
@@ -23,7 +18,7 @@ function StatCardSkeleton({ className }: { className?: string }) {
 function UserStatCardSkeleton() {
   return (
     <div className="rounded-3xl border border-border bg-card p-4 shadow-sm sm:p-6">
-      <Skeleton className="mb-4 h-12 w-12 rounded-2xl" />
+      <Skeleton className="mb-4 size-12 rounded-2xl" />
       <Skeleton className="mb-2 h-4 w-24" />
       <Skeleton className="h-9 w-16" />
     </div>

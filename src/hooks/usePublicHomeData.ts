@@ -8,6 +8,7 @@ import type {
   PublicRecruitment,
   PublicStructureGroup,
 } from '@/types/publicSite';
+import type { PublicPostItemsResponse } from '@/types/api';
 import { usePublicSectionSwr } from '@/hooks/usePublicSectionSwr';
 
 const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
@@ -33,27 +34,27 @@ export function usePublicHomeData() {
 
   const programs = usePublicSectionSwr<PublicProgram[]>(
     belowFoldKey ? '/public-site/programs' : null,
-    fetcher,
+    fetcher
   );
   const structure = usePublicSectionSwr<PublicStructureGroup[]>(
     belowFoldKey ? '/public-site/structure' : null,
-    fetcher,
+    fetcher
   );
-  const latest = usePublicSectionSwr<{ items: PublicPost[] }>(
+  const latest = usePublicSectionSwr<PublicPostItemsResponse>(
     belowFoldKey ? '/public-site/posts?type=BERITA&page=1&pageSize=3' : null,
-    postsFetcher,
+    postsFetcher
   );
   const recruitments = usePublicSectionSwr<PublicRecruitment[]>(
     belowFoldKey ? '/public-site/recruitments' : null,
-    fetcher,
+    fetcher
   );
   const galleries = usePublicSectionSwr<PublicGalleryAlbum[]>(
     belowFoldKey ? '/public-site/galleries' : null,
-    fetcher,
+    fetcher
   );
-  const lombaPaged = usePublicSectionSwr<{ items: PublicPost[] }>(
+  const lombaPaged = usePublicSectionSwr<PublicPostItemsResponse>(
     belowFoldKey ? '/public-site/posts?type=LOMBA&page=1&pageSize=6' : null,
-    postsFetcher,
+    postsFetcher
   );
 
   return {
@@ -73,9 +74,9 @@ export function isPublicProfileSparse(profile: PublicProfile | null | undefined)
   if (!profile) return false;
   const hasIdentity = Boolean(
     String(profile.org_name ?? '').trim() ||
-      String(profile.kabinet_name ?? '').trim() ||
-      profile.home_image_url ||
-      profile.logo_light_url,
+    String(profile.kabinet_name ?? '').trim() ||
+    profile.home_image_url ||
+    profile.logo_light_url
   );
   return !hasIdentity;
 }

@@ -17,21 +17,41 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import ActionLoadingOverlay from '@/components/ActionLoadingOverlay';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import AdminPageShell from '@/components/AdminPageShell';
 import type { Location } from '@/types/location';
-import { fixLeafletDefaultIcons } from '@/lib/leafletIcon';
+import { fixLeafletDefaultIcons } from '@/lib/media/leafletIcon';
 
 fixLeafletDefaultIcons();
 
 export default function Locations() {
   const [searchTerm, setSearchTerm] = useState('');
   const [wifiFilter, setWifiFilter] = useState('ALL');
-  
+
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingLocation, setEditingLocation] = useState<Location | null>(null);
@@ -42,22 +62,34 @@ export default function Locations() {
 
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  
+
   // Custom Map hook state to force re-render map center
   const [mapCenter, setMapCenter] = useState<[number, number]>([-8.11475, 115.08865]);
   const [isLocating, setIsLocating] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
-    name: '', address: '', latitude: -8.11475, longitude: 115.08865, radius: 100, wifi_bssid: ''
+    name: '',
+    address: '',
+    latitude: -8.11475,
+    longitude: 115.08865,
+    radius: 100,
+    wifi_bssid: '',
   });
 
   const [isGeocoding, setIsGeocoding] = useState(false);
   const searchTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
-  const fetcher = (url: string) => api.get(url).then(res => res.data.data);
+  const fetcher = (url: string) => api.get(url).then((res) => res.data.data);
   const swr = useSWR<Location[]>('/locations', fetcher, { revalidateOnFocus: false });
-  const { data: locations = [], isPending: loading, isError, showSlowLoadingHint, retry, mutate } = useSwrPageState(swr);
+  const {
+    data: locations = [],
+    isPending: loading,
+    isError,
+    showSlowLoadingHint,
+    retry,
+    mutate,
+  } = useSwrPageState(swr);
 
   const hasFilters = Boolean(searchTerm.trim()) || wifiFilter !== 'ALL';
 
@@ -71,14 +103,19 @@ export default function Locations() {
         latitude: location.latitude,
         longitude: location.longitude,
         radius: location.radius,
-        wifi_bssid: location.wifi_bssid.join(', ')
+        wifi_bssid: location.wifi_bssid.join(', '),
       });
     } else {
       setEditingLocation(null);
       // Center map to Undiksha coordinate by default
-      setMapCenter([-8.11475, 115.08865]); 
+      setMapCenter([-8.11475, 115.08865]);
       setFormData({
-        name: '', address: '', latitude: -8.11475, longitude: 115.08865, radius: 100, wifi_bssid: ''
+        name: '',
+        address: '',
+        latitude: -8.11475,
+        longitude: 115.08865,
+        radius: 100,
+        wifi_bssid: '',
       });
     }
     setIsModalOpen(true);
@@ -91,7 +128,10 @@ export default function Locations() {
     try {
       const payload = {
         ...formData,
-        wifi_bssid: formData.wifi_bssid.split(',').map(ip => ip.trim()).filter(Boolean)
+        wifi_bssid: formData.wifi_bssid.split(',').flatMap((ip) => {
+          const result = ip.trim();
+          return result ? [result] : [];
+        }),
       };
 
       if (editingLocation) {
@@ -148,7 +188,7 @@ export default function Locations() {
         setFormData({
           ...formData,
           latitude: lat,
-          longitude: lng
+          longitude: lng,
         });
         toast.success('Lokasi ditemukan!', { id: 'geolocation' });
         setIsLocating(false);
@@ -158,7 +198,7 @@ export default function Locations() {
         if (error.code === 1) msg = 'Akses lokasi ditolak. Izinkan browser mengakses lokasi.';
         else if (error.code === 2) msg = 'Sinyal GPS tidak tersedia.';
         else if (error.code === 3) msg = 'Waktu pencarian lokasi habis.';
-        
+
         toast.error(msg, { id: 'geolocation' });
         setIsLocating(false);
       },
@@ -173,19 +213,19 @@ export default function Locations() {
         setFormData({
           ...formData,
           latitude: e.latlng.lat,
-          longitude: e.latlng.lng
+          longitude: e.latlng.lng,
         });
       },
     });
-    
+
     // Auto center map when coordinate inputs change
     useEffect(() => {
       map.setView([formData.latitude, formData.longitude], map.getZoom(), {
         animate: true,
-        duration: 1
+        duration: 1,
       });
     }, [formData.latitude, formData.longitude, map]);
-    
+
     return null;
   };
 
@@ -203,16 +243,18 @@ export default function Locations() {
         setIsGeocoding(true);
         try {
           // Use fetch directly to bypass API interceptor base URL
-          const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(value)}&limit=1`);
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(value)}&limit=1`
+          );
           const data = await response.json();
-          
+
           if (data && data.length > 0) {
             const lat = parseFloat(data[0].lat);
             const lon = parseFloat(data[0].lon);
-            setFormData(prev => ({
+            setFormData((prev) => ({
               ...prev,
               latitude: lat,
-              longitude: lon
+              longitude: lon,
             }));
             setMapCenter([lat, lon]);
             toast.success('Lokasi ditemukan dari alamat');
@@ -226,12 +268,13 @@ export default function Locations() {
     }
   };
 
-  const filteredLocations = locations.filter(l => {
-    const matchSearch = l.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    (l.address && l.address.toLowerCase().includes(searchTerm.toLowerCase()));
-    
+  const filteredLocations = locations.filter((l) => {
+    const matchSearch =
+      l.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (l.address && l.address.toLowerCase().includes(searchTerm.toLowerCase()));
+
     if (!matchSearch) return false;
-    
+
     if (wifiFilter === 'RESTRICTED') return l.wifi_bssid && l.wifi_bssid.length > 0;
     if (wifiFilter === 'UNRESTRICTED') return !l.wifi_bssid || l.wifi_bssid.length === 0;
     return true;
@@ -247,64 +290,66 @@ export default function Locations() {
   });
 
   const actionOverlayLabel = saving
-    ? (editingLocation ? 'Menyimpan perubahan lokasi…' : 'Menambah lokasi…')
+    ? editingLocation
+      ? 'Menyimpan perubahan lokasi…'
+      : 'Menambah lokasi…'
     : deleting
       ? 'Menghapus lokasi…'
       : null;
 
   return (
     <>
-    <ActionLoadingOverlay show={!!actionOverlayLabel} label={actionOverlayLabel ?? ''} />
-    <AdminPageShell
-      title="Manajemen Lokasi"
-      description="Atur geofencing dan batasan WiFi untuk absensi."
-      variant="plain"
-      icon={<MapPin className="h-5 w-5" />}
-      actions={
-        <Button onClick={() => handleOpenModal()}>
-          <Plus className="w-4 h-4 mr-2" />
-          Tambah Lokasi
-        </Button>
-      }
-    >
-      {isError ? (
-        <ErrorWithRetry title="Gagal memuat lokasi" error={swr.error} onRetry={retry} />
-      ) : showSlowLoadingHint ? (
-        <SlowLoadingHint onRetry={retry} />
-      ) : (
-      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-card dark:shadow-none dark:ring-1 dark:ring-white/10">
-        <div className="flex flex-col gap-5 border-b border-border p-5 sm:flex-row">
-          <div className="relative max-w-md flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-            <Input 
-              type="text" 
-              placeholder="Cari nama lokasi atau alamat..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-          <Select value={wifiFilter} onValueChange={setWifiFilter}>
-            <SelectTrigger className="w-full sm:w-[200px]">
-              <SelectValue placeholder="Semua Batasan WiFi" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">Semua Batasan WiFi</SelectItem>
-              <SelectItem value="RESTRICTED">Ada Batasan WiFi</SelectItem>
-              <SelectItem value="UNRESTRICTED">Tanpa Batasan WiFi</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+      <ActionLoadingOverlay show={!!actionOverlayLabel} label={actionOverlayLabel ?? ''} />
+      <AdminPageShell
+        title="Manajemen Lokasi"
+        description="Atur geofencing dan batasan WiFi untuk absensi."
+        variant="plain"
+        icon={<MapPin className="size-5" />}
+        actions={
+          <Button onClick={() => handleOpenModal()}>
+            <Plus className="size-4 mr-2" />
+            Tambah Lokasi
+          </Button>
+        }
+      >
+        {isError ? (
+          <ErrorWithRetry title="Gagal memuat lokasi" error={swr.error} onRetry={retry} />
+        ) : showSlowLoadingHint ? (
+          <SlowLoadingHint onRetry={retry} />
+        ) : (
+          <div className="overflow-hidden rounded-xl border border-border bg-card shadow-card dark:shadow-none dark:ring-1 dark:ring-white/10">
+            <div className="flex flex-col gap-5 border-b border-border p-5 sm:flex-row">
+              <div className="relative max-w-md flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 size-4" />
+                <Input
+                  type="text"
+                  placeholder="Cari nama lokasi atau alamat..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <Select value={wifiFilter} onValueChange={setWifiFilter}>
+                <SelectTrigger className="w-full sm:w-[200px]">
+                  <SelectValue placeholder="Semua Batasan WiFi" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">Semua Batasan WiFi</SelectItem>
+                  <SelectItem value="RESTRICTED">Ada Batasan WiFi</SelectItem>
+                  <SelectItem value="UNRESTRICTED">Tanpa Batasan WiFi</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-        <ul className="space-y-3 p-5 md:hidden" aria-label="Daftar lokasi">
-          {loading
-            ? Array.from({ length: 3 }).map((_, i) => (
-                <li key={i} className="rounded-2xl border border-border p-4 border-border">
-                  <Skeleton className="mb-2 h-5 w-40" />
-                  <Skeleton className="h-4 w-full" />
-                </li>
-              ))
-            : filteredLocations.length === 0 ? (
+            <ul className="space-y-3 p-5 md:hidden" aria-label="Daftar lokasi">
+              {loading ? (
+                Array.from({ length: 3 }).map((_, i) => (
+                  <li key={i} className="rounded-2xl border border-border p-4 border-border">
+                    <Skeleton className="mb-2 h-5 w-40" />
+                    <Skeleton className="h-4 w-full" />
+                  </li>
+                ))
+              ) : filteredLocations.length === 0 ? (
                 <li>
                   <AdminEmptyState
                     compact
@@ -317,198 +362,248 @@ export default function Locations() {
                     }
                   />
                 </li>
-              )
-            : paginatedLocations.map((loc) => (
-                <li key={loc.id} className="rounded-2xl border border-border bg-card p-4">
-                  <div className="flex items-start gap-2">
-                    <MapPin size={18} className="mt-0.5 shrink-0 text-indigo-500" />
-                    <div className="min-w-0 flex-1">
-                      <p className="font-bold text-foreground">{loc.name}</p>
-                      <p className="mt-1 truncate text-sm text-muted-foreground">{loc.address || 'Tanpa alamat'}</p>
-                      <p className="mt-2 font-mono text-xs text-muted-foreground">
-                        {loc.latitude.toFixed(5)}, {loc.longitude.toFixed(5)} · {loc.radius} m
-                      </p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        WiFi/IP: {loc.wifi_bssid.length > 0 ? `${loc.wifi_bssid.length} aturan` : 'Tanpa batasan'}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="mt-4 flex gap-2">
-                    <Button variant="outline" className="min-h-11 flex-1" onClick={() => handleOpenModal(loc)}>
-                      <Edit2 className="mr-2 h-4 w-4" />
-                      Edit
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="min-h-11 flex-1 text-red-600 hover:text-red-700"
-                      onClick={() => openDeleteConfirm(loc.id)}
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Hapus
-                    </Button>
-                  </div>
-                </li>
-              ))}
-        </ul>
-
-        <div className="hidden overflow-x-auto md:block">
-          <Table>
-            <TableHeader className="sticky top-0 z-10 bg-muted/50 [&_tr]:border-b">
-              <TableRow>
-                <TableHead>Nama Lokasi</TableHead>
-                <TableHead>Alamat</TableHead>
-                <TableHead>Koordinat (Lat, Lng)</TableHead>
-                <TableHead>Radius</TableHead>
-                <TableHead>IP/WiFi Diizinkan</TableHead>
-                <TableHead className="text-right">Aksi</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                    Memuat data...
-                  </TableCell>
-                </TableRow>
-              ) : filteredLocations.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="p-0">
-                    <AdminEmptyState
-                      compact
-                      icon={MapPin}
-                      title={hasFilters ? 'Tidak ada hasil' : 'Belum ada lokasi'}
-                      description={
-                        hasFilters
-                          ? 'Ubah kata kunci atau filter WiFi.'
-                          : 'Tambahkan lokasi geofencing untuk sesi absensi.'
-                      }
-                      className="border-0 shadow-none"
-                    />
-                  </TableCell>
-                </TableRow>
               ) : (
                 paginatedLocations.map((loc) => (
-                  <TableRow key={loc.id}>
-                    <TableCell className="font-medium text-foreground">
-                      <div className="flex items-center gap-2">
-                        <MapPin size={16} className="text-indigo-500" />
-                        {loc.name}
+                  <li key={loc.id} className="rounded-2xl border border-border bg-card p-4">
+                    <div className="flex items-start gap-2">
+                      <MapPin size={18} className="mt-0.5 shrink-0 text-indigo-500" />
+                      <div className="min-w-0 flex-1">
+                        <p className="font-bold text-foreground">{loc.name}</p>
+                        <p className="mt-1 truncate text-sm text-muted-foreground">
+                          {loc.address || 'Tanpa alamat'}
+                        </p>
+                        <p className="mt-2 font-mono text-xs text-muted-foreground">
+                          {loc.latitude.toFixed(5)}, {loc.longitude.toFixed(5)} · {loc.radius} m
+                        </p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          WiFi/IP:{' '}
+                          {loc.wifi_bssid.length > 0
+                            ? `${loc.wifi_bssid.length} aturan`
+                            : 'Tanpa batasan'}
+                        </p>
                       </div>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground dark:text-zinc-300 max-w-xs truncate" title={loc.address || ''}>
-                      {loc.address || '-'}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground dark:text-zinc-300 font-mono text-sm">
-                      {loc.latitude.toFixed(5)}, {loc.longitude.toFixed(5)}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground dark:text-zinc-300">
-                      {loc.radius} meter
-                    </TableCell>
-                    <TableCell className="text-muted-foreground dark:text-zinc-300">
-                      {loc.wifi_bssid.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {loc.wifi_bssid.map((ip, i) => (
-                            <span key={i} className="bg-muted border border-border px-2 py-0.5 rounded text-xs">
-                              {ip}
-                            </span>
-                          ))}
-                        </div>
-                      ) : '-'}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          onClick={() => handleOpenModal(loc)}
-                          className="text-muted-foreground hover:text-brand hover:bg-indigo-50 dark:text-slate-400 dark:hover:bg-indigo-900/30"
-                          title="Edit"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          onClick={() => openDeleteConfirm(loc.id)}
-                          className="text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:text-slate-400 dark:hover:bg-red-900/30"
-                          title="Hapus"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
+                    </div>
+                    <div className="mt-4 flex gap-2">
+                      <Button
+                        variant="outline"
+                        className="min-h-11 flex-1"
+                        onClick={() => handleOpenModal(loc)}
+                      >
+                        <Edit2 className="mr-2 size-4" />
+                        Edit
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="min-h-11 flex-1 text-red-600 hover:text-red-700"
+                        onClick={() => openDeleteConfirm(loc.id)}
+                      >
+                        <Trash2 className="mr-2 size-4" />
+                        Hapus
+                      </Button>
+                    </div>
+                  </li>
                 ))
               )}
-            </TableBody>
-          </Table>
-        </div>
-        <TablePagination
-          meta={locationsPaginationMeta}
-          onPageChange={setLocationsPage}
-          itemLabel="lokasi"
-        />
-      </div>
-      )}
+            </ul>
 
-      {/* Modal Form */}
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="max-w-4xl p-0">
-          <div className="border-b border-border px-6 py-4 border-border">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-bold text-foreground">
-                {editingLocation ? 'Edit Lokasi' : 'Tambah Lokasi Baru'}
-              </DialogTitle>
-              <DialogDescription className="sr-only">Form lokasi geofencing</DialogDescription>
-            </DialogHeader>
+            <div className="hidden overflow-x-auto md:block">
+              <Table>
+                <TableHeader className="sticky top-0 z-10 bg-muted/50 [&_tr]:border-b">
+                  <TableRow>
+                    <TableHead>Nama Lokasi</TableHead>
+                    <TableHead>Alamat</TableHead>
+                    <TableHead>Koordinat (Lat, Lng)</TableHead>
+                    <TableHead>Radius</TableHead>
+                    <TableHead>IP/WiFi Diizinkan</TableHead>
+                    <TableHead className="text-right">Aksi</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                        Memuat data...
+                      </TableCell>
+                    </TableRow>
+                  ) : filteredLocations.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="p-0">
+                        <AdminEmptyState
+                          compact
+                          icon={MapPin}
+                          title={hasFilters ? 'Tidak ada hasil' : 'Belum ada lokasi'}
+                          description={
+                            hasFilters
+                              ? 'Ubah kata kunci atau filter WiFi.'
+                              : 'Tambahkan lokasi geofencing untuk sesi absensi.'
+                          }
+                          className="border-0 shadow-none"
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    paginatedLocations.map((loc) => (
+                      <TableRow key={loc.id}>
+                        <TableCell className="font-medium text-foreground">
+                          <div className="flex items-center gap-2">
+                            <MapPin size={16} className="text-indigo-500" />
+                            {loc.name}
+                          </div>
+                        </TableCell>
+                        <TableCell
+                          className="text-muted-foreground dark:text-zinc-300 max-w-xs truncate"
+                          title={loc.address || ''}
+                        >
+                          {loc.address || '-'}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground dark:text-zinc-300 font-mono text-sm">
+                          {loc.latitude.toFixed(5)}, {loc.longitude.toFixed(5)}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground dark:text-zinc-300">
+                          {loc.radius} meter
+                        </TableCell>
+                        <TableCell className="text-muted-foreground dark:text-zinc-300">
+                          {loc.wifi_bssid.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {loc.wifi_bssid.map((ip, i) => (
+                                <span
+                                  key={i}
+                                  className="bg-muted border border-border px-2 py-0.5 rounded text-xs"
+                                >
+                                  {ip}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            '-'
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleOpenModal(loc)}
+                              className="text-muted-foreground hover:text-brand hover:bg-indigo-50 dark:text-slate-400 dark:hover:bg-indigo-900/30"
+                              title="Edit"
+                            >
+                              <Edit2 className="size-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => openDeleteConfirm(loc.id)}
+                              className="text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:text-slate-400 dark:hover:bg-red-900/30"
+                              title="Hapus"
+                            >
+                              <Trash2 className="size-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+            <TablePagination
+              meta={locationsPaginationMeta}
+              onPageChange={setLocationsPage}
+              itemLabel="lokasi"
+            />
           </div>
+        )}
 
-          <form onSubmit={handleSubmit} className="flex flex-col overflow-hidden md:flex-row md:items-stretch">
+        {/* Modal Form */}
+        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+          <DialogContent className="max-w-4xl p-0">
+            <div className="border-b border-border px-6 py-4 border-border">
+              <DialogHeader>
+                <DialogTitle className="text-xl font-bold text-foreground">
+                  {editingLocation ? 'Edit Lokasi' : 'Tambah Lokasi Baru'}
+                </DialogTitle>
+                <DialogDescription className="sr-only">Form lokasi geofencing</DialogDescription>
+              </DialogHeader>
+            </div>
+
+            <form
+              onSubmit={handleSubmit}
+              className="flex flex-col overflow-hidden md:flex-row md:items-stretch"
+            >
               <div className="relative z-10 shrink-0 space-y-4 overflow-y-auto border-r border-border border-r border-border bg-card p-6 md:w-1/2 md:max-h-[min(72vh,680px)]">
                 <div className="space-y-2">
-                  <Label>Nama Lokasi <span className="text-red-500">*</span></Label>
-                  <Input 
-                    type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})}
+                  <Label>
+                    Nama Lokasi <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    type="text"
+                    required
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     placeholder="Gedung A Ruang 201"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2">
                     Alamat <span className="text-red-500">*</span>
-                    {isGeocoding && <span className="text-xs text-indigo-500 animate-pulse">(Mencari koordinat...)</span>}
+                    {isGeocoding && (
+                      <span className="text-xs text-indigo-500 animate-pulse">
+                        (Mencari koordinat...)
+                      </span>
+                    )}
                   </Label>
-                  <Textarea 
-                    rows={2} required value={formData.address} onChange={handleAddressChange}
+                  <Textarea
+                    rows={2}
+                    required
+                    value={formData.address}
+                    onChange={handleAddressChange}
                     placeholder="Ketik alamat (misal: Undiksha Singaraja)..."
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Latitude <span className="text-red-500">*</span></Label>
+                    <Label>
+                      Latitude <span className="text-red-500">*</span>
+                    </Label>
                     <Input
                       type="number"
                       step="any"
                       required
                       value={formData.latitude}
-                      onChange={e => setFormData({...formData, latitude: parseFloat(e.target.value)})}
+                      onChange={(e) =>
+                        setFormData({ ...formData, latitude: parseFloat(e.target.value) })
+                      }
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Longitude <span className="text-red-500">*</span></Label>
+                    <Label>
+                      Longitude <span className="text-red-500">*</span>
+                    </Label>
                     <Input
                       type="number"
                       step="any"
                       required
                       value={formData.longitude}
-                      onChange={e => setFormData({...formData, longitude: parseFloat(e.target.value)})}
+                      onChange={(e) =>
+                        setFormData({ ...formData, longitude: parseFloat(e.target.value) })
+                      }
                     />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label>Radius (Meter) <span className="text-red-500">*</span></Label>
+                  <Label>
+                    Radius (Meter) <span className="text-red-500">*</span>
+                  </Label>
                   <div className="flex items-center gap-4">
-                    <input 
-                      type="range" min="10" max="1000" step="10" value={formData.radius} onChange={e => setFormData({...formData, radius: parseInt(e.target.value)})}
+                    <input
+                      type="range"
+                      min="10"
+                      max="1000"
+                      step="10"
+                      value={formData.radius}
+                      onChange={(e) =>
+                        setFormData({ ...formData, radius: parseInt(e.target.value) })
+                      }
                       className="flex-1 accent-indigo-600"
                     />
                     <span className="w-16 rounded border border-border bg-muted px-2 py-1 text-center font-mono text-sm text-foreground">
@@ -518,38 +613,42 @@ export default function Locations() {
                 </div>
                 <div className="space-y-2">
                   <Label>IP/WiFi yang Diizinkan (Pisahkan dengan koma)</Label>
-                  <Input 
-                    type="text" value={formData.wifi_bssid} onChange={e => setFormData({...formData, wifi_bssid: e.target.value})}
+                  <Input
+                    type="text"
+                    value={formData.wifi_bssid}
+                    onChange={(e) => setFormData({ ...formData, wifi_bssid: e.target.value })}
                     placeholder="192.168.1.1, 10.0.0.0/24"
                     className="font-mono"
                   />
-                  <p className="text-xs text-muted-foreground">Kosongkan jika tidak ada batasan IP</p>
+                  <p className="text-xs text-muted-foreground">
+                    Kosongkan jika tidak ada batasan IP
+                  </p>
                 </div>
               </div>
-              
+
               <div className="flex min-h-[360px] flex-1 flex-col md:w-1/2">
                 <div className="location-map-panel relative isolate z-0 min-h-[320px] flex-1 overflow-hidden bg-slate-100 bg-background md:min-h-[480px]">
                   {isModalOpen ? (
-                  <MapContainer 
-                    key={editingLocation?.id ?? 'new-location'}
-                    center={mapCenter} 
-                    zoom={16} 
-                    style={{ height: '100%', width: '100%', minHeight: 320 }}
-                    scrollWheelZoom={true}
-                  >
-                    <TileLayer
-                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    />
-                    <Marker position={[formData.latitude, formData.longitude]} />
-                    <Circle 
-                      center={[formData.latitude, formData.longitude]} 
-                      radius={formData.radius} 
-                      pathOptions={{ color: 'indigo', fillColor: 'indigo', fillOpacity: 0.2 }}
-                    />
-                    <MapEvents />
-                    <MapResizeOnOpen when={isModalOpen} />
-                  </MapContainer>
+                    <MapContainer
+                      key={editingLocation?.id ?? 'new-location'}
+                      center={mapCenter}
+                      zoom={16}
+                      style={{ height: '100%', width: '100%', minHeight: 320 }}
+                      scrollWheelZoom={true}
+                    >
+                      <TileLayer
+                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      />
+                      <Marker position={[formData.latitude, formData.longitude]} />
+                      <Circle
+                        center={[formData.latitude, formData.longitude]}
+                        radius={formData.radius}
+                        pathOptions={{ color: 'indigo', fillColor: 'indigo', fillOpacity: 0.2 }}
+                      />
+                      <MapEvents />
+                      <MapResizeOnOpen when={isModalOpen} />
+                    </MapContainer>
                   ) : null}
 
                   {/* Geolocation Button overlay */}
@@ -562,7 +661,9 @@ export default function Locations() {
                     className="absolute top-4 right-4 z-[1000] shadow-lg rounded-xl"
                     title="Deteksi Lokasi Saya"
                   >
-                    <LocateFixed className={`w-5 h-5 ${isLocating ? 'animate-pulse text-indigo-500' : ''}`} />
+                    <LocateFixed
+                      className={`w-5 h-5 ${isLocating ? 'animate-pulse text-indigo-500' : ''}`}
+                    />
                   </Button>
 
                   <div className="absolute bottom-2 left-2 right-2 z-[1000] pointer-events-none">
@@ -572,7 +673,12 @@ export default function Locations() {
                   </div>
                 </div>
                 <div className="flex shrink-0 justify-end gap-3 p-5">
-                  <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)} disabled={saving}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsModalOpen(false)}
+                    disabled={saving}
+                  >
                     Batal
                   </Button>
                   <Button type="submit" disabled={saving} aria-busy={saving}>
@@ -581,21 +687,21 @@ export default function Locations() {
                 </div>
               </div>
             </form>
-        </DialogContent>
-      </Dialog>
-      {/* Delete Confirmation Modal */}
-      <ConfirmModal 
-        isOpen={isDeleteModalOpen}
-        onClose={() => setIsDeleteModalOpen(false)}
-        onConfirm={confirmDelete}
-        title="Konfirmasi Hapus Lokasi"
-        description="Apakah Anda yakin ingin menghapus lokasi ini? Data yang dihapus tidak dapat dikembalikan."
-        confirmText="Ya, Hapus Lokasi"
-        variant="danger"
-        loading={deleting}
-        loadingText="Menghapus…"
-      />
-    </AdminPageShell>
+          </DialogContent>
+        </Dialog>
+        {/* Delete Confirmation Modal */}
+        <ConfirmModal
+          isOpen={isDeleteModalOpen}
+          onClose={() => setIsDeleteModalOpen(false)}
+          onConfirm={confirmDelete}
+          title="Konfirmasi Hapus Lokasi"
+          description="Apakah Anda yakin ingin menghapus lokasi ini? Data yang dihapus tidak dapat dikembalikan."
+          confirmText="Ya, Hapus Lokasi"
+          variant="danger"
+          loading={deleting}
+          loadingText="Menghapus…"
+        />
+      </AdminPageShell>
     </>
   );
 }

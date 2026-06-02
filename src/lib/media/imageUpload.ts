@@ -56,4 +56,3 @@ export async function prepareImageForUpload(
   const name = file.name.replace(/\.[^/.]+$/, '') + '.jpg';
   return new File([blob], name, { type: 'image/jpeg' });
 }
-

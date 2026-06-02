@@ -10,7 +10,7 @@ import PublicEnter from '@/components/PublicEnter';
 import PublicReveal from '@/components/PublicReveal';
 import PublicPageHero from '@/components/PublicPageHero';
 import PublicCoverImage from '@/components/PublicCoverImage';
-import useLockBodyScroll from '@/lib/useLockBodyScroll';
+import useLockBodyScroll from '@/lib/a11y/useLockBodyScroll';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { PublicPageError } from '@/components/public/PublicPageError';
 import { PublicEmptyState } from '@/components/public/PublicEmptyState';
@@ -36,9 +36,6 @@ export default function InformasiLomba() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
   const swr = useSWR<Paged<PublicPost>>('/public-site/posts?type=LOMBA&page=1&pageSize=24', fetcher, { revalidateOnFocus: false });
   const { data: paged, isInitialLoading: isLoading, isError, retry } = useSwrPageState(swr);
-  if (isError) {
-    return <PublicPageError title="Gagal memuat informasi lomba" error={swr.error} onRetry={retry} />;
-  }
 
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<'Semua' | Status>('Semua');
@@ -59,6 +56,10 @@ export default function InformasiLomba() {
   const selected = useMemo(() => (paged?.items ?? []).find((l) => l.id === openId) ?? null, [paged?.items, openId]);
   useLockBodyScroll(Boolean(selected));
 
+  if (isError) {
+    return <PublicPageError title="Gagal memuat informasi lomba" error={swr.error} onRetry={retry} />;
+  }
+
   return (
     <PublicLayout>
       <PublicEnter>
@@ -67,7 +68,7 @@ export default function InformasiLomba() {
         <PublicReveal className="mx-auto max-w-7xl px-4 pb-16 sm:px-6">
           <div className="mt-8 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
             <div className="relative w-full md:max-w-sm">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}

@@ -7,7 +7,9 @@ import { Instagram, Music2, Youtube } from 'lucide-react';
 
 export default function PublicFooter() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
-  const { data: profile } = useSWR<PublicProfile | null>('/public-site/profile', fetcher, { revalidateOnFocus: false });
+  const { data: profile } = useSWR<PublicProfile | null>('/public-site/profile', fetcher, {
+    revalidateOnFocus: false,
+  });
 
   const orgName = profile?.org_name ?? '';
   const campusName = profile?.campus_name ?? '';
@@ -27,7 +29,7 @@ export default function PublicFooter() {
       <div className="pointer-events-none absolute left-6 top-0 -translate-y-1/2 -rotate-6">
         <div className="relative">
           <div className="absolute -inset-6 rounded-full bg-[var(--public-primary)]/14 blur-2xl" />
-          <div className="relative h-14 w-14 overflow-hidden rounded-2xl bg-white/80 ring-1 ring-black/10 shadow-[0_20px_55px_-45px_rgba(15,23,42,0.55)] backdrop-blur">
+          <div className="relative size-14 overflow-hidden rounded-2xl bg-white/80 ring-1 ring-black/10 shadow-[0_20px_55px_-45px_rgba(15,23,42,0.55)] backdrop-blur">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_25%,rgba(37,99,235,0.24),transparent_60%),radial-gradient(circle_at_75%_35%,rgba(56,189,248,0.18),transparent_60%),linear-gradient(135deg,rgba(15,23,42,0.08),transparent)]" />
           </div>
         </div>
@@ -35,7 +37,7 @@ export default function PublicFooter() {
       <div className="pointer-events-none absolute right-6 top-0 -translate-y-1/2 rotate-6">
         <div className="relative">
           <div className="absolute -inset-6 rounded-full bg-sky-400/12 blur-2xl" />
-          <div className="relative h-14 w-14 overflow-hidden rounded-2xl bg-white/80 ring-1 ring-black/10 shadow-[0_20px_55px_-45px_rgba(15,23,42,0.55)] backdrop-blur">
+          <div className="relative size-14 overflow-hidden rounded-2xl bg-white/80 ring-1 ring-black/10 shadow-[0_20px_55px_-45px_rgba(15,23,42,0.55)] backdrop-blur">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(56,189,248,0.20),transparent_60%),radial-gradient(circle_at_70%_70%,rgba(37,99,235,0.20),transparent_60%),linear-gradient(135deg,rgba(15,23,42,0.08),transparent)]" />
           </div>
         </div>
@@ -46,24 +48,28 @@ export default function PublicFooter() {
           <div className="md:col-span-1">
             <div className="text-sm font-extrabold tracking-tight text-slate-900">
               {orgName || 'Profil belum diatur'}
-              <div className="mt-1 font-medium text-muted-foreground">{campusName || 'Silakan atur melalui Konten Website'}</div>
+              <div className="mt-1 font-medium text-muted-foreground">
+                {campusName || 'Silakan atur melalui Konten Website'}
+              </div>
             </div>
             {footerTagline ? (
-              <div className="mt-4 text-sm leading-relaxed text-muted-foreground">{footerTagline}</div>
+              <div className="mt-4 text-sm leading-relaxed text-muted-foreground">
+                {footerTagline}
+              </div>
             ) : (
               <div className="mt-4 text-sm leading-relaxed text-muted-foreground">
                 Deskripsi singkat belum diatur.
               </div>
             )}
 
-            {(instagramUrl || tiktokUrl || youtubeUrl) ? (
+            {instagramUrl || tiktokUrl || youtubeUrl ? (
               <div className="mt-5 flex items-center gap-3">
                 {instagramUrl ? (
                   <a
                     href={instagramUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-black/10 bg-white text-slate-700 shadow-sm transition hover:border-[var(--public-primary)]/35 hover:text-[var(--public-primary)]"
+                    className="inline-flex size-10 items-center justify-center rounded-xl border border-black/10 bg-white text-slate-700 shadow-sm transition hover:border-[var(--public-primary)]/35 hover:text-[var(--public-primary)]"
                     aria-label="Instagram"
                   >
                     <Instagram size={18} />
@@ -74,7 +80,7 @@ export default function PublicFooter() {
                     href={tiktokUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-black/10 bg-white text-slate-700 shadow-sm transition hover:border-[var(--public-primary)]/35 hover:text-[var(--public-primary)]"
+                    className="inline-flex size-10 items-center justify-center rounded-xl border border-black/10 bg-white text-slate-700 shadow-sm transition hover:border-[var(--public-primary)]/35 hover:text-[var(--public-primary)]"
                     aria-label="TikTok"
                   >
                     <Music2 size={18} />
@@ -85,7 +91,7 @@ export default function PublicFooter() {
                     href={youtubeUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-black/10 bg-white text-slate-700 shadow-sm transition hover:border-[var(--public-primary)]/35 hover:text-[var(--public-primary)]"
+                    className="inline-flex size-10 items-center justify-center rounded-xl border border-black/10 bg-white text-slate-700 shadow-sm transition hover:border-[var(--public-primary)]/35 hover:text-[var(--public-primary)]"
                     aria-label="YouTube"
                   >
                     <Youtube size={18} />
@@ -99,36 +105,84 @@ export default function PublicFooter() {
           </div>
 
           <div>
-            <div className="mb-4 text-sm font-extrabold tracking-tight text-slate-900">Quick Links</div>
+            <div className="mb-4 text-sm font-extrabold tracking-tight text-slate-900">
+              Quick Links
+            </div>
             <ul className="space-y-2 text-sm">
-              <li><Link to="/" className="hover:text-[var(--public-primary)]">Home</Link></li>
-              <li><Link to="/berita" className="hover:text-[var(--public-primary)]">Berita</Link></li>
-              <li><Link to="/informasi" className="hover:text-[var(--public-primary)]">Informasi</Link></li>
-              <li><Link to="/struktur-organisasi" className="hover:text-[var(--public-primary)]">Struktur Organisasi</Link></li>
-              <li><Link to="/program-kerja" className="hover:text-[var(--public-primary)]">Program Kerja</Link></li>
-              <li><Link to="/informasi-lomba" className="hover:text-[var(--public-primary)]">Informasi Lomba</Link></li>
-              <li><Link to="/galeri" className="hover:text-[var(--public-primary)]">Galeri</Link></li>
-              <li><Link to="/open-recruitment" className="hover:text-[var(--public-primary)]">Open Recruitment</Link></li>
+              <li>
+                <Link to="/" className="hover:text-[var(--public-primary)]">
+                  Home
+                </Link>
+              </li>
+              <li>
+                <Link to="/berita" className="hover:text-[var(--public-primary)]">
+                  Berita
+                </Link>
+              </li>
+              <li>
+                <Link to="/informasi" className="hover:text-[var(--public-primary)]">
+                  Informasi
+                </Link>
+              </li>
+              <li>
+                <Link to="/struktur-organisasi" className="hover:text-[var(--public-primary)]">
+                  Struktur Organisasi
+                </Link>
+              </li>
+              <li>
+                <Link to="/program-kerja" className="hover:text-[var(--public-primary)]">
+                  Program Kerja
+                </Link>
+              </li>
+              <li>
+                <Link to="/informasi-lomba" className="hover:text-[var(--public-primary)]">
+                  Informasi Lomba
+                </Link>
+              </li>
+              <li>
+                <Link to="/galeri" className="hover:text-[var(--public-primary)]">
+                  Galeri
+                </Link>
+              </li>
+              <li>
+                <Link to="/open-recruitment" className="hover:text-[var(--public-primary)]">
+                  Open Recruitment
+                </Link>
+              </li>
             </ul>
           </div>
 
           <div className="space-y-5">
             <div>
-              <div className="mb-2 text-sm font-extrabold tracking-tight text-slate-900">Contact Person</div>
+              <div className="mb-2 text-sm font-extrabold tracking-tight text-slate-900">
+                Contact Person
+              </div>
               {phone ? (
-                <a href={`tel:${phone}`} className="text-sm text-slate-700 hover:text-[var(--public-primary)]">{phone}</a>
+                <a
+                  href={`tel:${phone}`}
+                  className="text-sm text-slate-700 hover:text-[var(--public-primary)]"
+                >
+                  {phone}
+                </a>
               ) : (
                 <div className="text-sm text-muted-foreground">Belum diatur</div>
               )}
             </div>
             <div>
-              <div className="mb-2 text-sm font-extrabold tracking-tight text-slate-900">Alamat</div>
+              <div className="mb-2 text-sm font-extrabold tracking-tight text-slate-900">
+                Alamat
+              </div>
               <div className="text-sm text-muted-foreground">{address ?? 'Belum diatur'}</div>
             </div>
             <div>
               <div className="mb-2 text-sm font-extrabold tracking-tight text-slate-900">Email</div>
               {email ? (
-                <a href={`mailto:${email}`} className="text-sm text-slate-700 hover:text-[var(--public-primary)]">{email}</a>
+                <a
+                  href={`mailto:${email}`}
+                  className="text-sm text-slate-700 hover:text-[var(--public-primary)]"
+                >
+                  {email}
+                </a>
               ) : (
                 <div className="text-sm text-muted-foreground">Belum diatur</div>
               )}

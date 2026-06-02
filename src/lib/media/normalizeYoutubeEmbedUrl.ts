@@ -2,8 +2,10 @@
 export function normalizeYoutubeEmbedUrl(input: string) {
   const raw = String(input ?? '').trim();
   if (!raw) return '';
-  if (raw.includes('tiktok.com/embed')) return raw.startsWith('http://') ? raw.replace(/^http:\/\//, 'https://') : raw;
-  if (raw.includes('instagram.com') && raw.includes('/embed')) return raw.startsWith('http://') ? raw.replace(/^http:\/\//, 'https://') : raw;
+  if (raw.includes('tiktok.com/embed'))
+    return raw.startsWith('http://') ? raw.replace(/^http:\/\//, 'https://') : raw;
+  if (raw.includes('instagram.com') && raw.includes('/embed'))
+    return raw.startsWith('http://') ? raw.replace(/^http:\/\//, 'https://') : raw;
   if (raw.includes('youtube.com/embed/') || raw.includes('youtube-nocookie.com/embed/')) return raw;
   const directId = raw.match(/^[a-zA-Z0-9_-]{6,}$/)?.[0];
   if (directId) return `https://www.youtube.com/embed/${directId}`;
@@ -15,7 +17,10 @@ export function normalizeYoutubeEmbedUrl(input: string) {
       const m = url.pathname.match(/\/video\/(\d+)/);
       const vid = m?.[1] || '';
       if (vid) return `https://www.tiktok.com/embed/v2/${vid}`;
-      const embed = url.pathname.match(/\/embed\/v2\/(\d+)/)?.[1] || url.pathname.match(/\/embed\/(\d+)/)?.[1] || '';
+      const embed =
+        url.pathname.match(/\/embed\/v2\/(\d+)/)?.[1] ||
+        url.pathname.match(/\/embed\/(\d+)/)?.[1] ||
+        '';
       if (embed) return `https://www.tiktok.com/embed/v2/${embed}`;
       return '';
     }

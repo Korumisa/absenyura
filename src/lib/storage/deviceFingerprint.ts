@@ -18,9 +18,7 @@ function getRawSignature(): string {
     tz = '';
   }
   const screenInfo =
-    typeof screen !== 'undefined'
-      ? `${screen.width}x${screen.height}x${screen.colorDepth}`
-      : '';
+    typeof screen !== 'undefined' ? `${screen.width}x${screen.height}x${screen.colorDepth}` : '';
   const hwc =
     typeof navigator !== 'undefined' && typeof navigator.hardwareConcurrency === 'number'
       ? navigator.hardwareConcurrency

@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
-import { motion } from 'framer-motion';
-import { fadeTransition } from '@/lib/motionPresets';
-import { useReducedMotion } from '@/lib/useReducedMotion';
-import { cn } from '@/lib/utils';
+import { m } from 'framer-motion';
+import { fadeTransition } from '@/lib/perf/motionPresets';
+import { useReducedMotion } from '@/lib/a11y/useReducedMotion';
+import { cn } from '@/lib/utils/utils';
 
 /** [IxD] Fade-in ringan untuk error state, panel filter, dll. */
 export function FadeIn({
@@ -21,7 +21,7 @@ export function FadeIn({
   }
 
   return (
-    <motion.div
+    <m.div
       className={cn(className)}
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
@@ -29,6 +29,6 @@ export function FadeIn({
       style={delay ? { transitionDelay: `${delay}s` } : undefined}
     >
       {children}
-    </motion.div>
+    </m.div>
   );
 }

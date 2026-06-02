@@ -7,10 +7,17 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ConfirmModal } from '@/components/ConfirmModal';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import type { PublicProgram } from '@/types/publicSite';
-import { getErrorMessage } from '@/lib/errorMessage';
+import { getErrorMessage } from '@/lib/http/errorMessage';
 import AdminPageShell from '@/components/AdminPageShell';
 import AdminCard from '@/components/AdminCard';
 import PublicSiteProgramPreview from '@/components/publicSiteAdmin/PublicSiteProgramPreview';
@@ -29,10 +36,19 @@ const PAGE_TABS: readonly CmsTabItem<PageTab>[] = [
 
 export default function PublicSitePrograms() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
-  const { data: programs = [], mutate } = useSWR<PublicProgram[]>('/public-site/admin/programs', fetcher, { revalidateOnFocus: false });
+  const { data: programs = [], mutate } = useSWR<PublicProgram[]>(
+    '/public-site/admin/programs',
+    fetcher,
+    { revalidateOnFocus: false }
+  );
 
   const [pageTab, setPageTab] = useState<PageTab>('list');
-  const [form, setForm] = useState<{ id?: string; title?: string; description?: string; isPublished?: boolean }>({});
+  const [form, setForm] = useState<{
+    id?: string;
+    title?: string;
+    description?: string;
+    isPublished?: boolean;
+  }>({});
   const [dateStart, setDateStart] = useState('');
   const [dateEnd, setDateEnd] = useState('');
   const resetForm = () => setForm({});
@@ -53,7 +69,8 @@ export default function PublicSitePrograms() {
     setDateEnd('');
   };
 
-  const dateRangePreview = dateStart && dateEnd ? `${dateStart} - ${dateEnd}` : dateStart || dateEnd || '';
+  const dateRangePreview =
+    dateStart && dateEnd ? `${dateStart} - ${dateEnd}` : dateStart || dateEnd || '';
 
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -81,7 +98,8 @@ export default function PublicSitePrograms() {
   const upsert = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const dateRange = dateStart && dateEnd ? `${dateStart} - ${dateEnd}` : dateStart || dateEnd || undefined;
+      const dateRange =
+        dateStart && dateEnd ? `${dateStart} - ${dateEnd}` : dateStart || dateEnd || undefined;
       if (form.id) {
         await api.put(`/public-site/admin/programs/${form.id}`, {
           title: form.title,
@@ -116,7 +134,12 @@ export default function PublicSitePrograms() {
       variant="plain"
       icon={<ClipboardList size={22} />}
     >
-      <CmsTabNav<PageTab> tabs={PAGE_TABS} value={pageTab} onChange={setPageTab} ariaLabel="Mode program kerja" />
+      <CmsTabNav<PageTab>
+        tabs={PAGE_TABS}
+        value={pageTab}
+        onChange={setPageTab}
+        ariaLabel="Mode program kerja"
+      />
 
       {pageTab === 'form' ? (
         <AdminContentTransition contentKey={`form-${form.id ?? 'new'}`}>
@@ -130,149 +153,189 @@ export default function PublicSitePrograms() {
               />
             }
           >
-            <AdminCard title={form.id ? 'Ubah program' : 'Program baru'} description="Isi detail program kerja.">
-            <form onSubmit={upsert} className="space-y-4">
-              <div className="space-y-2">
-                <Label>Judul</Label>
-                <Input value={form.title ?? ''} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} />
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
+            <AdminCard
+              title={form.id ? 'Ubah program' : 'Program baru'}
+              description="Isi detail program kerja."
+            >
+              <form onSubmit={upsert} className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Tanggal mulai</Label>
-                  <Input type="date" value={dateStart} onChange={(e) => setDateStart(e.target.value)} />
+                  <Label>Judul</Label>
+                  <Input
+                    value={form.title ?? ''}
+                    onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
+                  />
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Tanggal mulai</Label>
+                    <Input
+                      type="date"
+                      value={dateStart}
+                      onChange={(e) => setDateStart(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Tanggal selesai</Label>
+                    <Input
+                      type="date"
+                      value={dateEnd}
+                      onChange={(e) => setDateEnd(e.target.value)}
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
-                  <Label>Tanggal selesai</Label>
-                  <Input type="date" value={dateEnd} onChange={(e) => setDateEnd(e.target.value)} />
+                  <Label>Status publikasi</Label>
+                  <CmsPublishTabs
+                    published={form.isPublished ?? false}
+                    onChange={(v) => setForm((p) => ({ ...p, isPublished: v }))}
+                  />
                 </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Status publikasi</Label>
-                <CmsPublishTabs published={form.isPublished ?? false} onChange={(v) => setForm((p) => ({ ...p, isPublished: v }))} />
-              </div>
-              <div className="space-y-2">
-                <Label>Deskripsi</Label>
-                <Textarea rows={5} value={form.description ?? ''} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} />
-              </div>
-              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-                <Button type="button" variant="outline" className="min-h-11" onClick={() => setPageTab('list')}>
-                  Kembali ke daftar
-                </Button>
-                {form.id ? (
-                  <Button variant="ghost" type="button" className="min-h-11" onClick={resetForm}>
-                    Reset
+                <div className="space-y-2">
+                  <Label>Deskripsi</Label>
+                  <Textarea
+                    rows={5}
+                    value={form.description ?? ''}
+                    onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
+                  />
+                </div>
+                <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="min-h-11"
+                    onClick={() => setPageTab('list')}
+                  >
+                    Kembali ke daftar
                   </Button>
-                ) : null}
-                <Button type="submit" className="min-h-11">
-                  {form.id ? 'Simpan' : 'Tambah program'}
-                </Button>
-              </div>
-            </form>
-          </AdminCard>
+                  {form.id ? (
+                    <Button variant="ghost" type="button" className="min-h-11" onClick={resetForm}>
+                      Reset
+                    </Button>
+                  ) : null}
+                  <Button type="submit" className="min-h-11">
+                    {form.id ? 'Simpan' : 'Tambah program'}
+                  </Button>
+                </div>
+              </form>
+            </AdminCard>
           </CmsEditorLayout>
         </AdminContentTransition>
       ) : (
         <AdminContentTransition contentKey="list-programs">
-        <AdminCard title="Daftar program" description="Semua program kerja di CMS.">
-          <CmsListToolbar
-            count={programs.length}
-            countLabel="program"
-            onCreate={() => {
-              resetForm();
-              setDateStart('');
-              setDateEnd('');
-              setPageTab('form');
-            }}
-          />
-          <ul className="space-y-4 md:hidden" aria-label="Daftar program">
-            {programs.map((p) => (
-              <li key={p.id} className="rounded-2xl border border-border p-4 border-border">
-                <p className="font-bold text-foreground">{p.title}</p>
-                <p className="text-sm text-muted-foreground">{p.date_range ?? '—'}</p>
-                <Badge className="mt-2" variant={p.is_published ? 'success' : 'secondary'}>
-                  {p.is_published ? 'Publik' : 'Draft'}
-                </Badge>
-                <div className="mt-3 flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="min-h-11 flex-1"
-                    type="button"
-                    onClick={() => {
-                      setForm({
-                        id: p.id,
-                        title: p.title,
-                        description: p.description ?? '',
-                        isPublished: p.is_published,
-                      });
-                      resetDatesFromRange(p.date_range ?? '');
-                      setPageTab('form');
-                    }}
-                  >
-                    Edit
-                  </Button>
-                  <Button variant="destructive" size="sm" className="min-h-11" type="button" onClick={() => openDelete(p.id)}>
-                    Hapus
-                  </Button>
-                </div>
-              </li>
-            ))}
-          </ul>
-          <div className="hidden overflow-x-auto md:block">
-            <Table className="min-w-[640px]">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Judul</TableHead>
-                  <TableHead>Tanggal</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Aksi</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {programs.length === 0 ? (
+          <AdminCard title="Daftar program" description="Semua program kerja di CMS.">
+            <CmsListToolbar
+              count={programs.length}
+              countLabel="program"
+              onCreate={() => {
+                resetForm();
+                setDateStart('');
+                setDateEnd('');
+                setPageTab('form');
+              }}
+            />
+            <ul className="space-y-4 md:hidden" aria-label="Daftar program">
+              {programs.map((p) => (
+                <li key={p.id} className="rounded-2xl border border-border p-4 border-border">
+                  <p className="font-bold text-foreground">{p.title}</p>
+                  <p className="text-sm text-muted-foreground">{p.date_range ?? '—'}</p>
+                  <Badge className="mt-2" variant={p.is_published ? 'success' : 'secondary'}>
+                    {p.is_published ? 'Publik' : 'Draft'}
+                  </Badge>
+                  <div className="mt-3 flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="min-h-11 flex-1"
+                      type="button"
+                      onClick={() => {
+                        setForm({
+                          id: p.id,
+                          title: p.title,
+                          description: p.description ?? '',
+                          isPublished: p.is_published,
+                        });
+                        resetDatesFromRange(p.date_range ?? '');
+                        setPageTab('form');
+                      }}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="min-h-11"
+                      type="button"
+                      onClick={() => openDelete(p.id)}
+                    >
+                      Hapus
+                    </Button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <div className="hidden overflow-x-auto md:block">
+              <Table className="min-w-[640px]">
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={4} className="h-20 text-center text-muted-foreground">
-                      Belum ada program.
-                    </TableCell>
+                    <TableHead>Judul</TableHead>
+                    <TableHead>Tanggal</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Aksi</TableHead>
                   </TableRow>
-                ) : (
-                  programs.map((p) => (
-                    <TableRow key={p.id}>
-                      <TableCell className="font-medium">{p.title}</TableCell>
-                      <TableCell>{p.date_range ?? '-'}</TableCell>
-                      <TableCell>
-                        <Badge variant={p.is_published ? 'success' : 'secondary'}>{p.is_published ? 'Publik' : 'Draft'}</Badge>
-                      </TableCell>
-                      <TableCell className="space-x-2 text-right">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="min-h-9"
-                          type="button"
-                          onClick={() => {
-                            setForm({
-                              id: p.id,
-                              title: p.title,
-                              description: p.description ?? '',
-                              isPublished: p.is_published,
-                            });
-                            resetDatesFromRange(p.date_range ?? '');
-                            setPageTab('form');
-                          }}
-                        >
-                          Edit
-                        </Button>
-                        <Button variant="destructive" size="sm" className="min-h-9" type="button" onClick={() => openDelete(p.id)}>
-                          Hapus
-                        </Button>
+                </TableHeader>
+                <TableBody>
+                  {programs.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="h-20 text-center text-muted-foreground">
+                        Belum ada program.
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </AdminCard>
+                  ) : (
+                    programs.map((p) => (
+                      <TableRow key={p.id}>
+                        <TableCell className="font-medium">{p.title}</TableCell>
+                        <TableCell>{p.date_range ?? '-'}</TableCell>
+                        <TableCell>
+                          <Badge variant={p.is_published ? 'success' : 'secondary'}>
+                            {p.is_published ? 'Publik' : 'Draft'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="space-x-2 text-right">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="min-h-9"
+                            type="button"
+                            onClick={() => {
+                              setForm({
+                                id: p.id,
+                                title: p.title,
+                                description: p.description ?? '',
+                                isPublished: p.is_published,
+                              });
+                              resetDatesFromRange(p.date_range ?? '');
+                              setPageTab('form');
+                            }}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            className="min-h-9"
+                            type="button"
+                            onClick={() => openDelete(p.id)}
+                          >
+                            Hapus
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </AdminCard>
         </AdminContentTransition>
       )}
 

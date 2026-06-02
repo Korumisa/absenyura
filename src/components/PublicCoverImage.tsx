@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
-import { cn } from '@/lib/utils';
-import { ensureHttpsUrl } from '@/lib/ensureHttpsUrl';
-import { buildCloudinarySrcSet, optimizeCloudinaryUrl } from '@/lib/cloudinaryImage';
+import { cn } from '@/lib/utils/utils';
+import { ensureHttpsUrl } from '@/lib/http/ensureHttpsUrl';
+import { buildCloudinarySrcSet, optimizeCloudinaryUrl } from '@/lib/media/cloudinaryImage';
 
 type PublicCoverImageProps = {
   url?: string | null;
@@ -26,7 +26,7 @@ export default function PublicCoverImage({
   const rawSrc = useMemo(() => ensureHttpsUrl(url), [url]);
   const src = useMemo(
     () => (rawSrc ? optimizeCloudinaryUrl(rawSrc, { width: displayWidth }) : ''),
-    [rawSrc, displayWidth],
+    [rawSrc, displayWidth]
   );
   const srcSet = useMemo(() => {
     if (!rawSrc || priority) return undefined;
@@ -41,7 +41,14 @@ export default function PublicCoverImage({
     return `(max-width: 768px) 100vw, ${displayWidth}px`;
   }, [srcSet, displayWidth]);
 
-  const initial = useMemo(() => String(alt ?? '').trim().slice(0, 1).toUpperCase() || 'A', [alt]);
+  const initial = useMemo(
+    () =>
+      String(alt ?? '')
+        .trim()
+        .slice(0, 1)
+        .toUpperCase() || 'A',
+    [alt]
+  );
   const showImg = Boolean(src) && !failed;
 
   return (
@@ -62,7 +69,9 @@ export default function PublicCoverImage({
       ) : (
         <div className="relative h-full w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.24),rgba(15,23,42,0.05))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.22),rgba(255,255,255,0.04))]">
           <div className="pointer-events-none absolute inset-0 opacity-80 [background:radial-gradient(circle_at_30%_25%,rgba(255,255,255,0.8),transparent_60%)]" />
-          <div className="grid h-full w-full place-items-center text-6xl font-extrabold text-white/90 drop-shadow-sm">{initial}</div>
+          <div className="grid h-full w-full place-items-center text-6xl font-extrabold text-white/90 drop-shadow-sm">
+            {initial}
+          </div>
         </div>
       )}
     </div>

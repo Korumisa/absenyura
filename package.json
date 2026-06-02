@@ -10,13 +10,28 @@
     "client:dev": "vite",
     "build": "npx prisma@6.4.1 generate && tsc -b && vite build",
     "vercel-build": "npx prisma@6.4.1 generate && tsc -b && vite build",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "lint": "eslint .",
     "preview": "vite preview",
     "check": "tsc --noEmit",
     "test": "vitest run",
+    "test:unit": "vitest run --config vitest.unit.config.ts",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:coverage": "vitest run --coverage",
     "seed": "npx prisma@6.4.1 generate && node prisma/seed.js",
     "server:dev": "nodemon",
-    "dev": "concurrently \"npm run client:dev\" \"npm run server:dev\""
+    "dev": "concurrently \"npm run client:dev\" \"npm run server:dev\"",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "{api,server,src,prisma,scripts,tests}/**/*.{ts,tsx,js,jsx,json,css,md}": [
+      "prettier --write",
+      "eslint --fix"
+    ],
+    "*.{json,md,css}": [
+      "prettier --write"
+    ]
   },
   "dependencies": {
     "@prisma/client": "^6.4.1",
@@ -54,6 +69,7 @@
     "jspdf-autotable": "^5.0.7",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.511.0",
+    "morgan": "^1.10.1",
     "multer": "^2.1.1",
     "node-cron": "^4.2.1",
     "nodemailer": "^8.0.5",
@@ -75,12 +91,14 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.25.0",
+    "@playwright/test": "^1.60.0",
     "@types/cookie": "^0.6.0",
     "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
     "@types/express": "^4.17.21",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/leaflet": "^1.9.21",
+    "@types/morgan": "^1.9.10",
     "@types/multer": "^2.1.0",
     "@types/node": "^22.15.30",
     "@types/node-cron": "^3.0.11",
@@ -90,6 +108,7 @@
     "@types/react-dom": "^18.3.1",
     "@vercel/node": "^5.3.6",
     "@vitejs/plugin-react": "^4.4.1",
+    "@vitest/coverage-v8": "^3.2.6",
     "autoprefixer": "^10.4.21",
     "babel-plugin-react-dev-locator": "^1.0.0",
     "concurrently": "^9.2.1",
@@ -97,8 +116,11 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.19",
     "globals": "^16.0.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
     "nodemon": "^3.1.10",
     "postcss": "^8.5.3",
+    "prettier": "^3.8.3",
     "prisma": "^6.4.1",
     "tailwindcss": "^3.4.17",
     "tailwindcss-animate": "^1.0.7",

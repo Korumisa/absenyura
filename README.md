@@ -1,6 +1,7 @@
 # 🎓 Sistem Absensi Akademik Terpadu (AbsensiWeb)
 
 Sistem Absensi Akademik Terpadu adalah aplikasi absensi modern berbasis web yang dirancang untuk mencegah kecurangan (titip absen) menggunakan validasi 4 lapis:
+
 1. **QR Code Dinamis** (Berubah setiap 15 detik)
 2. **Validasi Geofencing (GPS)**
 3. **Device & IP Fingerprinting**
@@ -10,8 +11,19 @@ Aplikasi ini dibangun menggunakan **React (Vite)** untuk Frontend, **Node.js (Ex
 
 ---
 
+## 🚚 Deployment (Local vs Vercel)
+
+| Environment       | Backend entry      | How it runs                                 | Shared app      |
+| ----------------- | ------------------ | ------------------------------------------- | --------------- |
+| Local dev         | `server/server.ts` | `npm run dev` (Vite + Express via nodemon)  | `server/app.ts` |
+| Vercel production | `api/index.ts`     | Serverless function routed by `vercel.json` | `server/app.ts` |
+
+> **Docker:** No Dockerfile is included because this project deploys to Vercel. If you need a containerised environment, a minimal Node.js Dockerfile would go here.
+
 ## 🛠️ Persyaratan Sistem (Prerequisites)
-Sebelum menjalankan atau melakukan *deploy* aplikasi ini, pastikan sistem/server Anda telah menginstal:
+
+Sebelum menjalankan atau melakukan _deploy_ aplikasi ini, pastikan sistem/server Anda telah menginstal:
+
 - **Node.js** (Versi 18 atau yang lebih baru)
 - **NPM** atau **PNPM**
 - **Git**
@@ -23,13 +35,17 @@ Sebelum menjalankan atau melakukan *deploy* aplikasi ini, pastikan sistem/server
 ## 🚀 Panduan Menjalankan di Komputer Lokal (Development)
 
 ### 1. Ekstrak dan Instal Dependensi
+
 Ekstrak file zip proyek ini, buka terminal di dalam folder proyek, lalu jalankan:
+
 ```bash
 npm install
 ```
 
 ### 2. Konfigurasi Environment (`.env`)
-Buka file `.env` di *root* direktori, dan ubah variabel berikut:
+
+Buka file `.env` di _root_ direktori, dan ubah variabel berikut:
+
 ```env
 PORT=3001
 # Production/Vercel: pooler port 6543 + connection_limit=1
@@ -45,24 +61,32 @@ FRONTEND_URL="http://localhost:5173"
 ```
 
 ### 3. Migrasi Database (Prisma)
+
 Hubungkan aplikasi ke Supabase dan buat seluruh tabel yang diperlukan dengan perintah:
+
 ```bash
 npx prisma generate
 npx prisma db push
 ```
 
 ### 4. Membuat Akun Demo (Opsional)
+
 Agar Anda bisa login untuk pertama kalinya, jalankan skrip berikut untuk membuat 3 akun demo (Super Admin, Dosen, dan Mahasiswa):
+
 ```bash
 npx tsx server/utils/seedDemo.ts
 ```
-*(Semua akun akan memiliki password `password123`)*
+
+_(Semua akun akan memiliki password `password123`)_
 
 ### 5. Jalankan Aplikasi
+
 Jalankan Frontend dan Backend secara bersamaan dengan perintah:
+
 ```bash
 npm run dev
 ```
+
 Aplikasi Frontend dapat diakses di `http://localhost:5173` (atau 5174) dan Backend di `http://localhost:3001`.
 
 ---
@@ -82,13 +106,16 @@ Deploy utama memakai **Vercel** (frontend + API serverless). Foto selfie dan ase
 Untuk VPS (DigitalOcean, AWS EC2, Niagahoster, dll.) tanpa Cloudinary, foto selfie dapat disimpan di **`/uploads/attendance`** di disk server. Pastikan Nginx mem-proxy path `/uploads/` ke backend (contoh di bawah).
 
 ### Langkah 1: Persiapkan VPS Anda
+
 1. Login ke VPS Anda via SSH.
 2. Instal Node.js, Nginx, dan PM2.
 3. Kloning atau unggah kode proyek ini ke VPS Anda (misal di folder `/var/www/absensi`).
 4. Masuk ke folder tersebut dan jalankan `npm install`.
 
 ### Langkah 2: Atur Environment (`.env`)
+
 Buat/edit file `.env` di VPS:
+
 ```env
 NODE_ENV="production"
 PORT=3001
@@ -98,17 +125,23 @@ JWT_SECRET="BUAT_STRING_ACAK_YANG_SANGAT_PANJANG_DAN_RUMIT"
 JWT_REFRESH_SECRET="BUAT_STRING_ACAK_YANG_SANGAT_PANJANG_DAN_RUMIT_LAINNYA"
 FRONTEND_URL="https://absensi.namakampus.ac.id" # URL Asli Anda
 ```
+
 Jalankan `npx prisma generate` dan `npx prisma db push`.
 
 ### Langkah 3: Build Frontend
+
 Kompilasi kode React agar siap dilayani oleh Web Server:
+
 ```bash
 npm run build
 ```
-*(Ini akan menghasilkan folder `dist/`)*
+
+_(Ini akan menghasilkan folder `dist/`)_
 
 ### Langkah 4: Jalankan Backend dengan PM2
-Agar backend (Node.js, WebSocket, dan Cron Jobs) tetap menyala 24/7 dan *auto-restart* jika *crash*:
+
+Agar backend (Node.js, WebSocket, dan Cron Jobs) tetap menyala 24/7 dan _auto-restart_ jika _crash_:
+
 ```bash
 pm2 start npx --name "absensi-api" -- tsx server/server.ts
 pm2 save
@@ -116,7 +149,9 @@ pm2 startup
 ```
 
 ### Langkah 5: Konfigurasi Nginx (Reverse Proxy)
+
 Buat file konfigurasi Nginx baru (misal: `/etc/nginx/sites-available/absensi`):
+
 ```nginx
 server {
     listen 80;
@@ -147,20 +182,24 @@ server {
     }
 }
 ```
+
 Aktifkan konfigurasi dan restart Nginx:
+
 ```bash
 sudo ln -s /etc/nginx/sites-available/absensi /etc/nginx/sites-enabled/
 sudo systemctl restart nginx
 ```
 
 ### Langkah 6: Instalasi SSL (HTTPS) - WAJIB!
+
 Browser **memblokir** akses Kamera dan GPS jika website Anda tidak menggunakan `https://`. Pasang SSL gratis menggunakan Certbot:
+
 ```bash
 sudo apt install certbot python3-certbot-nginx
 sudo certbot --nginx -d absensi.namakampus.ac.id
 ```
 
-Selamat! Sistem Absensi Anda sudah berjalan secara *Production*. 🎉
+Selamat! Sistem Absensi Anda sudah berjalan secara _Production_. 🎉
 
 ---
 
@@ -168,12 +207,12 @@ Selamat! Sistem Absensi Anda sudah berjalan secara *Production*. 🎉
 
 Di **Vercel Hobby**, cron bawaan hanya bisa **1× per hari**. Status sesi (`UPCOMING` → `ACTIVE` → `CLOSED`) butuh pemicu lebih sering. Aplikasi memakai **beberapa lapisan** (utama + cadangan):
 
-| Lapisan | Pemicu | Frekuensi |
-|---------|--------|-----------|
-| Utama | [cron-job.org](https://cron-job.org) | Tiap **5 menit** (`job=session`) |
-| Backup terjadwal | GitHub Actions | Tiap **15 menit** (`job=session`) |
-| Backup harian | Vercel Cron | **1×/hari** 01:00 UTC (`job=all` di `vercel.json`) |
-| Backup traffic | Lazy sync API | Saat buka dashboard / sesi / QR / absen |
+| Lapisan          | Pemicu                               | Frekuensi                                          |
+| ---------------- | ------------------------------------ | -------------------------------------------------- |
+| Utama            | [cron-job.org](https://cron-job.org) | Tiap **5 menit** (`job=session`)                   |
+| Backup terjadwal | GitHub Actions                       | Tiap **15 menit** (`job=session`)                  |
+| Backup harian    | Vercel Cron                          | **1×/hari** 01:00 UTC (`job=all` di `vercel.json`) |
+| Backup traffic   | Lazy sync API                        | Saat buka dashboard / sesi / QR / absen            |
 
 ### 1. Set `CRON_SECRET` di Vercel
 
@@ -204,10 +243,10 @@ Workflow: [`.github/workflows/session-cron.yml`](.github/workflows/session-cron.
 
 Di **GitHub → Settings → Secrets and variables → Actions**, tambahkan:
 
-| Secret | Contoh |
-|--------|--------|
-| `APP_URL` | `https://your-app.vercel.app` (tanpa slash di akhir) |
-| `CRON_SECRET` | Sama dengan nilai di Vercel |
+| Secret        | Contoh                                               |
+| ------------- | ---------------------------------------------------- |
+| `APP_URL`     | `https://your-app.vercel.app` (tanpa slash di akhir) |
+| `CRON_SECRET` | Sama dengan nilai di Vercel                          |
 
 Workflow berjalan tiap 15 menit. Tes manual: tab **Actions** → **Session cron backup** → **Run workflow**.
 
@@ -227,13 +266,13 @@ Buat sesi `UPCOMING` dengan `check_in_open_at` beberapa menit lalu, tunggu 5–1
 
 ### Troubleshooting
 
-| Gejala | Yang dicek |
-|--------|------------|
-| Status tidak berubah saat app ditutup | Execution history cron-job.org; secret `CRON_SECRET` di Vercel |
-| HTTP 404 dari cron eksternal | `CRON_SECRET` benar; redeploy setelah ubah env |
-| HTTP 429 | Pastikan path `/api/cron` tidak kena rate limit (sudah di-skip di kode) |
-| Hanya update saat buka app | cron-job.org / GitHub Actions belum jalan atau secret salah |
-| Catch-up semalam | Vercel Cron harian di dashboard Vercel |
+| Gejala                                | Yang dicek                                                              |
+| ------------------------------------- | ----------------------------------------------------------------------- |
+| Status tidak berubah saat app ditutup | Execution history cron-job.org; secret `CRON_SECRET` di Vercel          |
+| HTTP 404 dari cron eksternal          | `CRON_SECRET` benar; redeploy setelah ubah env                          |
+| HTTP 429                              | Pastikan path `/api/cron` tidak kena rate limit (sudah di-skip di kode) |
+| Hanya update saat buka app            | cron-job.org / GitHub Actions belum jalan atau secret salah             |
+| Catch-up semalam                      | Vercel Cron harian di dashboard Vercel                                  |
 
 **Lokal / VPS (PM2):** `startCronJobs()` di server tetap menjalankan interval 1 menit — tidak perlu cron-job.org.
 

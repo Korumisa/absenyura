@@ -8,9 +8,9 @@ import type { PublicProfile } from '@/types/publicSite';
 import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 import { PublicPageMeta } from '@/components/public/PublicPageMeta';
 import { useLocation } from 'react-router-dom';
-import { loadCormorantDisplayFont } from '@/lib/loadFonts';
-import { ensureHttpsUrl } from '@/lib/ensureHttpsUrl';
-import { isCloudinaryUrl, optimizeCloudinaryUrl } from '@/lib/cloudinaryImage';
+import { loadCormorantDisplayFont } from '@/lib/perf/loadFonts';
+import { ensureHttpsUrl } from '@/lib/http/ensureHttpsUrl';
+import { isCloudinaryUrl, optimizeCloudinaryUrl } from '@/lib/media/cloudinaryImage';
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
@@ -19,7 +19,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
   const { data: profile, isLoading: isLoadingProfile } = useSWR<PublicProfile | null>(
     '/public-site/profile',
     fetcher,
-    { revalidateOnFocus: false },
+    { revalidateOnFocus: false }
   );
   const primary = profile?.primary_color || '#2563eb';
   const showBootOverlay = isLoadingProfile && !profile;
@@ -59,7 +59,8 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
   }, [mutate]);
 
   const orgLabel = profile?.org_name?.trim() || 'HM SDP';
-  const metaDescription = profile?.hero_subtitle?.trim() || profile?.about_content?.trim()?.slice(0, 160);
+  const metaDescription =
+    profile?.hero_subtitle?.trim() || profile?.about_content?.trim()?.slice(0, 160);
 
   return (
     <div
@@ -82,7 +83,11 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
         {children}
       </main>
       <PublicFooter />
-      <PublicLoadingOverlay show={showBootOverlay} label="Memuat..." className="z-[95] bg-white/35 backdrop-blur-xl" />
+      <PublicLoadingOverlay
+        show={showBootOverlay}
+        label="Memuat..."
+        className="z-[95] bg-white/35 backdrop-blur-xl"
+      />
     </div>
   );
 }

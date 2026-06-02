@@ -13,7 +13,7 @@ function isChunkLoadError(err: unknown): boolean {
 
 /** Lazy import dengan retry — mengatasi chunk 404 setelah deploy baru (PWA/cache) */
 export function lazyWithRetry<T extends ComponentType<unknown>>(
-  factory: () => Promise<{ default: T }>,
+  factory: () => Promise<{ default: T }>
 ): LazyExoticComponent<T> {
   return lazy(async () => {
     try {

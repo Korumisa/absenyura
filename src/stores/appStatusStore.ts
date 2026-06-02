@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { OFFLINE_USER_MESSAGE } from '@/lib/networkEvents';
+import { OFFLINE_USER_MESSAGE } from '@/lib/perf/networkEvents';
 
 interface AppStatusState {
   isMaintenance: boolean;

@@ -2,7 +2,19 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import api from '@/services/api';
 import useSWR from 'swr';
-import { Download, FileText, Search, CheckCircle2, Clock, XCircle, Edit3, ChevronDown, Loader2, Smartphone, MapPin } from 'lucide-react';
+import {
+  Download,
+  FileText,
+  Search,
+  CheckCircle2,
+  Clock,
+  XCircle,
+  Edit3,
+  ChevronDown,
+  Loader2,
+  Smartphone,
+  MapPin,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { format, isValid } from 'date-fns';
 import { id } from 'date-fns/locale';
@@ -10,33 +22,53 @@ import * as ExcelJS from 'exceljs';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import QRCode from 'qrcode';
-import { reportClassLabel } from '@/lib/reportLabel';
+import { reportClassLabel } from '@/lib/utils/reportLabel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import type { Report } from '@/types/report';
 import type { PaginationMeta } from '@/types/common';
 import AdminPageShell from '@/components/AdminPageShell';
 import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
 import { CardSkeletonList } from '@/components/admin/CardSkeleton';
-import { formatClassLabel } from '@/lib/classLabel';
+import { formatClassLabel } from '@/lib/utils/classLabel';
 import { TablePagination } from '@/components/ui/TablePagination';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
 import { SlowLoadingHint } from '@/components/admin/SlowLoadingHint';
-import { attendanceBadgeVariant, attendanceStatusLabel } from '@/lib/statusLabel';
-import { toastErrorMessage } from '@/lib/toastMessage';
+import { attendanceBadgeVariant, attendanceStatusLabel } from '@/lib/utils/statusLabel';
+import { toastErrorMessage } from '@/lib/utils/toastMessage';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import { DatePicker } from '@/components/ui/date-picker';
 import { FadeIn } from '@/components/admin/FadeIn';
 
-const fetcher = (url: string) => api.get(url).then(res => res.data);
+const fetcher = (url: string) => api.get(url).then((res) => res.data);
 
 const safeFormat = (value: unknown, fmt: string) => {
   const d = new Date(value as any);
@@ -64,7 +96,11 @@ async function buildSessionAttendUrl(sessionId: string): Promise<string> {
 }
 
 async function qrImageBase64(url: string): Promise<string> {
-  const dataUrl = await QRCode.toDataURL(url, { width: 280, margin: 1, color: { dark: '#1e3a8a' } });
+  const dataUrl = await QRCode.toDataURL(url, {
+    width: 280,
+    margin: 1,
+    color: { dark: '#1e3a8a' },
+  });
   return dataUrl.split(',')[1] ?? '';
 }
 
@@ -76,12 +112,12 @@ export default function Reports() {
   const [endDate, setEndDate] = useState('');
   const [sessionId, setSessionId] = useState('ALL');
   const [exporting, setExporting] = useState<'none' | 'excel' | 'pdf'>('none');
-  
+
   const [page, setPage] = useState(1);
 
   const queryParams = new URLSearchParams({
     page: page.toString(),
-    limit: '50'
+    limit: '50',
   });
   if (sessionId && sessionId !== 'ALL') {
     queryParams.append('sessionId', sessionId);
@@ -95,12 +131,20 @@ export default function Reports() {
   const { isPending: loading, isError, showSlowLoadingHint, retry } = useSwrPageState(swr);
   const { data, mutate } = swr;
 
-  const reports: Report[] = Array.isArray(data?.data) ? (data.data.filter(Boolean) as Report[]) : [];
+  const reports: Report[] = Array.isArray(data?.data)
+    ? (data.data.filter(Boolean) as Report[])
+    : [];
   const meta: PaginationMeta | null = data?.meta || null;
 
   const sessionsFetcher = (url: string) => api.get(url).then((res) => res.data.data);
   const { data: sessions = [] } = useSWR<
-    { id: string; title: string; session_start: string; class?: { name: string; semester: number } | null; session_classes?: { class: { name: string; semester: number } }[] }[]
+    {
+      id: string;
+      title: string;
+      session_start: string;
+      class?: { name: string; semester: number } | null;
+      session_classes?: { class: { name: string; semester: number } }[];
+    }[]
   >('/sessions', sessionsFetcher, { revalidateOnFocus: false });
 
   useEffect(() => {
@@ -140,148 +184,163 @@ export default function Reports() {
   const [isOverrideConfirmOpen, setIsOverrideConfirmOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
-  const exportExcelMatrix = useCallback(async (rows: Report[], fileSuffix: string, sessionMeta?: ExportSessionMeta) => {
-    const safeRows = (Array.isArray(rows) ? rows : []).filter((r): r is Report => Boolean(r && (r as any).id));
-    const workbook = new ExcelJS.Workbook();
-    const sheet = workbook.addWorksheet('Rekap Matriks Kehadiran');
+  const exportExcelMatrix = useCallback(
+    async (rows: Report[], fileSuffix: string, sessionMeta?: ExportSessionMeta) => {
+      const safeRows = (Array.isArray(rows) ? rows : []).filter((r): r is Report =>
+        Boolean(r && (r as any).id)
+      );
+      const workbook = new ExcelJS.Workbook();
+      const sheet = workbook.addWorksheet('Rekap Matriks Kehadiran');
 
-    // Dapatkan daftar sesi unik dari laporan yang difilter
-    const uniqueSessions = Array.from(new Set(safeRows.map(r => String((r as any).session_title ?? '')))).filter(Boolean);
-    
-    // Siapkan kolom: Nama, NIM, Kelas, lalu diikuti nama-nama sesi
-    const columns = [
-      { header: 'Nama Peserta', key: 'user_name', width: 25 },
-      { header: 'NIM/NIP', key: 'nim_nip', width: 15 },
-      { header: 'Kelas', key: 'kelas', width: 22 },
-    ];
-    uniqueSessions.forEach(session => {
-      columns.push({ header: session, key: session, width: 15 });
-    });
-    // Tambahkan kolom rekap total
-    columns.push({ header: 'Total Hadir', key: 'total_present', width: 15 });
-    columns.push({ header: 'Total Sakit', key: 'total_sick', width: 15 });
-    columns.push({ header: 'Total Izin', key: 'total_excused', width: 15 });
-    columns.push({ header: 'Total Alfa', key: 'total_absent', width: 15 });
+      // Dapatkan daftar sesi unik dari laporan yang difilter
+      const uniqueSessions = Array.from(
+        new Set(safeRows.map((r) => String((r as any).session_title ?? '')))
+      ).filter(Boolean);
 
-    sheet.columns = columns;
+      // Siapkan kolom: Nama, NIM, Kelas, lalu diikuti nama-nama sesi
+      const columns = [
+        { header: 'Nama Peserta', key: 'user_name', width: 25 },
+        { header: 'NIM/NIP', key: 'nim_nip', width: 15 },
+        { header: 'Kelas', key: 'kelas', width: 22 },
+      ];
+      uniqueSessions.forEach((session) => {
+        columns.push({ header: session, key: session, width: 15 });
+      });
+      // Tambahkan kolom rekap total
+      columns.push({ header: 'Total Hadir', key: 'total_present', width: 15 });
+      columns.push({ header: 'Total Sakit', key: 'total_sick', width: 15 });
+      columns.push({ header: 'Total Izin', key: 'total_excused', width: 15 });
+      columns.push({ header: 'Total Alfa', key: 'total_absent', width: 15 });
 
-    sheet.getRow(1).font = { bold: true };
-    sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E7FF' } };
+      sheet.columns = columns;
 
-    // Kelompokkan data per mahasiswa
-    const studentData: Record<string, Record<string, string | number>> = {};
-    
-    safeRows.forEach((r) => {
-      const studentId = r.user_id;
-      if (!studentId) return;
-      if (!studentData[studentId]) {
-        studentData[studentId] = {
-          user_name: String((r as any).user_name ?? '-'),
-          nim_nip: r.nim_nip || '-',
-          kelas: reportClassLabel(r),
-          total_present: 0,
-          total_sick: 0,
-          total_excused: 0,
-          total_absent: 0
-        };
+      sheet.getRow(1).font = { bold: true };
+      sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E7FF' } };
+
+      // Kelompokkan data per mahasiswa
+      const studentData: Record<string, Record<string, string | number>> = {};
+
+      safeRows.forEach((r) => {
+        const studentId = r.user_id;
+        if (!studentId) return;
+        if (!studentData[studentId]) {
+          studentData[studentId] = {
+            user_name: String((r as any).user_name ?? '-'),
+            nim_nip: r.nim_nip || '-',
+            kelas: reportClassLabel(r),
+            total_present: 0,
+            total_sick: 0,
+            total_excused: 0,
+            total_absent: 0,
+          };
+        }
+
+        // Isi status sesi
+        const sessionTitle = String((r as any).session_title ?? '-');
+        studentData[studentId][sessionTitle] = r.status;
+
+        // Hitung total
+        if (r.status === 'PRESENT' || r.status === 'LATE')
+          (studentData[studentId].total_present as number) += 1;
+        else if (r.status === 'SICK') (studentData[studentId].total_sick as number) += 1;
+        else if (r.status === 'EXCUSED') (studentData[studentId].total_excused as number) += 1;
+        else if (r.status === 'ABSENT') (studentData[studentId].total_absent as number) += 1;
+      });
+
+      Object.values(studentData).forEach((data) => {
+        sheet.addRow(data);
+      });
+
+      if (sessionMeta?.sessionId) {
+        const qrSheet = workbook.addWorksheet('QR Scan Absensi');
+        const attendUrl = await buildSessionAttendUrl(sessionMeta.sessionId);
+        qrSheet.mergeCells('A1', 'D1');
+        qrSheet.getCell('A1').value = `QR Absensi — ${sessionMeta.sessionTitle}`;
+        qrSheet.getCell('A1').font = { bold: true, size: 14 };
+        qrSheet.getCell('A2').value = `Kelas: ${sessionMeta.classesLabel}`;
+        qrSheet.getCell('A3').value = 'Tautan scan (buka di browser HP):';
+        qrSheet.getCell('A4').value = attendUrl;
+        qrSheet.getCell('A4').font = { color: { argb: 'FF2563EB' }, underline: true };
+        try {
+          const base64 = await qrImageBase64(attendUrl);
+          const imageId = workbook.addImage({ base64, extension: 'png' });
+          qrSheet.addImage(imageId, { tl: { col: 0, row: 5 }, ext: { width: 220, height: 220 } });
+        } catch {
+          qrSheet.getCell('A6').value = '(QR gagal dibuat — gunakan tautan di atas)';
+        }
+        qrSheet.getColumn(1).width = 72;
       }
-      
-      // Isi status sesi
-      const sessionTitle = String((r as any).session_title ?? '-');
-      studentData[studentId][sessionTitle] = r.status;
-      
-      // Hitung total
-      if (r.status === 'PRESENT' || r.status === 'LATE') (studentData[studentId].total_present as number) += 1;
-      else if (r.status === 'SICK') (studentData[studentId].total_sick as number) += 1;
-      else if (r.status === 'EXCUSED') (studentData[studentId].total_excused as number) += 1;
-      else if (r.status === 'ABSENT') (studentData[studentId].total_absent as number) += 1;
-    });
 
-    Object.values(studentData).forEach(data => {
-      sheet.addRow(data);
-    });
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Matriks_Kehadiran_${fileSuffix}_${format(new Date(), 'yyyyMMdd_HHmm')}.xlsx`;
+      link.click();
+      URL.revokeObjectURL(url);
+      toast.success('Matriks Laporan Excel berhasil diunduh');
+    },
+    []
+  );
 
-    if (sessionMeta?.sessionId) {
-      const qrSheet = workbook.addWorksheet('QR Scan Absensi');
-      const attendUrl = await buildSessionAttendUrl(sessionMeta.sessionId);
-      qrSheet.mergeCells('A1', 'D1');
-      qrSheet.getCell('A1').value = `QR Absensi — ${sessionMeta.sessionTitle}`;
-      qrSheet.getCell('A1').font = { bold: true, size: 14 };
-      qrSheet.getCell('A2').value = `Kelas: ${sessionMeta.classesLabel}`;
-      qrSheet.getCell('A3').value = 'Tautan scan (buka di browser HP):';
-      qrSheet.getCell('A4').value = attendUrl;
-      qrSheet.getCell('A4').font = { color: { argb: 'FF2563EB' }, underline: true };
-      try {
-        const base64 = await qrImageBase64(attendUrl);
-        const imageId = workbook.addImage({ base64, extension: 'png' });
-        qrSheet.addImage(imageId, { tl: { col: 0, row: 5 }, ext: { width: 220, height: 220 } });
-      } catch {
-        qrSheet.getCell('A6').value = '(QR gagal dibuat — gunakan tautan di atas)';
+  const exportPdfList = useCallback(
+    async (rows: Report[], fileSuffix: string, sessionMeta?: ExportSessionMeta) => {
+      const safeRows = (Array.isArray(rows) ? rows : []).filter((r): r is Report =>
+        Boolean(r && (r as any).id)
+      );
+      const doc = new jsPDF();
+
+      let tableStartY = 35;
+
+      doc.setFontSize(16);
+      doc.text('Laporan Rekapitulasi Kehadiran', 14, 20);
+      doc.setFontSize(10);
+      doc.text(`Dicetak pada: ${format(new Date(), 'dd MMMM yyyy HH:mm', { locale: id })}`, 14, 28);
+
+      if (sessionMeta?.sessionId) {
+        const attendUrl = await buildSessionAttendUrl(sessionMeta.sessionId);
+        doc.setFontSize(11);
+        doc.text(`Sesi: ${sessionMeta.sessionTitle}`, 14, 36);
+        doc.text(`Kelas: ${sessionMeta.classesLabel}`, 14, 42);
+        try {
+          const base64 = await qrImageBase64(attendUrl);
+          doc.addImage(`data:image/png;base64,${base64}`, 'PNG', 150, 14, 48, 48);
+        } catch {
+          /* tanpa gambar QR */
+        }
+        doc.setFontSize(8);
+        doc.text('QR / tautan scan absensi:', 14, 50);
+        doc.text(doc.splitTextToSize(attendUrl, 130), 14, 55);
+        tableStartY = 68;
       }
-      qrSheet.getColumn(1).width = 72;
-    }
 
-    const buffer = await workbook.xlsx.writeBuffer();
-    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `Matriks_Kehadiran_${fileSuffix}_${format(new Date(), 'yyyyMMdd_HHmm')}.xlsx`;
-    link.click();
-    URL.revokeObjectURL(url);
-    toast.success('Matriks Laporan Excel berhasil diunduh');
-  }, []);
+      const tableData = safeRows.map((r) => [
+        String((r as any).user_name ?? '-'),
+        r.nim_nip || '-',
+        reportClassLabel(r),
+        String((r as any).session_title ?? '-'),
+        safeFormat((r as any).session_date, 'dd/MM/yyyy'),
+        safeFormat((r as any).check_in_time, 'HH:mm:ss'),
+        (r as any).status ?? '-',
+      ]);
 
-  const exportPdfList = useCallback(async (rows: Report[], fileSuffix: string, sessionMeta?: ExportSessionMeta) => {
-    const safeRows = (Array.isArray(rows) ? rows : []).filter((r): r is Report => Boolean(r && (r as any).id));
-    const doc = new jsPDF();
+      autoTable(doc, {
+        head: [['Nama', 'NIM/NIP', 'Kelas', 'Sesi', 'Tanggal', 'Waktu', 'Status']],
+        body: tableData,
+        startY: tableStartY,
+        theme: 'grid',
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [79, 70, 229] },
+      });
 
-    let tableStartY = 35;
-
-    doc.setFontSize(16);
-    doc.text('Laporan Rekapitulasi Kehadiran', 14, 20);
-    doc.setFontSize(10);
-    doc.text(`Dicetak pada: ${format(new Date(), 'dd MMMM yyyy HH:mm', { locale: id })}`, 14, 28);
-
-    if (sessionMeta?.sessionId) {
-      const attendUrl = await buildSessionAttendUrl(sessionMeta.sessionId);
-      doc.setFontSize(11);
-      doc.text(`Sesi: ${sessionMeta.sessionTitle}`, 14, 36);
-      doc.text(`Kelas: ${sessionMeta.classesLabel}`, 14, 42);
-      try {
-        const base64 = await qrImageBase64(attendUrl);
-        doc.addImage(`data:image/png;base64,${base64}`, 'PNG', 150, 14, 48, 48);
-      } catch {
-        /* tanpa gambar QR */
-      }
-      doc.setFontSize(8);
-      doc.text('QR / tautan scan absensi:', 14, 50);
-      doc.text(doc.splitTextToSize(attendUrl, 130), 14, 55);
-      tableStartY = 68;
-    }
-
-    const tableData = safeRows.map(r => [
-      String((r as any).user_name ?? '-'),
-      r.nim_nip || '-',
-      reportClassLabel(r),
-      String((r as any).session_title ?? '-'),
-      safeFormat((r as any).session_date, 'dd/MM/yyyy'),
-      safeFormat((r as any).check_in_time, 'HH:mm:ss'),
-      (r as any).status ?? '-'
-    ]);
-
-    autoTable(doc, {
-      head: [['Nama', 'NIM/NIP', 'Kelas', 'Sesi', 'Tanggal', 'Waktu', 'Status']],
-      body: tableData,
-      startY: tableStartY,
-      theme: 'grid',
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [79, 70, 229] }
-    });
-
-    doc.save(`Rekap_Kehadiran_${fileSuffix}_${format(new Date(), 'yyyyMMdd_HHmm')}.pdf`);
-    toast.success('Laporan PDF berhasil diunduh');
-  }, []);
+      doc.save(`Rekap_Kehadiran_${fileSuffix}_${format(new Date(), 'yyyyMMdd_HHmm')}.pdf`);
+      toast.success('Laporan PDF berhasil diunduh');
+    },
+    []
+  );
 
   const fetchAllReportsForSession = useCallback(async (sid: string) => {
     const limit = 500;
@@ -303,13 +362,24 @@ export default function Reports() {
     if (sessionId === 'ALL') return undefined;
     const s = sessions.find((x) => x.id === sessionId);
     if (!s) return undefined;
-    const labels = (s.session_classes ?? []).map((x: any) => formatClassLabel(x?.class)).filter(Boolean);
-    const classesLabel = labels.length ? labels.join(', ') : s.class ? formatClassLabel(s.class) : 'Umum';
+    const labels = (s.session_classes ?? []).flatMap((x: any) => {
+      const result = formatClassLabel(x?.class);
+      return result ? [result] : [];
+    });
+    const classesLabel = labels.length
+      ? labels.join(', ')
+      : s.class
+        ? formatClassLabel(s.class)
+        : 'Umum';
     return { sessionId, sessionTitle: s.title, classesLabel };
   }, [sessionId, sessions]);
 
   const handleExportExcel = useCallback(async () => {
-    const sanitize = (s: string) => s.replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '').slice(0, 40) || 'Sesi';
+    const sanitize = (s: string) =>
+      s
+        .replace(/[^a-z0-9]+/gi, '_')
+        .replace(/^_+|_+$/g, '')
+        .slice(0, 40) || 'Sesi';
     try {
       setExporting('excel');
       const meta = sessionExportMeta();
@@ -328,10 +398,22 @@ export default function Reports() {
     } finally {
       setExporting('none');
     }
-  }, [exportExcelMatrix, fetchAllReportsForSession, filteredReports, sessionExportMeta, sessionId, sessions, statusFilter]);
+  }, [
+    exportExcelMatrix,
+    fetchAllReportsForSession,
+    filteredReports,
+    sessionExportMeta,
+    sessionId,
+    sessions,
+    statusFilter,
+  ]);
 
   const handleExportPDF = useCallback(async () => {
-    const sanitize = (s: string) => s.replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '').slice(0, 40) || 'Sesi';
+    const sanitize = (s: string) =>
+      s
+        .replace(/[^a-z0-9]+/gi, '_')
+        .replace(/^_+|_+$/g, '')
+        .slice(0, 40) || 'Sesi';
     try {
       setExporting('pdf');
       const meta = sessionExportMeta();
@@ -350,7 +432,15 @@ export default function Reports() {
     } finally {
       setExporting('none');
     }
-  }, [exportPdfList, fetchAllReportsForSession, filteredReports, sessionExportMeta, sessionId, sessions, statusFilter]);
+  }, [
+    exportPdfList,
+    fetchAllReportsForSession,
+    filteredReports,
+    sessionExportMeta,
+    sessionId,
+    sessions,
+    statusFilter,
+  ]);
 
   const handleOpenOverride = (report: Report) => {
     setSelectedReport(report);
@@ -369,13 +459,13 @@ export default function Reports() {
         session_id: selectedReport.session_id,
         user_id: selectedReport.user_id,
         status: overrideStatus,
-        notes: overrideNotes
+        notes: overrideNotes,
       });
-      
+
       toast.success('Status kehadiran berhasil diubah');
       setIsOverrideConfirmOpen(false);
       setIsOverrideModalOpen(false);
-      
+
       // Refresh reports
       mutate();
     } catch (error: unknown) {
@@ -390,7 +480,7 @@ export default function Reports() {
       title="Rekap Kehadiran"
       description="Filter data lalu export ke Excel atau PDF."
       variant="plain"
-      icon={<FileText className="h-5 w-5" />}
+      icon={<FileText className="size-5" />}
       actions={
         <>
           <Button
@@ -399,7 +489,7 @@ export default function Reports() {
             className="bg-emerald-600 text-white hover:bg-emerald-700"
             aria-busy={exporting === 'excel'}
           >
-            <Download className="mr-2 h-4 w-4" aria-hidden="true" />
+            <Download className="mr-2 size-4" aria-hidden="true" />
             {exporting === 'excel' ? 'Menyiapkan Excel…' : 'Export Excel'}
           </Button>
           <Button
@@ -408,7 +498,7 @@ export default function Reports() {
             variant="destructive"
             aria-busy={exporting === 'pdf'}
           >
-            <FileText className="mr-2 h-4 w-4" aria-hidden="true" />
+            <FileText className="mr-2 size-4" aria-hidden="true" />
             {exporting === 'pdf' ? 'Menyiapkan PDF…' : 'Export PDF'}
           </Button>
         </>
@@ -417,347 +507,432 @@ export default function Reports() {
       {isError ? (
         <ErrorWithRetry title="Gagal memuat rekap" error={swr.error} onRetry={retry} />
       ) : (
-      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-card dark:shadow-none dark:ring-1 dark:ring-white/10">
-        <div className="shrink-0 border-b border-border p-5">
-          <button
-            type="button"
-            className="mb-3 flex min-h-11 w-full items-center justify-between rounded-xl border border-border bg-muted px-4 py-3 text-sm font-semibold text-foreground md:hidden"
-            aria-expanded={filtersOpen}
-            onClick={() => setFiltersOpen((v) => !v)}
-          >
-            Filter &amp; pencarian
-            <ChevronDown className={`h-5 w-5 transition-transform ${filtersOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
-          </button>
-        <FadeIn className={`flex flex-col gap-4 sm:flex-row sm:items-end ${filtersOpen ? 'flex' : 'hidden md:flex'}`}>
-          <div className="relative min-w-0 flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <Input 
-              type="text" 
-              placeholder="Cari nama, NIM, atau sesi..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9"
-              aria-describedby="reports-search-hint"
-            />
+        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-card dark:shadow-none dark:ring-1 dark:ring-white/10">
+          <div className="shrink-0 border-b border-border p-5">
+            <button
+              type="button"
+              className="mb-3 flex min-h-11 w-full items-center justify-between rounded-xl border border-border bg-muted px-4 py-3 text-sm font-semibold text-foreground md:hidden"
+              aria-expanded={filtersOpen}
+              onClick={() => setFiltersOpen((v) => !v)}
+            >
+              Filter &amp; pencarian
+              <ChevronDown
+                className={`h-5 w-5 transition-transform ${filtersOpen ? 'rotate-180' : ''}`}
+                aria-hidden="true"
+              />
+            </button>
+            <FadeIn
+              className={`flex flex-col gap-4 sm:flex-row sm:items-end ${filtersOpen ? 'flex' : 'hidden md:flex'}`}
+            >
+              <div className="relative min-w-0 flex-1">
+                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                <Input
+                  type="text"
+                  placeholder="Cari nama, NIM, atau sesi..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9"
+                  aria-describedby="reports-search-hint"
+                />
+              </div>
+              <div className="flex w-full items-center gap-2 sm:w-auto">
+                <DatePicker
+                  value={startDate}
+                  onChange={setStartDate}
+                  placeholder="Dari tanggal"
+                  className="w-full sm:w-[160px]"
+                />
+                <span
+                  className="flex h-11 shrink-0 items-center px-0.5 text-muted-foreground"
+                  aria-hidden="true"
+                >
+                  –
+                </span>
+                <DatePicker
+                  value={endDate}
+                  onChange={setEndDate}
+                  placeholder="Sampai tanggal"
+                  className="w-full sm:w-[160px]"
+                />
+              </div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue placeholder="Semua Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">Semua Status</SelectItem>
+                  <SelectItem value="PRESENT">Hadir</SelectItem>
+                  <SelectItem value="LATE">Terlambat</SelectItem>
+                  <SelectItem value="SICK">Sakit</SelectItem>
+                  <SelectItem value="EXCUSED">Izin</SelectItem>
+                  <SelectItem value="ABSENT">Tidak Hadir</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={sessionId} onValueChange={setSessionId}>
+                <SelectTrigger className="w-full sm:w-[260px]">
+                  <SelectValue placeholder="Semua Sesi" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">Semua Sesi</SelectItem>
+                  {sessions.map((s) => {
+                    const labels = (s.session_classes ?? []).flatMap((x: any) => {
+                      const result = formatClassLabel(x?.class);
+                      return result ? [result] : [];
+                    });
+                    const classesLabel = labels.length
+                      ? labels.join(', ')
+                      : s.class
+                        ? formatClassLabel(s.class)
+                        : 'Umum';
+                    return (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.title} ({classesLabel}) - {safeFormat(s.session_start, 'dd MMM')}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </FadeIn>
+            <p id="reports-search-hint" className="mt-3 text-xs text-muted-foreground">
+              Pencarian memfilter data di halaman ini ({filteredReports.length} baris).
+            </p>
           </div>
-          <div className="flex w-full items-center gap-2 sm:w-auto">
-            <DatePicker
-              value={startDate}
-              onChange={setStartDate}
-              placeholder="Dari tanggal"
-              className="w-full sm:w-[160px]"
-            />
-            <span className="flex h-11 shrink-0 items-center px-0.5 text-muted-foreground" aria-hidden="true">
-              –
-            </span>
-            <DatePicker
-              value={endDate}
-              onChange={setEndDate}
-              placeholder="Sampai tanggal"
-              className="w-full sm:w-[160px]"
-            />
-          </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-full sm:w-[180px]">
-              <SelectValue placeholder="Semua Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">Semua Status</SelectItem>
-              <SelectItem value="PRESENT">Hadir</SelectItem>
-              <SelectItem value="LATE">Terlambat</SelectItem>
-              <SelectItem value="SICK">Sakit</SelectItem>
-              <SelectItem value="EXCUSED">Izin</SelectItem>
-              <SelectItem value="ABSENT">Tidak Hadir</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={sessionId} onValueChange={setSessionId}>
-            <SelectTrigger className="w-full sm:w-[260px]">
-              <SelectValue placeholder="Semua Sesi" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">Semua Sesi</SelectItem>
-              {sessions.map((s) => {
-                const labels = (s.session_classes ?? []).map((x: any) => formatClassLabel(x?.class)).filter(Boolean);
-                const classesLabel = labels.length ? labels.join(', ') : s.class ? formatClassLabel(s.class) : 'Umum';
-                return (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.title} ({classesLabel}) - {safeFormat(s.session_start, 'dd MMM')}
-                  </SelectItem>
-                );
-              })}
-            </SelectContent>
-          </Select>
-        </FadeIn>
-        <p id="reports-search-hint" className="mt-3 text-xs text-muted-foreground">
-          Pencarian memfilter data di halaman ini ({filteredReports.length} baris).
-        </p>
-        </div>
 
-        <ul className="space-y-3 p-5 md:hidden" aria-label="Daftar laporan kehadiran">
-          {showSlowLoadingHint ? (
-            <li>
-              <SlowLoadingHint onRetry={retry} />
-            </li>
-          ) : null}
-          {loading ? (
-            <li>
-              <CardSkeletonList count={4} />
-            </li>
-          ) : filteredReports.length === 0 ? (
-            <li>
-              <AdminEmptyState compact icon={FileText} hasFilters={hasFilters} />
-            </li>
-          ) : (
-            filteredReports.map((report: Report, idx) => (
-              <li key={report.id ?? idx} className="space-y-3 rounded-2xl border border-border p-5">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="font-bold text-foreground">{report.user_name}</p>
-                    <p className="text-sm text-muted-foreground">{report.nim_nip}</p>
-                  </div>
-                  <Badge variant={attendanceBadgeVariant(report.status)} className="shrink-0 gap-1">
-                    {report.status === 'PRESENT' && <CheckCircle2 className="h-3 w-3" />}
-                    {report.status === 'LATE' && <Clock className="h-3 w-3" />}
-                    {(report.status === 'SICK' || report.status === 'EXCUSED') && <FileText className="h-3 w-3" />}
-                    {report.status === 'ABSENT' && <XCircle className="h-3 w-3" />}
-                    {attendanceStatusLabel(report.status)}
-                  </Badge>
-                </div>
-                <p className="text-xs font-medium text-muted-foreground">Kelas: {reportClassLabel(report)}</p>
-                <p className="text-sm font-medium text-brand">{report.session_title}</p>
-                <p className="text-xs text-muted-foreground">
-                  {safeFormat(report.session_date, 'dd MMM yyyy')} · {safeFormat(report.check_in_time, 'HH:mm:ss')}
-                </p>
-                <div className="flex items-start gap-3">
-                  {report.photo_url ? (
-                    <a href={report.photo_url} target="_blank" rel="noreferrer" className="shrink-0 hover:opacity-80">
-                      <img
-                        src={report.photo_url}
-                        alt="Bukti hadir"
-                        className="h-12 w-12 rounded-md border border-border object-cover"
-                      />
-                    </a>
-                  ) : (
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-muted text-xs text-muted-foreground">
-                      —
-                    </div>
-                  )}
-                  <div className="min-w-0 flex-1 space-y-1 text-xs text-muted-foreground">
-                    <div className="flex items-center gap-1.5">
-                      <MapPin size={12} className="shrink-0" aria-hidden="true" />
-                      <span className="font-mono">IP: {report.ip || '—'}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <Smartphone size={12} className="shrink-0" aria-hidden="true" />
-                      <span className="truncate" title={report.device || undefined}>{report.device || '—'}</span>
-                    </div>
-                  </div>
-                </div>
-                {user?.role !== 'USER' ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="min-h-11 w-full"
-                    onClick={() => report?.id && handleOpenOverride(report)}
-                  >
-                    <Edit3 className="mr-2 h-4 w-4" aria-hidden="true" />
-                    Override status
-                  </Button>
-                ) : null}
+          <ul className="space-y-3 p-5 md:hidden" aria-label="Daftar laporan kehadiran">
+            {showSlowLoadingHint ? (
+              <li>
+                <SlowLoadingHint onRetry={retry} />
               </li>
-            ))
-          )}
-        </ul>
-
-        <div className="hidden overflow-x-auto md:block">
-          {showSlowLoadingHint ? (
-            <div className="border-b border-border p-4">
-              <SlowLoadingHint onRetry={retry} />
-            </div>
-          ) : null}
-          <Table className="min-w-[800px]">
-            <TableHeader className="sticky top-0 z-10 bg-muted/50 [&_tr]:border-b">
-              <TableRow>
-                <TableHead>Peserta</TableHead>
-                <TableHead>Sesi / Kelas</TableHead>
-                <TableHead>Waktu Check-in</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Foto Bukti</TableHead>
-                <TableHead>Info Device/IP</TableHead>
-                {user?.role !== 'USER' && <TableHead className="text-right">Aksi</TableHead>}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                Array.from({ length: 10 }).map((_, idx) => (
-                  <TableRow key={idx}>
-                    <TableCell>
-                      <Skeleton className="h-5 w-32 mb-2" />
-                      <Skeleton className="h-4 w-24" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-5 w-40 mb-1" />
-                      <Skeleton className="h-3 w-20 mb-2" />
-                      <Skeleton className="h-4 w-32" />
-                    </TableCell>
-                    <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                    <TableCell><Skeleton className="h-6 w-24 rounded-full" /></TableCell>
-                    <TableCell>
-                      <Skeleton className="h-4 w-32 mb-1" />
-                      <Skeleton className="h-4 w-24" />
-                    </TableCell>
-                    {user?.role !== 'USER' && (
-                      <TableCell className="text-right">
-                        <Skeleton className="h-8 w-20 ml-auto rounded-md" />
-                      </TableCell>
-                    )}
-                  </TableRow>
-                ))
-              ) : filteredReports.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={user?.role !== 'USER' ? 7 : 6} className="p-0">
-                    <AdminEmptyState compact icon={FileText} hasFilters={hasFilters} className="border-0 shadow-none" />
-                  </TableCell>
-                </TableRow>
-              ) : (
-                (filteredReports ?? [])
-                  .filter((r): r is Report => Boolean(r && (r as any).id))
-                  .map((report: any, idx: number) => (
-                  <TableRow key={String(report?.id ?? idx)}>
-                    <TableCell>
-                      <div className="font-medium text-foreground">{String(report?.user_name ?? '-')}</div>
-                      <div className="text-sm text-muted-foreground">{String(report?.nim_nip ?? '-') || '-'}</div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="font-medium text-slate-800 dark:text-zinc-200">{String(report?.session_title ?? '-')}</div>
-                      {report?.class_name && <div className="text-xs font-semibold text-brand text-brand mt-0.5">{typeof report.class_name === 'object' && report.class_name !== null ? ((report.class_name as any).name || (report.class_name as any).id) : report.class_name}</div>}
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {safeFormat(report.session_date, 'dd MMMM yyyy')}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground dark:text-zinc-300 font-medium">
-                      {safeFormat(report.check_in_time, 'HH:mm:ss')}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={attendanceBadgeVariant(report.status)} className="gap-1">
-                        {report.status === 'PRESENT' && <CheckCircle2 className="w-3 h-3 mr-1" />}
-                        {report.status === 'LATE' && <Clock className="w-3 h-3 mr-1" />}
-                        {(report.status === 'SICK' || report.status === 'EXCUSED') && <FileText className="w-3 h-3 mr-1" />}
-                        {report.status === 'ABSENT' && <XCircle className="w-3 h-3 mr-1" />}
-                        {attendanceStatusLabel(report.status)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {report.photo_url ? (
-                        <a href={report.photo_url} target="_blank" rel="noreferrer" className="inline-block hover:opacity-80 transition-opacity">
-                          <img src={report.photo_url} alt="Bukti Hadir" className="w-10 h-10 object-cover rounded-md shadow-sm border border-border" />
-                        </a>
-                      ) : (
-                        <div className="w-10 h-10 bg-muted rounded-md flex items-center justify-center text-xs text-slate-400 text-muted-foreground">
-                          -
-                        </div>
+            ) : null}
+            {loading ? (
+              <li>
+                <CardSkeletonList count={4} />
+              </li>
+            ) : filteredReports.length === 0 ? (
+              <li>
+                <AdminEmptyState compact icon={FileText} hasFilters={hasFilters} />
+              </li>
+            ) : (
+              filteredReports.map((report: Report, idx) => (
+                <li
+                  key={report.id ?? idx}
+                  className="space-y-3 rounded-2xl border border-border p-5"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-bold text-foreground">{report.user_name}</p>
+                      <p className="text-sm text-muted-foreground">{report.nim_nip}</p>
+                    </div>
+                    <Badge
+                      variant={attendanceBadgeVariant(report.status)}
+                      className="shrink-0 gap-1"
+                    >
+                      {report.status === 'PRESENT' && <CheckCircle2 className="size-3" />}
+                      {report.status === 'LATE' && <Clock className="size-3" />}
+                      {(report.status === 'SICK' || report.status === 'EXCUSED') && (
+                        <FileText className="size-3" />
                       )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-xs text-muted-foreground font-mono mb-1">
-                        IP: {report.ip || '-'}
+                      {report.status === 'ABSENT' && <XCircle className="size-3" />}
+                      {attendanceStatusLabel(report.status)}
+                    </Badge>
+                  </div>
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Kelas: {reportClassLabel(report)}
+                  </p>
+                  <p className="text-sm font-medium text-brand">{report.session_title}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {safeFormat(report.session_date, 'dd MMM yyyy')} ·{' '}
+                    {safeFormat(report.check_in_time, 'HH:mm:ss')}
+                  </p>
+                  <div className="flex items-start gap-3">
+                    {report.photo_url ? (
+                      <a
+                        href={report.photo_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="shrink-0 hover:opacity-80"
+                      >
+                        <img
+                          src={report.photo_url}
+                          alt="Bukti hadir"
+                          className="size-12 rounded-md border border-border object-cover"
+                        />
+                      </a>
+                    ) : (
+                      <div className="flex size-12 shrink-0 items-center justify-center rounded-md bg-muted text-xs text-muted-foreground">
+                        —
                       </div>
-                      <div className="text-xs text-slate-400 text-muted-foreground max-w-[150px] truncate" title={report.device || '-'}>
-                        {report.device || '-'}
-                      </div>
-                    </TableCell>
-                    {user?.role !== 'USER' && (
-                      <TableCell className="text-right">
-                        <Button 
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => report?.id && handleOpenOverride(report)}
-                          className="text-muted-foreground hover:text-brand hover:bg-indigo-50 dark:text-slate-400 dark:hover:bg-indigo-900/30"
-                          title="Override Status"
-                        >
-                          <Edit3 className="w-4 h-4" />
-                        </Button>
-                      </TableCell>
                     )}
+                    <div className="min-w-0 flex-1 space-y-1 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1.5">
+                        <MapPin size={12} className="shrink-0" aria-hidden="true" />
+                        <span className="font-mono">IP: {report.ip || '—'}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Smartphone size={12} className="shrink-0" aria-hidden="true" />
+                        <span className="truncate" title={report.device || undefined}>
+                          {report.device || '—'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  {user?.role !== 'USER' ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="min-h-11 w-full"
+                      onClick={() => report?.id && handleOpenOverride(report)}
+                    >
+                      <Edit3 className="mr-2 size-4" aria-hidden="true" />
+                      Override status
+                    </Button>
+                  ) : null}
+                </li>
+              ))
+            )}
+          </ul>
+
+          <div className="hidden overflow-x-auto md:block">
+            {showSlowLoadingHint ? (
+              <div className="border-b border-border p-4">
+                <SlowLoadingHint onRetry={retry} />
+              </div>
+            ) : null}
+            <Table className="min-w-[800px]">
+              <TableHeader className="sticky top-0 z-10 bg-muted/50 [&_tr]:border-b">
+                <TableRow>
+                  <TableHead>Peserta</TableHead>
+                  <TableHead>Sesi / Kelas</TableHead>
+                  <TableHead>Waktu Check-in</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Foto Bukti</TableHead>
+                  <TableHead>Info Device/IP</TableHead>
+                  {user?.role !== 'USER' && <TableHead className="text-right">Aksi</TableHead>}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  Array.from({ length: 10 }).map((_, idx) => (
+                    <TableRow key={idx}>
+                      <TableCell>
+                        <Skeleton className="h-5 w-32 mb-2" />
+                        <Skeleton className="h-4 w-24" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-5 w-40 mb-1" />
+                        <Skeleton className="h-3 w-20 mb-2" />
+                        <Skeleton className="h-4 w-32" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-5 w-24" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-6 w-24 rounded-full" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-32 mb-1" />
+                        <Skeleton className="h-4 w-24" />
+                      </TableCell>
+                      {user?.role !== 'USER' && (
+                        <TableCell className="text-right">
+                          <Skeleton className="h-8 w-20 ml-auto rounded-md" />
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  ))
+                ) : filteredReports.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={user?.role !== 'USER' ? 7 : 6} className="p-0">
+                      <AdminEmptyState
+                        compact
+                        icon={FileText}
+                        hasFilters={hasFilters}
+                        className="border-0 shadow-none"
+                      />
+                    </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ) : (
+                  (filteredReports ?? [])
+                    .filter((r): r is Report => Boolean(r && (r as any).id))
+                    .map((report: any, idx: number) => (
+                      <TableRow key={String(report?.id ?? idx)}>
+                        <TableCell>
+                          <div className="font-medium text-foreground">
+                            {String(report?.user_name ?? '-')}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {String(report?.nim_nip ?? '-') || '-'}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="font-medium text-slate-800 dark:text-zinc-200">
+                            {String(report?.session_title ?? '-')}
+                          </div>
+                          {report?.class_name && (
+                            <div className="text-xs font-semibold text-brand text-brand mt-0.5">
+                              {typeof report.class_name === 'object' && report.class_name !== null
+                                ? (report.class_name as any).name || (report.class_name as any).id
+                                : report.class_name}
+                            </div>
+                          )}
+                          <div className="text-xs text-muted-foreground mt-1">
+                            {safeFormat(report.session_date, 'dd MMMM yyyy')}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground dark:text-zinc-300 font-medium">
+                          {safeFormat(report.check_in_time, 'HH:mm:ss')}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={attendanceBadgeVariant(report.status)} className="gap-1">
+                            {report.status === 'PRESENT' && (
+                              <CheckCircle2 className="size-3 mr-1" />
+                            )}
+                            {report.status === 'LATE' && <Clock className="size-3 mr-1" />}
+                            {(report.status === 'SICK' || report.status === 'EXCUSED') && (
+                              <FileText className="size-3 mr-1" />
+                            )}
+                            {report.status === 'ABSENT' && <XCircle className="size-3 mr-1" />}
+                            {attendanceStatusLabel(report.status)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {report.photo_url ? (
+                            <a
+                              href={report.photo_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-block hover:opacity-80 transition-opacity"
+                            >
+                              <img
+                                src={report.photo_url}
+                                alt="Bukti Hadir"
+                                className="size-10 object-cover rounded-md shadow-sm border border-border"
+                              />
+                            </a>
+                          ) : (
+                            <div className="size-10 bg-muted rounded-md flex items-center justify-center text-xs text-slate-400 text-muted-foreground">
+                              -
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-xs text-muted-foreground font-mono mb-1">
+                            IP: {report.ip || '-'}
+                          </div>
+                          <div
+                            className="text-xs text-slate-400 text-muted-foreground max-w-[150px] truncate"
+                            title={report.device || '-'}
+                          >
+                            {report.device || '-'}
+                          </div>
+                        </TableCell>
+                        {user?.role !== 'USER' && (
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => report?.id && handleOpenOverride(report)}
+                              className="text-muted-foreground hover:text-brand hover:bg-indigo-50 dark:text-slate-400 dark:hover:bg-indigo-900/30"
+                              title="Override Status"
+                            >
+                              <Edit3 className="size-4" />
+                            </Button>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+
+          {meta ? <TablePagination meta={meta} onPageChange={setPage} itemLabel="laporan" /> : null}
         </div>
-        
-        {meta ? (
-          <TablePagination meta={meta} onPageChange={setPage} itemLabel="laporan" />
-        ) : null}
-      </div>
       )}
 
       {/* Override Modal */}
-      <Dialog open={Boolean(isOverrideModalOpen && selectedReport)} onOpenChange={setIsOverrideModalOpen}>
+      <Dialog
+        open={Boolean(isOverrideModalOpen && selectedReport)}
+        onOpenChange={setIsOverrideModalOpen}
+      >
         <DialogContent className="max-w-md p-0">
           <div className="border-b border-border px-6 py-4 border-border">
             <DialogHeader>
-              <DialogTitle className="text-xl font-bold text-foreground">Ubah Status Manual</DialogTitle>
+              <DialogTitle className="text-xl font-bold text-foreground">
+                Ubah Status Manual
+              </DialogTitle>
               <DialogDescription className="sr-only">Override status kehadiran</DialogDescription>
             </DialogHeader>
           </div>
 
           <form onSubmit={handleOverrideSubmit} className="p-6">
-                {selectedReport && (
-                  <div className="mb-4 ...">
-                    <p><strong>Nama:</strong> {selectedReport.user_name}</p>
-                    <p><strong>Sesi:</strong> {selectedReport.session_title}</p>
-                    <p><strong>Waktu:</strong> {safeFormat(selectedReport.check_in_time, 'dd MMM yyyy HH:mm:ss')}</p>
-                  </div>
-                )}
-
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Status Baru</Label>
-                  <Select value={overrideStatus} onValueChange={setOverrideStatus}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Pilih Status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="PRESENT">Hadir (PRESENT)</SelectItem>
-                      <SelectItem value="LATE">Terlambat (LATE)</SelectItem>
-                      <SelectItem value="SICK">Sakit (SICK)</SelectItem>
-                      <SelectItem value="EXCUSED">Izin (EXCUSED)</SelectItem>
-                      <SelectItem value="ABSENT">Alfa (ABSENT)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Catatan / Alasan (Opsional)</Label>
-                  <Textarea 
-                    rows={3} 
-                    value={overrideNotes} 
-                    onChange={e => setOverrideNotes(e.target.value)}
-                    placeholder="Contoh: Dispensasi alat rusak"
-                  />
-                </div>
+            {selectedReport && (
+              <div className="mb-4 ...">
+                <p>
+                  <strong>Nama:</strong> {selectedReport.user_name}
+                </p>
+                <p>
+                  <strong>Sesi:</strong> {selectedReport.session_title}
+                </p>
+                <p>
+                  <strong>Waktu:</strong>{' '}
+                  {safeFormat(selectedReport.check_in_time, 'dd MMM yyyy HH:mm:ss')}
+                </p>
               </div>
-              
-              <DialogFooter className="mt-8">
-                <Button type="button" variant="outline" onClick={() => setIsOverrideModalOpen(false)} disabled={overrideSubmitting}>
-                  Batal
-                </Button>
-                <Button
-                  type="button"
-                  disabled={overrideSubmitting}
-                  onClick={() => setIsOverrideConfirmOpen(true)}
-                >
-                  {overrideSubmitting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
-                      Menyimpan…
-                    </>
-                  ) : (
-                    'Simpan Status'
-                  )}
-                </Button>
-              </DialogFooter>
+            )}
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Status Baru</Label>
+                <Select value={overrideStatus} onValueChange={setOverrideStatus}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Pilih Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="PRESENT">Hadir (PRESENT)</SelectItem>
+                    <SelectItem value="LATE">Terlambat (LATE)</SelectItem>
+                    <SelectItem value="SICK">Sakit (SICK)</SelectItem>
+                    <SelectItem value="EXCUSED">Izin (EXCUSED)</SelectItem>
+                    <SelectItem value="ABSENT">Alfa (ABSENT)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Catatan / Alasan (Opsional)</Label>
+                <Textarea
+                  rows={3}
+                  value={overrideNotes}
+                  onChange={(e) => setOverrideNotes(e.target.value)}
+                  placeholder="Contoh: Dispensasi alat rusak"
+                />
+              </div>
+            </div>
+
+            <DialogFooter className="mt-8">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsOverrideModalOpen(false)}
+                disabled={overrideSubmitting}
+              >
+                Batal
+              </Button>
+              <Button
+                type="button"
+                disabled={overrideSubmitting}
+                onClick={() => setIsOverrideConfirmOpen(true)}
+              >
+                {overrideSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 size-4 animate-spin" aria-hidden="true" />
+                    Menyimpan…
+                  </>
+                ) : (
+                  'Simpan Status'
+                )}
+              </Button>
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>

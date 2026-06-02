@@ -6,7 +6,7 @@ const STORAGE_KEY = 'attend-privacy-dismissed';
 
 export function AttendPrivacyBanner() {
   const [visible, setVisible] = useState(
-    () => typeof sessionStorage !== 'undefined' && sessionStorage.getItem(STORAGE_KEY) !== '1',
+    () => typeof sessionStorage !== 'undefined' && sessionStorage.getItem(STORAGE_KEY) !== '1'
   );
 
   if (!visible) return null;
@@ -17,7 +17,7 @@ export function AttendPrivacyBanner() {
       role="note"
       aria-label="Informasi privasi absensi"
     >
-      <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-brand" aria-hidden="true" />
+      <ShieldAlert className="mt-0.5 size-5 shrink-0 text-brand" aria-hidden="true" />
       <div className="min-w-0 flex-1 text-sm text-muted-foreground">
         Kami mencatat lokasi GPS, foto bukti, dan identitas perangkat untuk verifikasi kehadiran.
       </div>
@@ -25,14 +25,14 @@ export function AttendPrivacyBanner() {
         type="button"
         variant="ghost"
         size="icon"
-        className="h-8 w-8 shrink-0"
+        className="size-8 shrink-0"
         aria-label="Tutup"
         onClick={() => {
           sessionStorage.setItem(STORAGE_KEY, '1');
           setVisible(false);
         }}
       >
-        <X className="h-4 w-4" />
+        <X className="size-4" />
       </Button>
     </div>
   );

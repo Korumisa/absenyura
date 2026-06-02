@@ -1,6 +1,6 @@
-import { AnimatePresence, motion } from 'framer-motion';
-import { fadeTransition } from '@/lib/motionPresets';
-import { useReducedMotion } from '@/lib/useReducedMotion';
+import { AnimatePresence, m } from 'framer-motion';
+import { fadeTransition } from '@/lib/perf/motionPresets';
+import { useReducedMotion } from '@/lib/a11y/useReducedMotion';
 
 /** [IxD] R1 — transisi halus antar tab/mode di halaman admin */
 export function AdminContentTransition({
@@ -20,7 +20,7 @@ export function AdminContentTransition({
 
   return (
     <AnimatePresence mode="wait">
-      <motion.div
+      <m.div
         key={contentKey}
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
@@ -29,7 +29,7 @@ export function AdminContentTransition({
         className={className}
       >
         {children}
-      </motion.div>
+      </m.div>
     </AnimatePresence>
   );
 }

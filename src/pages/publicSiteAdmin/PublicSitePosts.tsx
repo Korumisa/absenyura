@@ -7,12 +7,25 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ConfirmModal } from '@/components/ConfirmModal';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import type { PublicCategory, PublicPost, PublicPostType } from '@/types/publicSite';
-import { getErrorMessage } from '@/lib/errorMessage';
-import { prepareImageForUpload } from '@/lib/imageUpload';
+import { getErrorMessage } from '@/lib/http/errorMessage';
+import { prepareImageForUpload } from '@/lib/media/imageUpload';
 import AdminPageShell from '@/components/AdminPageShell';
 import AdminCard from '@/components/AdminCard';
 import { Newspaper } from 'lucide-react';
@@ -39,12 +52,22 @@ const CONTENT_TABS: readonly CmsTabItem<ContentTab>[] = [
 
 export default function PublicSitePosts() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
-  const { data: categories = [], mutate: mutateCategories } = useSWR<PublicCategory[]>('/public-site/admin/categories', fetcher, { revalidateOnFocus: false });
+  const { data: categories = [], mutate: mutateCategories } = useSWR<PublicCategory[]>(
+    '/public-site/admin/categories',
+    fetcher,
+    { revalidateOnFocus: false }
+  );
   const [postType, setPostType] = useState<PublicPostType>('BERITA');
   const [contentTab, setContentTab] = useState<ContentTab>('list');
-  const { data: posts = [], mutate: mutatePosts } = useSWR<PublicPost[]>(`/public-site/admin/posts?type=${postType}`, fetcher, { revalidateOnFocus: false });
+  const { data: posts = [], mutate: mutatePosts } = useSWR<PublicPost[]>(
+    `/public-site/admin/posts?type=${postType}`,
+    fetcher,
+    { revalidateOnFocus: false }
+  );
 
-  const [categoryForm, setCategoryForm] = useState<{ id?: string; name?: string; slug?: string }>({});
+  const [categoryForm, setCategoryForm] = useState<{ id?: string; name?: string; slug?: string }>(
+    {}
+  );
   const [postForm, setPostForm] = useState<{
     id?: string;
     type?: PublicPostType;
@@ -73,10 +96,16 @@ export default function PublicSitePosts() {
   }, [postType]);
 
   const uploadImage = async (file: File) => {
-    const prepared = await prepareImageForUpload(file, { maxBytes: 4 * 1024 * 1024, maxWidth: 1920, quality: 0.82 });
+    const prepared = await prepareImageForUpload(file, {
+      maxBytes: 4 * 1024 * 1024,
+      maxWidth: 1920,
+      quality: 0.82,
+    });
     const form = new FormData();
     form.append('file', prepared);
-    const res = await api.post('/public-site/admin/upload', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+    const res = await api.post('/public-site/admin/upload', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
     return res.data.data.url as string;
   };
 
@@ -98,8 +127,10 @@ export default function PublicSitePosts() {
   const confirmDelete = async () => {
     if (!deleteTarget) return;
     try {
-      if (deleteTarget.kind === 'categories') await api.delete(`/public-site/admin/categories/${deleteTarget.id}`);
-      if (deleteTarget.kind === 'posts') await api.delete(`/public-site/admin/posts/${deleteTarget.id}`);
+      if (deleteTarget.kind === 'categories')
+        await api.delete(`/public-site/admin/categories/${deleteTarget.id}`);
+      if (deleteTarget.kind === 'posts')
+        await api.delete(`/public-site/admin/posts/${deleteTarget.id}`);
       toast.success('Berhasil dihapus');
       setIsDeleteOpen(false);
       setDeleteTarget(null);
@@ -114,10 +145,16 @@ export default function PublicSitePosts() {
     e.preventDefault();
     try {
       if (categoryForm.id) {
-        await api.put(`/public-site/admin/categories/${categoryForm.id}`, { name: categoryForm.name, slug: categoryForm.slug });
+        await api.put(`/public-site/admin/categories/${categoryForm.id}`, {
+          name: categoryForm.name,
+          slug: categoryForm.slug,
+        });
         toast.success('Kategori diperbarui');
       } else {
-        await api.post('/public-site/admin/categories', { name: categoryForm.name, slug: categoryForm.slug });
+        await api.post('/public-site/admin/categories', {
+          name: categoryForm.name,
+          slug: categoryForm.slug,
+        });
         toast.success('Kategori ditambahkan');
       }
       resetCategoryForm();
@@ -223,19 +260,34 @@ export default function PublicSitePosts() {
             }
           >
             {postType === 'BERITA' || postType === 'KEGIATAN' ? (
-              <CmsCollapsibleSection title="Kelola kategori" description="Opsional — untuk pengelompokan di halaman publik.">
+              <CmsCollapsibleSection
+                title="Kelola kategori"
+                description="Opsional — untuk pengelompokan di halaman publik."
+              >
                 <form onSubmit={upsertCategory} className="grid max-w-xl gap-4">
                   <div className="space-y-2">
                     <Label>Nama</Label>
-                    <Input value={categoryForm.name ?? ''} onChange={(e) => setCategoryForm((p) => ({ ...p, name: e.target.value }))} />
+                    <Input
+                      value={categoryForm.name ?? ''}
+                      onChange={(e) => setCategoryForm((p) => ({ ...p, name: e.target.value }))}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>Slug (opsional)</Label>
-                    <Input value={categoryForm.slug ?? ''} onChange={(e) => setCategoryForm((p) => ({ ...p, slug: e.target.value }))} placeholder="contoh: prestasi-mahasiswa" />
+                    <Input
+                      value={categoryForm.slug ?? ''}
+                      onChange={(e) => setCategoryForm((p) => ({ ...p, slug: e.target.value }))}
+                      placeholder="contoh: prestasi-mahasiswa"
+                    />
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {categoryForm.id ? (
-                      <Button variant="outline" type="button" className="min-h-11" onClick={resetCategoryForm}>
+                      <Button
+                        variant="outline"
+                        type="button"
+                        className="min-h-11"
+                        onClick={resetCategoryForm}
+                      >
                         Batal
                       </Button>
                     ) : null}
@@ -247,16 +299,32 @@ export default function PublicSitePosts() {
                 {categories.length > 0 ? (
                   <ul className="mt-4 space-y-2 text-sm" aria-label="Daftar kategori">
                     {categories.map((c) => (
-                      <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border px-3 py-2 border-border">
+                      <li
+                        key={c.id}
+                        className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border px-3 py-2 border-border"
+                      >
                         <span>
                           <span className="font-medium text-foreground">{c.name}</span>
                           <span className="text-muted-foreground"> · {c.slug}</span>
                         </span>
                         <span className="flex gap-1">
-                          <Button variant="ghost" size="sm" type="button" onClick={() => setCategoryForm({ id: c.id, name: c.name, slug: c.slug })}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            type="button"
+                            onClick={() =>
+                              setCategoryForm({ id: c.id, name: c.name, slug: c.slug })
+                            }
+                          >
                             Edit
                           </Button>
-                          <Button variant="ghost" size="sm" type="button" className="text-red-600" onClick={() => openDelete('categories', c.id)}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            type="button"
+                            className="text-red-600"
+                            onClick={() => openDelete('categories', c.id)}
+                          >
                             Hapus
                           </Button>
                         </span>
@@ -278,16 +346,26 @@ export default function PublicSitePosts() {
                 </div>
                 <div className="space-y-2">
                   <Label>Judul</Label>
-                  <Input value={postForm.title ?? ''} onChange={(e) => setPostForm((p) => ({ ...p, title: e.target.value }))} />
+                  <Input
+                    value={postForm.title ?? ''}
+                    onChange={(e) => setPostForm((p) => ({ ...p, title: e.target.value }))}
+                  />
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label>Slug (opsional)</Label>
-                    <Input value={postForm.slug ?? ''} onChange={(e) => setPostForm((p) => ({ ...p, slug: e.target.value }))} />
+                    <Input
+                      value={postForm.slug ?? ''}
+                      onChange={(e) => setPostForm((p) => ({ ...p, slug: e.target.value }))}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>Tanggal label</Label>
-                    <Input value={postForm.dateLabel ?? ''} onChange={(e) => setPostForm((p) => ({ ...p, dateLabel: e.target.value }))} placeholder="7 Mei 2026" />
+                    <Input
+                      value={postForm.dateLabel ?? ''}
+                      onChange={(e) => setPostForm((p) => ({ ...p, dateLabel: e.target.value }))}
+                      placeholder="7 Mei 2026"
+                    />
                   </div>
                 </div>
                 {(postType === 'BERITA' || postType === 'KEGIATAN') && (
@@ -295,7 +373,9 @@ export default function PublicSitePosts() {
                     <Label>Kategori konten</Label>
                     <Select
                       value={postForm.categoryId ?? '__none__'}
-                      onValueChange={(v) => setPostForm((p) => ({ ...p, categoryId: v === '__none__' ? undefined : v }))}
+                      onValueChange={(v) =>
+                        setPostForm((p) => ({ ...p, categoryId: v === '__none__' ? undefined : v }))
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Pilih kategori" />
@@ -315,29 +395,51 @@ export default function PublicSitePosts() {
                 )}
                 <div className="space-y-2">
                   <Label>Status singkat (opsional)</Label>
-                  <Input value={postForm.status ?? ''} onChange={(e) => setPostForm((p) => ({ ...p, status: e.target.value }))} placeholder="Buka / Tutup" />
+                  <Input
+                    value={postForm.status ?? ''}
+                    onChange={(e) => setPostForm((p) => ({ ...p, status: e.target.value }))}
+                    placeholder="Buka / Tutup"
+                  />
                 </div>
                 {postType === 'LOMBA' ? (
                   <div className="space-y-2">
                     <Label>Link pendaftaran</Label>
-                    <Input value={postForm.formUrl ?? ''} onChange={(e) => setPostForm((p) => ({ ...p, formUrl: e.target.value }))} placeholder="https://..." />
+                    <Input
+                      value={postForm.formUrl ?? ''}
+                      onChange={(e) => setPostForm((p) => ({ ...p, formUrl: e.target.value }))}
+                      placeholder="https://..."
+                    />
                   </div>
                 ) : null}
                 <div className="space-y-2">
                   <Label>Status publikasi</Label>
-                  <CmsPublishTabs published={postForm.isPublished ?? false} onChange={(v) => setPostForm((p) => ({ ...p, isPublished: v }))} />
+                  <CmsPublishTabs
+                    published={postForm.isPublished ?? false}
+                    onChange={(v) => setPostForm((p) => ({ ...p, isPublished: v }))}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Ringkasan</Label>
-                  <Textarea rows={3} value={postForm.excerpt ?? ''} onChange={(e) => setPostForm((p) => ({ ...p, excerpt: e.target.value }))} />
+                  <Textarea
+                    rows={3}
+                    value={postForm.excerpt ?? ''}
+                    onChange={(e) => setPostForm((p) => ({ ...p, excerpt: e.target.value }))}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Konten</Label>
-                  <Textarea rows={8} value={postForm.content ?? ''} onChange={(e) => setPostForm((p) => ({ ...p, content: e.target.value }))} />
+                  <Textarea
+                    rows={8}
+                    value={postForm.content ?? ''}
+                    onChange={(e) => setPostForm((p) => ({ ...p, content: e.target.value }))}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>URL cover</Label>
-                  <Input value={postForm.coverImageUrl ?? ''} onChange={(e) => setPostForm((p) => ({ ...p, coverImageUrl: e.target.value }))} />
+                  <Input
+                    value={postForm.coverImageUrl ?? ''}
+                    onChange={(e) => setPostForm((p) => ({ ...p, coverImageUrl: e.target.value }))}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Upload cover</Label>
@@ -360,11 +462,21 @@ export default function PublicSitePosts() {
                   />
                 </div>
                 <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-                  <Button type="button" variant="outline" className="min-h-11" onClick={() => setContentTab('list')}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="min-h-11"
+                    onClick={() => setContentTab('list')}
+                  >
                     Kembali ke daftar
                   </Button>
                   {postForm.id ? (
-                    <Button type="button" variant="ghost" className="min-h-11" onClick={resetPostForm}>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="min-h-11"
+                      onClick={resetPostForm}
+                    >
                       Reset form
                     </Button>
                   ) : null}
@@ -378,7 +490,10 @@ export default function PublicSitePosts() {
         </AdminContentTransition>
       ) : (
         <AdminContentTransition contentKey={`list-${postType}`}>
-          <AdminCard title={`Daftar ${typeLabel}`} description="Pilih baris untuk mengedit, atau buat konten baru.">
+          <AdminCard
+            title={`Daftar ${typeLabel}`}
+            description="Pilih baris untuk mengedit, atau buat konten baru."
+          >
             <CmsListToolbar
               count={posts.length}
               countLabel={typeLabel.toLowerCase()}
@@ -387,68 +502,94 @@ export default function PublicSitePosts() {
                 setContentTab('edit');
               }}
             />
-        <ul className="space-y-4 md:hidden" aria-label="Daftar konten">
-          {posts.length === 0 ? (
-            <li className="py-8 text-center text-sm text-muted-foreground">Belum ada konten.</li>
-          ) : null}
-          {posts.map((p) => (
-            <li key={p.id} className="rounded-2xl border border-border p-4 border-border">
-              <p className="font-bold text-foreground">{p.title}</p>
-              <p className="text-sm text-muted-foreground">{p.category?.name ?? p.type}</p>
-              <Badge className="mt-2" variant={p.is_published ? 'success' : 'secondary'}>
-                {p.is_published ? 'Publik' : 'Draft'}
-              </Badge>
-              <div className="mt-3 flex gap-2">
-                <Button variant="outline" size="sm" className="min-h-11 flex-1" type="button" onClick={() => loadPostForEdit(p)}>
-                  Edit
-                </Button>
-                <Button variant="destructive" size="sm" className="min-h-11" type="button" onClick={() => openDelete('posts', p.id)}>
-                  Hapus
-                </Button>
-              </div>
-            </li>
-          ))}
-        </ul>
-        <div className="hidden overflow-x-auto md:block">
-        <Table className="min-w-[640px]">
-          <TableHeader>
-            <TableRow>
-              <TableHead>Judul</TableHead>
-              <TableHead>Kategori</TableHead>
-              <TableHead>Tanggal</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Aksi</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {posts.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
+            <ul className="space-y-4 md:hidden" aria-label="Daftar konten">
+              {posts.length === 0 ? (
+                <li className="py-8 text-center text-sm text-muted-foreground">
                   Belum ada konten.
-                </TableCell>
-              </TableRow>
-            ) : null}
-            {posts.map((p) => (
-              <TableRow key={p.id}>
-                <TableCell className="font-medium">{p.title}</TableCell>
-                <TableCell>{p.category?.name ?? '-'}</TableCell>
-                <TableCell>{p.date_label ?? '-'}</TableCell>
-                <TableCell>
-                  <Badge variant={p.is_published ? 'success' : 'secondary'}>{p.is_published ? 'Publik' : 'Draft'}</Badge>
-                </TableCell>
-                <TableCell className="text-right space-x-2">
-                  <Button variant="outline" size="sm" type="button" onClick={() => loadPostForEdit(p)}>
-                    Edit
-                  </Button>
-                  <Button variant="destructive" size="sm" type="button" onClick={() => openDelete('posts', p.id)}>
-                    Hapus
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-        </div>
+                </li>
+              ) : null}
+              {posts.map((p) => (
+                <li key={p.id} className="rounded-2xl border border-border p-4 border-border">
+                  <p className="font-bold text-foreground">{p.title}</p>
+                  <p className="text-sm text-muted-foreground">{p.category?.name ?? p.type}</p>
+                  <Badge className="mt-2" variant={p.is_published ? 'success' : 'secondary'}>
+                    {p.is_published ? 'Publik' : 'Draft'}
+                  </Badge>
+                  <div className="mt-3 flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="min-h-11 flex-1"
+                      type="button"
+                      onClick={() => loadPostForEdit(p)}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="min-h-11"
+                      type="button"
+                      onClick={() => openDelete('posts', p.id)}
+                    >
+                      Hapus
+                    </Button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <div className="hidden overflow-x-auto md:block">
+              <Table className="min-w-[640px]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Judul</TableHead>
+                    <TableHead>Kategori</TableHead>
+                    <TableHead>Tanggal</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Aksi</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {posts.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
+                        Belum ada konten.
+                      </TableCell>
+                    </TableRow>
+                  ) : null}
+                  {posts.map((p) => (
+                    <TableRow key={p.id}>
+                      <TableCell className="font-medium">{p.title}</TableCell>
+                      <TableCell>{p.category?.name ?? '-'}</TableCell>
+                      <TableCell>{p.date_label ?? '-'}</TableCell>
+                      <TableCell>
+                        <Badge variant={p.is_published ? 'success' : 'secondary'}>
+                          {p.is_published ? 'Publik' : 'Draft'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          type="button"
+                          onClick={() => loadPostForEdit(p)}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          type="button"
+                          onClick={() => openDelete('posts', p.id)}
+                        >
+                          Hapus
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </AdminCard>
         </AdminContentTransition>
       )}
@@ -466,4 +607,3 @@ export default function PublicSitePosts() {
     </AdminPageShell>
   );
 }
-

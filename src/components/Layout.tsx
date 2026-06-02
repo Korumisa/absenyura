@@ -1,7 +1,28 @@
 import React, { useEffect, useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
-import { LayoutDashboard, Users, MapPin, Calendar, Menu, X, QrCode, BarChart3, ShieldAlert, History, BookOpen, FileText, Building2, Globe, ChevronDown, User, Layers, Newspaper, Image, ClipboardList } from 'lucide-react';
+import {
+  LayoutDashboard,
+  Users,
+  MapPin,
+  Calendar,
+  Menu,
+  X,
+  QrCode,
+  BarChart3,
+  ShieldAlert,
+  History,
+  BookOpen,
+  FileText,
+  Building2,
+  Globe,
+  ChevronDown,
+  User,
+  Layers,
+  Newspaper,
+  Image,
+  ClipboardList,
+} from 'lucide-react';
 
 import { NotificationMenu } from './NotificationMenu';
 import { UserDropdown } from './UserDropdown';
@@ -16,15 +37,40 @@ export default function Layout() {
   const location = useLocation();
 
   const navItems = [
-    { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, roles: ['SUPER_ADMIN', 'ADMIN', 'USER'] },
-    { name: 'Kelas Kuliah', path: '/classes', icon: BookOpen, roles: ['SUPER_ADMIN', 'ADMIN', 'USER'] },
-    { name: 'Sesi Absensi', path: '/sessions', icon: Calendar, roles: ['SUPER_ADMIN', 'ADMIN', 'USER'] },
+    {
+      name: 'Dashboard',
+      path: '/dashboard',
+      icon: LayoutDashboard,
+      roles: ['SUPER_ADMIN', 'ADMIN', 'USER'],
+    },
+    {
+      name: 'Kelas Kuliah',
+      path: '/classes',
+      icon: BookOpen,
+      roles: ['SUPER_ADMIN', 'ADMIN', 'USER'],
+    },
+    {
+      name: 'Sesi Absensi',
+      path: '/sessions',
+      icon: Calendar,
+      roles: ['SUPER_ADMIN', 'ADMIN', 'USER'],
+    },
     { name: 'Pemindai QR', path: '/attend', icon: QrCode, roles: ['USER'] },
-    { name: 'Pengajuan Izin', path: '/excuses', icon: FileText, roles: ['SUPER_ADMIN', 'ADMIN', 'USER'] },
+    {
+      name: 'Pengajuan Izin',
+      path: '/excuses',
+      icon: FileText,
+      roles: ['SUPER_ADMIN', 'ADMIN', 'USER'],
+    },
     { name: 'Riwayat Saya', path: '/history', icon: History, roles: ['USER'] },
     { name: 'Manajemen Lokasi', path: '/locations', icon: MapPin, roles: ['SUPER_ADMIN', 'ADMIN'] },
     { name: 'Rekap Kehadiran', path: '/reports', icon: BarChart3, roles: ['SUPER_ADMIN', 'ADMIN'] },
-    { name: 'Konten Website', path: '/public-site', icon: Globe, roles: ['SUPER_ADMIN', 'CONTENT_ADMIN'] },
+    {
+      name: 'Konten Website',
+      path: '/public-site',
+      icon: Globe,
+      roles: ['SUPER_ADMIN', 'CONTENT_ADMIN'],
+    },
     { name: 'Pengguna', path: '/users', icon: Users, roles: ['SUPER_ADMIN'] },
     { name: 'Fakultas & Prodi', path: '/master-data', icon: Building2, roles: ['SUPER_ADMIN'] },
     { name: 'Audit Log', path: '/audit', icon: ShieldAlert, roles: ['SUPER_ADMIN'] },
@@ -43,12 +89,9 @@ export default function Layout() {
   }, [location.pathname]);
 
   const navLinkClass = (isActive: boolean) =>
-    isActive
-      ? 'bg-sidebar-active text-brand'
-      : 'text-muted-foreground hover:bg-muted';
+    isActive ? 'bg-sidebar-active text-brand' : 'text-muted-foreground hover:bg-muted';
 
-  const navIconClass = (isActive: boolean) =>
-    isActive ? 'text-brand' : 'text-muted-foreground';
+  const navIconClass = (isActive: boolean) => (isActive ? 'text-brand' : 'text-muted-foreground');
 
   return (
     <div className="admin-theme flex h-dvh overflow-hidden bg-sidebar font-sans">
@@ -77,7 +120,7 @@ export default function Layout() {
             <img
               src="/logo-hmsdp.webp"
               alt="Logo HM"
-              className="h-9 w-9 rounded-xl bg-background/70 p-1.5 ring-1 ring-border"
+              className="size-9 rounded-xl bg-background/70 p-1.5 ring-1 ring-border"
             />
             <span className="text-lg font-semibold text-brand">E-Absensi</span>
           </div>
@@ -109,22 +152,35 @@ export default function Layout() {
                     >
                       <Icon size={20} className={`mr-3 ${navIconClass(isActive)}`} />
                       <span className="flex-1 text-left font-medium">{item.name}</span>
-                      <ChevronDown size={18} className={`transition-transform duration-200 ${publicSiteOpen ? 'rotate-0' : '-rotate-90'}`} />
+                      <ChevronDown
+                        size={18}
+                        className={`transition-transform duration-200 ${publicSiteOpen ? 'rotate-0' : '-rotate-90'}`}
+                      />
                     </button>
 
                     <div
                       className={`overflow-hidden pl-4 transition-all duration-200 ease-out ${
-                        publicSiteOpen ? 'max-h-96 translate-y-0 opacity-100' : 'max-h-0 -translate-y-1 opacity-0'
+                        publicSiteOpen
+                          ? 'max-h-96 translate-y-0 opacity-100'
+                          : 'max-h-0 -translate-y-1 opacity-0'
                       }`}
                     >
                       <div className="space-y-1 pt-1">
                         {[
                           { name: 'Profil', path: '/public-site/profile', icon: User },
                           { name: 'Struktur', path: '/public-site/structure', icon: Layers },
-                          { name: 'Program Kerja', path: '/public-site/programs', icon: ClipboardList },
+                          {
+                            name: 'Program Kerja',
+                            path: '/public-site/programs',
+                            icon: ClipboardList,
+                          },
                           { name: 'Berita & Info', path: '/public-site/posts', icon: Newspaper },
                           { name: 'Galeri', path: '/public-site/galleries', icon: Image },
-                          { name: 'Open Recruitment', path: '/public-site/recruitments', icon: FileText },
+                          {
+                            name: 'Open Recruitment',
+                            path: '/public-site/recruitments',
+                            icon: FileText,
+                          },
                         ].map((sub) => {
                           const subActive = location.pathname === sub.path;
                           const SubIcon = sub.icon;
@@ -180,7 +236,7 @@ export default function Layout() {
               <img
                 src="/logo-hmsdp.webp"
                 alt="Logo HM"
-                className="h-8 w-8 rounded-lg bg-background/70 p-1 ring-1 ring-border"
+                className="size-8 rounded-lg bg-background/70 p-1 ring-1 ring-border"
               />
               <span className="text-lg font-semibold text-brand">E-Absensi</span>
             </div>

@@ -1,4 +1,4 @@
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/utils';
 
 /** Empty state situs publik — global (belum ada data) atau search (filter kosong) */
 export function PublicEmptyState({
@@ -43,8 +43,8 @@ export function PublicEmptyState({
       )}
       role="status"
     >
-      <div className="pointer-events-none absolute -left-16 -top-16 h-52 w-52 rounded-[48%_52%_58%_42%/44%_43%_57%_56%] bg-[var(--public-primary)]/12 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-16 -right-16 h-56 w-56 rounded-[53%_47%_45%_55%/48%_56%_44%_52%] bg-sky-400/10 blur-3xl" />
+      <div className="pointer-events-none absolute -left-16 -top-16 size-52 rounded-[48%_52%_58%_42%/44%_43%_57%_56%] bg-[var(--public-primary)]/12 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-16 -right-16 size-56 rounded-[53%_47%_45%_55%/48%_56%_44%_52%] bg-sky-400/10 blur-3xl" />
       <div className="relative">
         <div className="text-base font-extrabold tracking-tight text-slate-900">{resolvedTitle}</div>
         <div className="mt-2 max-w-2xl">{resolvedDescription}</div>

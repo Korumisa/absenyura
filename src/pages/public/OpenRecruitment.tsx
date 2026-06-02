@@ -10,7 +10,7 @@ import PublicEnter from '@/components/PublicEnter';
 import PublicReveal from '@/components/PublicReveal';
 import PublicPageHero from '@/components/PublicPageHero';
 import PublicCoverImage from '@/components/PublicCoverImage';
-import useLockBodyScroll from '@/lib/useLockBodyScroll';
+import useLockBodyScroll from '@/lib/a11y/useLockBodyScroll';
 import { useAuthStore } from '@/stores/authStore';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
@@ -21,9 +21,6 @@ export default function OpenRecruitment() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
   const swr = useSWR<PublicRecruitment[]>('/public-site/recruitments', fetcher, { revalidateOnFocus: false });
   const { data: items = [], isInitialLoading: isLoading, isError, retry } = useSwrPageState(swr);
-  if (isError) {
-    return <PublicPageError title="Gagal memuat open recruitment" error={swr.error} onRetry={retry} />;
-  }
   const { isAuthenticated, user } = useAuthStore();
   const location = useLocation();
   const navigate = useNavigate();
@@ -59,6 +56,10 @@ export default function OpenRecruitment() {
     return `https://wa.me/${normalized}`;
   };
 
+  if (isError) {
+    return <PublicPageError title="Gagal memuat open recruitment" error={swr.error} onRetry={retry} />;
+  }
+
   return (
     <PublicLayout>
       <PublicEnter>
@@ -67,7 +68,7 @@ export default function OpenRecruitment() {
         <PublicReveal className="mx-auto max-w-7xl px-4 pb-16 sm:px-6">
           <div className="mt-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="relative w-full md:max-w-sm">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}

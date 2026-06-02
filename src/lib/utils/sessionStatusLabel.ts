@@ -1,8 +1,8 @@
-/** @deprecated Import from @/lib/statusLabel */
+/** @deprecated Import from @/lib/utils/statusLabel */
 export {
   sessionStatusLabel,
   attendanceStatusLabel,
   userRoleLabel,
   excuseStatusLabel,
   attendanceBadgeVariant,
-} from '@/lib/statusLabel';
+} from '@/lib/utils/statusLabel';

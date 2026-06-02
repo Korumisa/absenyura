@@ -1,4 +1,4 @@
-import { getErrorMessage } from '@/lib/errorMessage';
+import { getErrorMessage } from '@/lib/http/errorMessage';
 import { toast } from 'sonner';
 
 /** [UX] Toast error maks 80 karakter — detail lengkap di banner ErrorWithRetry */

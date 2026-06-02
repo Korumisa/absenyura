@@ -1,4 +1,4 @@
-import useHorizontalWheelScroll from '@/lib/useHorizontalWheelScroll';
+import useHorizontalWheelScroll from '@/lib/a11y/useHorizontalWheelScroll';
 
 export function HorizontalSnapRail({
   children,

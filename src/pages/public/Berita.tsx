@@ -39,11 +39,6 @@ export default function Berita() {
   const postsSwr = useSWR<Paged<PublicPost>>(queryUrl, fetcher, { revalidateOnFocus: false });
   const { data: paged, isInitialLoading: isLoading, isError, retry } = useSwrPageState(postsSwr);
   const items = paged?.items ?? [];
-  if (isError) {
-    return (
-      <PublicPageError title="Gagal memuat berita" error={postsSwr.error} onRetry={retry} />
-    );
-  }
 
   const setCategory = (slug: string) => {
     const next = new URLSearchParams(params);
@@ -77,12 +72,16 @@ export default function Berita() {
     return [1, ...middle.filter((n) => n !== 1 && n !== total), total];
   }, [paged]);
 
+  if (isError) {
+    return <PublicPageError title="Gagal memuat berita" error={postsSwr.error} onRetry={retry} />;
+  }
+
   return (
     <PublicLayout>
       <PublicEnter>
         <PublicPageHero top="Berita" bottom="Terbaru" subtitle="Baca update kampus, prestasi, dan info penting. Formatnya singkat, jelas, dan enak dibagikan.">
           <div className="relative w-full max-w-md">
-            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
             <input
               value={q}
               onChange={(e) => setQuery(e.target.value)}
@@ -156,7 +155,7 @@ export default function Berita() {
                     <div key={p.id} className="grid gap-4 md:grid-cols-[96px_40px_1fr] md:items-start">
                       <div className="hidden pt-2 text-right text-xs font-semibold text-muted-foreground md:block">{date || '-'}</div>
                       <div className="relative hidden md:flex md:justify-center">
-                        <div className="mt-3 h-4 w-4 rounded-full bg-white ring-2 ring-[var(--public-primary)]/55" />
+                        <div className="mt-3 size-4 rounded-full bg-white ring-2 ring-[var(--public-primary)]/55" />
                       </div>
                       <Link
                         to={`/berita/${p.slug}`}

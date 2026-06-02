@@ -1,5 +1,5 @@
 import React from 'react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/utils';
 
 export default function PublicPhotoFrame({
   className,
@@ -37,19 +37,39 @@ export default function PublicPhotoFrame({
 
       <span
         className="pointer-events-none absolute z-20 border-l border-t border-white/35 dark:border-white/25"
-        style={{ left: pad + 6, top: pad + 6, width: Math.max(10, corner - 8), height: Math.max(10, corner - 8) }}
+        style={{
+          left: pad + 6,
+          top: pad + 6,
+          width: Math.max(10, corner - 8),
+          height: Math.max(10, corner - 8),
+        }}
       />
       <span
         className="pointer-events-none absolute z-20 border-r border-t border-white/35 dark:border-white/25"
-        style={{ right: pad + 6, top: pad + 6, width: Math.max(10, corner - 8), height: Math.max(10, corner - 8) }}
+        style={{
+          right: pad + 6,
+          top: pad + 6,
+          width: Math.max(10, corner - 8),
+          height: Math.max(10, corner - 8),
+        }}
       />
       <span
         className="pointer-events-none absolute z-20 border-b border-l border-white/35 dark:border-white/25"
-        style={{ left: pad + 6, bottom: pad + 6, width: Math.max(10, corner - 8), height: Math.max(10, corner - 8) }}
+        style={{
+          left: pad + 6,
+          bottom: pad + 6,
+          width: Math.max(10, corner - 8),
+          height: Math.max(10, corner - 8),
+        }}
       />
       <span
         className="pointer-events-none absolute z-20 border-b border-r border-white/35 dark:border-white/25"
-        style={{ right: pad + 6, bottom: pad + 6, width: Math.max(10, corner - 8), height: Math.max(10, corner - 8) }}
+        style={{
+          right: pad + 6,
+          bottom: pad + 6,
+          width: Math.max(10, corner - 8),
+          height: Math.max(10, corner - 8),
+        }}
       />
     </div>
   );

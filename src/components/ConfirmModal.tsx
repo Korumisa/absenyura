@@ -1,6 +1,6 @@
-import { useState } from 'react'
-import { Loader2 } from 'lucide-react'
-import { ConfirmModalProps } from '@/types/confirmModal'
+import { useState } from 'react';
+import { Loader2 } from 'lucide-react';
+import { ConfirmModalProps } from '@/types/confirmModal';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -10,7 +10,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
+} from '@/components/ui/alert-dialog';
 
 export function ConfirmModal({
   isOpen,
@@ -24,36 +24,36 @@ export function ConfirmModal({
   loading = false,
   loadingText = 'Memproses…',
 }: ConfirmModalProps) {
-  const [confirming, setConfirming] = useState(false)
-  const busy = loading || confirming
+  const [confirming, setConfirming] = useState(false);
+  const busy = loading || confirming;
 
   const actionClassName =
     variant === 'danger'
       ? 'bg-rose-600 hover:bg-rose-700'
       : variant === 'warning'
         ? 'bg-orange-600 hover:bg-orange-700'
-        : 'bg-brand hover:bg-brand/90'
+        : 'bg-brand hover:bg-brand/90';
 
   const handleConfirm = async (e: React.MouseEvent) => {
-    e.preventDefault()
-    if (busy) return
+    e.preventDefault();
+    if (busy) return;
 
-    const result = onConfirm()
+    const result = onConfirm();
     if (result && typeof (result as Promise<void>).then === 'function') {
-      setConfirming(true)
+      setConfirming(true);
       try {
-        await result
+        await result;
       } finally {
-        setConfirming(false)
+        setConfirming(false);
       }
     }
-  }
+  };
 
   return (
     <AlertDialog
       open={isOpen}
       onOpenChange={(open) => {
-        if (!open && !busy) onClose()
+        if (!open && !busy) onClose();
       }}
     >
       <AlertDialogContent>
@@ -73,7 +73,7 @@ export function ConfirmModal({
           >
             {busy ? (
               <span className="inline-flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                <Loader2 className="size-4 animate-spin" aria-hidden="true" />
                 {loadingText}
               </span>
             ) : (
@@ -83,5 +83,5 @@ export function ConfirmModal({
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
-  )
+  );
 }

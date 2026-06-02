@@ -7,11 +7,18 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ConfirmModal } from '@/components/ConfirmModal';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import type { PublicGalleryAlbum } from '@/types/publicSite';
-import { getErrorMessage } from '@/lib/errorMessage';
-import { prepareImageForUpload } from '@/lib/imageUpload';
+import { getErrorMessage } from '@/lib/http/errorMessage';
+import { prepareImageForUpload } from '@/lib/media/imageUpload';
 import AdminPageShell from '@/components/AdminPageShell';
 import AdminCard from '@/components/AdminCard';
 import PublicSiteGalleryPreview from '@/components/publicSiteAdmin/PublicSiteGalleryPreview';
@@ -30,18 +37,34 @@ const PAGE_TABS: readonly CmsTabItem<PageTab>[] = [
 
 export default function PublicSiteGalleries() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
-  const { data: galleries = [], mutate } = useSWR<PublicGalleryAlbum[]>('/public-site/admin/galleries', fetcher, { revalidateOnFocus: false });
+  const { data: galleries = [], mutate } = useSWR<PublicGalleryAlbum[]>(
+    '/public-site/admin/galleries',
+    fetcher,
+    { revalidateOnFocus: false }
+  );
 
   const [pageTab, setPageTab] = useState<PageTab>('list');
   type ItemDraft = { imageUrl: string; caption: string };
-  const [form, setForm] = useState<{ id?: string; title?: string; description?: string; isPublished?: boolean; items?: ItemDraft[] }>({ items: [] });
+  const [form, setForm] = useState<{
+    id?: string;
+    title?: string;
+    description?: string;
+    isPublished?: boolean;
+    items?: ItemDraft[];
+  }>({ items: [] });
   const resetForm = () => setForm({ items: [] });
 
   const uploadImage = async (file: File) => {
-    const prepared = await prepareImageForUpload(file, { maxBytes: 4 * 1024 * 1024, maxWidth: 1600, quality: 0.82 });
+    const prepared = await prepareImageForUpload(file, {
+      maxBytes: 4 * 1024 * 1024,
+      maxWidth: 1600,
+      quality: 0.82,
+    });
     const fd = new FormData();
     fd.append('file', prepared);
-    const res = await api.post('/public-site/admin/upload', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+    const res = await api.post('/public-site/admin/upload', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
     return res.data.data.url as string;
   };
 
@@ -54,7 +77,10 @@ export default function PublicSiteGalleries() {
     try {
       const uploaded: string[] = [];
       for (const f of list) uploaded.push(await uploadImage(f));
-      setForm((p) => ({ ...p, items: [...(p.items ?? []), ...uploaded.map((url) => ({ imageUrl: url, caption: '' }))] }));
+      setForm((p) => ({
+        ...p,
+        items: [...(p.items ?? []), ...uploaded.map((url) => ({ imageUrl: url, caption: '' }))],
+      }));
       toast.success('Foto berhasil ditambahkan');
     } catch (e: any) {
       toast.error(getErrorMessage(e, 'Gagal upload foto'));
@@ -66,7 +92,11 @@ export default function PublicSiteGalleries() {
   const upsert = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const items = (form.items ?? []).map((x, idx) => ({ imageUrl: x.imageUrl, caption: x.caption, sortOrder: idx }));
+      const items = (form.items ?? []).map((x, idx) => ({
+        imageUrl: x.imageUrl,
+        caption: x.caption,
+        sortOrder: idx,
+      }));
       if (form.id) {
         await api.put(`/public-site/admin/galleries/${form.id}`, {
           title: form.title,
@@ -121,7 +151,12 @@ export default function PublicSiteGalleries() {
       variant="plain"
       icon={<Image size={22} />}
     >
-      <CmsTabNav<PageTab> tabs={PAGE_TABS} value={pageTab} onChange={setPageTab} ariaLabel="Mode galeri" />
+      <CmsTabNav<PageTab>
+        tabs={PAGE_TABS}
+        value={pageTab}
+        onChange={setPageTab}
+        ariaLabel="Mode galeri"
+      />
 
       {pageTab === 'form' ? (
         <AdminContentTransition contentKey={`form-${form.id ?? 'new'}`}>
@@ -135,213 +170,273 @@ export default function PublicSiteGalleries() {
               />
             }
           >
-          <AdminCard title={form.id ? 'Ubah album' : 'Album baru'} description="Judul, foto, dan status publikasi.">
-            <form onSubmit={upsert} className="space-y-4">
-              <div className="space-y-2 md:col-span-2">
-                <Label>Judul Album</Label>
-                <Input value={form.title ?? ''} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} />
-              </div>
-              <div className="space-y-2 md:col-span-2">
-                <Label>Status publikasi</Label>
-                <CmsPublishTabs published={form.isPublished ?? false} onChange={(v) => setForm((p) => ({ ...p, isPublished: v }))} />
-              </div>
-              <div className="space-y-2 md:col-span-2">
-                <Label>Deskripsi</Label>
-                <Textarea value={form.description ?? ''} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} />
-              </div>
-              <div className="space-y-3 md:col-span-2">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <Label>Items Foto</Label>
+            <AdminCard
+              title={form.id ? 'Ubah album' : 'Album baru'}
+              description="Judul, foto, dan status publikasi."
+            >
+              <form onSubmit={upsert} className="space-y-4">
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Judul Album</Label>
+                  <Input
+                    value={form.title ?? ''}
+                    onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Status publikasi</Label>
+                  <CmsPublishTabs
+                    published={form.isPublished ?? false}
+                    onChange={(v) => setForm((p) => ({ ...p, isPublished: v }))}
+                  />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Deskripsi</Label>
+                  <Textarea
+                    value={form.description ?? ''}
+                    onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-3 md:col-span-2">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <Label>Items Foto</Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="min-h-11"
+                      onClick={() =>
+                        setForm((p) => ({
+                          ...p,
+                          items: [...(p.items ?? []), { imageUrl: '', caption: '' }],
+                        }))
+                      }
+                    >
+                      Tambah Manual
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Upload Foto</Label>
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      disabled={uploading}
+                      onChange={async (e) => {
+                        const files = e.target.files;
+                        if (!files || !files.length) return;
+                        await appendItemsFromFiles(files);
+                        e.target.value = '';
+                      }}
+                    />
+                  </div>
+
+                  {(form.items ?? []).length === 0 ? (
+                    <div className="rounded-xl border border-dashed rounded-xl border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
+                      Belum ada foto. Upload atau klik “Tambah Manual”.
+                    </div>
+                  ) : (
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                      {(form.items ?? []).map((it, idx) => (
+                        <div
+                          key={idx}
+                          className="rounded-xl border border-border rounded-xl border border-border bg-muted/30 p-3"
+                        >
+                          <div className="aspect-video w-full overflow-hidden rounded-lg bg-slate-100 bg-background">
+                            {it.imageUrl ? (
+                              <img
+                                src={it.imageUrl}
+                                alt="Foto"
+                                className="h-full w-full object-cover"
+                                loading="lazy"
+                              />
+                            ) : null}
+                          </div>
+                          <div className="mt-3 space-y-2">
+                            <Input
+                              value={it.imageUrl}
+                              onChange={(e) =>
+                                setForm((p) => ({
+                                  ...p,
+                                  items: (p.items ?? []).map((x, i) =>
+                                    i === idx ? { ...x, imageUrl: e.target.value } : x
+                                  ),
+                                }))
+                              }
+                              placeholder="Image URL"
+                            />
+                            <Input
+                              value={it.caption}
+                              onChange={(e) =>
+                                setForm((p) => ({
+                                  ...p,
+                                  items: (p.items ?? []).map((x, i) =>
+                                    i === idx ? { ...x, caption: e.target.value } : x
+                                  ),
+                                }))
+                              }
+                              placeholder="Caption (opsional)"
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="min-h-11 w-full"
+                              onClick={() =>
+                                setForm((p) => ({
+                                  ...p,
+                                  items: (p.items ?? []).filter((_, i) => i !== idx),
+                                }))
+                              }
+                            >
+                              Hapus
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                   <Button
                     type="button"
                     variant="outline"
                     className="min-h-11"
-                    onClick={() => setForm((p) => ({ ...p, items: [...(p.items ?? []), { imageUrl: '', caption: '' }] }))}
+                    onClick={() => setPageTab('list')}
                   >
-                    Tambah Manual
+                    Kembali ke daftar
+                  </Button>
+                  {form.id ? (
+                    <Button variant="ghost" type="button" className="min-h-11" onClick={resetForm}>
+                      Reset
+                    </Button>
+                  ) : null}
+                  <Button type="submit" className="min-h-11" disabled={uploading}>
+                    {form.id ? 'Simpan album' : 'Tambah album'}
                   </Button>
                 </div>
-
-                <div className="space-y-2">
-                  <Label>Upload Foto</Label>
-                  <Input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    disabled={uploading}
-                    onChange={async (e) => {
-                      const files = e.target.files;
-                      if (!files || !files.length) return;
-                      await appendItemsFromFiles(files);
-                      e.target.value = '';
-                    }}
-                  />
-                </div>
-
-                {(form.items ?? []).length === 0 ? (
-                  <div className="rounded-xl border border-dashed rounded-xl border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
-                    Belum ada foto. Upload atau klik “Tambah Manual”.
-                  </div>
-                ) : (
-                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {(form.items ?? []).map((it, idx) => (
-                      <div key={idx} className="rounded-xl border border-border rounded-xl border border-border bg-muted/30 p-3">
-                        <div className="aspect-video w-full overflow-hidden rounded-lg bg-slate-100 bg-background">
-                          {it.imageUrl ? <img src={it.imageUrl} alt="Foto" className="h-full w-full object-cover" loading="lazy" /> : null}
-                        </div>
-                        <div className="mt-3 space-y-2">
-                          <Input
-                            value={it.imageUrl}
-                            onChange={(e) =>
-                              setForm((p) => ({
-                                ...p,
-                                items: (p.items ?? []).map((x, i) => (i === idx ? { ...x, imageUrl: e.target.value } : x)),
-                              }))
-                            }
-                            placeholder="Image URL"
-                          />
-                          <Input
-                            value={it.caption}
-                            onChange={(e) =>
-                              setForm((p) => ({
-                                ...p,
-                                items: (p.items ?? []).map((x, i) => (i === idx ? { ...x, caption: e.target.value } : x)),
-                              }))
-                            }
-                            placeholder="Caption (opsional)"
-                          />
-                          <Button
-                            type="button"
-                            variant="outline"
-                            className="min-h-11 w-full"
-                            onClick={() => setForm((p) => ({ ...p, items: (p.items ?? []).filter((_, i) => i !== idx) }))}
-                          >
-                            Hapus
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-                <Button type="button" variant="outline" className="min-h-11" onClick={() => setPageTab('list')}>
-                  Kembali ke daftar
-                </Button>
-                {form.id ? (
-                  <Button variant="ghost" type="button" className="min-h-11" onClick={resetForm}>
-                    Reset
-                  </Button>
-                ) : null}
-                <Button type="submit" className="min-h-11" disabled={uploading}>
-                  {form.id ? 'Simpan album' : 'Tambah album'}
-                </Button>
-              </div>
-            </form>
-          </AdminCard>
+              </form>
+            </AdminCard>
           </CmsEditorLayout>
         </AdminContentTransition>
       ) : (
         <AdminContentTransition contentKey="list-galleries">
-        <AdminCard title="Daftar album" description="Kelola album galeri publik.">
-          <CmsListToolbar
-            count={galleries.length}
-            countLabel="album"
-            onCreate={() => {
-              resetForm();
-              setPageTab('form');
-            }}
-          />
-          <ul className="space-y-4 md:hidden" aria-label="Daftar album">
-            {galleries.length === 0 ? (
-              <li className="py-8 text-center text-sm text-muted-foreground">Belum ada album.</li>
-            ) : null}
-            {galleries.map((g) => (
-              <li key={g.id} className="rounded-2xl border border-border p-4 border-border">
-                <p className="font-bold text-foreground">{g.title}</p>
-                <p className="text-sm text-muted-foreground">{g.items?.length ?? 0} foto</p>
-                <Badge className="mt-2" variant={g.is_published ? 'success' : 'secondary'}>
-                  {g.is_published ? 'Publik' : 'Draft'}
-                </Badge>
-                <div className="mt-3 flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="min-h-11 flex-1"
-                    type="button"
-                    onClick={() => {
-                      setForm({
-                        id: g.id,
-                        title: g.title,
-                        description: g.description ?? '',
-                        isPublished: g.is_published,
-                        items: (g.items ?? []).map((it) => ({ imageUrl: it.image_url, caption: it.caption ?? '' })),
-                      });
-                      setPageTab('form');
-                    }}
-                  >
-                    Edit
-                  </Button>
-                  <Button variant="destructive" size="sm" className="min-h-11" type="button" onClick={() => openDelete(g.id)}>
-                    Hapus
-                  </Button>
-                </div>
-              </li>
-            ))}
-          </ul>
-          <div className="hidden overflow-x-auto md:block">
-            <Table className="min-w-[560px]">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Album</TableHead>
-                  <TableHead>Jumlah Foto</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Aksi</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {galleries.length === 0 ? (
+          <AdminCard title="Daftar album" description="Kelola album galeri publik.">
+            <CmsListToolbar
+              count={galleries.length}
+              countLabel="album"
+              onCreate={() => {
+                resetForm();
+                setPageTab('form');
+              }}
+            />
+            <ul className="space-y-4 md:hidden" aria-label="Daftar album">
+              {galleries.length === 0 ? (
+                <li className="py-8 text-center text-sm text-muted-foreground">Belum ada album.</li>
+              ) : null}
+              {galleries.map((g) => (
+                <li key={g.id} className="rounded-2xl border border-border p-4 border-border">
+                  <p className="font-bold text-foreground">{g.title}</p>
+                  <p className="text-sm text-muted-foreground">{g.items?.length ?? 0} foto</p>
+                  <Badge className="mt-2" variant={g.is_published ? 'success' : 'secondary'}>
+                    {g.is_published ? 'Publik' : 'Draft'}
+                  </Badge>
+                  <div className="mt-3 flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="min-h-11 flex-1"
+                      type="button"
+                      onClick={() => {
+                        setForm({
+                          id: g.id,
+                          title: g.title,
+                          description: g.description ?? '',
+                          isPublished: g.is_published,
+                          items: (g.items ?? []).map((it) => ({
+                            imageUrl: it.image_url,
+                            caption: it.caption ?? '',
+                          })),
+                        });
+                        setPageTab('form');
+                      }}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="min-h-11"
+                      type="button"
+                      onClick={() => openDelete(g.id)}
+                    >
+                      Hapus
+                    </Button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <div className="hidden overflow-x-auto md:block">
+              <Table className="min-w-[560px]">
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={4} className="py-10 text-center text-muted-foreground">
-                      Belum ada album.
-                    </TableCell>
+                    <TableHead>Album</TableHead>
+                    <TableHead>Jumlah Foto</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Aksi</TableHead>
                   </TableRow>
-                ) : null}
-                {galleries.map((g) => (
-                  <TableRow key={g.id}>
-                    <TableCell className="font-medium">{g.title}</TableCell>
-                    <TableCell>{g.items?.length ?? 0}</TableCell>
-                    <TableCell>
-                      <Badge variant={g.is_published ? 'success' : 'secondary'}>{g.is_published ? 'Publik' : 'Draft'}</Badge>
-                    </TableCell>
-                    <TableCell className="space-x-2 text-right">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        type="button"
-                        onClick={() => {
-                          setForm({
-                            id: g.id,
-                            title: g.title,
-                            description: g.description ?? '',
-                            isPublished: g.is_published,
-                            items: (g.items ?? []).map((it) => ({ imageUrl: it.image_url, caption: it.caption ?? '' })),
-                          });
-                          setPageTab('form');
-                        }}
-                      >
-                        Edit
-                      </Button>
-                      <Button variant="destructive" size="sm" type="button" onClick={() => openDelete(g.id)}>
-                        Hapus
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </AdminCard>
+                </TableHeader>
+                <TableBody>
+                  {galleries.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="py-10 text-center text-muted-foreground">
+                        Belum ada album.
+                      </TableCell>
+                    </TableRow>
+                  ) : null}
+                  {galleries.map((g) => (
+                    <TableRow key={g.id}>
+                      <TableCell className="font-medium">{g.title}</TableCell>
+                      <TableCell>{g.items?.length ?? 0}</TableCell>
+                      <TableCell>
+                        <Badge variant={g.is_published ? 'success' : 'secondary'}>
+                          {g.is_published ? 'Publik' : 'Draft'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="space-x-2 text-right">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          type="button"
+                          onClick={() => {
+                            setForm({
+                              id: g.id,
+                              title: g.title,
+                              description: g.description ?? '',
+                              isPublished: g.is_published,
+                              items: (g.items ?? []).map((it) => ({
+                                imageUrl: it.image_url,
+                                caption: it.caption ?? '',
+                              })),
+                            });
+                            setPageTab('form');
+                          }}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          type="button"
+                          onClick={() => openDelete(g.id)}
+                        >
+                          Hapus
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </AdminCard>
         </AdminContentTransition>
       )}
 

@@ -17,13 +17,20 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TablePagination } from '@/components/ui/TablePagination';
 import type { ClassItem } from '@/types/class';
 import type { User } from '@/types/user';
-import { classDetailLine, formatClassLabel } from '@/lib/classLabel';
-import { toastErrorMessage } from '@/lib/toastMessage';
+import { classDetailLine, formatClassLabel } from '@/lib/utils/classLabel';
+import { toastErrorMessage } from '@/lib/utils/toastMessage';
 
 type EnrollmentOptions = {
   students: Pick<User, 'id' | 'name' | 'nim_nip' | 'email' | 'is_active' | 'department'>[];
@@ -91,7 +98,7 @@ export default function ClassStudents() {
       (s) =>
         s.name.toLowerCase().includes(q) ||
         (s.nim_nip && s.nim_nip.toLowerCase().includes(q)) ||
-        (s.email && s.email.toLowerCase().includes(q)),
+        (s.email && s.email.toLowerCase().includes(q))
     );
   }, [students, searchTerm]);
 
@@ -106,7 +113,7 @@ export default function ClassStudents() {
 
   const notEnrolled = useMemo(
     () => availableStudents.filter((s) => !students.some((e) => e.id === s.id)),
-    [availableStudents, students],
+    [availableStudents, students]
   );
 
   const selectedStudentName =
@@ -171,12 +178,14 @@ export default function ClassStudents() {
     return (
       <AdminPageShell title="Gagal memuat kelas" variant="plain">
         <ErrorWithRetry
-          title={status === 403 ? 'Anda tidak memiliki akses ke kelas ini' : 'Gagal memuat data kelas'}
+          title={
+            status === 403 ? 'Anda tidak memiliki akses ke kelas ini' : 'Gagal memuat data kelas'
+          }
           error={classSwr.error}
           onRetry={retryClass}
         />
         <Button variant="outline" className="mt-4" onClick={() => navigate('/classes')}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
+          <ArrowLeft className="mr-2 size-4" />
           Kembali ke Kelas
         </Button>
       </AdminPageShell>
@@ -193,10 +202,10 @@ export default function ClassStudents() {
         title="Daftar Mahasiswa Kelas"
         description="Kelola mahasiswa terdaftar di kelas ini."
         variant="plain"
-        icon={<UserCircle className="h-5 w-5" />}
+        icon={<UserCircle className="size-5" />}
         actions={
           <Button variant="outline" onClick={() => navigate('/classes')}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
+            <ArrowLeft className="mr-2 size-4" />
             Kembali ke Kelas
           </Button>
         }
@@ -210,13 +219,22 @@ export default function ClassStudents() {
               </div>
             ) : classInfo ? (
               <>
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Kelas</p>
-                <h2 className="mt-1 text-2xl font-bold text-slate-900 dark:text-foreground">{classInfo.name}</h2>
-                {detail ? <p className="mt-1 text-sm text-slate-600 dark:text-muted-foreground">{detail}</p> : null}
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Kelas
+                </p>
+                <h2 className="mt-1 text-2xl font-bold text-slate-900 dark:text-foreground">
+                  {classInfo.name}
+                </h2>
+                {detail ? (
+                  <p className="mt-1 text-sm text-slate-600 dark:text-muted-foreground">{detail}</p>
+                ) : null}
                 <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-slate-600 dark:text-muted-foreground">
                   {semLabel ? <Badge variant="outline">{semLabel}</Badge> : null}
                   <span>
-                    Diampu oleh: <strong className="text-slate-900 dark:text-foreground">{classInfo.lecturer.name}</strong>
+                    Diampu oleh:{' '}
+                    <strong className="text-slate-900 dark:text-foreground">
+                      {classInfo.lecturer.name}
+                    </strong>
                   </span>
                   <Badge variant="secondary">{classInfo._count.enrollments} mahasiswa</Badge>
                 </div>
@@ -241,7 +259,7 @@ export default function ClassStudents() {
                 disabled={!selectedStudentId || notEnrolled.length === 0}
                 onClick={() => setIsEnrollConfirmOpen(true)}
               >
-                <Plus className="mr-2 h-4 w-4" />
+                <Plus className="mr-2 size-4" />
                 Tambah Siswa
               </Button>
             </div>
@@ -252,7 +270,7 @@ export default function ClassStudents() {
           <div className="flex flex-col gap-3 border-b border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between dark:border-border">
             <h3 className="font-semibold text-foreground">Daftar Siswa Kelas</h3>
             <div className="relative w-full sm:max-w-xl sm:flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 type="search"
                 placeholder="Cari nama, NIM, atau email…"
@@ -266,7 +284,11 @@ export default function ClassStudents() {
 
           {studentsError ? (
             <div className="p-5">
-              <ErrorWithRetry title="Gagal memuat mahasiswa" error={studentsSwr.error} onRetry={retryStudents} />
+              <ErrorWithRetry
+                title="Gagal memuat mahasiswa"
+                error={studentsSwr.error}
+                onRetry={retryStudents}
+              />
             </div>
           ) : (
             <>
@@ -315,9 +337,13 @@ export default function ClassStudents() {
                           <TableCell className="text-muted-foreground">
                             {(paginationMeta.page - 1) * paginationMeta.limit + index + 1}
                           </TableCell>
-                          <TableCell className="font-mono text-sm">{student.nim_nip || '—'}</TableCell>
+                          <TableCell className="font-mono text-sm">
+                            {student.nim_nip || '—'}
+                          </TableCell>
                           <TableCell className="font-medium">{student.name}</TableCell>
-                          <TableCell className="text-sm text-muted-foreground">{student.email}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {student.email}
+                          </TableCell>
                           <TableCell>
                             <Badge variant={student.is_active ? 'secondary' : 'outline'}>
                               {student.is_active ? 'Aktif' : 'Nonaktif'}
@@ -329,11 +355,11 @@ export default function ClassStudents() {
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="h-9 w-9"
+                                  className="size-9"
                                   title="Biodata mahasiswa"
                                   onClick={() => openStudentDetail(student.id)}
                                 >
-                                  <ExternalLink className="h-4 w-4" />
+                                  <ExternalLink className="size-4" />
                                   <span className="sr-only">Biodata mahasiswa</span>
                                 </Button>
                               ) : null}
@@ -347,7 +373,7 @@ export default function ClassStudents() {
                                     setIsRemoveConfirmOpen(true);
                                   }}
                                 >
-                                  <Trash2 className="mr-1 h-4 w-4" />
+                                  <Trash2 className="mr-1 size-4" />
                                   Keluarkan
                                 </Button>
                               ) : (
