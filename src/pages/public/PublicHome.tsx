@@ -17,6 +17,131 @@ import { PublicHomeCmsHint } from '@/components/public/home/PublicHomeCmsHint';
 import { normalizeYoutubeEmbedUrl } from '@/lib/media/normalizeYoutubeEmbedUrl';
 import { PublicSlowLoadingHint } from '@/components/public/PublicSlowLoadingHint';
 import { usePublicHomeData, isPublicProfileSparse } from '@/hooks/usePublicHomeData';
+
+function PublicHomeSkeleton({
+  showSlowHint,
+  onRetry,
+}: {
+  showSlowHint: boolean;
+  onRetry: () => void;
+}) {
+  const cards = Array.from({ length: 3 });
+  return (
+    <PublicLayout>
+      <div className="relative">
+        <div>
+          <section
+            aria-label="Beranda organisasi"
+            className="relative overflow-hidden bg-[radial-gradient(circle_at_20%_20%,rgba(37,99,235,0.18),transparent_50%),radial-gradient(circle_at_70%_10%,rgba(59,130,246,0.14),transparent_55%),linear-gradient(180deg,rgba(15,23,42,0.02),transparent)]"
+          >
+            <div className="pointer-events-none absolute inset-0 opacity-70 [background:radial-gradient(circle_at_18%_15%,rgba(37,99,235,0.10),transparent_56%),radial-gradient(circle_at_78%_10%,rgba(56,189,248,0.08),transparent_60%)]" />
+            <PublicEnter instant className="mx-auto grid max-w-7xl items-center gap-12 px-4 py-16 sm:px-6 md:grid-cols-2 md:py-24">
+              <div className="flex items-start gap-6">
+                <div className="hidden size-28 shrink-0 sm:block">
+                  <Skeleton className="size-28 rounded-3xl" />
+                </div>
+                <div className="w-full max-w-xl">
+                  <div className="font-display text-4xl italic tracking-tight text-slate-900 md:text-5xl">
+                    Kabinet
+                  </div>
+                  <div
+                    className="mt-2 space-y-3"
+                    aria-busy="true"
+                    aria-label="Memuat profil organisasi"
+                  >
+                    <Skeleton className="h-14 w-full max-w-md md:h-16" />
+                    <Skeleton className="h-4 w-40" />
+                    <Skeleton className="h-4 w-56" />
+                    <Skeleton className="h-4 w-48" />
+                  </div>
+                  {showSlowHint ? (
+                    <div className="mt-5 max-w-md">
+                      <PublicSlowLoadingHint onRetry={onRetry} />
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+              <div className="relative">
+                <div className="aspect-[4/3] w-full overflow-hidden rounded-3xl border border-black/10 bg-white shadow-[0_35px_80px_-60px_rgba(15,23,42,0.45)]">
+                  <Skeleton className="h-full w-full" />
+                </div>
+              </div>
+            </PublicEnter>
+          </section>
+
+          <section className="relative bg-white py-20">
+            <PublicReveal className="mx-auto max-w-7xl px-4 sm:px-6">
+              <div className="grid gap-8 md:grid-cols-2">
+                <div className="space-y-4">
+                  <Skeleton className="h-8 w-56" />
+                  <Skeleton className="h-4 w-full max-w-lg" />
+                  <Skeleton className="h-4 w-full max-w-md" />
+                  <Skeleton className="h-4 w-full max-w-sm" />
+                </div>
+                <div className="aspect-video overflow-hidden rounded-3xl border border-black/10 bg-slate-50">
+                  <Skeleton className="h-full w-full" />
+                </div>
+              </div>
+            </PublicReveal>
+          </section>
+
+          <section className="relative bg-slate-50/55 py-20">
+            <PublicReveal className="mx-auto max-w-7xl px-4 sm:px-6">
+              <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                <div className="space-y-3">
+                  <Skeleton className="h-9 w-64" />
+                  <Skeleton className="h-4 w-96 max-w-full" />
+                </div>
+                <Skeleton className="h-11 w-40 rounded-xl" />
+              </div>
+              <div className="mt-10 grid gap-6 md:grid-cols-3">
+                {cards.map((_, i) => (
+                  <div
+                    key={i}
+                    className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)]"
+                  >
+                    <div className="aspect-[16/10] w-full bg-slate-100">
+                      <Skeleton className="h-full w-full" />
+                    </div>
+                    <div className="space-y-3 p-5">
+                      <Skeleton className="h-5 w-40" />
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-5/6" />
+                      <Skeleton className="mt-4 h-10 w-32 rounded-xl" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </PublicReveal>
+          </section>
+
+          <section className="relative bg-white py-20">
+            <PublicReveal className="mx-auto max-w-7xl px-4 sm:px-6">
+              <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                <div className="space-y-3">
+                  <Skeleton className="h-9 w-64" />
+                  <Skeleton className="h-4 w-96 max-w-full" />
+                </div>
+                <Skeleton className="h-11 w-40 rounded-xl" />
+              </div>
+              <div className="mt-10 grid gap-6 md:grid-cols-3">
+                {cards.map((_, i) => (
+                  <div key={i} className="rounded-2xl border border-border bg-card p-5">
+                    <Skeleton className="h-5 w-44" />
+                    <Skeleton className="mt-4 h-4 w-full" />
+                    <Skeleton className="mt-2 h-4 w-5/6" />
+                    <Skeleton className="mt-6 h-10 w-32 rounded-xl" />
+                  </div>
+                ))}
+              </div>
+            </PublicReveal>
+          </section>
+        </div>
+      </div>
+    </PublicLayout>
+  );
+}
+
 export default function PublicHome() {
   const {
     profile: profileState,
@@ -95,6 +220,10 @@ export default function PublicHome() {
 
   if (isProfileError && !profile) {
     return <PublicPageError title="Gagal memuat beranda" error={profileState.swr.error} onRetry={retryProfile} />;
+  }
+
+  if (isLoadingProfile && !profile) {
+    return <PublicHomeSkeleton showSlowHint={showProfileSlowHint} onRetry={retryProfile} />;
   }
 
   const logoSrc = profile?.logo_light_url ?? '';
