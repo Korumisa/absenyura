@@ -41,12 +41,10 @@ export default defineConfig(({ mode }) => {
         },
         workbox: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-          globIgnores: [
-            '**/vendor-export*.js',
-            '**/vendor-maps*.js',
-            '**/vendor-charts*.js',
-          ],
           maximumFileSizeToCacheInBytes: 2_000_000,
+          cleanupOutdatedCaches: true,
+          clientsClaim: true,
+          skipWaiting: true,
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/api\.ipify\.org\/.*/i,
