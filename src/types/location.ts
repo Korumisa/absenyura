@@ -6,4 +6,5 @@ export interface Location {
   longitude: number;
   radius: number;
   wifi_bssid: string[];
+  created_by?: string | null;
 }

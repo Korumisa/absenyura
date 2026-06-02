@@ -30,6 +30,14 @@ export function getErrorMessage(err: any, fallback: string) {
       return 'Sistem mendeteksi perangkat lain terhubung dengan akun Anda. Hubungi tim Admin untuk mengalihkan akun ke perangkat ini.';
     if (errorCode === 'BOLA_UNAUTHORIZED_CLASS')
       return 'Kode QR ini bukan untuk kelas Anda. Pastikan Anda memindai kode yang benar.';
+    if (errorCode === 'SESSION_OUT_OF_SCOPE')
+      return 'Sesi ini tidak termasuk dalam kelas yang Anda ampu.';
+    if (errorCode === 'CLASS_OUT_OF_SCOPE') return 'Kelas ini di luar akses Anda.';
+    if (errorCode === 'LOCATION_OUT_OF_SCOPE') return 'Lokasi ini di luar akses Anda.';
+    if (errorCode === 'ADMIN_SESSION_REQUIRES_CLASS')
+      return 'Untuk Admin, sesi harus terkait minimal 1 kelas.';
+    if (errorCode === 'ADMIN_CANNOT_CHANGE_LECTURER')
+      return 'Admin tidak dapat memindahkan kelas ke dosen lain.';
     if (
       errorCode === 'NO_REFRESH_TOKEN' ||
       errorCode === 'INVALID_REFRESH_TOKEN' ||

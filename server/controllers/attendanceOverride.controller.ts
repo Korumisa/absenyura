@@ -1,14 +1,24 @@
 import { Request, Response } from 'express';
 import prisma from '../utils/prisma.js';
+import { assertAdminSessionScope } from '../utils/sessionAccess.js';
+import { sendForbidden } from '../utils/errorResponse.js';
 
 export const overrideAttendance = async (req: Request, res: Response): Promise<void> => {
   try {
-    const adminId = (req as any).user.id;
+    const user = (req as any).user;
+    const adminId = user.id;
     const { session_id, user_id, status, notes } = req.body;
 
     const session = await prisma.session.findUnique({ where: { id: session_id } });
     if (!session) {
       res.status(404).json({ success: false, error: 'Sesi tidak ditemukan' });
+      return;
+    }
+    if (!(await assertAdminSessionScope(user, session_id))) {
+      sendForbidden(res, {
+        error_code: 'SESSION_OUT_OF_SCOPE',
+        message: 'Sesi ini di luar akses Anda.',
+      });
       return;
     }
 
@@ -47,6 +57,8 @@ export const overrideAttendance = async (req: Request, res: Response): Promise<v
       message: 'Status kehadiran berhasil diubah (Override).',
     });
   } catch (error) {
-    res.status(500).json({ success: false, error: 'Gagal mengubah status kehadiran secara manual' });
+    res
+      .status(500)
+      .json({ success: false, error: 'Gagal mengubah status kehadiran secara manual' });
   }
 };

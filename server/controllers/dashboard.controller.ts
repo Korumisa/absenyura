@@ -4,9 +4,12 @@ import prisma from '../utils/prisma.js';
 import { fillChartData, getWibRangeUtc, type ChartRow } from '../utils/dashboardChart.js';
 import { sessionApiSelect, sessionListSelect } from '../utils/sessionQuerySelect.js';
 import { triggerSessionCronLazy } from '../jobs/cron.js';
+import { adminSessionScopeWhere } from '../utils/sessionAccess.js';
 
 const isMissingSemesterColumn = (err: any) =>
-  Boolean(err && err.code === 'P2022' && String(err?.meta?.column || '').includes('Class.semester'));
+  Boolean(
+    err && err.code === 'P2022' && String(err?.meta?.column || '').includes('Class.semester')
+  );
 
 export const getDashboardStats = async (req: Request, res: Response): Promise<void> => {
   triggerSessionCronLazy();
@@ -44,8 +47,12 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
             OR: [
               { class_id: null, session_classes: { none: {} } },
               { class: { enrollments: { some: { student_id: userId } } } },
-              { session_classes: { some: { class: { enrollments: { some: { student_id: userId } } } } } },
-            ]
+              {
+                session_classes: {
+                  some: { class: { enrollments: { some: { student_id: userId } } } },
+                },
+              },
+            ],
           },
           orderBy: { session_start: 'asc' },
           take: 5,
@@ -59,8 +66,12 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
             OR: [
               { class_id: null, session_classes: { none: {} } },
               { class: { enrollments: { some: { student_id: userId } } } },
-              { session_classes: { some: { class: { enrollments: { some: { student_id: userId } } } } } },
-            ]
+              {
+                session_classes: {
+                  some: { class: { enrollments: { some: { student_id: userId } } } },
+                },
+              },
+            ],
           },
           orderBy: { session_start: 'asc' },
           take: 5,
@@ -93,23 +104,26 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
         data: {
           stats: { total, present, late, absent, sick, excused, percentage },
           recent_sessions: upcomingSessions,
-          chart_data: chartData
-        }
+          chart_data: chartData,
+        },
       });
     } else {
       // Admin / Super Admin stats
       const totalUsers = await prisma.user.count({ where: { role: 'USER' } });
       const totalSessions = await prisma.session.count(
-        user.role === 'ADMIN' ? { where: { created_by_id: user.id } } : undefined
+        user.role === 'ADMIN' ? { where: adminSessionScopeWhere(user.id) } : undefined
       );
 
       // Get attendance count for today
-      const { startUtc: todayStartUtc, endUtc: todayEndUtc } = getWibRangeUtc({ rangeDays: 1, now: new Date() });
+      const { startUtc: todayStartUtc, endUtc: todayEndUtc } = getWibRangeUtc({
+        rangeDays: 1,
+        now: new Date(),
+      });
       const todayGrouped = await prisma.attendance.groupBy({
         by: ['status'],
         where: {
           check_in_time: { gte: todayStartUtc, lt: todayEndUtc },
-          session: user.role === 'ADMIN' ? { created_by_id: user.id } : undefined,
+          session: user.role === 'ADMIN' ? adminSessionScopeWhere(user.id) : undefined,
         },
         _count: { _all: true },
       });
@@ -124,7 +138,7 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
 
       // Recent sessions
       const recentSessions = await prisma.session.findMany({
-        where: user.role === 'ADMIN' ? { created_by_id: user.id } : undefined,
+        where: user.role === 'ADMIN' ? adminSessionScopeWhere(user.id) : undefined,
         orderBy: { created_at: 'desc' },
         take: 5,
         select: {
@@ -149,7 +163,19 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
         ${user.role === 'ADMIN' ? Prisma.sql`JOIN "Session" s ON s.id = a.session_id` : Prisma.empty}
         WHERE a.check_in_time >= ${startUtc}
           AND a.check_in_time < ${endUtc}
-          ${user.role === 'ADMIN' ? Prisma.sql`AND s.created_by_id = ${user.id}` : Prisma.empty}
+          ${
+            user.role === 'ADMIN'
+              ? Prisma.sql`AND (
+                  EXISTS (SELECT 1 FROM "Class" c WHERE c.id = s.class_id AND c.lecturer_id = ${user.id})
+                  OR EXISTS (
+                    SELECT 1
+                    FROM "SessionClass" sc
+                    JOIN "Class" c2 ON c2.id = sc.class_id
+                    WHERE sc.session_id = s.id AND c2.lecturer_id = ${user.id}
+                  )
+                )`
+              : Prisma.empty
+          }
         GROUP BY 1
         ORDER BY 1
       `);
@@ -163,11 +189,11 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
             total_users: totalUsers,
             total_sessions: totalSessions,
             today_present: present,
-            today_late: late
+            today_late: late,
           },
           recent_sessions: recentSessions,
-          chart_data: chartData
-        }
+          chart_data: chartData,
+        },
       });
     }
   } catch (error) {

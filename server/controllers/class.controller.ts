@@ -1,8 +1,11 @@
 import { Request, Response } from 'express';
 import prisma from '../utils/prisma.js';
+import { sendForbidden } from '../utils/errorResponse.js';
 
 const isMissingSemesterColumn = (err: any) =>
-  Boolean(err && err.code === 'P2022' && String(err?.meta?.column || '').includes('Class.semester'));
+  Boolean(
+    err && err.code === 'P2022' && String(err?.meta?.column || '').includes('Class.semester')
+  );
 
 const classInclude = {
   lecturer: { select: { id: true, name: true } },
@@ -31,7 +34,10 @@ async function findClassById(id: string) {
   }
 }
 
-async function userCanAccessClass(user: { id: string; role: string }, classId: string): Promise<boolean> {
+async function userCanAccessClass(
+  user: { id: string; role: string },
+  classId: string
+): Promise<boolean> {
   if (user.role === 'SUPER_ADMIN') return true;
   const cls = await prisma.class.findUnique({
     where: { id: classId },
@@ -57,7 +63,10 @@ export const getClasses = async (req: Request, res: Response): Promise<void> => 
       try {
         classes = await prisma.class.findMany({
           where: { enrollments: { some: { student_id: user.id } } },
-          include: { lecturer: { select: { name: true } }, _count: { select: { enrollments: true, sessions: true } } },
+          include: {
+            lecturer: { select: { name: true } },
+            _count: { select: { enrollments: true, sessions: true } },
+          },
           orderBy: { created_at: 'desc' },
         });
       } catch (err: any) {
@@ -81,7 +90,10 @@ export const getClasses = async (req: Request, res: Response): Promise<void> => 
       try {
         classes = await prisma.class.findMany({
           where: { lecturer_id: user.id },
-          include: { lecturer: { select: { name: true } }, _count: { select: { enrollments: true, sessions: true } } },
+          include: {
+            lecturer: { select: { name: true } },
+            _count: { select: { enrollments: true, sessions: true } },
+          },
           orderBy: { created_at: 'desc' },
         });
       } catch (err: any) {
@@ -104,7 +116,10 @@ export const getClasses = async (req: Request, res: Response): Promise<void> => 
     } else {
       try {
         classes = await prisma.class.findMany({
-          include: { lecturer: { select: { name: true } }, _count: { select: { enrollments: true, sessions: true } } },
+          include: {
+            lecturer: { select: { name: true } },
+            _count: { select: { enrollments: true, sessions: true } },
+          },
           orderBy: { created_at: 'desc' },
         });
       } catch (err: any) {
@@ -134,9 +149,11 @@ export const getClasses = async (req: Request, res: Response): Promise<void> => 
 
 export const createClass = async (req: Request, res: Response): Promise<void> => {
   try {
+    const user = (req as any).user;
     const { name, course_code, description, lecturer_id, semester } = req.body;
     const sem = Math.max(1, Math.min(14, Number.parseInt(String(semester ?? '1'), 10) || 1));
-    
+    const resolvedLecturerId = user?.role === 'ADMIN' ? user.id : lecturer_id;
+
     let newClass;
     try {
       newClass = await prisma.class.create({
@@ -145,15 +162,21 @@ export const createClass = async (req: Request, res: Response): Promise<void> =>
           semester: sem,
           course_code,
           description,
-          lecturer_id,
+          lecturer_id: resolvedLecturerId,
         },
-        include: { lecturer: { select: { name: true } }, _count: { select: { enrollments: true, sessions: true } } }
+        include: {
+          lecturer: { select: { name: true } },
+          _count: { select: { enrollments: true, sessions: true } },
+        },
       });
     } catch (err: any) {
       if (!isMissingSemesterColumn(err)) throw err;
       const created = await prisma.class.create({
-        data: { name, course_code, description, lecturer_id },
-        include: { lecturer: { select: { name: true } }, _count: { select: { enrollments: true, sessions: true } } }
+        data: { name, course_code, description, lecturer_id: resolvedLecturerId },
+        include: {
+          lecturer: { select: { name: true } },
+          _count: { select: { enrollments: true, sessions: true } },
+        },
       });
       newClass = { ...(created as any), semester: 1 };
     }
@@ -168,22 +191,45 @@ export const createClass = async (req: Request, res: Response): Promise<void> =>
 export const updateClass = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
+    const user = (req as any).user;
+    const allowed = await userCanAccessClass(user, id);
+    if (!allowed || user.role === 'USER') {
+      sendForbidden(res, {
+        error_code: 'CLASS_OUT_OF_SCOPE',
+        message: 'Kelas ini di luar akses Anda.',
+      });
+      return;
+    }
     const { name, course_code, description, lecturer_id, semester } = req.body;
     const sem = Math.max(1, Math.min(14, Number.parseInt(String(semester ?? '1'), 10) || 1));
+    if (user.role === 'ADMIN' && lecturer_id && lecturer_id !== user.id) {
+      sendForbidden(res, {
+        error_code: 'ADMIN_CANNOT_CHANGE_LECTURER',
+        message: 'Admin tidak dapat memindahkan kelas ke dosen lain.',
+      });
+      return;
+    }
+    const resolvedLecturerId = user.role === 'ADMIN' ? user.id : lecturer_id;
 
     let updatedClass;
     try {
       updatedClass = await prisma.class.update({
         where: { id },
-        data: { name, semester: sem, course_code, description, lecturer_id },
-        include: { lecturer: { select: { name: true } }, _count: { select: { enrollments: true, sessions: true } } }
+        data: { name, semester: sem, course_code, description, lecturer_id: resolvedLecturerId },
+        include: {
+          lecturer: { select: { name: true } },
+          _count: { select: { enrollments: true, sessions: true } },
+        },
       });
     } catch (err: any) {
       if (!isMissingSemesterColumn(err)) throw err;
       const updated = await prisma.class.update({
         where: { id },
-        data: { name, course_code, description, lecturer_id },
-        include: { lecturer: { select: { name: true } }, _count: { select: { enrollments: true, sessions: true } } }
+        data: { name, course_code, description, lecturer_id: resolvedLecturerId },
+        include: {
+          lecturer: { select: { name: true } },
+          _count: { select: { enrollments: true, sessions: true } },
+        },
       });
       updatedClass = { ...(updated as any), semester: 1 };
     }
@@ -233,7 +279,14 @@ export const getEnrollmentOptions = async (req: Request, res: Response): Promise
     const user = (req as any).user;
     const students = await prisma.user.findMany({
       where: { role: 'USER', is_active: true },
-      select: { id: true, name: true, nim_nip: true, email: true, is_active: true, department: true },
+      select: {
+        id: true,
+        name: true,
+        nim_nip: true,
+        email: true,
+        is_active: true,
+        department: true,
+      },
       orderBy: { name: 'asc' },
     });
 
@@ -270,7 +323,7 @@ export const getStudents = async (req: Request, res: Response): Promise<void> =>
         },
       },
     });
-    const students = enrollments.map(e => e.student);
+    const students = enrollments.map((e) => e.student);
     res.status(200).json({ success: true, data: students });
   } catch (error) {
     console.error('Error fetching students:', error);
@@ -298,28 +351,32 @@ export const enrollStudents = async (req: Request, res: Response): Promise<void>
     const existingEnrollments = await prisma.classEnrollment.findMany({
       where: {
         class_id: id,
-        student_id: { in: student_ids }
-      }
+        student_id: { in: student_ids },
+      },
     });
 
-    const existingStudentIds = new Set(existingEnrollments.map(e => e.student_id));
-    const newStudentIds = student_ids.filter(sid => !existingStudentIds.has(sid));
+    const existingStudentIds = new Set(existingEnrollments.map((e) => e.student_id));
+    const newStudentIds = student_ids.filter((sid) => !existingStudentIds.has(sid));
 
     if (newStudentIds.length === 0) {
-      res.status(200).json({ success: true, message: 'All selected students are already enrolled.' });
+      res
+        .status(200)
+        .json({ success: true, message: 'All selected students are already enrolled.' });
       return;
     }
 
-    const data = newStudentIds.map(sid => ({
+    const data = newStudentIds.map((sid) => ({
       class_id: id,
-      student_id: sid
+      student_id: sid,
     }));
 
     await prisma.classEnrollment.createMany({
       data,
     });
 
-    res.status(200).json({ success: true, message: `${newStudentIds.length} Students enrolled successfully` });
+    res
+      .status(200)
+      .json({ success: true, message: `${newStudentIds.length} Students enrolled successfully` });
   } catch (error) {
     console.error('Error enrolling students:', error);
     res.status(500).json({ success: false, error: 'Internal server error' });
@@ -336,7 +393,7 @@ export const removeStudent = async (req: Request, res: Response): Promise<void> 
       return;
     }
     await prisma.classEnrollment.delete({
-      where: { class_id_student_id: { class_id: id, student_id } }
+      where: { class_id_student_id: { class_id: id, student_id } },
     });
     res.status(200).json({ success: true, message: 'Student removed' });
   } catch (error) {

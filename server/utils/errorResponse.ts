@@ -1,7 +1,12 @@
 import type { Response } from 'express';
 
 function safeText(input: unknown, maxLen = 360) {
-  const text = typeof input === 'string' ? input : input instanceof Error ? input.message : JSON.stringify(input);
+  const text =
+    typeof input === 'string'
+      ? input
+      : input instanceof Error
+        ? input.message
+        : JSON.stringify(input);
   if (!text) return '';
   return text.length > maxLen ? `${text.slice(0, maxLen)}…` : text;
 }
@@ -20,3 +25,20 @@ export function sendInternalServerError(res: Response, err: unknown) {
   });
 }
 
+export function sendForbidden(res: Response, payload: { error_code: string; message: string }) {
+  res.status(403).json({
+    success: false,
+    error_code: payload.error_code,
+    message: payload.message,
+    error: payload.message,
+  });
+}
+
+export function sendBadRequest(res: Response, payload: { error_code: string; message: string }) {
+  res.status(400).json({
+    success: false,
+    error_code: payload.error_code,
+    message: payload.message,
+    error: payload.message,
+  });
+}

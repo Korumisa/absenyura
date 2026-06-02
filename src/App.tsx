@@ -81,6 +81,27 @@ export default function App() {
   useAutoLogout();
 
   useEffect(() => {
+    if (!isAuthenticated) return;
+    const prefetch = () => {
+      void import('@/pages/Sessions');
+      void import('@/pages/Reports');
+      void import('@/pages/Locations');
+      void import('@/pages/Classes');
+      void import('@/pages/QRDisplay');
+    };
+    const ric = (window as any).requestIdleCallback as
+      | ((cb: () => void, opts?: { timeout?: number }) => number)
+      | undefined;
+    const cancelRic = (window as any).cancelIdleCallback as ((id: number) => void) | undefined;
+    if (ric && cancelRic) {
+      const id = ric(prefetch, { timeout: 2000 });
+      return () => cancelRic(id);
+    }
+    const timeoutId = window.setTimeout(prefetch, 1000);
+    return () => window.clearTimeout(timeoutId);
+  }, [isAuthenticated]);
+
+  useEffect(() => {
     const syncOfflineData = async () => {
       if (navigator.onLine && isAuthenticated) {
         try {

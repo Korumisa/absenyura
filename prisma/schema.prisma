@@ -57,6 +57,8 @@ model Class {
   enrollments ClassEnrollment[]
   sessions    Session[]
   session_classes SessionClass[]
+
+  @@index([lecturer_id])
 }
 
 model ClassEnrollment {
@@ -113,6 +115,11 @@ model Session {
   session_classes  SessionClass[]
   attendances     Attendance[]
   excuse_requests ExcuseRequest[]
+
+  @@index([class_id])
+  @@index([status, session_start])
+  @@index([session_start])
+  @@index([created_at])
 }
 
 model SessionClass {
@@ -125,6 +132,7 @@ model SessionClass {
   class   Class   @relation(fields: [class_id], references: [id], onDelete: Cascade)
 
   @@unique([session_id, class_id])
+  @@index([class_id])
 }
 
 model Attendance {
@@ -151,6 +159,8 @@ model Attendance {
 
   @@unique([session_id, user_id]) // Prevent double check-in
   @@index([user_id, check_in_time])
+  @@index([check_in_time])
+  @@index([session_id, check_in_time])
 }
 
 model ExcuseRequest {

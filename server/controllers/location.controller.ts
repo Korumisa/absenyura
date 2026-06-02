@@ -1,16 +1,17 @@
 import { Request, Response } from 'express';
 import prisma from '../utils/prisma.js';
+import { sendForbidden } from '../utils/errorResponse.js';
 
 export const getLocations = async (req: Request, res: Response): Promise<void> => {
   try {
     const locations = await prisma.location.findMany({
       orderBy: { created_at: 'desc' },
     });
-    
+
     // Parse wifi_bssid from JSON string back to array/object for the client
-    const formattedLocations = locations.map(loc => ({
+    const formattedLocations = locations.map((loc) => ({
       ...loc,
-      wifi_bssid: loc.wifi_bssid ? JSON.parse(loc.wifi_bssid as string) : []
+      wifi_bssid: loc.wifi_bssid ? JSON.parse(loc.wifi_bssid as string) : [],
     }));
 
     res.status(200).json({ success: true, data: formattedLocations });
@@ -23,7 +24,7 @@ export const getLocations = async (req: Request, res: Response): Promise<void> =
 export const createLocation = async (req: Request, res: Response): Promise<void> => {
   try {
     const { name, address, latitude, longitude, radius, wifi_bssid } = req.body;
-    
+
     // Auth middleware ensures req.user exists
     const user_id = (req as any).user.id;
 
@@ -39,12 +40,12 @@ export const createLocation = async (req: Request, res: Response): Promise<void>
       },
     });
 
-    res.status(201).json({ 
-      success: true, 
+    res.status(201).json({
+      success: true,
       data: {
         ...location,
-        wifi_bssid: JSON.parse(location.wifi_bssid as string)
-      }
+        wifi_bssid: JSON.parse(location.wifi_bssid as string),
+      },
     });
   } catch (error) {
     console.error('Error creating location:', error);
@@ -56,6 +57,24 @@ export const updateLocation = async (req: Request, res: Response): Promise<void>
   try {
     const { id } = req.params;
     const { name, address, latitude, longitude, radius, wifi_bssid } = req.body;
+    const user = (req as any).user;
+    if (user?.role === 'ADMIN') {
+      const existing = await prisma.location.findUnique({
+        where: { id },
+        select: { created_by: true },
+      });
+      if (!existing) {
+        res.status(404).json({ success: false, error: 'Location not found' });
+        return;
+      }
+      if (existing.created_by !== user.id) {
+        sendForbidden(res, {
+          error_code: 'LOCATION_OUT_OF_SCOPE',
+          message: 'Lokasi ini di luar akses Anda.',
+        });
+        return;
+      }
+    }
 
     const location = await prisma.location.update({
       where: { id },
@@ -69,12 +88,12 @@ export const updateLocation = async (req: Request, res: Response): Promise<void>
       },
     });
 
-    res.status(200).json({ 
-      success: true, 
+    res.status(200).json({
+      success: true,
       data: {
         ...location,
-        wifi_bssid: JSON.parse(location.wifi_bssid as string)
-      } 
+        wifi_bssid: JSON.parse(location.wifi_bssid as string),
+      },
     });
   } catch (error) {
     console.error('Error updating location:', error);
@@ -85,6 +104,24 @@ export const updateLocation = async (req: Request, res: Response): Promise<void>
 export const deleteLocation = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
+    const user = (req as any).user;
+    if (user?.role === 'ADMIN') {
+      const existing = await prisma.location.findUnique({
+        where: { id },
+        select: { created_by: true },
+      });
+      if (!existing) {
+        res.status(404).json({ success: false, error: 'Location not found' });
+        return;
+      }
+      if (existing.created_by !== user.id) {
+        sendForbidden(res, {
+          error_code: 'LOCATION_OUT_OF_SCOPE',
+          message: 'Lokasi ini di luar akses Anda.',
+        });
+        return;
+      }
+    }
     await prisma.location.delete({ where: { id } });
     res.status(200).json({ success: true, message: 'Location deleted successfully' });
   } catch (error) {

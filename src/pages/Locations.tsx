@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -45,10 +46,13 @@ import {
 import AdminPageShell from '@/components/AdminPageShell';
 import type { Location } from '@/types/location';
 import { fixLeafletDefaultIcons } from '@/lib/media/leafletIcon';
+import { useAuthStore } from '@/stores/authStore';
+import { toastErrorMessage } from '@/lib/utils/toastMessage';
 
 fixLeafletDefaultIcons();
 
 export default function Locations() {
+  const currentUser = useAuthStore((s) => s.user);
   const [searchTerm, setSearchTerm] = useState('');
   const [wifiFilter, setWifiFilter] = useState('ALL');
 
@@ -93,8 +97,20 @@ export default function Locations() {
 
   const hasFilters = Boolean(searchTerm.trim()) || wifiFilter !== 'ALL';
 
+  const canManageLocation = (loc: Location): boolean => {
+    if (!currentUser) return false;
+    if (currentUser.role === 'SUPER_ADMIN') return true;
+    if (currentUser.role === 'ADMIN')
+      return Boolean(loc.created_by && loc.created_by === currentUser.id);
+    return false;
+  };
+
   const handleOpenModal = (location: Location | null = null) => {
     if (location) {
+      if (!canManageLocation(location)) {
+        toast.error('Lokasi ini hanya bisa dikelola oleh pembuatnya (Super Admin).');
+        return;
+      }
       setEditingLocation(location);
       setMapCenter([location.latitude, location.longitude]);
       setFormData({
@@ -144,14 +160,18 @@ export default function Locations() {
       setIsModalOpen(false);
       mutate();
     } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Terjadi kesalahan');
+      toast.error(toastErrorMessage(error, 'Terjadi kesalahan'));
     } finally {
       setSaving(false);
     }
   };
 
-  const openDeleteConfirm = (id: string) => {
-    setLocationToDelete(id);
+  const openDeleteConfirm = (location: Location) => {
+    if (!canManageLocation(location)) {
+      toast.error('Lokasi ini hanya bisa dikelola oleh pembuatnya (Super Admin).');
+      return;
+    }
+    setLocationToDelete(location.id);
     setIsDeleteModalOpen(true);
   };
 
@@ -165,7 +185,7 @@ export default function Locations() {
       setLocationToDelete(null);
       mutate();
     } catch (error) {
-      toast.error('Gagal menghapus lokasi');
+      toast.error(toastErrorMessage(error, 'Gagal menghapus lokasi'));
     } finally {
       setDeleting(false);
     }
@@ -368,7 +388,12 @@ export default function Locations() {
                     <div className="flex items-start gap-2">
                       <MapPin size={18} className="mt-0.5 shrink-0 text-indigo-500" />
                       <div className="min-w-0 flex-1">
-                        <p className="font-bold text-foreground">{loc.name}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-bold text-foreground">{loc.name}</p>
+                          {!canManageLocation(loc) && currentUser?.role === 'ADMIN' ? (
+                            <Badge variant="secondary">Global</Badge>
+                          ) : null}
+                        </div>
                         <p className="mt-1 truncate text-sm text-muted-foreground">
                           {loc.address || 'Tanpa alamat'}
                         </p>
@@ -388,6 +413,7 @@ export default function Locations() {
                         variant="outline"
                         className="min-h-11 flex-1"
                         onClick={() => handleOpenModal(loc)}
+                        disabled={!canManageLocation(loc)}
                       >
                         <Edit2 className="mr-2 size-4" />
                         Edit
@@ -395,7 +421,8 @@ export default function Locations() {
                       <Button
                         variant="outline"
                         className="min-h-11 flex-1 text-red-600 hover:text-red-700"
-                        onClick={() => openDeleteConfirm(loc.id)}
+                        onClick={() => openDeleteConfirm(loc)}
+                        disabled={!canManageLocation(loc)}
                       >
                         <Trash2 className="mr-2 size-4" />
                         Hapus
@@ -448,6 +475,9 @@ export default function Locations() {
                           <div className="flex items-center gap-2">
                             <MapPin size={16} className="text-indigo-500" />
                             {loc.name}
+                            {!canManageLocation(loc) && currentUser?.role === 'ADMIN' ? (
+                              <Badge variant="secondary">Global</Badge>
+                            ) : null}
                           </div>
                         </TableCell>
                         <TableCell
@@ -486,15 +516,17 @@ export default function Locations() {
                               onClick={() => handleOpenModal(loc)}
                               className="text-muted-foreground hover:text-brand hover:bg-indigo-50 dark:text-slate-400 dark:hover:bg-indigo-900/30"
                               title="Edit"
+                              disabled={!canManageLocation(loc)}
                             >
                               <Edit2 className="size-4" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => openDeleteConfirm(loc.id)}
+                              onClick={() => openDeleteConfirm(loc)}
                               className="text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:text-slate-400 dark:hover:bg-red-900/30"
                               title="Hapus"
+                              disabled={!canManageLocation(loc)}
                             >
                               <Trash2 className="size-4" />
                             </Button>

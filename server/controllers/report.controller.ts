@@ -32,7 +32,6 @@ export const getReports = async (req: Request, res: Response): Promise<void> => 
         OR: [
           { session: { class: { lecturer_id: user.id } } },
           { session: { session_classes: { some: { class: { lecturer_id: user.id } } } } },
-          { session: { created_by_id: user.id } },
         ],
       });
     }

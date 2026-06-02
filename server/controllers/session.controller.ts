@@ -8,6 +8,12 @@ import {
 } from '../utils/sessionQuerySelect.js';
 import { buildDynamicQrToken, QR_WINDOW_MS } from '../utils/dynamicQr.js';
 import { triggerSessionCronLazy } from '../jobs/cron.js';
+import {
+  adminOwnsAllClasses,
+  adminSessionScopeWhere,
+  assertAdminSessionScope,
+} from '../utils/sessionAccess.js';
+import { sendForbidden } from '../utils/errorResponse.js';
 
 const isMissingSemesterColumn = (err: any) =>
   Boolean(
@@ -59,17 +65,16 @@ export const getSessions = async (req: Request, res: Response): Promise<void> =>
         });
       }
     } else {
-      // Admin/Super Admin sees all sessions they created (or all if super admin)
       try {
         sessions = await prisma.session.findMany({
-          where: user.role === 'ADMIN' ? { created_by_id: user.id } : {},
+          where: user.role === 'ADMIN' ? adminSessionScopeWhere(user.id) : {},
           select: sessionListSelect({ withSemester: true }),
           orderBy: { created_at: 'desc' },
         });
       } catch (err: any) {
         if (!isMissingSemesterColumn(err)) throw err;
         sessions = await prisma.session.findMany({
-          where: user.role === 'ADMIN' ? { created_by_id: user.id } : {},
+          where: user.role === 'ADMIN' ? adminSessionScopeWhere(user.id) : {},
           select: sessionListSelect({ withSemester: false }),
           orderBy: { created_at: 'desc' },
         });
@@ -160,7 +165,8 @@ export const createSession = async (req: Request, res: Response): Promise<void> 
       late_threshold_minutes,
       require_checkout,
     } = req.body;
-    const user_id = (req as any).user.id;
+    const user = (req as any).user;
+    const user_id = user.id;
     const incomingClassIds = Array.isArray(class_ids)
       ? class_ids.flatMap((x: any) => {
           const result = String(x || '').trim();
@@ -169,6 +175,25 @@ export const createSession = async (req: Request, res: Response): Promise<void> 
       : [];
     const uniqueClassIds = Array.from(new Set(incomingClassIds));
     const useMultiClass = uniqueClassIds.length > 0;
+    const selectedClassIds = useMultiClass ? uniqueClassIds : class_id ? [class_id] : [];
+
+    if (user.role === 'ADMIN') {
+      if (selectedClassIds.length === 0) {
+        sendForbidden(res, {
+          error_code: 'ADMIN_SESSION_REQUIRES_CLASS',
+          message: 'Admin harus memilih minimal 1 kelas untuk membuat sesi.',
+        });
+        return;
+      }
+      const owned = await adminOwnsAllClasses(user.id, selectedClassIds);
+      if (!owned) {
+        sendForbidden(res, {
+          error_code: 'CLASS_OUT_OF_SCOPE',
+          message: 'Kelas yang dipilih bukan kelas yang Anda ampu.',
+        });
+        return;
+      }
+    }
 
     if (!title || !String(title).trim()) {
       sendSessionTimeError(res, {
@@ -278,6 +303,14 @@ export const createSession = async (req: Request, res: Response): Promise<void> 
 export const updateSession = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
+    const user = (req as any).user;
+    if (!(await assertAdminSessionScope(user, id))) {
+      sendForbidden(res, {
+        error_code: 'SESSION_OUT_OF_SCOPE',
+        message: 'Sesi ini di luar akses Anda.',
+      });
+      return;
+    }
     const {
       title,
       description,
@@ -301,6 +334,8 @@ export const updateSession = async (req: Request, res: Response): Promise<void> 
         })
       : [];
     const uniqueClassIds = Array.from(new Set(incomingClassIds));
+    const selectedClassIds =
+      uniqueClassIds.length > 0 ? uniqueClassIds : class_id ? [class_id] : [];
 
     // Edit sesi yang sudah berjalan (ACTIVE/CLOSED) boleh punya close_at di masa lalu —
     // hanya block kalau sesi masih UPCOMING (belum mulai).
@@ -313,6 +348,23 @@ export const updateSession = async (req: Request, res: Response): Promise<void> 
     if (timeError) {
       sendSessionTimeError(res, timeError);
       return;
+    }
+    if (user.role === 'ADMIN') {
+      if (selectedClassIds.length === 0) {
+        sendForbidden(res, {
+          error_code: 'ADMIN_SESSION_REQUIRES_CLASS',
+          message: 'Admin harus memilih minimal 1 kelas untuk sesi.',
+        });
+        return;
+      }
+      const owned = await adminOwnsAllClasses(user.id, selectedClassIds);
+      if (!owned) {
+        sendForbidden(res, {
+          error_code: 'CLASS_OUT_OF_SCOPE',
+          message: 'Kelas yang dipilih bukan kelas yang Anda ampu.',
+        });
+        return;
+      }
     }
 
     const session = await prisma.session.update({
@@ -354,6 +406,14 @@ export const updateSession = async (req: Request, res: Response): Promise<void> 
 export const deleteSession = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
+    const user = (req as any).user;
+    if (!(await assertAdminSessionScope(user, id))) {
+      sendForbidden(res, {
+        error_code: 'SESSION_OUT_OF_SCOPE',
+        message: 'Sesi ini di luar akses Anda.',
+      });
+      return;
+    }
 
     // Hapus data terkait terlebih dahulu untuk menghindari error Foreign Key Constraint
     // (Karena pada schema.prisma tidak menggunakan onDelete: Cascade pada tabel terkait)
@@ -418,6 +478,14 @@ export const getSessionById = async (req: Request, res: Response): Promise<void>
           return;
         }
       }
+    } else if (user.role === 'ADMIN') {
+      if (!(await assertAdminSessionScope(user, id))) {
+        sendForbidden(res, {
+          error_code: 'SESSION_OUT_OF_SCOPE',
+          message: 'Sesi ini di luar akses Anda.',
+        });
+        return;
+      }
     }
 
     res.status(200).json({ success: true, data: session });
@@ -430,6 +498,7 @@ export const getSessionById = async (req: Request, res: Response): Promise<void>
 export const getSessionQR = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
+    const user = (req as any).user;
     const session = await prisma.session.findUnique({
       where: { id },
       select: { id: true, qr_mode: true, qr_token: true, qr_secret: true },
@@ -437,6 +506,13 @@ export const getSessionQR = async (req: Request, res: Response): Promise<void> =
 
     if (!session) {
       res.status(404).json({ success: false, error: 'Session not found' });
+      return;
+    }
+    if (!(await assertAdminSessionScope(user, id))) {
+      sendForbidden(res, {
+        error_code: 'SESSION_OUT_OF_SCOPE',
+        message: 'Sesi ini di luar akses Anda.',
+      });
       return;
     }
 
@@ -472,6 +548,14 @@ export const getSessionQR = async (req: Request, res: Response): Promise<void> =
 export const getSessionAttendances = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
+    const user = (req as any).user;
+    if (!(await assertAdminSessionScope(user, id))) {
+      sendForbidden(res, {
+        error_code: 'SESSION_OUT_OF_SCOPE',
+        message: 'Sesi ini di luar akses Anda.',
+      });
+      return;
+    }
     const attendances = await prisma.attendance.findMany({
       where: { session_id: id },
       select: {
