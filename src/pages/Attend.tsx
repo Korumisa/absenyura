@@ -649,7 +649,7 @@ export default function Attend() {
       if (isOffline) {
         const offlineId = await saveOfflineAttendance({
           session_id: sessionId,
-          token: qrToken !== NO_QR_TOKEN ? qrToken : undefined,
+          token: qrToken && qrToken !== NO_QR_TOKEN ? qrToken : undefined,
           lat: location.lat,
           lng: location.lng,
           deviceInfo: deviceFingerprint,
@@ -685,7 +685,7 @@ export default function Attend() {
 
       const formData = new FormData();
       formData.append('session_id', sessionId);
-      if (qrToken !== NO_QR_TOKEN) {
+      if (qrToken && qrToken !== NO_QR_TOKEN) {
         formData.append('qr_token', qrToken);
       }
       formData.append('latitude', location.lat.toString());
