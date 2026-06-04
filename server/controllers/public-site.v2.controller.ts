@@ -1,14 +1,16 @@
 import { Request, Response } from 'express';
 import prisma from '../utils/prisma.js';
-import { upload } from '../utils/upload.js';
+import { upload, validateUploadedFileContent } from '../utils/upload.js';
 import { v2 as cloudinary } from 'cloudinary';
 import { sendInternalServerError } from '../utils/errorResponse.js';
+import { sanitizeWebUrl } from '../utils/sanitizeUrl.js';
 import fs from 'fs';
 
 type PublicRoleRequest = Request & { user?: { id: string; role: string } };
 
 function toInt(value: unknown, fallback: number) {
-  const n = typeof value === 'string' ? parseInt(value, 10) : typeof value === 'number' ? value : NaN;
+  const n =
+    typeof value === 'string' ? parseInt(value, 10) : typeof value === 'number' ? value : NaN;
   return Number.isFinite(n) ? n : fallback;
 }
 
@@ -49,7 +51,10 @@ function normalizeYoutubeEmbedUrl(input: string): string | null {
       const m = url.pathname.match(/\/video\/(\d+)/);
       const vid = m?.[1] || '';
       if (vid) return `https://www.tiktok.com/embed/v2/${vid}`;
-      const embed = url.pathname.match(/\/embed\/v2\/(\d+)/)?.[1] || url.pathname.match(/\/embed\/(\d+)/)?.[1] || '';
+      const embed =
+        url.pathname.match(/\/embed\/v2\/(\d+)/)?.[1] ||
+        url.pathname.match(/\/embed\/(\d+)/)?.[1] ||
+        '';
       if (embed) return `https://www.tiktok.com/embed/v2/${embed}`;
       return null;
     }
@@ -155,9 +160,9 @@ export const upsertAdminProfile = async (req: PublicRoleRequest, res: Response):
       misi_name: String((data as any).misiName ?? '').trim() || null,
       misi_role: String((data as any).misiRole ?? '').trim() || null,
       footer_tagline: String((data as any).footerTagline ?? '').trim() || null,
-      instagram_url: String((data as any).instagramUrl ?? '').trim() || null,
-      tiktok_url: String((data as any).tiktokUrl ?? '').trim() || null,
-      youtube_url: String((data as any).youtubeUrl ?? '').trim() || null,
+      instagram_url: sanitizeWebUrl((data as any).instagramUrl),
+      tiktok_url: sanitizeWebUrl((data as any).tiktokUrl),
+      youtube_url: sanitizeWebUrl((data as any).youtubeUrl),
       address: String((data as any).address ?? '').trim() || null,
       email: String((data as any).email ?? '').trim() || null,
       phone: String((data as any).phone ?? '').trim() || null,
@@ -170,7 +175,9 @@ export const upsertAdminProfile = async (req: PublicRoleRequest, res: Response):
     };
 
     if (!payload.org_name || !payload.campus_name) {
-      res.status(400).json({ success: false, error: 'Nama organisasi dan nama kampus wajib diisi' });
+      res
+        .status(400)
+        .json({ success: false, error: 'Nama organisasi dan nama kampus wajib diisi' });
       return;
     }
 
@@ -211,7 +218,10 @@ export const getAdminStructure = async (req: Request, res: Response): Promise<vo
   }
 };
 
-export const replaceAdminStructure = async (req: PublicRoleRequest, res: Response): Promise<void> => {
+export const replaceAdminStructure = async (
+  req: PublicRoleRequest,
+  res: Response
+): Promise<void> => {
   try {
     const data = req.body?.data;
     if (!Array.isArray(data)) {
@@ -239,11 +249,20 @@ export const replaceAdminStructure = async (req: PublicRoleRequest, res: Respons
           const role = String(p.role ?? '').trim();
           if (!name || !role) continue;
           const photo_url = String(p.photoUrl ?? '').trim() || null;
-          const wantsSpotlight = Boolean((p as any).isSpotlight ?? (p as any).is_spotlight ?? false);
+          const wantsSpotlight = Boolean(
+            (p as any).isSpotlight ?? (p as any).is_spotlight ?? false
+          );
           const is_spotlight = wantsSpotlight && !usedSpotlight;
           if (is_spotlight) usedSpotlight = true;
           await tx.publicStructureMember.create({
-            data: { group_id: group.id, name, role, photo_url, is_spotlight, sort_order: toInt(p.sortOrder, pi) } as any,
+            data: {
+              group_id: group.id,
+              name,
+              role,
+              photo_url,
+              is_spotlight,
+              sort_order: toInt(p.sortOrder, pi),
+            } as any,
           });
         }
       }
@@ -320,9 +339,16 @@ export const updateAdminProgram = async (req: PublicRoleRequest, res: Response):
       where: { id },
       data: {
         title,
-        date_range: typeof payload.dateRange === 'string' ? payload.dateRange.trim() || null : existing.date_range,
-        description: typeof payload.description === 'string' ? payload.description.trim() || null : existing.description,
-        is_published: typeof payload.isPublished === 'boolean' ? payload.isPublished : existing.is_published,
+        date_range:
+          typeof payload.dateRange === 'string'
+            ? payload.dateRange.trim() || null
+            : existing.date_range,
+        description:
+          typeof payload.description === 'string'
+            ? payload.description.trim() || null
+            : existing.description,
+        is_published:
+          typeof payload.isPublished === 'boolean' ? payload.isPublished : existing.is_published,
       },
     });
     res.status(200).json({ success: true, data: row });
@@ -425,7 +451,8 @@ export const listPublicPosts = async (req: Request, res: Response): Promise<void
     const pageSize = Math.min(24, Math.max(3, toInt(req.query.pageSize, 6)));
     const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
     const type = typeof req.query.type === 'string' ? req.query.type : undefined;
-    const categorySlug = typeof req.query.categorySlug === 'string' ? req.query.categorySlug : undefined;
+    const categorySlug =
+      typeof req.query.categorySlug === 'string' ? req.query.categorySlug : undefined;
 
     const where: any = { is_published: true };
     if (q) where.title = { contains: q, mode: 'insensitive' };
@@ -509,7 +536,9 @@ export const createAdminPost = async (req: PublicRoleRequest, res: Response): Pr
         slug,
         date_label: String(payload.dateLabel ?? '').trim() || null,
         status: String(payload.status ?? '').trim() || null,
-        ...(String(payload.formUrl ?? '').trim() ? ({ form_url: String(payload.formUrl ?? '').trim() } as any) : ({} as any)),
+        ...(sanitizeWebUrl(payload.formUrl)
+          ? ({ form_url: sanitizeWebUrl(payload.formUrl) } as any)
+          : ({} as any)),
         excerpt: String(payload.excerpt ?? '').trim() || null,
         content: String(payload.content ?? '').trim() || null,
         cover_image_url: String(payload.coverImageUrl ?? '').trim() || null,
@@ -547,10 +576,9 @@ export const updateAdminPost = async (req: PublicRoleRequest, res: Response): Pr
       slug = await ensureUniquePostSlug(baseSlug);
     }
 
-    const nextIsPublished = typeof payload.isPublished === 'boolean' ? payload.isPublished : existing.is_published;
-    const publishedAt = nextIsPublished
-      ? existing.published_at ?? new Date()
-      : null;
+    const nextIsPublished =
+      typeof payload.isPublished === 'boolean' ? payload.isPublished : existing.is_published;
+    const publishedAt = nextIsPublished ? (existing.published_at ?? new Date()) : null;
 
     const existingAny = existing as any;
     const row = await prisma.publicPost.update({
@@ -559,15 +587,27 @@ export const updateAdminPost = async (req: PublicRoleRequest, res: Response): Pr
         type: payload.type ?? existing.type,
         title,
         slug,
-        date_label: typeof payload.dateLabel === 'string' ? payload.dateLabel.trim() || null : existing.date_label,
-        status: typeof payload.status === 'string' ? payload.status.trim() || null : existing.status,
+        date_label:
+          typeof payload.dateLabel === 'string'
+            ? payload.dateLabel.trim() || null
+            : existing.date_label,
+        status:
+          typeof payload.status === 'string' ? payload.status.trim() || null : existing.status,
         ...(typeof payload.formUrl === 'string'
-          ? ({ form_url: payload.formUrl.trim() || null } as any)
+          ? ({ form_url: sanitizeWebUrl(payload.formUrl) } as any)
           : ({ form_url: existingAny.form_url ?? null } as any)),
-        excerpt: typeof payload.excerpt === 'string' ? payload.excerpt.trim() || null : existing.excerpt,
-        content: typeof payload.content === 'string' ? payload.content.trim() || null : existing.content,
-        cover_image_url: typeof payload.coverImageUrl === 'string' ? payload.coverImageUrl.trim() || null : existing.cover_image_url,
-        category_id: typeof payload.categoryId === 'string' ? payload.categoryId.trim() || null : existing.category_id,
+        excerpt:
+          typeof payload.excerpt === 'string' ? payload.excerpt.trim() || null : existing.excerpt,
+        content:
+          typeof payload.content === 'string' ? payload.content.trim() || null : existing.content,
+        cover_image_url:
+          typeof payload.coverImageUrl === 'string'
+            ? payload.coverImageUrl.trim() || null
+            : existing.cover_image_url,
+        category_id:
+          typeof payload.categoryId === 'string'
+            ? payload.categoryId.trim() || null
+            : existing.category_id,
         is_published: nextIsPublished,
         published_at: publishedAt,
       },
@@ -653,7 +693,10 @@ export const createAdminGallery = async (req: PublicRoleRequest, res: Response):
 export const updateAdminGallery = async (req: PublicRoleRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const existing = await prisma.publicGalleryAlbum.findUnique({ where: { id }, include: { items: true } });
+    const existing = await prisma.publicGalleryAlbum.findUnique({
+      where: { id },
+      include: { items: true },
+    });
     if (!existing) {
       res.status(404).json({ success: false, error: 'Album tidak ditemukan' });
       return;
@@ -670,8 +713,12 @@ export const updateAdminGallery = async (req: PublicRoleRequest, res: Response):
       where: { id },
       data: {
         title,
-        description: typeof payload.description === 'string' ? payload.description.trim() || null : existing.description,
-        is_published: typeof payload.isPublished === 'boolean' ? payload.isPublished : existing.is_published,
+        description:
+          typeof payload.description === 'string'
+            ? payload.description.trim() || null
+            : existing.description,
+        is_published:
+          typeof payload.isPublished === 'boolean' ? payload.isPublished : existing.is_published,
         items: items
           ? {
               deleteMany: {},
@@ -743,7 +790,7 @@ function validateRecruitmentPublishFields(payload: {
   dateRange?: string;
   formUrl?: string;
 }): string | null {
-  if (!Boolean(payload.isPublished)) return null;
+  if (!payload.isPublished) return null;
   if (!String(payload.dateRange ?? '').trim()) {
     return 'Periode pendaftaran wajib diisi sebelum publish.';
   }
@@ -754,7 +801,10 @@ function validateRecruitmentPublishFields(payload: {
   return null;
 }
 
-export const createAdminRecruitment = async (req: PublicRoleRequest, res: Response): Promise<void> => {
+export const createAdminRecruitment = async (
+  req: PublicRoleRequest,
+  res: Response
+): Promise<void> => {
   try {
     const payload = req.body ?? {};
     const title = String(payload.title ?? '').trim();
@@ -778,7 +828,7 @@ export const createAdminRecruitment = async (req: PublicRoleRequest, res: Respon
         title,
         date_range: String(payload.dateRange ?? '').trim() || null,
         description: String(payload.description ?? '').trim() || null,
-        form_url: String(payload.formUrl ?? '').trim() || null,
+        form_url: sanitizeWebUrl(payload.formUrl),
         poster_image_url: String(payload.posterImageUrl ?? '').trim() || null,
         is_published: Boolean(payload.isPublished ?? false),
         committee: {
@@ -809,7 +859,10 @@ export const createAdminRecruitment = async (req: PublicRoleRequest, res: Respon
   }
 };
 
-export const updateAdminRecruitment = async (req: PublicRoleRequest, res: Response): Promise<void> => {
+export const updateAdminRecruitment = async (
+  req: PublicRoleRequest,
+  res: Response
+): Promise<void> => {
   try {
     const { id } = req.params;
     const existing = await prisma.publicRecruitment.findUnique({
@@ -826,11 +879,13 @@ export const updateAdminRecruitment = async (req: PublicRoleRequest, res: Respon
       res.status(400).json({ success: false, error: 'Judul wajib diisi' });
       return;
     }
-    const willPublish = typeof payload.isPublished === 'boolean' ? payload.isPublished : existing.is_published;
+    const willPublish =
+      typeof payload.isPublished === 'boolean' ? payload.isPublished : existing.is_published;
     const publishErr = validateRecruitmentPublishFields({
       isPublished: willPublish,
-      dateRange: typeof payload.dateRange === 'string' ? payload.dateRange : existing.date_range ?? '',
-      formUrl: typeof payload.formUrl === 'string' ? payload.formUrl : existing.form_url ?? '',
+      dateRange:
+        typeof payload.dateRange === 'string' ? payload.dateRange : (existing.date_range ?? ''),
+      formUrl: typeof payload.formUrl === 'string' ? payload.formUrl : (existing.form_url ?? ''),
     });
     if (publishErr) {
       res.status(400).json({ success: false, error: publishErr });
@@ -842,12 +897,22 @@ export const updateAdminRecruitment = async (req: PublicRoleRequest, res: Respon
       where: { id },
       data: {
         title,
-        date_range: typeof payload.dateRange === 'string' ? payload.dateRange.trim() || null : existing.date_range,
-        description: typeof payload.description === 'string' ? payload.description.trim() || null : existing.description,
-        form_url: typeof payload.formUrl === 'string' ? payload.formUrl.trim() || null : existing.form_url,
+        date_range:
+          typeof payload.dateRange === 'string'
+            ? payload.dateRange.trim() || null
+            : existing.date_range,
+        description:
+          typeof payload.description === 'string'
+            ? payload.description.trim() || null
+            : existing.description,
+        form_url:
+          typeof payload.formUrl === 'string' ? sanitizeWebUrl(payload.formUrl) : existing.form_url,
         poster_image_url:
-          typeof payload.posterImageUrl === 'string' ? payload.posterImageUrl.trim() || null : existing.poster_image_url,
-        is_published: typeof payload.isPublished === 'boolean' ? payload.isPublished : existing.is_published,
+          typeof payload.posterImageUrl === 'string'
+            ? payload.posterImageUrl.trim() || null
+            : existing.poster_image_url,
+        is_published:
+          typeof payload.isPublished === 'boolean' ? payload.isPublished : existing.is_published,
         committee: committee
           ? {
               deleteMany: {},
@@ -882,7 +947,10 @@ export const updateAdminRecruitment = async (req: PublicRoleRequest, res: Respon
   }
 };
 
-export const deleteAdminRecruitment = async (req: PublicRoleRequest, res: Response): Promise<void> => {
+export const deleteAdminRecruitment = async (
+  req: PublicRoleRequest,
+  res: Response
+): Promise<void> => {
   try {
     const { id } = req.params;
     await prisma.publicRecruitment.delete({ where: { id } });
@@ -913,8 +981,15 @@ export const uploadPublicAsset = async (req: PublicRoleRequest, res: Response): 
         res.status(400).json({ success: false, error: 'File tidak ditemukan' });
         return;
       }
+      const validation = await validateUploadedFileContent(req.file, { imageOnly: true });
+      if (!validation.ok) {
+        res.status(400).json({ success: false, error: validation.error });
+        return;
+      }
       const result = await cloudinary.uploader.upload(filePath, { folder: 'public-site' });
-      res.status(200).json({ success: true, data: { url: result.secure_url, publicId: result.public_id } });
+      res
+        .status(200)
+        .json({ success: true, data: { url: result.secure_url, publicId: result.public_id } });
     } catch (error) {
       console.error('Error uploading public asset:', error);
       res.status(500).json({ success: false, error: 'Gagal mengunggah file' });
@@ -925,4 +1000,3 @@ export const uploadPublicAsset = async (req: PublicRoleRequest, res: Response): 
     }
   });
 };
-

@@ -24,6 +24,7 @@ import type { PublicProfile } from '@/types/publicSite';
 import { getErrorMessage } from '@/lib/http/errorMessage';
 import { getDeviceFingerprint } from '@/lib/storage/deviceFingerprint';
 import { BrandLogoImage } from '@/components/public/BrandLogoImage';
+import { getPostLoginTarget } from '@/lib/auth/postLoginTarget';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -65,13 +66,7 @@ export default function Login() {
       setAuth(user);
       toast.success('Berhasil masuk!');
 
-      let target = location.state?.from?.pathname;
-      if (!target || target === '/dashboard') {
-        // [IA] #10 — redirect konsisten ke dashboard (kecuali content admin)
-        if (user.role === 'CONTENT_ADMIN') target = '/public-site/profile';
-        else target = '/dashboard';
-      }
-
+      const target = getPostLoginTarget(location.state?.from, user);
       navigate(target, { replace: true });
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status;

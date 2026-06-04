@@ -6,6 +6,12 @@ import { VitePWA } from 'vite-plugin-pwa';
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
+  if (
+    mode === 'production' &&
+    (env.VITE_DEV_BYPASS_AUTH === 'true' || env.VITE_DEV_BYPASS_AUTH === '1')
+  ) {
+    throw new Error('VITE_DEV_BYPASS_AUTH must not be enabled in production builds.');
+  }
   const apiTarget = env.VITE_API_PROXY_TARGET || 'http://localhost:3001';
   const proxyLogs =
     mode === 'development' &&

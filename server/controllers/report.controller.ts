@@ -6,18 +6,32 @@ const isMissingSemesterColumn = (err: any) =>
     err && err.code === 'P2022' && String(err?.meta?.column || '').includes('Class.semester')
   );
 
+function parsePagination(
+  query: Request['query'],
+  defaults: { page: number; limit: number; max: number }
+) {
+  const rawPage = Number.parseInt(String(query.page ?? ''), 10);
+  const rawLimit = Number.parseInt(String(query.limit ?? ''), 10);
+  const page = Number.isFinite(rawPage) && rawPage > 0 ? rawPage : defaults.page;
+  const limit =
+    Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, defaults.max) : defaults.limit;
+  return { page, limit, skip: (page - 1) * limit };
+}
+
 export const getReports = async (req: Request, res: Response): Promise<void> => {
   try {
     const user = (req as any).user;
 
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 50;
-    const skip = (page - 1) * limit;
+    const { page, limit, skip } = parsePagination(req.query, { page: 1, limit: 50, max: 500 });
 
     const startDate = req.query.startDate as string;
     const endDate = req.query.endDate as string;
     const sessionId = (req.query.sessionId || req.query.session_id) as string | undefined;
     const classId = (req.query.classId || req.query.class_id) as string | undefined;
+    const status = String(req.query.status || '')
+      .trim()
+      .toUpperCase();
+    const search = String(req.query.search || '').trim();
     const userId = (req.query.userId ||
       req.query.user_id ||
       req.query.studentId ||
@@ -52,14 +66,26 @@ export const getReports = async (req: Request, res: Response): Promise<void> => 
     if (user.role !== 'USER' && userId) {
       andFilters.push({ user_id: userId });
     }
+    if (status && status !== 'ALL') {
+      andFilters.push(status === 'EXCUSED' ? { status: { in: ['SICK', 'EXCUSED'] } } : { status });
+    }
+    if (search) {
+      andFilters.push({
+        OR: [
+          { user: { name: { contains: search, mode: 'insensitive' } } },
+          { user: { nim_nip: { contains: search, mode: 'insensitive' } } },
+          { session: { title: { contains: search, mode: 'insensitive' } } },
+        ],
+      });
+    }
 
-    if (startDate && endDate) {
+    if (startDate || endDate) {
+      const range: { gte?: Date; lte?: Date } = {};
+      if (startDate) range.gte = new Date(startDate);
+      if (endDate) range.lte = new Date(new Date(endDate).setHours(23, 59, 59, 999));
       andFilters.push({
         session: {
-          session_start: {
-            gte: new Date(startDate),
-            lte: new Date(new Date(endDate).setHours(23, 59, 59, 999)),
-          },
+          session_start: range,
         },
       });
     }

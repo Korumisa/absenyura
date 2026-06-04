@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import prisma from '../utils/prisma.js';
 import crypto from 'crypto';
+import { ipRestrictionEnabledFromWifiBssid } from '../utils/attendanceValidation.js';
 import {
   sessionDetailSelect,
   sessionListSelect,
@@ -19,6 +20,27 @@ const isMissingSemesterColumn = (err: any) =>
   Boolean(
     err && err.code === 'P2022' && String(err?.meta?.column || '').includes('Class.semester')
   );
+
+const VALID_QR_MODES = new Set(['NONE', 'STATIC', 'DYNAMIC']);
+const VALID_SESSION_STATUSES = new Set(['UPCOMING', 'ACTIVE', 'CLOSED']);
+
+function isValidQrMode(value: unknown): value is string {
+  return typeof value === 'string' && VALID_QR_MODES.has(value);
+}
+
+function isValidSessionStatus(value: unknown): value is string {
+  return typeof value === 'string' && VALID_SESSION_STATUSES.has(value);
+}
+
+function buildQrFields(qrMode: string) {
+  if (qrMode === 'STATIC') {
+    return { qr_token: crypto.randomBytes(16).toString('hex'), qr_secret: null };
+  }
+  if (qrMode === 'DYNAMIC') {
+    return { qr_token: null, qr_secret: crypto.randomBytes(32).toString('hex') };
+  }
+  return { qr_token: null, qr_secret: null };
+}
 
 export const getSessions = async (req: Request, res: Response): Promise<void> => {
   triggerSessionCronLazy();
@@ -211,6 +233,14 @@ export const createSession = async (req: Request, res: Response): Promise<void> 
       });
       return;
     }
+    if (!isValidQrMode(qr_mode)) {
+      sendSessionTimeError(res, {
+        field: 'qr_mode',
+        message: 'Mode QR tidak valid.',
+        error_code: 'INVALID_QR_MODE',
+      });
+      return;
+    }
 
     const timeError = validateSessionTimes(
       { session_start, session_end, check_in_open_at, check_in_close_at },
@@ -221,41 +251,35 @@ export const createSession = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    // Generate static token if qr_mode is STATIC
-    let qr_token = null;
-    let qr_secret = null;
+    const qrFields = buildQrFields(qr_mode);
 
-    if (qr_mode === 'STATIC') {
-      qr_token = crypto.randomBytes(16).toString('hex');
-    } else if (qr_mode === 'DYNAMIC') {
-      qr_secret = crypto.randomBytes(32).toString('hex');
-    }
-
-    const session = await prisma.session.create({
-      data: {
-        title,
-        description,
-        class_id: useMultiClass ? null : class_id || null,
-        location_id,
-        created_by_id: user_id,
-        qr_mode,
-        qr_token,
-        qr_secret,
-        session_start: new Date(session_start),
-        session_end: new Date(session_end),
-        check_in_open_at: new Date(check_in_open_at),
-        check_in_close_at: new Date(check_in_close_at),
-        late_threshold_minutes: parseInt(late_threshold_minutes, 10),
-        require_checkout: Boolean(require_checkout),
-      },
-    });
-
-    if (useMultiClass) {
-      await prisma.sessionClass.createMany({
-        data: uniqueClassIds.map((cid) => ({ session_id: session.id, class_id: cid })),
-        skipDuplicates: true,
+    const session = await prisma.$transaction(async (tx) => {
+      const created = await tx.session.create({
+        data: {
+          title,
+          description,
+          class_id: useMultiClass ? null : class_id || null,
+          location_id,
+          created_by_id: user_id,
+          qr_mode,
+          ...qrFields,
+          session_start: new Date(session_start),
+          session_end: new Date(session_end),
+          check_in_open_at: new Date(check_in_open_at),
+          check_in_close_at: new Date(check_in_close_at),
+          late_threshold_minutes: parseInt(late_threshold_minutes, 10),
+          require_checkout: Boolean(require_checkout),
+        },
       });
-    }
+
+      if (useMultiClass) {
+        await tx.sessionClass.createMany({
+          data: uniqueClassIds.map((cid) => ({ session_id: created.id, class_id: cid })),
+          skipDuplicates: true,
+        });
+      }
+      return created;
+    });
 
     // Notify students about the new session
     let expectedUserIds: string[] = [];
@@ -339,7 +363,10 @@ export const updateSession = async (req: Request, res: Response): Promise<void> 
 
     // Edit sesi yang sudah berjalan (ACTIVE/CLOSED) boleh punya close_at di masa lalu —
     // hanya block kalau sesi masih UPCOMING (belum mulai).
-    const existing = await prisma.session.findUnique({ where: { id }, select: { status: true } });
+    const existing = await prisma.session.findUnique({
+      where: { id },
+      select: { status: true, qr_mode: true, qr_token: true, qr_secret: true },
+    });
     const allowPastClose = Boolean(existing && existing.status !== 'UPCOMING');
     const timeError = validateSessionTimes(
       { session_start, session_end, check_in_open_at, check_in_close_at },
@@ -347,6 +374,23 @@ export const updateSession = async (req: Request, res: Response): Promise<void> 
     );
     if (timeError) {
       sendSessionTimeError(res, timeError);
+      return;
+    }
+    const nextQrMode = qr_mode == null ? existing?.qr_mode : qr_mode;
+    if (!isValidQrMode(nextQrMode)) {
+      sendSessionTimeError(res, {
+        field: 'qr_mode',
+        message: 'Mode QR tidak valid.',
+        error_code: 'INVALID_QR_MODE',
+      });
+      return;
+    }
+    if (status != null && !isValidSessionStatus(status)) {
+      sendSessionTimeError(res, {
+        field: 'status',
+        message: 'Status sesi tidak valid.',
+        error_code: 'INVALID_SESSION_STATUS',
+      });
       return;
     }
     if (user.role === 'ADMIN') {
@@ -367,32 +411,52 @@ export const updateSession = async (req: Request, res: Response): Promise<void> 
       }
     }
 
-    const session = await prisma.session.update({
-      where: { id },
-      data: {
-        title,
-        description,
-        class_id: uniqueClassIds.length > 0 ? null : class_id || null,
-        location_id,
-        session_start: new Date(session_start),
-        session_end: new Date(session_end),
-        check_in_open_at: new Date(check_in_open_at),
-        check_in_close_at: new Date(check_in_close_at),
-        late_threshold_minutes: parseInt(late_threshold_minutes, 10),
-        require_checkout: Boolean(require_checkout),
-        status,
-      },
-    });
+    const qrFields =
+      nextQrMode !== existing?.qr_mode
+        ? buildQrFields(nextQrMode)
+        : nextQrMode === 'STATIC'
+          ? {
+              qr_token: existing?.qr_token ?? crypto.randomBytes(16).toString('hex'),
+              qr_secret: null,
+            }
+          : nextQrMode === 'DYNAMIC'
+            ? {
+                qr_token: null,
+                qr_secret: existing?.qr_secret ?? crypto.randomBytes(32).toString('hex'),
+              }
+            : { qr_token: null, qr_secret: null };
 
-    if (hasClassIds) {
-      await prisma.sessionClass.deleteMany({ where: { session_id: id } });
-      if (uniqueClassIds.length > 0) {
-        await prisma.sessionClass.createMany({
-          data: uniqueClassIds.map((cid) => ({ session_id: id, class_id: cid })),
-          skipDuplicates: true,
-        });
+    const session = await prisma.$transaction(async (tx) => {
+      const updated = await tx.session.update({
+        where: { id },
+        data: {
+          title,
+          description,
+          class_id: uniqueClassIds.length > 0 ? null : class_id || null,
+          location_id,
+          qr_mode: nextQrMode,
+          ...qrFields,
+          session_start: new Date(session_start),
+          session_end: new Date(session_end),
+          check_in_open_at: new Date(check_in_open_at),
+          check_in_close_at: new Date(check_in_close_at),
+          late_threshold_minutes: parseInt(late_threshold_minutes, 10),
+          require_checkout: Boolean(require_checkout),
+          status,
+        },
+      });
+
+      if (hasClassIds) {
+        await tx.sessionClass.deleteMany({ where: { session_id: id } });
+        if (uniqueClassIds.length > 0) {
+          await tx.sessionClass.createMany({
+            data: uniqueClassIds.map((cid) => ({ session_id: id, class_id: cid })),
+            skipDuplicates: true,
+          });
+        }
       }
-    }
+      return updated;
+    });
 
     res
       .status(200)
@@ -415,14 +479,12 @@ export const deleteSession = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    // Hapus data terkait terlebih dahulu untuk menghindari error Foreign Key Constraint
-    // (Karena pada schema.prisma tidak menggunakan onDelete: Cascade pada tabel terkait)
-    await prisma.attendance.deleteMany({ where: { session_id: id } });
-    await prisma.excuseRequest.deleteMany({ where: { session_id: id } });
-    await prisma.sessionClass.deleteMany({ where: { session_id: id } });
-
-    // Setelah tabel anak dihapus, barulah hapus sesi utamanya
-    await prisma.session.delete({ where: { id } });
+    await prisma.$transaction(async (tx) => {
+      await tx.attendance.deleteMany({ where: { session_id: id } });
+      await tx.excuseRequest.deleteMany({ where: { session_id: id } });
+      await tx.sessionClass.deleteMany({ where: { session_id: id } });
+      await tx.session.delete({ where: { id } });
+    });
 
     res.status(200).json({ success: true, message: 'Session deleted successfully' });
   } catch (error) {
@@ -488,7 +550,18 @@ export const getSessionById = async (req: Request, res: Response): Promise<void>
       }
     }
 
-    res.status(200).json({ success: true, data: session });
+    const ipMeta = await prisma.location.findUnique({
+      where: { id: session.location.id },
+      select: { wifi_bssid: true },
+    });
+    const data = {
+      ...session,
+      location: {
+        ...session.location,
+        ip_restriction_enabled: ipRestrictionEnabledFromWifiBssid(ipMeta?.wifi_bssid),
+      },
+    };
+    res.status(200).json({ success: true, data });
   } catch (error) {
     res.status(500).json({ success: false, error: 'Internal server error' });
   }

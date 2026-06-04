@@ -14,6 +14,7 @@ import useLockBodyScroll from '@/lib/a11y/useLockBodyScroll';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { PublicPageError } from '@/components/public/PublicPageError';
 import { PublicEmptyState } from '@/components/public/PublicEmptyState';
+import { ensureHttpsUrl } from '@/lib/http/ensureHttpsUrl';
 
 type Status = 'Buka' | 'Tutup';
 type Paged<T> = { items: T[]; total: number; page: number; pageSize: number; totalPages: number };
@@ -24,11 +25,11 @@ function extractFirstUrl(text: string) {
 }
 
 function getJoinUrl(p: PublicPost) {
-  const direct = String(p.form_url ?? '').trim();
+  const direct = ensureHttpsUrl(p.form_url);
   if (direct) return direct;
-  const fromContent = p.content ? extractFirstUrl(p.content) : null;
+  const fromContent = p.content ? ensureHttpsUrl(extractFirstUrl(p.content)) : null;
   if (fromContent) return fromContent;
-  const fromExcerpt = p.excerpt ? extractFirstUrl(p.excerpt) : null;
+  const fromExcerpt = p.excerpt ? ensureHttpsUrl(extractFirstUrl(p.excerpt)) : null;
   return fromExcerpt;
 }
 

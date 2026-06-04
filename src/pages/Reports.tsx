@@ -122,9 +122,17 @@ export default function Reports() {
   if (sessionId && sessionId !== 'ALL') {
     queryParams.append('sessionId', sessionId);
   }
-  if (startDate && endDate) {
+  if (startDate) {
     queryParams.append('startDate', startDate);
+  }
+  if (endDate) {
     queryParams.append('endDate', endDate);
+  }
+  if (statusFilter !== 'ALL') {
+    queryParams.append('status', statusFilter);
+  }
+  if (searchTerm.trim()) {
+    queryParams.append('search', searchTerm.trim());
   }
 
   const swr = useSWR(`/reports?${queryParams.toString()}`, fetcher, { revalidateOnFocus: false });
@@ -149,7 +157,7 @@ export default function Reports() {
 
   useEffect(() => {
     setPage(1);
-  }, [startDate, endDate, sessionId]);
+  }, [startDate, endDate, sessionId, statusFilter, searchTerm]);
 
   const filteredReports = useMemo(() => {
     const q = String(searchTerm ?? '').toLowerCase();
@@ -342,21 +350,29 @@ export default function Reports() {
     []
   );
 
-  const fetchAllReportsForSession = useCallback(async (sid: string) => {
-    const limit = 500;
-    let p = 1;
-    const all: Report[] = [];
-    while (true) {
-      const params = new URLSearchParams({ page: String(p), limit: String(limit), sessionId: sid });
-      const res = await api.get(`/reports?${params.toString()}`);
-      const chunk: Report[] = res.data?.data || [];
-      const m: PaginationMeta | undefined = res.data?.meta;
-      all.push(...chunk);
-      if (!m || p >= m.totalPages) break;
-      p += 1;
-    }
-    return all;
-  }, []);
+  const fetchAllReports = useCallback(
+    async (sid?: string) => {
+      const limit = 500;
+      let p = 1;
+      const all: Report[] = [];
+      while (true) {
+        const params = new URLSearchParams({ page: String(p), limit: String(limit) });
+        if (sid) params.set('sessionId', sid);
+        if (startDate) params.set('startDate', startDate);
+        if (endDate) params.set('endDate', endDate);
+        if (statusFilter !== 'ALL') params.set('status', statusFilter);
+        if (searchTerm.trim()) params.set('search', searchTerm.trim());
+        const res = await api.get(`/reports?${params.toString()}`);
+        const chunk: Report[] = res.data?.data || [];
+        const m: PaginationMeta | undefined = res.data?.meta;
+        all.push(...chunk);
+        if (!m || p >= m.totalPages) break;
+        p += 1;
+      }
+      return all;
+    },
+    [endDate, searchTerm, startDate, statusFilter]
+  );
 
   const sessionExportMeta = useCallback((): ExportSessionMeta | undefined => {
     if (sessionId === 'ALL') return undefined;
@@ -384,29 +400,20 @@ export default function Reports() {
       setExporting('excel');
       const meta = sessionExportMeta();
       if (sessionId !== 'ALL') {
-        const all = await fetchAllReportsForSession(sessionId);
-        const rows = all.filter((r) => statusFilter === 'ALL' || r.status === statusFilter);
+        const rows = await fetchAllReports(sessionId);
         const title = sessions.find((s) => s.id === sessionId)?.title || 'Sesi';
         await exportExcelMatrix(rows, sanitize(title), meta);
         toast.success('Excel berhasil diunduh');
         return;
       }
-      await exportExcelMatrix(filteredReports, 'Semua');
+      await exportExcelMatrix(await fetchAllReports(), 'Semua');
       toast.success('Excel berhasil diunduh');
     } catch (err: unknown) {
       toast.error(toastErrorMessage(err, 'Gagal export Excel'));
     } finally {
       setExporting('none');
     }
-  }, [
-    exportExcelMatrix,
-    fetchAllReportsForSession,
-    filteredReports,
-    sessionExportMeta,
-    sessionId,
-    sessions,
-    statusFilter,
-  ]);
+  }, [exportExcelMatrix, fetchAllReports, sessionExportMeta, sessionId, sessions, statusFilter]);
 
   const handleExportPDF = useCallback(async () => {
     const sanitize = (s: string) =>
@@ -418,29 +425,20 @@ export default function Reports() {
       setExporting('pdf');
       const meta = sessionExportMeta();
       if (sessionId !== 'ALL') {
-        const all = await fetchAllReportsForSession(sessionId);
-        const rows = all.filter((r) => statusFilter === 'ALL' || r.status === statusFilter);
+        const rows = await fetchAllReports(sessionId);
         const title = sessions.find((s) => s.id === sessionId)?.title || 'Sesi';
         await exportPdfList(rows, sanitize(title), meta);
         toast.success('PDF berhasil diunduh');
         return;
       }
-      await exportPdfList(filteredReports, 'Semua');
+      await exportPdfList(await fetchAllReports(), 'Semua');
       toast.success('PDF berhasil diunduh');
     } catch (err: unknown) {
       toast.error(toastErrorMessage(err, 'Gagal export PDF'));
     } finally {
       setExporting('none');
     }
-  }, [
-    exportPdfList,
-    fetchAllReportsForSession,
-    filteredReports,
-    sessionExportMeta,
-    sessionId,
-    sessions,
-    statusFilter,
-  ]);
+  }, [exportPdfList, fetchAllReports, sessionExportMeta, sessionId, sessions, statusFilter]);
 
   const handleOpenOverride = (report: Report) => {
     setSelectedReport(report);

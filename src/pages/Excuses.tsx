@@ -137,7 +137,11 @@ export default function Excuses() {
   const resolveProofUrl = (proofUrl: string | null | undefined) => {
     if (!proofUrl) return null;
     if (proofUrl.startsWith('http') || proofUrl.startsWith('data:')) return proofUrl;
-    return `${import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, '')}${proofUrl}`;
+    const apiBase = String(import.meta.env.VITE_API_BASE_URL || '/api');
+    const assetBase = apiBase.startsWith('http')
+      ? new URL(apiBase).origin
+      : apiBase.replace(/\/api\/?$/, '');
+    return `${assetBase}${proofUrl}`;
   };
 
   const fetchSessions = async () => {
@@ -251,7 +255,7 @@ export default function Excuses() {
         ex.proof_url && (ex.proof_url.startsWith('http') || ex.proof_url.startsWith('data:'))
           ? ex.proof_url
           : ex.proof_url
-            ? `${import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, '')}${ex.proof_url}`
+            ? resolveProofUrl(ex.proof_url)
             : '';
       return [
         ex.id,
@@ -602,14 +606,9 @@ export default function Excuses() {
                           </p>
                         </TableCell>
                         <TableCell>
-                          {excuse.proof_url ? (
+                          {resolveProofUrl(excuse.proof_url) ? (
                             <a
-                              href={
-                                excuse.proof_url?.startsWith('http') ||
-                                excuse.proof_url?.startsWith('data:')
-                                  ? excuse.proof_url
-                                  : `${import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, '')}${excuse.proof_url}`
-                              }
+                              href={resolveProofUrl(excuse.proof_url) || undefined}
                               target="_blank"
                               rel="noreferrer"
                               className="text-brand hover:underline flex items-center gap-1 text-sm"

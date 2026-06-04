@@ -115,16 +115,46 @@ export default function App() {
             if (item.token) formData.append('qr_token', item.token);
             formData.append('latitude', item.lat.toString());
             formData.append('longitude', item.lng.toString());
+            formData.append('accuracy', String(item.accuracy ?? 0));
             const offlineFingerprint =
               item.deviceInfo && item.deviceInfo.length >= 16
                 ? item.deviceInfo
                 : await getDeviceFingerprint();
-            formData.append('device_fingerprint', `${offlineFingerprint} [OFFLINE_SYNC]`);
+            formData.append('device_fingerprint', offlineFingerprint);
+            let photo: Blob | undefined;
             if (item.id) {
-              const photo = await getOfflinePhoto(item.id);
+              photo = await getOfflinePhoto(item.id);
               if (photo) {
+                const photoType = photo.type || 'image/jpeg';
+                const challengeRes = await api.get('/attendance/challenge', {
+                  params: {
+                    action: 'checkin',
+                    session_id: item.session_id,
+                    latitude: item.lat,
+                    longitude: item.lng,
+                    accuracy: item.accuracy ?? 0,
+                    photo_size: photo.size,
+                    photo_type: photoType,
+                  },
+                });
+                const nonce = challengeRes.data?.data?.nonce;
+                const signature = challengeRes.data?.data?.signature;
+                if (!nonce || !signature) {
+                  throw new Error('Gagal mendapatkan security token untuk sinkronisasi offline');
+                }
+                formData.append('nonce', nonce);
+                formData.append('signature', signature);
+                formData.append('photo_size', photo.size.toString());
+                formData.append('photo_type', photoType);
                 formData.append('photo', photo, 'attendance.jpg');
               }
+            }
+            if (!photo) {
+              console.warn(
+                'Offline attendance is missing photo evidence; keeping it queued.',
+                item.id
+              );
+              continue;
             }
 
             try {
@@ -133,8 +163,14 @@ export default function App() {
               });
               if (item.id) await deleteOfflineAttendance(item.id);
             } catch (err: any) {
-              // If already checked in (400), we can still delete it from local queue
-              if (err.response?.status === 400) {
+              const errorText = String(
+                err.response?.data?.error || err.response?.data?.message || ''
+              ).toLowerCase();
+              const alreadySynced =
+                err.response?.status === 400 &&
+                (errorText.includes('sudah melakukan check-in') ||
+                  errorText.includes('sudah menyelesaikan absensi'));
+              if (alreadySynced) {
                 if (item.id) await deleteOfflineAttendance(item.id);
               }
               console.error('Failed to sync attendance', err);

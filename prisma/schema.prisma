@@ -22,6 +22,7 @@ model User {
   semester           Int      @default(1)
   enrollment_date    DateTime @default(now())
   device_fingerprint String?
+  refresh_token_hash String?
   created_at         DateTime @default(now())
   updated_at         DateTime @updatedAt
 
@@ -178,6 +179,8 @@ model ExcuseRequest {
   reviewed_at DateTime?
   created_at  DateTime  @default(now())
   updated_at  DateTime  @updatedAt
+
+  @@unique([user_id, session_id])
 }
 
 model AuditLog {
@@ -217,6 +220,8 @@ model ChallengeNonce {
   nonce      String   @unique
   expires_at DateTime
   created_at DateTime @default(now())
+
+  @@index([expires_at])
 }
 
 enum PublicPostType {

@@ -31,3 +31,10 @@ coverage/
 .vite
 .env
 /generated/prisma
+
+local-data/
+*.db
+*.sqlite
+*.sqlite3
+.cursor/
+.trae/

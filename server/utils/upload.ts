@@ -16,7 +16,7 @@ const storage = multer.diskStorage({
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname) || '';
     cb(null, `${file.fieldname}-${crypto.randomBytes(16).toString('hex')}${ext}`);
-  }
+  },
 });
 
 const fileFilter = (req: any, file: any, cb: any) => {
@@ -27,12 +27,12 @@ const fileFilter = (req: any, file: any, cb: any) => {
   }
 };
 
-export const upload = multer({ 
+export const upload = multer({
   storage: storage,
   fileFilter: fileFilter,
   limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB
-  }
+    fileSize: 5 * 1024 * 1024, // 5MB
+  },
 });
 
 const imageOnlyFilter = (_req: any, file: any, cb: any) => {
@@ -71,6 +71,65 @@ export const uploadExcel = multer({
   },
 });
 
+export async function validateUploadedFileContent(
+  file: Express.Multer.File,
+  opts: { allowPdf?: boolean; imageOnly?: boolean } = {}
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const filePath = file.path;
+  const ext = path.extname(file.originalname).toLowerCase();
+  const imageExtensions = new Set(['.jpg', '.jpeg', '.png', '.webp']);
+  const allowedImageMimes = new Set(['image/jpeg', 'image/png', 'image/webp']);
+  const allowPdf = Boolean(opts.allowPdf && !opts.imageOnly);
+
+  if (!imageExtensions.has(ext) && !(allowPdf && ext === '.pdf')) {
+    return {
+      ok: false,
+      error: allowPdf
+        ? 'Format file tidak diizinkan. Gunakan JPG, JPEG, PNG, WEBP, atau PDF.'
+        : 'Format file tidak diizinkan. Gunakan JPG, JPEG, PNG, atau WEBP.',
+    };
+  }
+
+  const meta = await fileTypeFromFile(filePath);
+  if (!meta) {
+    return { ok: false, error: 'Konten file tidak dapat divalidasi.' };
+  }
+
+  if (allowedImageMimes.has(meta.mime)) return { ok: true };
+  if (allowPdf && meta.mime === 'application/pdf') return { ok: true };
+
+  return {
+    ok: false,
+    error: allowPdf
+      ? 'Konten file harus berupa gambar valid atau PDF.'
+      : 'Konten file harus berupa gambar JPG, PNG, atau WEBP yang valid.',
+  };
+}
+
+export const validateUploadedProof = async (req: Request, res: Response, next: NextFunction) => {
+  const file = req.file;
+  if (!file) return next();
+  try {
+    const result = await validateUploadedFileContent(file, { allowPdf: true });
+    if (!result.ok) {
+      await fs.promises.unlink(file.path).catch(() => {});
+      req.file = undefined;
+      return res.status(400).json({ success: false, error: result.error });
+    }
+    next();
+  } catch (error: any) {
+    await fs.promises.unlink(file.path).catch(() => {});
+    req.file = undefined;
+    return res.status(400).json({
+      success: false,
+      error:
+        'File yang diunggah rusak atau tidak dapat divalidasi. (' +
+        (error?.message || 'Unknown Error') +
+        ')',
+    });
+  }
+};
+
 export const processAndValidateImage = async (req: Request, res: Response, next: NextFunction) => {
   if (!req.file) {
     return next();
@@ -88,7 +147,8 @@ export const processAndValidateImage = async (req: Request, res: Response, next:
       req.file = undefined;
       return res.status(400).json({
         success: false,
-        error: 'Format file tidak diizinkan. Hanya file JPG, JPEG, PNG, dan WEBP yang diperbolehkan.'
+        error:
+          'Format file tidak diizinkan. Hanya file JPG, JPEG, PNG, dan WEBP yang diperbolehkan.',
       });
     }
 
@@ -105,7 +165,7 @@ export const processAndValidateImage = async (req: Request, res: Response, next:
       req.file = undefined;
       return res.status(400).json({
         success: false,
-        error: 'Konten file terdeteksi tidak valid sebagai gambar.'
+        error: 'Konten file terdeteksi tidak valid sebagai gambar.',
       });
     }
 
@@ -115,18 +175,23 @@ export const processAndValidateImage = async (req: Request, res: Response, next:
       req.file = undefined;
       return res.status(400).json({
         success: false,
-        error: 'Hanya format gambar JPG, PNG, dan WEBP yang diperbolehkan.'
+        error: 'Hanya format gambar JPG, PNG, dan WEBP yang diperbolehkan.',
       });
     }
 
-    // 3. Gallery Upload Check (Look for "Exif" in the first 1024 bytes)
-    const headerString = buffer.subarray(0, Math.min(bytesRead, 1024)).toString('ascii');
-    if (headerString.includes('Exif')) {
+    const headerBytes = buffer.subarray(0, Math.min(bytesRead, 2048));
+    const hasExifMarker =
+      (meta.mime === 'image/jpeg' &&
+        headerBytes.includes(Buffer.from('Exif\u0000\u0000', 'ascii'))) ||
+      (meta.mime === 'image/png' && headerBytes.includes(Buffer.from('eXIf', 'ascii'))) ||
+      (meta.mime === 'image/webp' && headerBytes.includes(Buffer.from('EXIF', 'ascii')));
+    if (hasExifMarker) {
       await fs.promises.unlink(filePath).catch(() => {});
       req.file = undefined;
       return res.status(400).json({
         success: false,
-        error: 'Kami mendeteksi foto ini diunggah dari galeri. Silakan gunakan kamera langsung di dalam aplikasi untuk absensi Anda.'
+        error:
+          'Kami mendeteksi foto ini diunggah dari galeri. Silakan gunakan kamera langsung di dalam aplikasi untuk absensi Anda.',
       });
     }
 
@@ -136,9 +201,14 @@ export const processAndValidateImage = async (req: Request, res: Response, next:
       await fs.promises.unlink(filePath).catch(() => {});
       await fs.promises.rename(tempCleanedPath, filePath);
     } catch (sharpError) {
-      console.warn('Sharp image processing failed, falling back to original file:', sharpError);
-      // Clean up tempCleanedPath if it was created
+      console.warn('Sharp image processing failed:', sharpError);
+      await fs.promises.unlink(filePath).catch(() => {});
       await fs.promises.unlink(tempCleanedPath).catch(() => {});
+      req.file = undefined;
+      return res.status(400).json({
+        success: false,
+        error: 'Foto tidak dapat diproses. Silakan ambil foto ulang dengan pencahayaan yang cukup.',
+      });
     }
 
     next();
@@ -149,8 +219,10 @@ export const processAndValidateImage = async (req: Request, res: Response, next:
     req.file = undefined;
     return res.status(400).json({
       success: false,
-      error: 'Foto yang diunggah rusak atau tidak dapat diproses. (' + (error?.message || 'Unknown Error') + ')'
+      error:
+        'Foto yang diunggah rusak atau tidak dapat diproses. (' +
+        (error?.message || 'Unknown Error') +
+        ')',
     });
   }
 };
-

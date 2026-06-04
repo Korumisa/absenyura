@@ -32,6 +32,7 @@ export default function AuditLogs() {
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<unknown>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
 
   const [page, setPage] = useState(1);
   const [meta, setMeta] = useState<PaginationMeta | null>(null);
@@ -40,7 +41,9 @@ export default function AuditLogs() {
     setLoading(true);
     setFetchError(null);
     try {
-      const res = await api.get(`/audit-logs?page=${page}&limit=20`);
+      const params = new URLSearchParams({ page: String(page), limit: '20' });
+      if (debouncedSearch.trim()) params.set('search', debouncedSearch.trim());
+      const res = await api.get(`/audit-logs?${params.toString()}`);
       setLogs(res.data.data);
       setMeta(res.data.meta);
     } catch (error) {
@@ -53,7 +56,16 @@ export default function AuditLogs() {
 
   useEffect(() => {
     loadLogs();
-  }, [page]);
+  }, [page, debouncedSearch]);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchTerm), 300);
+    return () => clearTimeout(t);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch]);
 
   const getActionIcon = (action: string) => {
     const upper = action.toUpperCase();
@@ -63,18 +75,6 @@ export default function AuditLogs() {
     if (upper.includes('DELETE')) return <Trash2 size={16} />;
     return <Shield size={16} />;
   };
-
-  const filteredLogs = logs.filter((log) => {
-    const label = getAuditActionLabel(log.action).toLowerCase();
-    const q = searchTerm.toLowerCase();
-    return (
-      log.action.toLowerCase().includes(q) ||
-      label.includes(q) ||
-      (log.target_table && log.target_table.toLowerCase().includes(q)) ||
-      (log.actor_id && log.actor_id.toLowerCase().includes(q)) ||
-      (log.ip_address && log.ip_address.includes(q))
-    );
-  });
 
   const renderLogRow = (log: AuditLog) => {
     const detail = formatAuditDetail(log);
@@ -128,7 +128,7 @@ export default function AuditLogs() {
           <ul className="space-y-3 p-5 md:hidden" aria-label="Daftar audit log">
             {loading ? (
               <li className="py-8 text-center text-muted-foreground">Memuat data...</li>
-            ) : filteredLogs.length === 0 ? (
+            ) : logs.length === 0 ? (
               <li>
                 <AdminEmptyState
                   compact
@@ -142,7 +142,7 @@ export default function AuditLogs() {
                 />
               </li>
             ) : (
-              filteredLogs.map((log) => (
+              logs.map((log) => (
                 <li
                   key={log.id}
                   className="rounded-2xl border border-border rounded-2xl border border-border bg-card p-4"
@@ -172,7 +172,7 @@ export default function AuditLogs() {
                       Memuat data...
                     </TableCell>
                   </TableRow>
-                ) : filteredLogs.length === 0 ? (
+                ) : logs.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="p-0">
                       <AdminEmptyState
@@ -189,7 +189,7 @@ export default function AuditLogs() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredLogs.map((log) => {
+                  logs.map((log) => {
                     const detail = formatAuditDetail(log);
                     return (
                       <TableRow key={log.id}>

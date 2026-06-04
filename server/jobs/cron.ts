@@ -61,14 +61,14 @@ export const runCronJob = async () => {
         // Active when now >= check_in_open_at - 2 min
         check_in_open_at: { lte: twoMinutesFuture },
         // Must not have reached check_in_close_at + 2 min yet
-        check_in_close_at: { gt: twoMinutesAgo }
-      }
+        check_in_close_at: { gt: twoMinutesAgo },
+      },
     });
 
     if (sessionsToActivate.length > 0) {
       await prisma.session.updateMany({
-        where: { id: { in: sessionsToActivate.map(s => s.id) } },
-        data: { status: 'ACTIVE' }
+        where: { id: { in: sessionsToActivate.map((s) => s.id) } },
+        data: { status: 'ACTIVE' },
       });
 
       // Notify creator that session is active
@@ -79,8 +79,8 @@ export const runCronJob = async () => {
             user_id: session.created_by_id,
             title: 'Sesi absensi dibuka',
             message: `Sesi "${session.title}" sudah aktif. Mahasiswa dapat melakukan check-in sekarang.`,
-            type: 'SUCCESS'
-          }
+            type: 'SUCCESS',
+          },
         });
 
         // Notify students
@@ -88,38 +88,38 @@ export const runCronJob = async () => {
 
         if (expectedUserIds.length > 0) {
           await prisma.notification.createMany({
-            data: expectedUserIds.map(id => ({
+            data: expectedUserIds.map((id) => ({
               user_id: id,
               title: 'Waktunya absen',
               message: `Sesi "${session.title}" sudah dibuka. Buka aplikasi dan lakukan check-in sebelum batas waktu.`,
-              type: 'INFO'
-            }))
+              type: 'INFO',
+            })),
           });
         }
       }
       console.log(`[Cron] Marked ${sessionsToActivate.length} sessions as ACTIVE`);
     }
 
-      // ACTIVE/UPCOMING -> CLOSED (when check_in_close_at + 2 min grace period is reached)
+    // ACTIVE/UPCOMING -> CLOSED (when check_in_close_at + 2 min grace period is reached)
     const sessionsToClose = await prisma.session.findMany({
       where: {
         status: { in: ['ACTIVE', 'UPCOMING'] },
         created_at: { lte: oneMinuteAgo },
         // Close only when now > check_in_close_at + 2 min (i.e. check_in_close_at <= now - 2 min)
-        check_in_close_at: { lte: twoMinutesAgo }
-      }
+        check_in_close_at: { lte: twoMinutesAgo },
+      },
     });
 
     if (sessionsToActivate.length > 0 || sessionsToClose.length > 0) {
       console.log(
-        `[Cron] now=${now.toISOString()} activated=${sessionsToActivate.length} closed=${sessionsToClose.length}`,
+        `[Cron] now=${now.toISOString()} activated=${sessionsToActivate.length} closed=${sessionsToClose.length}`
       );
     }
 
     if (sessionsToClose.length > 0) {
       await prisma.session.updateMany({
-        where: { id: { in: sessionsToClose.map(s => s.id) } },
-        data: { status: 'CLOSED' }
+        where: { id: { in: sessionsToClose.map((s) => s.id) } },
+        data: { status: 'CLOSED' },
       });
 
       // Auto-Absent Job
@@ -130,24 +130,24 @@ export const runCronJob = async () => {
         // Get all present users for this session
         const presentAttendances = await prisma.attendance.findMany({
           where: { session_id: session.id },
-          select: { user_id: true }
+          select: { user_id: true },
         });
-        const presentUserIds = presentAttendances.map(a => a.user_id);
+        const presentUserIds = presentAttendances.map((a) => a.user_id);
 
         // Find users who didn't check in
-        const absentUserIds = expectedUserIds.filter(id => !presentUserIds.includes(id));
+        const absentUserIds = expectedUserIds.filter((id) => !presentUserIds.includes(id));
 
         // Create ABSENT records
         if (absentUserIds.length > 0) {
           await prisma.attendance.createMany({
-            data: absentUserIds.map(id => ({
+            data: absentUserIds.map((id) => ({
               session_id: session.id,
               user_id: id,
               status: 'ABSENT',
               check_in_time: new Date(),
               check_in_ip: 'SYSTEM',
-              check_in_device: 'AUTO_JOB'
-            }))
+              check_in_device: 'AUTO_JOB',
+            })),
           });
         }
 
@@ -157,19 +157,19 @@ export const runCronJob = async () => {
             user_id: session.created_by_id,
             title: 'Sesi absensi ditutup',
             message: `Sesi "${session.title}" telah ditutup. ${absentUserIds.length} mahasiswa ditandai tidak hadir (Alfa).`,
-            type: 'INFO'
-          }
+            type: 'INFO',
+          },
         });
 
         // Notify absent students
         if (absentUserIds.length > 0) {
           await prisma.notification.createMany({
-            data: absentUserIds.map(id => ({
+            data: absentUserIds.map((id) => ({
               user_id: id,
               title: 'Tidak hadir (Alfa)',
               message: `Anda ditandai tidak hadir pada sesi "${session.title}" karena batas waktu check-in telah berakhir.`,
-              type: 'WARNING'
-            }))
+              type: 'WARNING',
+            })),
           });
         }
 
@@ -179,23 +179,23 @@ export const runCronJob = async () => {
           select: { class_id: true },
         });
         const classIds = session.class_id ? [session.class_id] : linked.map((x) => x.class_id);
-        
+
         if (classIds.length > 0 && absentUserIds.length > 0) {
           const notificationsToCreate: any[] = [];
-          
+
           const totalSessionsMap: Record<string, number> = {};
           for (const classId of classIds) {
-             const count = await prisma.session.count({
-                where: {
-                  status: 'CLOSED',
-                  OR: [{ class_id: classId }, { session_classes: { some: { class_id: classId } } }],
-                },
-             });
-             totalSessionsMap[classId] = count;
+            const count = await prisma.session.count({
+              where: {
+                status: 'CLOSED',
+                OR: [{ class_id: classId }, { session_classes: { some: { class_id: classId } } }],
+              },
+            });
+            totalSessionsMap[classId] = count;
           }
 
           const enrollments = await prisma.classEnrollment.findMany({
-            where: { class_id: { in: classIds }, student_id: { in: absentUserIds } }
+            where: { class_id: { in: classIds }, student_id: { in: absentUserIds } },
           });
 
           const userClassAttendances = await prisma.attendance.findMany({
@@ -205,55 +205,79 @@ export const runCronJob = async () => {
               session: {
                 status: 'CLOSED',
                 OR: [
-                  { class_id: { in: classIds } }, 
-                  { session_classes: { some: { class_id: { in: classIds } } } }
-                ]
-              }
+                  { class_id: { in: classIds } },
+                  { session_classes: { some: { class_id: { in: classIds } } } },
+                ],
+              },
             },
-            select: { user_id: true, session: { select: { class_id: true, session_classes: { select: { class_id: true } } } } }
+            select: {
+              user_id: true,
+              session: {
+                select: { class_id: true, session_classes: { select: { class_id: true } } },
+              },
+            },
           });
 
           const attendanceCounts: Record<string, Record<string, number>> = {};
           for (const att of userClassAttendances) {
-             const attClassIds = att.session.class_id ? [att.session.class_id] : att.session.session_classes.map((x: any) => x.class_id);
-             for (const cId of attClassIds) {
-                if (classIds.includes(cId)) {
-                   if (!attendanceCounts[att.user_id]) attendanceCounts[att.user_id] = {};
-                   attendanceCounts[att.user_id][cId] = (attendanceCounts[att.user_id][cId] || 0) + 1;
-                }
-             }
+            const attClassIds = att.session.class_id
+              ? [att.session.class_id]
+              : att.session.session_classes.map((x: any) => x.class_id);
+            for (const cId of attClassIds) {
+              if (classIds.includes(cId)) {
+                if (!attendanceCounts[att.user_id]) attendanceCounts[att.user_id] = {};
+                attendanceCounts[att.user_id][cId] = (attendanceCounts[att.user_id][cId] || 0) + 1;
+              }
+            }
           }
 
           for (const enr of enrollments) {
-             const total = totalSessionsMap[enr.class_id] || 0;
-             if (total > 0) {
-               const attended = (attendanceCounts[enr.student_id] && attendanceCounts[enr.student_id][enr.class_id]) || 0;
-               const percentage = (attended / total) * 100;
-               if (percentage < 75) {
-                 notificationsToCreate.push({
-                    user_id: enr.student_id,
-                    title: 'Peringatan Dini Kehadiran (EWS)',
-                    message: `Tingkat kehadiran Anda di salah satu kelas telah turun menjadi ${Math.round(percentage)}% (Di bawah batas minimal 75%). Harap perhatikan kehadiran Anda.`,
-                    type: 'WARNING',
-                 });
-               }
-             }
+            const total = totalSessionsMap[enr.class_id] || 0;
+            if (total > 0) {
+              const attended =
+                (attendanceCounts[enr.student_id] &&
+                  attendanceCounts[enr.student_id][enr.class_id]) ||
+                0;
+              const percentage = (attended / total) * 100;
+              if (percentage < 75) {
+                notificationsToCreate.push({
+                  user_id: enr.student_id,
+                  title: 'Peringatan Dini Kehadiran (EWS)',
+                  message: `Tingkat kehadiran Anda di salah satu kelas telah turun menjadi ${Math.round(percentage)}% (Di bawah batas minimal 75%). Harap perhatikan kehadiran Anda.`,
+                  type: 'WARNING',
+                });
+              }
+            }
           }
 
           // Deduplicate notifications so a user doesn't get spammed if multiple classes drop below 75% simultaneously
-          const uniqueNotifications = Array.from(new Map(notificationsToCreate.map(item => [item.user_id, item])).values());
+          const uniqueNotifications = Array.from(
+            new Map(notificationsToCreate.map((item) => [item.user_id, item])).values()
+          );
           if (uniqueNotifications.length > 0) {
             await prisma.notification.createMany({ data: uniqueNotifications });
           }
         }
       }
-      console.log(`[Cron] Marked ${sessionsToClose.length} sessions as CLOSED and processed absences.`);
+      console.log(
+        `[Cron] Marked ${sessionsToClose.length} sessions as CLOSED and processed absences.`
+      );
     }
-
   } catch (error) {
     console.error('[Cron] Error updating session statuses:', error);
   } finally {
     isRunning = false;
+  }
+};
+
+export const runNonceCleanupJob = async () => {
+  const now = new Date();
+  const nonceRetentionCutoff = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const cleaned = await prisma.challengeNonce.deleteMany({
+    where: { expires_at: { lt: nonceRetentionCutoff } },
+  });
+  if (cleaned.count > 0) {
+    console.log(`[Cron] Cleaned ${cleaned.count} expired nonces`);
   }
 };
 
@@ -300,7 +324,9 @@ export const runPhotoCleanupJob = async () => {
   }
 
   if (deletedCount > 0) {
-    console.log(`[Cron] Berhasil menghapus ${deletedCount} foto bukti yang berumur lebih dari 1 minggu.`);
+    console.log(
+      `[Cron] Berhasil menghapus ${deletedCount} foto bukti yang berumur lebih dari 1 minggu.`
+    );
   }
 };
 
@@ -342,6 +368,10 @@ export const startCronJobs = () => {
   console.log('[Cron] Starting session status updater (Interval: 1 minute)...');
 
   setInterval(runCronJob, 60000);
+
+  cron.schedule('0 0 * * *', () => {
+    runNonceCleanupJob().catch((err) => console.error('[Cron] Error cleaning nonces:', err));
+  });
 
   cron.schedule('0 2 * * *', () => {
     runPhotoCleanupJob().catch((err) => console.error('[Cron] Error cleaning up photos:', err));

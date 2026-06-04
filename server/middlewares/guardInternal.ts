@@ -33,18 +33,18 @@ function getCronSecretFromRequest(req: Request): string | null {
     : req.headers['x-cron-secret'];
   if (headerSecret) return String(headerSecret);
 
-  const queryKey = req.query.key;
-  if (typeof queryKey === 'string') return queryKey;
-  if (Array.isArray(queryKey) && queryKey[0]) return String(queryKey[0]);
+  const authHeader = Array.isArray(req.headers.authorization)
+    ? req.headers.authorization[0]
+    : req.headers.authorization;
+  if (authHeader) {
+    const match = String(authHeader).match(/^Bearer\s+(.+)$/i);
+    if (match?.[1]) return match[1].trim();
+  }
+
   return null;
 }
 
 export const guardCron = (req: Request, res: Response, next: NextFunction): void => {
-  if (req.headers['x-vercel-cron'] === '1') {
-    next();
-    return;
-  }
-
   const expected = process.env.CRON_SECRET;
   if (!expected) {
     if (process.env.NODE_ENV === 'production' || process.env.VERCEL) {

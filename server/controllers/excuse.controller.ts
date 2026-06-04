@@ -4,6 +4,8 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { v2 as cloudinary } from 'cloudinary';
+import { assertAdminSessionScope } from '../utils/sessionAccess.js';
+import { sendForbidden } from '../utils/errorResponse.js';
 
 // Configure Cloudinary if ENV vars exist
 if (process.env.CLOUDINARY_URL) {
@@ -11,7 +13,12 @@ if (process.env.CLOUDINARY_URL) {
 }
 
 const isMissingSemesterColumn = (err: any) =>
-  Boolean(err && err.code === 'P2022' && String(err?.meta?.column || '').includes('Class.semester'));
+  Boolean(
+    err && err.code === 'P2022' && String(err?.meta?.column || '').includes('Class.semester')
+  );
+
+const VALID_EXCUSE_REASONS = new Set(['SICK', 'EXCUSED']);
+const VALID_REVIEW_STATUSES = new Set(['APPROVED', 'REJECTED']);
 
 export const getExcuses = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -23,20 +30,36 @@ export const getExcuses = async (req: Request, res: Response): Promise<void> => 
         excuses = await prisma.excuseRequest.findMany({
           where: { user_id: user.id },
           include: {
-            session: { select: { title: true, session_start: true, class: { select: { name: true, semester: true } }, session_classes: { select: { class: { select: { id: true, name: true, semester: true } } } } } },
-            reviewer: { select: { name: true } }
+            session: {
+              select: {
+                title: true,
+                session_start: true,
+                class: { select: { name: true, semester: true } },
+                session_classes: {
+                  select: { class: { select: { id: true, name: true, semester: true } } },
+                },
+              },
+            },
+            reviewer: { select: { name: true } },
           },
-          orderBy: { created_at: 'desc' }
+          orderBy: { created_at: 'desc' },
         });
       } catch (err: any) {
         if (!isMissingSemesterColumn(err)) throw err;
         excuses = await prisma.excuseRequest.findMany({
           where: { user_id: user.id },
           include: {
-            session: { select: { title: true, session_start: true, class: { select: { name: true } }, session_classes: { select: { class: { select: { id: true, name: true } } } } } },
-            reviewer: { select: { name: true } }
+            session: {
+              select: {
+                title: true,
+                session_start: true,
+                class: { select: { name: true } },
+                session_classes: { select: { class: { select: { id: true, name: true } } } },
+              },
+            },
+            reviewer: { select: { name: true } },
           },
-          orderBy: { created_at: 'desc' }
+          orderBy: { created_at: 'desc' },
         });
       }
     } else if (user.role === 'ADMIN') {
@@ -45,10 +68,19 @@ export const getExcuses = async (req: Request, res: Response): Promise<void> => 
           where: { session: { created_by_id: user.id } },
           include: {
             user: { select: { name: true, nim_nip: true } },
-            session: { select: { title: true, session_start: true, class: { select: { name: true, semester: true } }, session_classes: { select: { class: { select: { id: true, name: true, semester: true } } } } } },
-            reviewer: { select: { name: true } }
+            session: {
+              select: {
+                title: true,
+                session_start: true,
+                class: { select: { name: true, semester: true } },
+                session_classes: {
+                  select: { class: { select: { id: true, name: true, semester: true } } },
+                },
+              },
+            },
+            reviewer: { select: { name: true } },
           },
-          orderBy: { created_at: 'desc' }
+          orderBy: { created_at: 'desc' },
         });
       } catch (err: any) {
         if (!isMissingSemesterColumn(err)) throw err;
@@ -56,10 +88,17 @@ export const getExcuses = async (req: Request, res: Response): Promise<void> => 
           where: { session: { created_by_id: user.id } },
           include: {
             user: { select: { name: true, nim_nip: true } },
-            session: { select: { title: true, session_start: true, class: { select: { name: true } }, session_classes: { select: { class: { select: { id: true, name: true } } } } } },
-            reviewer: { select: { name: true } }
+            session: {
+              select: {
+                title: true,
+                session_start: true,
+                class: { select: { name: true } },
+                session_classes: { select: { class: { select: { id: true, name: true } } } },
+              },
+            },
+            reviewer: { select: { name: true } },
           },
-          orderBy: { created_at: 'desc' }
+          orderBy: { created_at: 'desc' },
         });
       }
     } else {
@@ -68,20 +107,36 @@ export const getExcuses = async (req: Request, res: Response): Promise<void> => 
         excuses = await prisma.excuseRequest.findMany({
           include: {
             user: { select: { name: true, nim_nip: true } },
-            session: { select: { title: true, session_start: true, class: { select: { name: true, semester: true } }, session_classes: { select: { class: { select: { id: true, name: true, semester: true } } } } } },
-            reviewer: { select: { name: true } }
+            session: {
+              select: {
+                title: true,
+                session_start: true,
+                class: { select: { name: true, semester: true } },
+                session_classes: {
+                  select: { class: { select: { id: true, name: true, semester: true } } },
+                },
+              },
+            },
+            reviewer: { select: { name: true } },
           },
-          orderBy: { created_at: 'desc' }
+          orderBy: { created_at: 'desc' },
         });
       } catch (err: any) {
         if (!isMissingSemesterColumn(err)) throw err;
         excuses = await prisma.excuseRequest.findMany({
           include: {
             user: { select: { name: true, nim_nip: true } },
-            session: { select: { title: true, session_start: true, class: { select: { name: true } }, session_classes: { select: { class: { select: { id: true, name: true } } } } } },
-            reviewer: { select: { name: true } }
+            session: {
+              select: {
+                title: true,
+                session_start: true,
+                class: { select: { name: true } },
+                session_classes: { select: { class: { select: { id: true, name: true } } } },
+              },
+            },
+            reviewer: { select: { name: true } },
           },
-          orderBy: { created_at: 'desc' }
+          orderBy: { created_at: 'desc' },
         });
       }
     }
@@ -99,16 +154,44 @@ export const createExcuse = async (req: Request, res: Response): Promise<void> =
     const user_id = (req as any).user.id;
     const file = req.file;
 
+    if (!VALID_EXCUSE_REASONS.has(String(reason))) {
+      res.status(400).json({ success: false, error: 'Alasan izin tidak valid' });
+      return;
+    }
+
     // Check if session exists
-    const session = await prisma.session.findUnique({ where: { id: session_id } });
+    const session = await prisma.session.findUnique({
+      where: { id: session_id },
+      select: {
+        id: true,
+        class_id: true,
+        session_classes: { select: { class_id: true } },
+      },
+    });
     if (!session) {
       res.status(404).json({ success: false, error: 'Sesi tidak ditemukan' });
       return;
     }
+    const scopedClassIds = session.class_id
+      ? [session.class_id]
+      : session.session_classes.flatMap((sc) => (sc.class_id ? [sc.class_id] : []));
+    if (scopedClassIds.length > 0) {
+      const enrolled = await prisma.classEnrollment.findFirst({
+        where: { student_id: user_id, class_id: { in: scopedClassIds } },
+        select: { id: true },
+      });
+      if (!enrolled) {
+        res.status(403).json({
+          success: false,
+          error: 'Anda tidak terdaftar pada kelas untuk sesi ini.',
+        });
+        return;
+      }
+    }
 
     // Prevent duplicate pending excuses for the same session
     const existingExcuse = await prisma.excuseRequest.findFirst({
-      where: { user_id, session_id }
+      where: { user_id, session_id },
     });
 
     if (existingExcuse) {
@@ -140,7 +223,10 @@ export const createExcuse = async (req: Request, res: Response): Promise<void> =
             'application/pdf': '.pdf',
           };
           const rawExt = path.extname(path.basename(String(file.originalname || ''))).toLowerCase();
-          const ext = (rawExt && rawExt.length <= 10 ? rawExt : '') || extFromMime[String(file.mimetype || '').toLowerCase()] || '';
+          const ext =
+            (rawExt && rawExt.length <= 10 ? rawExt : '') ||
+            extFromMime[String(file.mimetype || '').toLowerCase()] ||
+            '';
 
           const uploadDir = path.join(process.cwd(), 'uploads', 'excuses');
           if (!fs.existsSync(uploadDir)) {
@@ -167,13 +253,29 @@ export const createExcuse = async (req: Request, res: Response): Promise<void> =
           session_id,
           reason,
           description,
-          proof_url
+          proof_url,
         },
         include: {
-          session: { select: { title: true, session_start: true, class: { select: { name: true, semester: true } }, session_classes: { select: { class: { select: { id: true, name: true, semester: true } } } }, created_by_id: true } }
-        }
+          session: {
+            select: {
+              title: true,
+              session_start: true,
+              class: { select: { name: true, semester: true } },
+              session_classes: {
+                select: { class: { select: { id: true, name: true, semester: true } } },
+              },
+              created_by_id: true,
+            },
+          },
+        },
       });
     } catch (err: any) {
+      if (err?.code === 'P2002') {
+        res
+          .status(400)
+          .json({ success: false, error: 'Anda sudah mengajukan izin untuk sesi ini' });
+        return;
+      }
       if (!isMissingSemesterColumn(err)) throw err;
       newExcuse = await prisma.excuseRequest.create({
         data: {
@@ -181,29 +283,44 @@ export const createExcuse = async (req: Request, res: Response): Promise<void> =
           session_id,
           reason,
           description,
-          proof_url
+          proof_url,
         },
         include: {
-          session: { select: { title: true, session_start: true, class: { select: { name: true } }, session_classes: { select: { class: { select: { id: true, name: true } } } }, created_by_id: true } }
-        }
+          session: {
+            select: {
+              title: true,
+              session_start: true,
+              class: { select: { name: true } },
+              session_classes: { select: { class: { select: { id: true, name: true } } } },
+              created_by_id: true,
+            },
+          },
+        },
       });
     }
 
     // Notify creator
-    const userDetails = await prisma.user.findUnique({ where: { id: user_id }, select: { name: true } });
+    const userDetails = await prisma.user.findUnique({
+      where: { id: user_id },
+      select: { name: true },
+    });
     if (newExcuse.session.created_by_id) {
       await prisma.notification.create({
         data: {
           user_id: newExcuse.session.created_by_id,
           title: 'Pengajuan Izin Baru',
           message: `Mahasiswa ${userDetails?.name || ''} mengajukan izin untuk sesi "${newExcuse.session.title}".`,
-          type: 'INFO'
-        }
+          type: 'INFO',
+        },
       });
     }
 
     res.status(201).json({ success: true, data: newExcuse });
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.code === 'P2002') {
+      res.status(400).json({ success: false, error: 'Anda sudah mengajukan izin untuk sesi ini' });
+      return;
+    }
     console.error('Error creating excuse:', error);
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
@@ -213,9 +330,10 @@ export const reviewExcuse = async (req: Request, res: Response): Promise<void> =
   try {
     const { id } = req.params;
     const { status } = req.body; // APPROVED or REJECTED
-    const user_id = (req as any).user.id;
+    const user = (req as any).user;
+    const user_id = user.id;
 
-    if (!['APPROVED', 'REJECTED'].includes(status)) {
+    if (!VALID_REVIEW_STATUSES.has(String(status))) {
       res.status(400).json({ success: false, error: 'Status tidak valid' });
       return;
     }
@@ -225,31 +343,51 @@ export const reviewExcuse = async (req: Request, res: Response): Promise<void> =
       res.status(404).json({ success: false, error: 'Pengajuan izin tidak ditemukan' });
       return;
     }
+    if (!(await assertAdminSessionScope(user, excuse.session_id))) {
+      sendForbidden(res, {
+        error_code: 'SESSION_OUT_OF_SCOPE',
+        message: 'Pengajuan izin ini di luar akses Anda.',
+      });
+      return;
+    }
 
-    const updatedExcuse = await prisma.excuseRequest.update({
-      where: { id },
-      data: {
-        status,
-        reviewed_by: user_id,
-        reviewed_at: new Date()
-      }
-    });
+    if (excuse.status !== 'PENDING') {
+      res.status(400).json({
+        success: false,
+        error: 'Pengajuan izin ini sudah diproses dan tidak dapat diubah lagi.',
+      });
+      return;
+    }
 
-    // If approved, update or create attendance record as SICK or EXCUSED
-    if (status === 'APPROVED') {
+    const updatedExcuse = await prisma.$transaction(async (tx) => {
+      const updated = await tx.excuseRequest.update({
+        where: { id },
+        data: {
+          status,
+          reviewed_by: user_id,
+          reviewed_at: new Date(),
+        },
+      });
+
+      // If approved, update or create attendance record as SICK or EXCUSED
+      if (status !== 'APPROVED') return updated;
       const attendanceStatus = excuse.reason === 'SICK' ? 'SICK' : 'EXCUSED';
-      
-      const existingAttendance = await prisma.attendance.findUnique({
-        where: { session_id_user_id: { session_id: excuse.session_id, user_id: excuse.user_id } }
+
+      const existingAttendance = await tx.attendance.findUnique({
+        where: { session_id_user_id: { session_id: excuse.session_id, user_id: excuse.user_id } },
       });
 
       if (existingAttendance) {
-        await prisma.attendance.update({
+        await tx.attendance.update({
           where: { id: existingAttendance.id },
-          data: { status: attendanceStatus, manual_entry_note: excuse.description, manual_entry_by: user_id }
+          data: {
+            status: attendanceStatus,
+            manual_entry_note: excuse.description,
+            manual_entry_by: user_id,
+          },
         });
       } else {
-        await prisma.attendance.create({
+        await tx.attendance.create({
           data: {
             session_id: excuse.session_id,
             user_id: excuse.user_id,
@@ -257,21 +395,25 @@ export const reviewExcuse = async (req: Request, res: Response): Promise<void> =
             check_in_time: new Date(),
             is_manual_entry: true,
             manual_entry_note: excuse.description,
-            manual_entry_by: user_id
-          }
+            manual_entry_by: user_id,
+          },
         });
       }
-    }
+      return updated;
+    });
 
     // Send notification to student
-    const sessionDetails = await prisma.session.findUnique({ where: { id: excuse.session_id }, select: { title: true } });
+    const sessionDetails = await prisma.session.findUnique({
+      where: { id: excuse.session_id },
+      select: { title: true },
+    });
     await prisma.notification.create({
       data: {
         user_id: excuse.user_id,
         title: `Pengajuan Izin ${status === 'APPROVED' ? 'Disetujui' : 'Ditolak'}`,
         message: `Pengajuan izin Anda untuk sesi "${sessionDetails?.title || 'Tidak diketahui'}" telah ${status === 'APPROVED' ? 'disetujui' : 'ditolak'}.`,
-        type: status === 'APPROVED' ? 'SUCCESS' : 'WARNING'
-      }
+        type: status === 'APPROVED' ? 'SUCCESS' : 'WARNING',
+      },
     });
 
     res.status(200).json({ success: true, data: updatedExcuse });

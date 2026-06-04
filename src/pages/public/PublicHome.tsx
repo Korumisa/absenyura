@@ -17,6 +17,7 @@ import { PublicHomeCmsHint } from '@/components/public/home/PublicHomeCmsHint';
 import { normalizeYoutubeEmbedUrl } from '@/lib/media/normalizeYoutubeEmbedUrl';
 import { PublicSlowLoadingHint } from '@/components/public/PublicSlowLoadingHint';
 import { usePublicHomeData, isPublicProfileSparse } from '@/hooks/usePublicHomeData';
+import { ensureHttpsUrl } from '@/lib/http/ensureHttpsUrl';
 
 function PublicHomeSkeleton({
   showSlowHint,
@@ -605,11 +606,13 @@ export default function PublicHome() {
                     : 'mt-10 grid gap-6 md:grid-cols-3';
               return (
                 <div className={gridClass}>
-                  {shown.map((r) => (
-                    <div
-                      key={r.id}
-                      className="flex h-full flex-col overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)]"
-                    >
+                  {shown.map((r) => {
+                    const joinUrl = ensureHttpsUrl(r.form_url);
+                    return (
+                      <div
+                        key={r.id}
+                        className="flex h-full flex-col overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)]"
+                      >
                       <div className="aspect-[16/10] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))]">
                         <PublicCoverImage url={r.poster_image_url} alt={r.title} imgClassName="object-cover" />
                       </div>
@@ -630,9 +633,9 @@ export default function PublicHome() {
                               Detail
                               <ArrowRight size={16} />
                             </Link>
-                            {r.form_url ? (
+                            {joinUrl ? (
                               <a
-                                href={r.form_url}
+                                href={joinUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="inline-flex items-center gap-2 rounded-xl bg-[var(--public-primary)] px-4 py-2 text-xs font-semibold text-white shadow-[0_12px_22px_rgba(37,99,235,0.28)] transition hover:brightness-110"
@@ -643,9 +646,10 @@ export default function PublicHome() {
                             ) : null}
                           </div>
                         </div>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               );
             })()

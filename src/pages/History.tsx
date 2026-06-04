@@ -45,17 +45,15 @@ export default function HistoryPage() {
     setPage(1);
   }, [filter]);
 
-  const swr = useSWR(`/reports?page=${page}&limit=20`, fetcher, { revalidateOnFocus: false });
+  const queryParams = new URLSearchParams({ page: String(page), limit: '20' });
+  if (filter !== 'ALL') queryParams.set('status', filter);
+  const swr = useSWR(`/reports?${queryParams.toString()}`, fetcher, { revalidateOnFocus: false });
   const { isPending, isError, retry } = useSwrPageState(swr);
   const history: AttendanceHistory[] = Array.isArray(swr.data?.data) ? swr.data.data : [];
   const meta: PaginationMeta | null = swr.data?.meta ?? null;
   const hasFilters = filter !== 'ALL';
 
-  const filteredHistory = history.filter((h) => {
-    if (filter === 'ALL') return true;
-    if (filter === 'EXCUSED') return h.status === 'SICK' || h.status === 'EXCUSED';
-    return h.status === filter;
-  });
+  const filteredHistory = history;
 
   return (
     <AdminPageShell

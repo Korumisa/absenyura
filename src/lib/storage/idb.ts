@@ -24,6 +24,7 @@ export interface OfflineAttendance {
   token?: string;
   lat: number;
   lng: number;
+  accuracy?: number;
   deviceInfo: string;
   timestamp: string;
 }

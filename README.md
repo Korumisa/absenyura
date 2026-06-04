@@ -66,8 +66,10 @@ Hubungkan aplikasi ke Supabase dan buat seluruh tabel yang diperlukan dengan per
 
 ```bash
 npx prisma generate
-npx prisma db push
+npx prisma migrate dev
 ```
+
+For a fresh local database without migration history, you may use `npx prisma db push` instead.
 
 ### 4. Membuat Akun Demo (Opsional)
 
@@ -123,10 +125,36 @@ DATABASE_URL="postgresql://postgres.[ref]:[YOUR-PASSWORD]@aws-0-[region].pooler.
 DIRECT_URL="postgresql://postgres.[ref]:[YOUR-PASSWORD]@db.[ref].supabase.co:5432/postgres"
 JWT_SECRET="BUAT_STRING_ACAK_YANG_SANGAT_PANJANG_DAN_RUMIT"
 JWT_REFRESH_SECRET="BUAT_STRING_ACAK_YANG_SANGAT_PANJANG_DAN_RUMIT_LAINNYA"
+ATTENDANCE_PROOF_SECRET="BUAT_STRING_ACAK_MINIMAL_32_KARAKTER_UNTUK_ABSENSI"
+CRON_SECRET="BUAT_STRING_ACAK_UNTUK_CRON_HTTP"
+INTERNAL_SECRET="BUAT_STRING_ACAK_INTERNAL"
 FRONTEND_URL="https://absensi.namakampus.ac.id" # URL Asli Anda
 ```
 
-Jalankan `npx prisma generate` dan `npx prisma db push`.
+Jalankan `npx prisma generate` dan `npx prisma migrate deploy` (production). Untuk development lokal gunakan `npx prisma migrate dev`.
+
+### Checklist production
+
+1. **Secrets:** `ATTENDANCE_PROOF_SECRET` (32+ byte), `CRON_SECRET`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, `INTERNAL_SECRET` — jangan pakai nilai contoh.
+2. **Migrasi:** `npx prisma migrate deploy` (termasuk unique excuse dan `refresh_token_hash`).
+3. **Proxy:** Nginx harus meneruskan `X-Forwarded-For` / `X-Real-IP` agar aturan IP absensi memakai IP klien yang benar (`trust proxy` sudah aktif di production).
+4. **Cron HTTP:** Set `CRON_SECRET` di Vercel; verifikasi:
+   `curl -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/trigger?job=session"`
+   GitHub Actions (`session-cron.yml`) memakai header `X-Cron-Secret` setiap 15 menit sebagai cadangan.
+5. **Build:** Jangan set `VITE_DEV_BYPASS_AUTH` pada build production (CI/vite akan gagal jika diset).
+6. **Boot:** Aplikasi menolak start di production/Vercel tanpa `ATTENDANCE_PROOF_SECRET` yang valid.
+
+### Debug playbook (saat ada masalah)
+
+1. Reproduce dengan jelas: role user, URL, request (endpoint + status + response body) dari Network tab.
+2. Cocokkan gejala dengan hipotesis umum:
+   - Challenge/check-in 500 → `ATTENDANCE_PROOF_SECRET` hilang/kurang panjang di env production.
+   - Cron selalu 404 → `CRON_SECRET` tidak diset / header salah (`Authorization: Bearer ...` atau `X-Cron-Secret`).
+   - IP kampus selalu ditolak → pastikan proxy mengirim `X-Forwarded-For` dan `trust proxy` aktif.
+   - Refresh token 401 setelah deploy → re-login diperlukan (hash refresh telah berubah).
+   - Check-out 400 → pastikan challenge memakai `action=checkout` + `attendance_id`.
+3. Tambahkan log minimal (tanpa secrets) hanya untuk branch investigasi, lalu hapus setelah fixed.
+4. Validasi ulang: jalankan checklist cron + flow login/check-in/check-out setelah perubahan.
 
 ### Langkah 3: Build Frontend
 
@@ -229,13 +257,14 @@ Nama variabel: `CRON_SECRET`. Redeploy setelah disimpan.
 1. Daftar gratis di [cron-job.org](https://cron-job.org)
 2. Buat cronjob baru:
    - **Title:** `Absenyura - sync session status`
-   - **URL:** `https://<domain-production>/api/cron/trigger?job=session&key=<CRON_SECRET>`
+   - **URL:** `https://<domain-production>/api/cron/trigger?job=session`
+   - **HTTP Headers:** `Authorization: Bearer <CRON_SECRET>` (atau `X-Cron-Secret: <CRON_SECRET>`)
    - **Schedule:** Every **5 minutes**
    - **Expected:** HTTP **200**, body JSON `success: true`
 3. Aktifkan **failure notification** (email) agar tahu jika pemicu gagal
 4. Cek **Execution history** jika status sesi tidak berubah
 
-Opsional: gunakan header `X-Cron-Secret: <CRON_SECRET>` alih-alih `?key=` di URL.
+Query `?key=` **tidak lagi** didukung (menghindari kebocoran secret di log).
 
 ### 3. Backup — GitHub Actions
 
@@ -257,10 +286,10 @@ Sudah dikonfigurasi di `vercel.json`: `GET /api/cron/trigger?job=all` pada `0 1 
 ### 5. Verifikasi
 
 ```bash
-curl "https://<domain>/api/cron/trigger?job=session&key=<CRON_SECRET>"
+curl -H "Authorization: Bearer <CRON_SECRET>" "https://<domain>/api/cron/trigger?job=session"
 ```
 
-Harus mengembalikan `200` dan `triggeredAt`. Tanpa key/secret salah → `404`.
+Harus mengembalikan `200` dan `triggeredAt`. Tanpa header secret yang benar → `404`. Vercel Cron harian mengirim header `Authorization: Bearer` otomatis jika `CRON_SECRET` diset di project.
 
 Buat sesi `UPCOMING` dengan `check_in_open_at` beberapa menit lalu, tunggu 5–10 menit **tanpa** membuka app → status harus menjadi **ACTIVE**.
 

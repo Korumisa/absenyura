@@ -250,11 +250,66 @@ export default function Attend() {
   }, [reloadSession, reloadCheckout, isCheckoutMode]);
 
   const handleCheckOut = async () => {
-    if (!myAttendance?.id || checkoutSubmitting) return;
+    if (!myAttendance?.id || checkoutSubmitting || isOffline) return;
+    if (!location || !gpsAccuracy || gpsAccuracy <= 0) {
+      toast.error('Menunggu lokasi GPS yang valid…');
+      return;
+    }
+    if (!photoBlob) {
+      toast.error('Silakan ambil foto bukti check-out terlebih dahulu.');
+      return;
+    }
+    const sessionId = sessionIdForLoad?.trim();
+    if (!sessionId) {
+      toast.error('Sesi tidak ditemukan.');
+      return;
+    }
+    if (sessionDetails?.qr_mode && sessionDetails.qr_mode !== 'NONE' && !scanResult) {
+      toast.error('Silakan scan QR Code terlebih dahulu.');
+      return;
+    }
+
     setCheckoutSubmitting(true);
     setCheckoutError(null);
     try {
-      const res = await api.put(`/attendance/${myAttendance.id}/check-out`);
+      const { sid: _s, tkn: qrToken } = extractSessionIdAndToken(scanResult);
+      const photoType = photoBlob.type || 'image/jpeg';
+      const challengeRes = await api.get('/attendance/challenge', {
+        params: {
+          action: 'checkout',
+          attendance_id: myAttendance.id,
+          session_id: sessionId,
+          latitude: location.lat,
+          longitude: location.lng,
+          accuracy: gpsAccuracy,
+          photo_size: photoBlob.size,
+          photo_type: photoType,
+        },
+      });
+      const nonce = challengeRes.data?.data?.nonce;
+      const signature = challengeRes.data?.data?.signature;
+      if (!nonce || !signature) {
+        throw new Error('Gagal mendapatkan security token dari server');
+      }
+
+      const deviceFingerprint = await getDeviceFingerprint();
+      const formData = new FormData();
+      if (qrToken && qrToken !== NO_QR_TOKEN) {
+        formData.append('qr_token', qrToken);
+      }
+      formData.append('latitude', location.lat.toString());
+      formData.append('longitude', location.lng.toString());
+      formData.append('accuracy', gpsAccuracy.toString());
+      formData.append('device_fingerprint', deviceFingerprint);
+      formData.append('nonce', nonce);
+      formData.append('signature', signature);
+      formData.append('photo_size', photoBlob.size.toString());
+      formData.append('photo_type', photoType);
+      formData.append('photo', photoBlob, 'checkout.jpg');
+
+      const res = await api.put(`/attendance/${myAttendance.id}/check-out`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
       toast.success(res.data?.message || 'Check-out berhasil!');
       navigate('/dashboard');
     } catch (err) {
@@ -334,18 +389,11 @@ export default function Attend() {
     );
   };
 
+  const hasIpRestriction = Boolean(sessionDetails?.location?.ip_restriction_enabled);
+
   const isIpValid = () => {
-    if (!ipAddress) return false;
-    if (!sessionDetails?.location?.wifi_bssid) return true; // No restriction
-    try {
-      const allowedIPs = JSON.parse(sessionDetails.location.wifi_bssid);
-      if (Array.isArray(allowedIPs) && allowedIPs.length > 0) {
-        return allowedIPs.includes(ipAddress);
-      }
-    } catch (e) {
-      // Ignore
-    }
-    return true; // If parsing fails or empty, default to true
+    if (!hasIpRestriction) return true;
+    return Boolean(ipAddress);
   };
 
   useEffect(() => {
@@ -623,6 +671,10 @@ export default function Attend() {
       toast.error('Menunggu lokasi GPS...');
       return;
     }
+    if (!gpsAccuracy || gpsAccuracy <= 0) {
+      toast.error('Menunggu akurasi GPS yang valid...');
+      return;
+    }
     // We require photo evidence for this iteration as requested
     if (!photoBlob) {
       toast.error('Silakan ambil foto bukti terlebih dahulu.');
@@ -651,6 +703,7 @@ export default function Attend() {
           token: qrToken && qrToken !== NO_QR_TOKEN ? qrToken : undefined,
           lat: location.lat,
           lng: location.lng,
+          accuracy: gpsAccuracy,
           deviceInfo: deviceFingerprint,
         });
         if (photoBlob) {
@@ -665,22 +718,24 @@ export default function Attend() {
         return;
       }
 
-      // --- ANTI-CHEAT LAYER 2: Request Nonce ---
-      const challengeRes = await api.get('/attendance/challenge');
+      // --- ANTI-CHEAT LAYER 2: Request server-signed one-time proof ---
+      const photoType = photoBlob.type || 'image/jpeg';
+      const challengeRes = await api.get('/attendance/challenge', {
+        params: {
+          action: 'checkin',
+          session_id: sessionId,
+          latitude: location.lat,
+          longitude: location.lng,
+          accuracy: gpsAccuracy,
+          photo_size: photoBlob.size,
+          photo_type: photoType,
+        },
+      });
       const nonce = challengeRes.data?.data?.nonce;
-      if (!nonce) {
+      const signature = challengeRes.data?.data?.signature;
+      if (!nonce || !signature) {
         throw new Error('Gagal mendapatkan security token dari server');
       }
-
-      // Generate signature (HMAC-like)
-      const secret = import.meta.env.VITE_APP_SECRET || 'absenyura-secure-2026';
-      const payloadToSign = `${nonce}:${location.lat}:${location.lng}:${secret}`;
-      const encoder = new TextEncoder();
-      const data = encoder.encode(payloadToSign);
-      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-      const signature = Array.from(new Uint8Array(hashBuffer))
-        .map((b) => b.toString(16).padStart(2, '0'))
-        .join('');
 
       const formData = new FormData();
       formData.append('session_id', sessionId);
@@ -694,6 +749,8 @@ export default function Attend() {
       formData.append('device_fingerprint', deviceFingerprint);
       formData.append('nonce', nonce);
       formData.append('signature', signature);
+      formData.append('photo_size', photoBlob.size.toString());
+      formData.append('photo_type', photoType);
 
       if (photoBlob) {
         formData.append('photo', photoBlob, 'attendance.jpg');
@@ -744,9 +801,9 @@ export default function Attend() {
   };
 
   const ipStatusLabel = () => {
+    if (!hasIpRestriction) return 'Tidak diwajibkan';
     if (!ipAddress) return 'Memuat…';
-    if (!sessionDetails?.location?.wifi_bssid) return 'Tidak diwajibkan';
-    return isIpValid() ? 'Terverifikasi' : 'Di luar jaringan kampus';
+    return 'Dicek server saat kirim';
   };
 
   const actionOverlayLabel = loading
@@ -850,31 +907,83 @@ export default function Attend() {
                 </Button>
               </div>
             ) : (
-              <div className="flex flex-1 flex-col items-center gap-6 p-6 sm:p-8">
-                <div className="w-full space-y-4 text-center">
+              <div className="flex flex-1 flex-col gap-6 p-6 sm:p-8">
+                <div className="space-y-4 text-center">
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Kelas / Sesi
                   </p>
                   <p className="text-lg font-bold text-foreground">
                     {sessionDetails?.title || myAttendance.session_title}
                   </p>
-                  <p className="pt-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Waktu check-in
-                  </p>
-                  <p className="text-base font-medium text-brand text-brand">
+                  <p className="text-base font-medium text-brand">
+                    Check-in:{' '}
                     {format(new Date(myAttendance.check_in_time), 'dd MMM yyyy · HH:mm', {
                       locale: idLocale,
                     })}{' '}
                     WIB
                   </p>
                 </div>
-                <div className="w-full space-y-3 pt-2">
+                {sessionDetails?.qr_mode && sessionDetails.qr_mode !== 'NONE' && !scanResult ? (
+                  <p className="text-center text-sm text-amber-700 dark:text-amber-400">
+                    Scan QR sesi terlebih dahulu (sama seperti check-in).
+                  </p>
+                ) : null}
+                <div className="relative mx-auto aspect-[3/4] w-full max-w-sm overflow-hidden rounded-xl bg-muted">
+                  {photoPreview ? (
+                    <img
+                      src={photoPreview}
+                      alt="Pratinjau foto check-out"
+                      className="size-full object-cover"
+                    />
+                  ) : (
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className="size-full object-cover"
+                    />
+                  )}
+                  <canvas ref={canvasRef} className="hidden" />
+                </div>
+                <div className="flex flex-col gap-3">
+                  {!photoPreview && !isCameraActive ? (
+                    <Button
+                      type="button"
+                      className="w-full"
+                      disabled={cameraStarting}
+                      onClick={() => void startCamera()}
+                    >
+                      {cameraStarting ? 'Menyiapkan kamera…' : 'Buka Kamera'}
+                    </Button>
+                  ) : null}
+                  {!photoPreview && isCameraActive ? (
+                    <Button type="button" className="w-full" onClick={takePhoto}>
+                      Ambil Foto Check-out
+                    </Button>
+                  ) : null}
+                  {photoPreview ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full"
+                      onClick={retakePhoto}
+                    >
+                      Ambil Ulang Foto
+                    </Button>
+                  ) : null}
                   <Button
                     type="button"
                     size="lg"
-                    className="w-full py-6 text-lg font-bold shadow-lg shadow-indigo-200 dark:shadow-indigo-900/20"
+                    className="w-full py-6 text-lg font-bold"
                     onClick={() => void handleCheckOut()}
-                    disabled={checkoutSubmitting || isOffline}
+                    disabled={
+                      checkoutSubmitting ||
+                      isOffline ||
+                      !photoBlob ||
+                      !location ||
+                      !isLocationValid()
+                    }
                     aria-busy={checkoutSubmitting}
                   >
                     {checkoutSubmitting ? (
@@ -894,6 +1003,11 @@ export default function Attend() {
                     Batal
                   </Button>
                 </div>
+                {checkoutError ? (
+                  <p className="text-center text-sm text-red-600 dark:text-red-400" role="alert">
+                    {checkoutError}
+                  </p>
+                ) : null}
               </div>
             )}
           </div>
@@ -1241,7 +1355,7 @@ export default function Attend() {
                     <Button
                       size="lg"
                       onClick={handleCheckIn}
-                      disabled={loading || !location || !!gpsError || isOffline}
+                      disabled={loading || !location || !!gpsError}
                       className="w-full py-6 text-lg font-bold shadow-lg shadow-indigo-200 dark:shadow-indigo-900/20"
                       aria-busy={loading}
                     >

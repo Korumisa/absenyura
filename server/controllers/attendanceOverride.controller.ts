@@ -8,6 +8,11 @@ export const overrideAttendance = async (req: Request, res: Response): Promise<v
     const user = (req as any).user;
     const adminId = user.id;
     const { session_id, user_id, status, notes } = req.body;
+    const allowedStatuses = new Set(['PRESENT', 'LATE', 'ABSENT', 'SICK', 'EXCUSED']);
+    if (!allowedStatuses.has(String(status))) {
+      res.status(400).json({ success: false, error: 'Status kehadiran tidak valid' });
+      return;
+    }
 
     const session = await prisma.session.findUnique({ where: { id: session_id } });
     if (!session) {

@@ -16,6 +16,7 @@ import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { PublicPageError } from '@/components/public/PublicPageError';
 import { PublicEmptyState } from '@/components/public/PublicEmptyState';
+import { ensureHttpsUrl } from '@/lib/http/ensureHttpsUrl';
 
 export default function OpenRecruitment() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
@@ -30,6 +31,7 @@ export default function OpenRecruitment() {
   const [openId, setOpenId] = useState<string | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   const selected = useMemo(() => items.find((x) => x.id === openId) ?? null, [items, openId]);
+  const selectedFormUrl = ensureHttpsUrl(selected?.form_url);
   useLockBodyScroll(Boolean(selected));
   useDialogA11y(Boolean(selected), () => setOpenId(null), { containerRef: modalRef });
 
@@ -243,7 +245,7 @@ export default function OpenRecruitment() {
 
                   <div className="rounded-3xl border border-black/10 bg-white p-5 shadow-[0_18px_45px_-42px_rgba(15,23,42,0.25)]">
                     <div className="text-sm font-extrabold tracking-tight text-slate-900">Pendaftaran</div>
-                    {selected.form_url ? (
+                    {selectedFormUrl ? (
                       <div className="mt-4 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                         <button
                           type="button"
@@ -259,7 +261,7 @@ export default function OpenRecruitment() {
                         </button>
                         {isAuthenticated && user ? (
                           <a
-                            href={selected.form_url}
+                            href={selectedFormUrl}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="w-full rounded-xl bg-[var(--public-primary)] px-5 py-2.5 text-center text-sm font-semibold text-white shadow-[0_16px_32px_rgba(37,99,235,0.35)] transition hover:brightness-110 sm:w-auto"

@@ -97,41 +97,8 @@ const DEFAULT_PROFILE: PublicProfile = {
   ],
 };
 
-const DEFAULT_PROGRAMS: PublicProgram[] = [
-  {
-    id: 'seed-program-agem-akaswa',
-    title: 'AGEM AKASWA',
-    dateRange: 'Mei 2025',
-    description: 'Aktivitas gemilang akademik mahasiswa sebagai ruang pengembangan potensi dan kreativitas mahasiswa.',
-    isPublished: true,
-    createdAt: '2025-05-05T00:00:00.000Z',
-    updatedAt: '2025-05-05T00:00:00.000Z',
-  },
-];
-const DEFAULT_EVENTS: PublicEvent[] = [
-  {
-    id: 'seed-berita-rektor-lantik',
-    title: 'Rektor Undiksha Lantik Pengurus Himpunan Mahasiswa di Denpasar',
-    type: 'BERITA',
-    dateLabel: '16 April 2025',
-    excerpt: 'Pengukuhan pengurus menjadi penguatan wadah kolaborasi lintas prodi dan dorongan prestasi mahasiswa di Kampus Denpasar.',
-    content: 'Himpunan mahasiswa di lingkungan SDP Kampus Denpasar dibentuk untuk mendorong kolaborasi, kegiatan kemahasiswaan yang berkelanjutan, serta prestasi lintas bidang.',
-    isPublished: true,
-    createdAt: '2025-04-16T00:00:00.000Z',
-    updatedAt: '2025-04-16T00:00:00.000Z',
-  },
-  {
-    id: 'seed-kegiatan-piodalan',
-    title: 'Kegiatan Menyambut Piodalan: Penjor, Ngelawar, dan Gebogan',
-    type: 'KEGIATAN',
-    dateLabel: '3 Oktober 2025',
-    excerpt: 'Rangkaian kegiatan bernuansa budaya dan kebersamaan untuk menyambut piodalan di lingkungan kampus.',
-    content: 'Kegiatan internal yang menekankan gotong royong dan pelestarian budaya, sekaligus mempererat kebersamaan mahasiswa.',
-    isPublished: true,
-    createdAt: '2025-10-07T00:00:00.000Z',
-    updatedAt: '2025-10-07T00:00:00.000Z',
-  },
-];
+const DEFAULT_PROGRAMS: PublicProgram[] = [];
+const DEFAULT_EVENTS: PublicEvent[] = [];
 const DEFAULT_GALLERIES: PublicGalleryAlbum[] = [];
 const DEFAULT_RECRUITMENTS: PublicRecruitment[] = [];
 const DEFAULT_STRUCTURE: PublicStructureGroup[] = [
@@ -333,7 +300,8 @@ export const updateAdminProgram = async (req: Request, res: Response): Promise<v
       title: String(payload?.title ?? all[idx].title).trim(),
       dateRange: String(payload?.dateRange ?? all[idx].dateRange).trim(),
       description: String(payload?.description ?? all[idx].description).trim(),
-      isPublished: typeof payload?.isPublished === 'boolean' ? payload.isPublished : all[idx].isPublished,
+      isPublished:
+        typeof payload?.isPublished === 'boolean' ? payload.isPublished : all[idx].isPublished,
       updatedAt: nowIso(),
     };
     if (!updated.title) {
@@ -385,7 +353,8 @@ export const createAdminEvent = async (req: Request, res: Response): Promise<voi
       title: String(payload?.title ?? '').trim(),
       type: (payload?.type as any) ?? 'KEGIATAN',
       dateLabel: String(payload?.dateLabel ?? '').trim(),
-      status: payload?.status === 'Buka' || payload?.status === 'Tutup' ? payload.status : undefined,
+      status:
+        payload?.status === 'Buka' || payload?.status === 'Tutup' ? payload.status : undefined,
       excerpt: String(payload?.excerpt ?? '').trim(),
       content: String(payload?.content ?? '').trim(),
       isPublished: Boolean(payload?.isPublished ?? false),
@@ -420,10 +389,14 @@ export const updateAdminEvent = async (req: Request, res: Response): Promise<voi
       title: String(payload?.title ?? all[idx].title).trim(),
       type: (payload?.type as any) ?? all[idx].type,
       dateLabel: String(payload?.dateLabel ?? all[idx].dateLabel).trim(),
-      status: payload?.status === 'Buka' || payload?.status === 'Tutup' ? payload.status : all[idx].status,
+      status:
+        payload?.status === 'Buka' || payload?.status === 'Tutup'
+          ? payload.status
+          : all[idx].status,
       excerpt: String(payload?.excerpt ?? all[idx].excerpt).trim(),
       content: String(payload?.content ?? all[idx].content).trim(),
-      isPublished: typeof payload?.isPublished === 'boolean' ? payload.isPublished : all[idx].isPublished,
+      isPublished:
+        typeof payload?.isPublished === 'boolean' ? payload.isPublished : all[idx].isPublished,
       updatedAt: nowIso(),
     };
     if (!updated.title) {
@@ -519,7 +492,8 @@ export const updateAdminGallery = async (req: Request, res: Response): Promise<v
       ...all[idx],
       title: String(payload?.title ?? all[idx].title).trim(),
       description: String(payload?.description ?? all[idx].description).trim(),
-      isPublished: typeof payload?.isPublished === 'boolean' ? payload.isPublished : all[idx].isPublished,
+      isPublished:
+        typeof payload?.isPublished === 'boolean' ? payload.isPublished : all[idx].isPublished,
       items,
       updatedAt: nowIso(),
     };
@@ -620,7 +594,8 @@ export const updateAdminRecruitment = async (req: Request, res: Response): Promi
       dateRange: String(payload?.dateRange ?? all[idx].dateRange).trim(),
       description: String(payload?.description ?? all[idx].description).trim(),
       formUrl: String(payload?.formUrl ?? all[idx].formUrl).trim(),
-      isPublished: typeof payload?.isPublished === 'boolean' ? payload.isPublished : all[idx].isPublished,
+      isPublished:
+        typeof payload?.isPublished === 'boolean' ? payload.isPublished : all[idx].isPublished,
       committee,
       updatedAt: nowIso(),
     };
@@ -651,4 +626,3 @@ export const deleteAdminRecruitment = async (req: Request, res: Response): Promi
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 };
-

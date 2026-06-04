@@ -2,7 +2,7 @@
   "version": 2,
   "crons": [
     {
-      "path": "/api/cron/trigger?job=all",
+      "path": "/api/cron/trigger?job=daily",
       "schedule": "0 1 * * *"
     }
   ],

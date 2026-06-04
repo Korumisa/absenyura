@@ -27,6 +27,10 @@ function normalizeDeviceFingerprint(raw: string): string {
   return raw.replace(' [OFFLINE_SYNC]', '');
 }
 
+function hashRefreshToken(token: string): string {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
+
 function safeCompare(a: string, b: string): boolean {
   const bufA = Buffer.from(a);
   const bufB = Buffer.from(b);
@@ -153,6 +157,11 @@ export async function login(params: {
 
   const accessToken = generateAccessToken(user.id, user.role);
   const refreshToken = generateRefreshToken(user.id, user.role);
+  await userRepository.updateUser({
+    id: user.id,
+    data: { refresh_token_hash: hashRefreshToken(refreshToken) },
+    select: { id: true },
+  });
 
   return {
     ok: true,
@@ -204,7 +213,7 @@ export async function refresh(params: {
 
   const user = await userRepository.findById({
     id: decoded.id,
-    select: { id: true, role: true, is_active: true },
+    select: { id: true, role: true, is_active: true, refresh_token_hash: true },
   });
 
   if (!user || !user.is_active) {
@@ -219,10 +228,45 @@ export async function refresh(params: {
     };
   }
 
+  const presentedHash = hashRefreshToken(refreshToken);
+  if (!user.refresh_token_hash || !safeCompare(user.refresh_token_hash, presentedHash)) {
+    return {
+      ok: false,
+      status: 401,
+      body: {
+        success: false,
+        error_code: 'INVALID_REFRESH_TOKEN',
+        message: 'Sesi login habis. Silakan login ulang.',
+      },
+    };
+  }
+
   const newAccessToken = generateAccessToken(user.id, user.role);
   const newRefreshToken = generateRefreshToken(user.id, user.role);
+  await userRepository.updateUser({
+    id: user.id,
+    data: { refresh_token_hash: hashRefreshToken(newRefreshToken) },
+    select: { id: true },
+  });
 
   return { ok: true, data: { accessToken: newAccessToken, refreshToken: newRefreshToken } };
+}
+
+export async function logout(params: { refreshToken: unknown }): Promise<ServiceResult<null>> {
+  const refreshToken = typeof params.refreshToken === 'string' ? params.refreshToken : '';
+  if (refreshToken) {
+    try {
+      const decoded = verifyRefreshToken(refreshToken);
+      await userRepository.updateUser({
+        id: decoded.id,
+        data: { refresh_token_hash: null },
+        select: { id: true },
+      });
+    } catch {
+      // ignore invalid token on logout
+    }
+  }
+  return { ok: true, data: null };
 }
 
 export async function seedAdmin(params: {

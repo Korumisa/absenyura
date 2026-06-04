@@ -4,6 +4,7 @@ import useSWR from 'swr';
 import api from '@/services/api';
 import type { PublicProfile } from '@/types/publicSite';
 import { Instagram, Music2, Youtube } from 'lucide-react';
+import { ensureHttpsUrl } from '@/lib/http/ensureHttpsUrl';
 
 export default function PublicFooter() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
@@ -18,9 +19,9 @@ export default function PublicFooter() {
   const address = profile?.address ?? null;
   const kabinetName = profile?.kabinet_name ?? '';
   const footerTagline = profile?.footer_tagline ?? '';
-  const instagramUrl = profile?.instagram_url ?? '';
-  const tiktokUrl = profile?.tiktok_url ?? '';
-  const youtubeUrl = profile?.youtube_url ?? '';
+  const instagramUrl = ensureHttpsUrl(profile?.instagram_url);
+  const tiktokUrl = ensureHttpsUrl(profile?.tiktok_url);
+  const youtubeUrl = ensureHttpsUrl(profile?.youtube_url);
 
   return (
     <footer className="relative border-t border-black/10 bg-slate-50 pb-10 pt-14 text-slate-700">

@@ -11,6 +11,7 @@ import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
+import crypto from 'crypto';
 import { csrfProtect } from './middlewares/csrf.middleware.js';
 import { requestTiming } from './middlewares/requestTiming.middleware.js';
 import { guardInternal, guardCron } from './middlewares/guardInternal.js';
@@ -50,6 +51,14 @@ if (
   process.env.INTERNAL_SECRET === 'change_me_before_deploy'
 ) {
   throw new Error('INTERNAL_SECRET must be rotated before production use.');
+}
+
+const attendanceProofSecret = process.env.ATTENDANCE_PROOF_SECRET || '';
+if (
+  (process.env.NODE_ENV === 'production' || process.env.VERCEL) &&
+  attendanceProofSecret.length < 32
+) {
+  throw new Error('ATTENDANCE_PROOF_SECRET must be set (32+ characters) before production use.');
 }
 
 const app: express.Application = express();
@@ -125,6 +134,10 @@ const rateLimitMessage = (message: string) => ({
   message,
 });
 
+function hashRateLimitSecret(secret: string): string {
+  return crypto.createHash('sha256').update(secret).digest('hex');
+}
+
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: isProd ? 20 : 200,
@@ -151,13 +164,19 @@ const refreshLimiter = rateLimit({
   legacyHeaders: false,
   skip: (req) => !req.cookies?.refreshToken,
   message: rateLimitMessage('Terlalu banyak permintaan sesi. Muat ulang halaman lalu coba lagi.'),
-  keyGenerator: (req) => `refresh:${String(req.cookies?.refreshToken ?? 'missing')}`,
+  keyGenerator: (req) => {
+    const token = String(req.cookies?.refreshToken ?? 'missing');
+    return `refresh:${hashRateLimitSecret(token)}`;
+  },
 });
 
 function sessionRateLimitKey(req: Request): string {
-  if (req.cookies?.accessToken) return `api:at:${req.cookies.accessToken}`;
-  if (req.cookies?.refreshToken) return `api:rt:${req.cookies.refreshToken}`;
-  if (req.headers?.authorization) return `api:auth:${String(req.headers.authorization)}`;
+  if (req.cookies?.accessToken)
+    return `api:at:${hashRateLimitSecret(String(req.cookies.accessToken))}`;
+  if (req.cookies?.refreshToken)
+    return `api:rt:${hashRateLimitSecret(String(req.cookies.refreshToken))}`;
+  if (req.headers?.authorization)
+    return `api:auth:${hashRateLimitSecret(String(req.headers.authorization))}`;
   return `api:ip:${ipKeyGenerator(req.ip ?? 'unknown')}`;
 }
 

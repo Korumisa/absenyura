@@ -48,7 +48,7 @@ export function sessionDetailSelect(opts: { withSemester: boolean }) {
   const classSelect = opts.withSemester ? classWithSemesterSelect : classWithoutSemesterSelect;
   return {
     ...sessionApiSelect,
-    location: { select: locationAttendSelect },
+    location: { select: locationPublicSelect },
     creator: { select: { name: true } },
     class: { select: classSelect },
     session_classes: {
@@ -63,15 +63,23 @@ export function stripSessionQrSecrets<T extends Record<string, unknown>>(row: T)
   return safe;
 }
 
-/** Attend page + check-in geofencing */
-export const locationAttendSelect = {
+/** Public session/attend API — no campus IP allowlist */
+export const locationPublicSelect = {
   id: true,
   name: true,
   latitude: true,
   longitude: true,
   radius: true,
+} as const;
+
+/** Server-side check-in/check-out only */
+export const locationCheckInSelect = {
+  ...locationPublicSelect,
   wifi_bssid: true,
 } as const;
+
+/** @deprecated use locationCheckInSelect */
+export const locationAttendSelect = locationCheckInSelect;
 
 /** check-in handler — session fields only (server-side validation) */
 export const sessionCheckInSelect = {
@@ -88,5 +96,5 @@ export const sessionCheckInSelect = {
   late_threshold_minutes: true,
   require_checkout: true,
   session_classes: { select: { class_id: true } },
-  location: { select: locationAttendSelect },
+  location: { select: locationCheckInSelect },
 } as const;

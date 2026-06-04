@@ -18,8 +18,8 @@ jobs:
             echo "APP_URL dan CRON_SECRET harus diset di repository secrets"
             exit 1
           fi
-          url="${APP_URL%/}/api/cron/trigger?job=session&key=${CRON_SECRET}"
-          code=$(curl -sS -o /tmp/cron-body.txt -w "%{http_code}" "$url")
+          url="${APP_URL%/}/api/cron/trigger?job=session"
+          code=$(curl -sS -o /tmp/cron-body.txt -w "%{http_code}" -H "X-Cron-Secret: ${CRON_SECRET}" "$url")
           echo "HTTP $code"
           cat /tmp/cron-body.txt
           test "$code" = "200"
