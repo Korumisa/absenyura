@@ -257,6 +257,7 @@ export default function StudentAttendanceRecap() {
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     placeholder="Cari sesi, kelas, status…"
+                    aria-label="Cari sesi, kelas, status"
                     className="pl-9"
                   />
                 </div>

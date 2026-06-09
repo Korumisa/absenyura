@@ -32,7 +32,11 @@ export default function PublicSiteStructurePreview({ groups }: { groups: GroupPr
                     <li key={pi} className="flex items-center gap-2">
                       <div className="size-9 shrink-0 overflow-hidden rounded-full bg-muted">
                         {p.photoUrl ? (
-                          <img src={p.photoUrl} alt="" className="h-full w-full object-cover" />
+                          <img
+                            src={p.photoUrl}
+                            alt={p.name ? `Foto ${p.name}` : 'Foto anggota'}
+                            className="h-full w-full object-cover"
+                          />
                         ) : null}
                       </div>
                       <div className="min-w-0 flex-1">

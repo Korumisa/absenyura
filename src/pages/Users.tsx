@@ -625,6 +625,7 @@ export default function Users() {
                               onClick={() => handleOpenModal(user)}
                               className="text-muted-foreground hover:bg-indigo-50 hover:text-brand text-muted-foreground dark:hover:bg-indigo-900/30"
                               title="Edit"
+                              aria-label={`Edit pengguna ${user.name}`}
                             >
                               <Edit2 size={16} />
                             </Button>
@@ -635,6 +636,7 @@ export default function Users() {
                                 onClick={() => openDeleteConfirm(user.id)}
                                 className="text-muted-foreground hover:bg-red-50 hover:text-red-600 text-muted-foreground dark:hover:bg-red-900/30"
                                 title="Hapus"
+                                aria-label={`Hapus pengguna ${user.name}`}
                               >
                                 <Trash2 size={16} />
                               </Button>

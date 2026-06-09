@@ -28,7 +28,9 @@ export default function PublicSiteGalleryPreview({
             {isPublished ? 'Publik' : 'Draft'}
           </span>
         </div>
-        {description ? <p className="line-clamp-2 text-xs text-muted-foreground">{description}</p> : null}
+        {description ? (
+          <p className="line-clamp-2 text-xs text-muted-foreground">{description}</p>
+        ) : null}
         {photos.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border p-6 text-center text-xs text-muted-foreground border-border">
             Belum ada foto
@@ -37,8 +39,22 @@ export default function PublicSiteGalleryPreview({
           <div className="grid grid-cols-2 gap-2">
             {photos.map((it, idx) => (
               <div key={idx} className="overflow-hidden rounded-lg bg-slate-100 bg-background">
-                <img src={it.imageUrl} alt={it.caption || ''} className="aspect-video w-full object-cover" />
-                {it.caption ? <p className="truncate px-2 py-1 text-[10px] text-muted-foreground">{it.caption}</p> : null}
+                <img
+                  src={it.imageUrl}
+                  alt={
+                    it.caption
+                      ? `Foto album: ${it.caption}`
+                      : title
+                        ? `Foto album: ${title}`
+                        : 'Foto album'
+                  }
+                  className="aspect-video w-full object-cover"
+                />
+                {it.caption ? (
+                  <p className="truncate px-2 py-1 text-[10px] text-muted-foreground">
+                    {it.caption}
+                  </p>
+                ) : null}
               </div>
             ))}
           </div>

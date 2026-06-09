@@ -1,0 +1,90 @@
+base,method,path,auth,roles,csrf_required,rate_limit_bucket,notes
+/api,GET,/status,public,no,none,none,Public DB liveness check (DB ping)
+/api,GET,/health,internal,INTERNAL_SECRET,no,none,guardInternal in app.ts
+/api,GET,/health/db,internal,INTERNAL_SECRET,no,none,deprecated health endpoint
+/api/auth,POST,/login,public,no,no,loginLimiter,Sets HttpOnly cookies + csrfToken cookie
+/api/auth,POST,/refresh,public,no,no,refreshLimiter,Rotates refresh token and sets csrfToken cookie
+/api/auth,POST,/logout,public(no auth middleware),no,yes,apiLimiter/anonApiLimiter,CSRF applies because not on skip list
+/api/auth,POST,/seed,internal,INTERNAL_SECRET,no,none,Seed SUPER_ADMIN (blocked in production)
+/api/auth,POST,/flush-db,internal,INTERNAL_SECRET,no,none,Flush transaction data (blocked in production)
+/api/users,GET,/,authenticated,SUPER_ADMIN,yes,apiLimiter,User list
+/api/users,POST,/,authenticated,SUPER_ADMIN,yes,apiLimiter,Create user
+/api/users,POST,/import,authenticated,SUPER_ADMIN,yes,apiLimiter,Excel upload (multer)
+/api/users,GET,/:id,authenticated,SUPER_ADMIN|ADMIN,yes,apiLimiter,User detail
+/api/users,PUT,/:id,authenticated,SUPER_ADMIN|ADMIN,yes,apiLimiter,Update user
+/api/users,DELETE,/:id,authenticated,SUPER_ADMIN,yes,apiLimiter,Delete user
+/api/users,POST,/:id/reset-device,authenticated,SUPER_ADMIN|ADMIN,yes,apiLimiter,Reset device binding
+/api/classes,GET,/,authenticated,any,yes,apiLimiter,Class list (role check in controller)
+/api/classes,GET,/enrollment-options,authenticated,SUPER_ADMIN|ADMIN,yes,apiLimiter,Enrollment metadata
+/api/classes,GET,/:id,authenticated,any,yes,apiLimiter,Class detail
+/api/classes,POST,/,authenticated,SUPER_ADMIN|ADMIN,yes,apiLimiter,Create class
+/api/classes,PUT,/:id,authenticated,SUPER_ADMIN|ADMIN,yes,apiLimiter,Update class
+/api/classes,DELETE,/:id,authenticated,SUPER_ADMIN,yes,apiLimiter,Delete class
+/api/classes,GET,/:id/students,authenticated,any,yes,apiLimiter,Class students
+/api/classes,POST,/:id/enroll,authenticated,SUPER_ADMIN|ADMIN,yes,apiLimiter,Enroll students
+/api/classes,DELETE,/:id/enroll/:student_id,authenticated,SUPER_ADMIN|ADMIN,yes,apiLimiter,Remove student
+/api/sessions,GET,/,authenticated,any,yes,apiLimiter,Session list
+/api/sessions,GET,/:id,authenticated,any,yes,apiLimiter,Session detail
+/api/sessions,GET,/:id/qr,authenticated,SUPER_ADMIN|ADMIN,yes,apiLimiter,Session QR
+/api/sessions,GET,/:id/attendances,authenticated,SUPER_ADMIN|ADMIN,yes,apiLimiter,Session attendance list
+/api/sessions,POST,/,authenticated,SUPER_ADMIN|ADMIN,yes,apiLimiter,Create session
+/api/sessions,PUT,/:id,authenticated,SUPER_ADMIN|ADMIN,yes,apiLimiter,Update session
+/api/sessions,DELETE,/:id,authenticated,SUPER_ADMIN|ADMIN,yes,apiLimiter,Delete session
+/api/attendance,GET,/challenge,authenticated,any,yes,apiLimiter,Challenge nonce before photo capture
+/api/attendance,POST,/check-in,authenticated,USER,yes,apiLimiter,Photo upload + EXIF check + check-in
+/api/attendance,PUT,/:id/check-out,authenticated,USER,yes,apiLimiter,Photo upload + checkout
+/api/attendance,POST,/override,authenticated,SUPER_ADMIN|ADMIN,yes,apiLimiter,Manual override
+/api/excuses,GET,/,authenticated,any,yes,apiLimiter,Excuse list (role check in controller)
+/api/excuses,POST,/,authenticated,any,yes,apiLimiter,Proof upload (pdf/image) + validation
+/api/excuses,PUT,/:id/review,authenticated,SUPER_ADMIN|ADMIN,yes,apiLimiter,Review excuse
+/api/locations,GET,/,authenticated,SUPER_ADMIN|ADMIN,yes,apiLimiter,Location list
+/api/locations,POST,/,authenticated,SUPER_ADMIN|ADMIN,yes,apiLimiter,Create location
+/api/locations,PUT,/:id,authenticated,SUPER_ADMIN|ADMIN,yes,apiLimiter,Update location
+/api/locations,DELETE,/:id,authenticated,SUPER_ADMIN|ADMIN,yes,apiLimiter,Delete location
+/api/dashboard,GET,/,authenticated,any,yes,apiLimiter,Dashboard stats (role check in controller)
+/api/reports,GET,/,authenticated,any,yes,apiLimiter,Reports list/export-related data
+/api/settings,GET,/profile,authenticated,any,yes,apiLimiter,Profile settings
+/api/settings,PUT,/profile,authenticated,any,yes,apiLimiter,Update profile settings
+/api/settings,GET,/departments,authenticated,any,yes,apiLimiter,Departments list
+/api/settings,POST,/departments,authenticated,any,yes,apiLimiter,Update departments
+/api/settings,GET,/subjects,authenticated,any,yes,apiLimiter,Subjects list
+/api/settings,POST,/subjects,authenticated,any,yes,apiLimiter,Update subjects
+/api/notifications,GET,/,authenticated,any,yes,apiLimiter,Notifications list
+/api/notifications,PUT,/read-all,authenticated,any,yes,apiLimiter,Mark all read
+/api/notifications,PUT,/:id/read,authenticated,any,yes,apiLimiter,Mark read
+/api/audit-logs,GET,/,authenticated,SUPER_ADMIN,yes,apiLimiter,Audit logs read
+/api/public-site,GET,/profile,public,no,none,none,Public cached read
+/api/public-site,GET,/programs,public,no,none,none,Public cached read
+/api/public-site,GET,/categories,public,no,none,none,Public cached read
+/api/public-site,GET,/posts,public,no,none,none,Public cached read
+/api/public-site,GET,/posts/:slug,public,no,none,none,Public cached read
+/api/public-site,GET,/galleries,public,no,none,none,Public cached read
+/api/public-site,GET,/recruitments,public,no,none,none,Public cached read
+/api/public-site,GET,/structure,public,no,none,none,Public cached read
+/api/public-site,GET,/admin/profile,authenticated,SUPER_ADMIN|CONTENT_ADMIN,yes,apiLimiter,Admin CMS read
+/api/public-site,PUT,/admin/profile,authenticated,SUPER_ADMIN|CONTENT_ADMIN,yes,apiLimiter,Admin CMS write
+/api/public-site,GET,/admin/structure,authenticated,SUPER_ADMIN|CONTENT_ADMIN,yes,apiLimiter,Admin CMS read
+/api/public-site,PUT,/admin/structure,authenticated,SUPER_ADMIN|CONTENT_ADMIN,yes,apiLimiter,Admin CMS write
+/api/public-site,GET,/admin/programs,authenticated,SUPER_ADMIN|CONTENT_ADMIN,yes,apiLimiter,Admin CMS list
+/api/public-site,POST,/admin/programs,authenticated,SUPER_ADMIN|CONTENT_ADMIN,yes,apiLimiter,Admin CMS create
+/api/public-site,PUT,/admin/programs/:id,authenticated,SUPER_ADMIN|CONTENT_ADMIN,yes,apiLimiter,Admin CMS update
+/api/public-site,DELETE,/admin/programs/:id,authenticated,SUPER_ADMIN|CONTENT_ADMIN,yes,apiLimiter,Admin CMS delete
+/api/public-site,GET,/admin/categories,authenticated,SUPER_ADMIN|CONTENT_ADMIN,yes,apiLimiter,Admin CMS list
+/api/public-site,POST,/admin/categories,authenticated,SUPER_ADMIN|CONTENT_ADMIN,yes,apiLimiter,Admin CMS create
+/api/public-site,PUT,/admin/categories/:id,authenticated,SUPER_ADMIN|CONTENT_ADMIN,yes,apiLimiter,Admin CMS update
+/api/public-site,DELETE,/admin/categories/:id,authenticated,SUPER_ADMIN|CONTENT_ADMIN,yes,apiLimiter,Admin CMS delete
+/api/public-site,GET,/admin/posts,authenticated,SUPER_ADMIN|CONTENT_ADMIN,yes,apiLimiter,Admin CMS list
+/api/public-site,POST,/admin/posts,authenticated,SUPER_ADMIN|CONTENT_ADMIN,yes,apiLimiter,Admin CMS create
+/api/public-site,PUT,/admin/posts/:id,authenticated,SUPER_ADMIN|CONTENT_ADMIN,yes,apiLimiter,Admin CMS update
+/api/public-site,DELETE,/admin/posts/:id,authenticated,SUPER_ADMIN|CONTENT_ADMIN,yes,apiLimiter,Admin CMS delete
+/api/public-site,POST,/admin/upload,authenticated,SUPER_ADMIN|CONTENT_ADMIN,yes,apiLimiter,Uploads public assets
+/api/public-site,GET,/admin/galleries,authenticated,SUPER_ADMIN|CONTENT_ADMIN,yes,apiLimiter,Admin CMS list
+/api/public-site,POST,/admin/galleries,authenticated,SUPER_ADMIN|CONTENT_ADMIN,yes,apiLimiter,Admin CMS create
+/api/public-site,PUT,/admin/galleries/:id,authenticated,SUPER_ADMIN|CONTENT_ADMIN,yes,apiLimiter,Admin CMS update
+/api/public-site,DELETE,/admin/galleries/:id,authenticated,SUPER_ADMIN|CONTENT_ADMIN,yes,apiLimiter,Admin CMS delete
+/api/public-site,GET,/admin/recruitments,authenticated,SUPER_ADMIN|CONTENT_ADMIN,yes,apiLimiter,Admin CMS list
+/api/public-site,POST,/admin/recruitments,authenticated,SUPER_ADMIN|CONTENT_ADMIN,yes,apiLimiter,Admin CMS create
+/api/public-site,PUT,/admin/recruitments/:id,authenticated,SUPER_ADMIN|CONTENT_ADMIN,yes,apiLimiter,Admin CMS update
+/api/public-site,DELETE,/admin/recruitments/:id,authenticated,SUPER_ADMIN|CONTENT_ADMIN,yes,apiLimiter,Admin CMS delete
+/api/cron,GET,/trigger,cron,Cron secret header/bearer,no,none,guardCron applied in app.ts; triggers scheduled jobs
+

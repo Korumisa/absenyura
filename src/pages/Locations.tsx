@@ -692,6 +692,7 @@ export default function Locations() {
                     disabled={isLocating}
                     className="absolute top-4 right-4 z-[1000] shadow-lg rounded-xl"
                     title="Deteksi Lokasi Saya"
+                    aria-label="Deteksi lokasi saya"
                   >
                     <LocateFixed
                       className={`w-5 h-5 ${isLocating ? 'animate-pulse text-indigo-500' : ''}`}

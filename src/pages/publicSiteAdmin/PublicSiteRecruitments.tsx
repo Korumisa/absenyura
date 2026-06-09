@@ -253,31 +253,35 @@ export default function PublicSiteRecruitments() {
 
                 <div className={formTab === 'info' ? 'grid gap-4 md:grid-cols-2' : 'hidden'}>
                   <div className="space-y-2 md:col-span-2">
-                    <Label>Judul</Label>
+                    <Label htmlFor="recruitment-title">Judul</Label>
                     <Input
+                      id="recruitment-title"
                       value={form.title ?? ''}
                       onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Tanggal Mulai</Label>
+                    <Label htmlFor="recruitment-date-start">Tanggal Mulai</Label>
                     <Input
+                      id="recruitment-date-start"
                       type="date"
                       value={dateStart}
                       onChange={(e) => setDateStart(e.target.value)}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Tanggal Selesai</Label>
+                    <Label htmlFor="recruitment-date-end">Tanggal Selesai</Label>
                     <Input
+                      id="recruitment-date-end"
                       type="date"
                       value={dateEnd}
                       onChange={(e) => setDateEnd(e.target.value)}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Link Form</Label>
+                    <Label htmlFor="recruitment-form-url">Link Form</Label>
                     <Input
+                      id="recruitment-form-url"
                       value={form.formUrl ?? ''}
                       onChange={(e) => setForm((p) => ({ ...p, formUrl: e.target.value }))}
                     />
@@ -290,15 +294,17 @@ export default function PublicSiteRecruitments() {
                     />
                   </div>
                   <div className="space-y-2 md:col-span-2">
-                    <Label>Deskripsi</Label>
+                    <Label htmlFor="recruitment-description">Deskripsi</Label>
                     <Textarea
+                      id="recruitment-description"
                       value={form.description ?? ''}
                       onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
                     />
                   </div>
                   <div className="space-y-2 md:col-span-2">
-                    <Label>Poster Image URL</Label>
+                    <Label htmlFor="recruitment-poster-url">Poster Image URL</Label>
                     <Input
+                      id="recruitment-poster-url"
                       value={form.posterImageUrl ?? ''}
                       onChange={(e) => setForm((p) => ({ ...p, posterImageUrl: e.target.value }))}
                       placeholder="https://..."

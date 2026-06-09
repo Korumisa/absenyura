@@ -834,6 +834,7 @@ export default function Reports() {
                               onClick={() => report?.id && handleOpenOverride(report)}
                               className="text-muted-foreground hover:text-brand hover:bg-indigo-50 dark:text-slate-400 dark:hover:bg-indigo-900/30"
                               title="Override Status"
+                              aria-label={`Override status kehadiran ${report.user_name}`}
                             >
                               <Edit3 className="size-4" />
                             </Button>

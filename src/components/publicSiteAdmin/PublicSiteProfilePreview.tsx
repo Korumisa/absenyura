@@ -35,7 +35,11 @@ export default function PublicSiteProfilePreview({ draft }: { draft: DraftPrevie
       <div className="p-4" style={{ ['--public-primary' as string]: primary }}>
         <div className="mb-4 flex items-center gap-3">
           {draft.logoLightUrl ? (
-            <img src={draft.logoLightUrl} alt="" className="size-10 rounded-lg object-contain" />
+            <img
+              src={draft.logoLightUrl}
+              alt={draft.orgName ? `Logo ${draft.orgName}` : 'Logo organisasi'}
+              className="size-10 rounded-lg object-contain"
+            />
           ) : (
             <div className="size-10 rounded-lg bg-slate-200" aria-hidden="true" />
           )}
@@ -64,7 +68,7 @@ export default function PublicSiteProfilePreview({ draft }: { draft: DraftPrevie
         {draft.homeImageUrl ? (
           <img
             src={draft.homeImageUrl}
-            alt=""
+            alt={draft.orgName ? `Gambar beranda ${draft.orgName}` : 'Gambar beranda'}
             className="mt-4 aspect-video w-full rounded-xl object-cover"
           />
         ) : null}

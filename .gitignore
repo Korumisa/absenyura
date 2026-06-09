@@ -38,3 +38,6 @@ local-data/
 *.sqlite3
 .cursor/
 .trae/
+
+docs/security/artifacts/
+skills/
