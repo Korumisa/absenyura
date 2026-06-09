@@ -103,24 +103,14 @@
       ]
     }
   ],
-  "routes": [
+  "rewrites": [
     {
-      "src": "/api/(.*)",
-      "dest": "/api/index.ts"
+      "source": "/api/:path*",
+      "destination": "/api/index.ts"
     },
     {
-      "handle": "filesystem"
-    },
-    {
-      "src": "/(.*\\.(?:js|css|map|png|jpg|jpeg|gif|svg|webp|ico|woff2?|woff|ttf|eot))$",
-      "status": 404
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html",
-      "headers": {
-        "Cache-Control": "no-store"
-      }
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }
