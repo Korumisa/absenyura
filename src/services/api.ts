@@ -1,3 +1,4 @@
+// api.ts — perubahan: tambah cooldown mechanism
 import axios from 'axios';
 import { useAuthStore } from '../stores/authStore';
 import { useAppStatusStore } from '../stores/appStatusStore';
@@ -39,9 +40,16 @@ function scheduleMaintenance(reason: string) {
 }
 
 let isRefreshing = false;
-let failedQueue: any[] = [];
+let failedQueue: Array<{ resolve: (v?: unknown) => void; reject: (e: unknown) => void }> = [];
 
-const processQueue = (error: any) => {
+// ─── BARU: Cooldown setelah refresh berhasil ────────────────────────────────
+// Mencegah rapid re-trigger saat beberapa 401 tiba hampir bersamaan
+// (misalnya: request yang terlanjur dikirim sebelum cookie baru di-set)
+let lastSuccessfulRefreshAt = 0;
+const REFRESH_COOLDOWN_MS = 10_000; // 10 detik
+// ────────────────────────────────────────────────────────────────────────────
+
+const processQueue = (error: unknown) => {
   failedQueue.forEach((prom) => {
     if (error) prom.reject(error);
     else prom.resolve();
@@ -50,15 +58,26 @@ const processQueue = (error: any) => {
 };
 
 export const verifySession = async () => {
+  const now = Date.now();
+
+  // Guard 1: Jika sedang refresh, antre — jangan kirim request kedua ke backend
   if (isRefreshing) {
     return new Promise(function (resolve, reject) {
       failedQueue.push({ resolve, reject });
     });
   }
 
+  // Guard 2: Jika baru saja refresh berhasil, skip
+  // Cookie sudah berisi token baru; retry dari interceptor akan langsung berhasil
+  // tanpa perlu menyentuh /auth/refresh lagi
+  if (now - lastSuccessfulRefreshAt < REFRESH_COOLDOWN_MS) {
+    return;
+  }
+
   isRefreshing = true;
   try {
     const res = await api.post('/auth/refresh', {});
+    lastSuccessfulRefreshAt = Date.now(); // ← catat waktu berhasil
     processQueue(null);
     return res;
   } catch (refreshError) {
@@ -84,7 +103,7 @@ api.interceptors.request.use((config) => {
     const token = getCookie('csrfToken');
     if (token) {
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore - Axios types are inconsistent between versions
+      // @ts-ignore
       const headers = config.headers ?? {};
       if (typeof headers.set === 'function') {
         headers.set('X-CSRF-Token', token);
@@ -131,6 +150,7 @@ api.interceptors.response.use(
         }
       }
     }
+
     const isPublicSiteRequest = pathname.includes('/public-site/');
     const isAdminPublicSiteRequest = pathname.includes('/public-site/admin');
     const isPublicRequest = isPublicSiteRequest && !isAdminPublicSiteRequest;
@@ -153,7 +173,6 @@ api.interceptors.response.use(
       }
     }
 
-    // Skip retry logic if the request itself was an auth refresh to prevent deadlocks
     if (originalRequest?.url?.includes('/auth/refresh')) {
       return Promise.reject(error);
     }
@@ -164,7 +183,6 @@ api.interceptors.response.use(
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
-
       try {
         await verifySession();
         return api.request(originalRequest);
@@ -172,6 +190,7 @@ api.interceptors.response.use(
         return Promise.reject(refreshError);
       }
     }
+
     return Promise.reject(error);
   }
 );

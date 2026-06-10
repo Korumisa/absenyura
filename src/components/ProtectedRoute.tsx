@@ -1,13 +1,17 @@
+// ProtectedRoute.tsx — perubahan: hapus import ganda & double-refresh
 import React, { useEffect, useRef } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { ProtectedRouteProps } from '../types/protectedroute';
-import api, { verifySession } from '../services/api';
+// ─── BARU: hanya satu import, tanpa `api` karena sudah tidak dipakai langsung ─
+import { verifySession } from '../services/api';
+// ────────────────────────────────────────────────────────────────────────────
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles, children }) => {
   const { isAuthenticated, user, setAuth, logout } = useAuthStore();
   const location = useLocation();
   const sessionVerifiedRef = useRef(false);
+
   const bypass =
     import.meta.env.MODE === 'development' &&
     (import.meta.env.VITE_DEV_BYPASS_AUTH === 'true' ||
@@ -40,7 +44,14 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles, ch
 
     const verify = async (attempt = 0) => {
       try {
+        // ─── DIPERBAIKI: hapus `await api.post('/auth/refresh', {})` ─────────
+        // Dulu ada dua panggilan berurutan:
+        //   1. api.post('/auth/refresh', {})  ← bypass mutex, rotate token
+        //   2. verifySession()                ← rotate lagi → backend 401
+        // Sekarang cukup satu panggilan yang sudah punya mutex built-in:
         await verifySession();
+        // ────────────────────────────────────────────────────────────────────
+
         if (!cancelled) {
           sessionVerifiedRef.current = true;
           setAuth(user);
@@ -48,7 +59,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles, ch
       } catch (err: unknown) {
         const status = (err as { response?: { status?: number } })?.response?.status;
 
-        // Rate limited — retry with backoff
+        // Rate limited — retry dengan exponential backoff
         if (!cancelled && status === 429) {
           const delayMs = Math.min(30_000, 2000 * (attempt + 1));
           retryTimer = setTimeout(() => {
@@ -57,8 +68,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles, ch
           return;
         }
 
-        // Only logout on definitive auth failures (401/403).
-        // Network errors, 500s, etc. should NOT force a logout.
+        // Logout hanya untuk kegagalan auth yang definitif (401/403)
+        // Network error, 500, dll → jangan paksa logout
         if (!cancelled && (status === 401 || status === 403)) {
           sessionVerifiedRef.current = false;
           logout();
@@ -67,6 +78,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles, ch
     };
 
     void verify();
+
     return () => {
       cancelled = true;
       if (retryTimer) clearTimeout(retryTimer);
@@ -85,6 +97,5 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles, ch
     return <Navigate to={user.role === 'CONTENT_ADMIN' ? '/public-site' : '/dashboard'} replace />;
   }
 
-  // Biarkan layout dan skeleton halaman dirender sambil refresh sesi berjalan di background.
   return children ? <>{children}</> : <Outlet />;
 };
