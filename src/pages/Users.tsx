@@ -298,7 +298,7 @@ export default function Users() {
   const handleDownloadTemplate = async () => {
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Data Mahasiswa');
-    const importYear = new Date().getFullYear();
+    const importYear = new Date().getFullYear() - 1;
 
     sheet.columns = [
       { header: 'Nama Lengkap', key: 'name', width: 25 },
@@ -308,6 +308,7 @@ export default function Users() {
       { header: 'Semester', key: 'semester', width: 12 },
       { header: 'No_HP', key: 'phone', width: 20 },
       { header: 'Role (USER/ADMIN/CONTENT_ADMIN)', key: 'role', width: 26 },
+      { header: 'Kelas (pisahkan dengan |)', key: 'classes', width: 34 },
     ];
 
     sheet.getRow(1).font = { bold: true };
@@ -322,13 +323,14 @@ export default function Users() {
       semester: 1,
       phone: '081234567890',
       role: 'USER',
+      classes: 'Kelas A | Kelas Praktikum A',
     });
 
     sheet.addRow([]);
     sheet.addRow({
-      name: `Catatan: hasil import otomatis memakai enrollment_date 1 Agustus ${importYear}.`,
+      name: `Catatan: hasil import otomatis memakai enrollment_date 1 Agustus ${importYear}. Kelas dipisahkan dengan tanda | dan kelas baru otomatis dibuat atas akun pengimpor.`,
     });
-    sheet.mergeCells(`A4:G4`);
+    sheet.mergeCells(`A4:H4`);
     sheet.getCell('A4').font = { italic: true, color: { argb: 'FF475569' } };
 
     const buffer = await workbook.xlsx.writeBuffer();
@@ -366,9 +368,11 @@ export default function Users() {
             year: 'numeric',
           })
         : null;
+      const classesCreated = Number(res.data?.data?.classes_created || 0);
+      const enrollmentsCreated = Number(res.data?.data?.class_enrollments_created || 0);
       toast.success(
         importedAt
-          ? `${res.data.message} Enrollment date default: ${importedAt}.`
+          ? `${res.data.message} Enrollment date default: ${importedAt}. Kelas baru: ${classesCreated}. Enrollment kelas: ${enrollmentsCreated}.`
           : res.data.message
       );
       setIsImportModalOpen(false);
@@ -935,7 +939,8 @@ export default function Users() {
               <DialogDescription>
                 Unduh template Excel, isi data mahasiswa, lalu unggah kembali. Semua akun hasil
                 import dari layar ini sementara akan disimpan dengan enrollment date 1 Agustus tahun
-                lalu.
+                lalu. Isi kolom kelas dalam sheet yang sama dan pisahkan beberapa kelas dengan tanda
+                |. Jika nama kelas belum ada, sistem akan membuatnya otomatis atas akun Anda.
               </DialogDescription>
             </DialogHeader>
 

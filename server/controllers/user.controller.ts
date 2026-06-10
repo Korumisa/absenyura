@@ -8,6 +8,35 @@ import fs from 'fs';
 
 const ALLOWED_ROLES = new Set(['USER', 'ADMIN', 'SUPER_ADMIN', 'CONTENT_ADMIN']);
 
+type ParsedImportUserRow = {
+  name: string;
+  email: string;
+  nim_nip: string | null;
+  department: string | null;
+  semester: number | null;
+  phone: string | null;
+  role: 'USER' | 'ADMIN' | 'SUPER_ADMIN' | 'CONTENT_ADMIN';
+  classNames: string[];
+};
+
+const normalizeImportEmail = (value: unknown): string =>
+  String(value ?? '')
+    .trim()
+    .toLowerCase();
+
+const parseImportClassNames = (value: unknown): string[] =>
+  Array.from(
+    new Set(
+      String(value ?? '')
+        .split(/[|\n;,]+/)
+        .map((item) => item.trim())
+        .filter(Boolean)
+    )
+  );
+
+const classIdentityKey = (lecturerId: string, semester: number, name: string): string =>
+  `${lecturerId}::${semester}::${name.trim().toLowerCase()}`;
+
 export const getUsers = async (req: Request, res: Response): Promise<void> => {
   try {
     const pageQuery = req.query.page;
@@ -551,7 +580,10 @@ export const importUsers = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    const newUsers: any[] = [];
+    const actor = (req as any).user;
+    const parsedRows: ParsedImportUserRow[] = [];
+    const seenEmails = new Set<string>();
+    let duplicateRowCount = 0;
     const defaultPasswordHash = await bcrypt.hash('password123', 12);
     const requestedImportYearMode =
       typeof req.body?.importEnrollmentYearMode === 'string'
@@ -572,12 +604,13 @@ export const importUsers = async (req: Request, res: Response): Promise<void> =>
 
       // Expected Columns: A=Nama, B=Email, C=NIM_NIP, D=Departemen, E=Semester, F=No_HP, G=Role
       const name = row.getCell(1).value?.toString().trim();
-      const email = row.getCell(2).value?.toString().trim();
+      const email = normalizeImportEmail(row.getCell(2).value);
       const nim_nip = row.getCell(3).value?.toString().trim();
       const department = row.getCell(4).value?.toString().trim();
       const semester = parseInt(row.getCell(5).value?.toString().trim() || '1') || 1;
       const phone = row.getCell(6).value?.toString().trim();
       const rawRole = row.getCell(7).value?.toString().trim().toUpperCase();
+      const classNames = parseImportClassNames(row.getCell(8).value);
 
       const role =
         rawRole === 'ADMIN' || rawRole === 'SUPER_ADMIN' || rawRole === 'CONTENT_ADMIN'
@@ -585,7 +618,12 @@ export const importUsers = async (req: Request, res: Response): Promise<void> =>
           : 'USER';
 
       if (name && email) {
-        newUsers.push({
+        if (seenEmails.has(email)) {
+          duplicateRowCount++;
+          return;
+        }
+        seenEmails.add(email);
+        parsedRows.push({
           name,
           email,
           nim_nip: nim_nip || null,
@@ -593,40 +631,168 @@ export const importUsers = async (req: Request, res: Response): Promise<void> =>
           semester: role === 'USER' ? semester : null,
           phone: phone || null,
           role,
-          password: defaultPasswordHash,
-          enrollment_date: importEnrollmentDate,
+          classNames: role === 'USER' ? classNames : [],
         });
       }
     });
 
-    if (newUsers.length === 0) {
+    if (parsedRows.length === 0) {
       res
         .status(400)
         .json({ success: false, error: 'Tidak ada data valid yang ditemukan di Excel' });
       return;
     }
 
-    // Insert to database (using createMany, and skipping duplicates)
-    const createdUsers = await prisma.user.createMany({
-      data: newUsers,
-      skipDuplicates: true,
+    const parsedEmails = parsedRows.map((row) => row.email);
+    const existingUsers = await prisma.user.findMany({
+      where: { email: { in: parsedEmails } },
+      select: { email: true },
     });
+    const existingEmailSet = new Set(existingUsers.map((user) => user.email.toLowerCase()));
+    const rowsToCreate = parsedRows.filter((row) => !existingEmailSet.has(row.email));
+
+    const requiredClasses = new Map<
+      string,
+      { name: string; semester: number; lecturer_id: string }
+    >();
+    for (const row of rowsToCreate) {
+      if (row.role !== 'USER' || !row.semester) continue;
+      for (const className of row.classNames) {
+        const key = classIdentityKey(actor.id, row.semester, className);
+        if (!requiredClasses.has(key)) {
+          requiredClasses.set(key, {
+            name: className,
+            semester: row.semester,
+            lecturer_id: actor.id,
+          });
+        }
+      }
+    }
+
+    const requiredClassList = Array.from(requiredClasses.values());
+    let createdClassCount = 0;
+    const classMap = new Map<string, { id: string; name: string; semester: number }>();
+
+    if (requiredClassList.length > 0) {
+      const existingClasses = await prisma.class.findMany({
+        where: {
+          lecturer_id: actor.id,
+          name: { in: Array.from(new Set(requiredClassList.map((item) => item.name))) },
+          semester: { in: Array.from(new Set(requiredClassList.map((item) => item.semester))) },
+        },
+        select: { id: true, name: true, semester: true },
+      });
+
+      for (const existingClass of existingClasses) {
+        classMap.set(
+          classIdentityKey(actor.id, existingClass.semester ?? 1, existingClass.name),
+          existingClass
+        );
+      }
+
+      const missingClasses = requiredClassList.filter(
+        (item) => !classMap.has(classIdentityKey(actor.id, item.semester, item.name))
+      );
+
+      for (const item of missingClasses) {
+        const createdClass = await prisma.class.create({
+          data: {
+            name: item.name,
+            semester: item.semester,
+            lecturer_id: item.lecturer_id,
+            course_code: null,
+            description: null,
+          },
+          select: { id: true, name: true, semester: true },
+        });
+        classMap.set(classIdentityKey(actor.id, item.semester, item.name), createdClass);
+        createdClassCount++;
+      }
+    }
+
+    const usersToCreate = rowsToCreate.map((row) => ({
+      name: row.name,
+      email: row.email,
+      nim_nip: row.nim_nip,
+      department: row.department,
+      semester: row.role === 'USER' ? (row.semester ?? 1) : undefined,
+      phone: row.phone,
+      role: row.role,
+      password: defaultPasswordHash,
+      enrollment_date: importEnrollmentDate,
+    }));
+
+    const createdUsers =
+      usersToCreate.length > 0
+        ? await prisma.user.createMany({
+            data: usersToCreate,
+            skipDuplicates: true,
+          })
+        : { count: 0 };
+
+    const createdUserRecords =
+      rowsToCreate.length > 0
+        ? await prisma.user.findMany({
+            where: { email: { in: rowsToCreate.map((row) => row.email) } },
+            select: { id: true, email: true },
+          })
+        : [];
+    const createdUserByEmail = new Map(
+      createdUserRecords.map((user) => [user.email.toLowerCase(), user.id])
+    );
+
+    const enrollmentData: { class_id: string; student_id: string }[] = [];
+    for (const row of rowsToCreate) {
+      if (row.role !== 'USER' || !row.semester || row.classNames.length === 0) continue;
+      const studentId = createdUserByEmail.get(row.email);
+      if (!studentId) continue;
+
+      for (const className of row.classNames) {
+        const cls = classMap.get(classIdentityKey(actor.id, row.semester, className));
+        if (!cls) continue;
+        enrollmentData.push({
+          class_id: cls.id,
+          student_id: studentId,
+        });
+      }
+    }
+
+    const createdEnrollments =
+      enrollmentData.length > 0
+        ? await prisma.classEnrollment.createMany({
+            data: enrollmentData,
+            skipDuplicates: true,
+          })
+        : { count: 0 };
 
     await prisma.auditLog.create({
       data: {
-        actor_id: (req as any).user.id,
+        actor_id: actor.id,
         action: 'IMPORT_USERS',
         target_table: 'User',
         target_id: 'MULTIPLE',
-        new_value: `Imported ${createdUsers.count} users`,
+        new_value: JSON.stringify({
+          imported_users: createdUsers.count,
+          created_classes: createdClassCount,
+          created_enrollments: createdEnrollments.count,
+          skipped_existing_users: parsedRows.length - rowsToCreate.length,
+          skipped_duplicate_rows: duplicateRowCount,
+        }),
         ip_address: req.ip,
       },
     });
 
     res.status(200).json({
       success: true,
-      message: `${createdUsers.count} pengguna berhasil diimpor. Enrollment date disetel ke 1 Agustus ${importEnrollmentDate.getFullYear()}. (Email yang sudah ada diabaikan)`,
-      data: { count: createdUsers.count, enrollment_date: importEnrollmentDate.toISOString() },
+      message: `${createdUsers.count} pengguna berhasil diimpor, ${createdClassCount} kelas dibuat otomatis, dan ${createdEnrollments.count} enrollment kelas berhasil dibuat. Enrollment date disetel ke 1 Agustus ${importEnrollmentDate.getFullYear()}.`,
+      data: {
+        count: createdUsers.count,
+        enrollment_date: importEnrollmentDate.toISOString(),
+        classes_created: createdClassCount,
+        class_enrollments_created: createdEnrollments.count,
+        skipped_existing_users: parsedRows.length - rowsToCreate.length,
+        skipped_duplicate_rows: duplicateRowCount,
+      },
     });
   } catch (error: unknown) {
     console.error('Error importing users:', error);
