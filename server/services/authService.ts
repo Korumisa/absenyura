@@ -180,6 +180,24 @@ export async function login(params: {
   };
 }
 
+// Grace period (in ms) to accept a recently-rotated refresh token.
+// This prevents logout when multiple requests hit 401 at the same time
+// and race to call /auth/refresh with the same (now-old) token.
+const REFRESH_GRACE_MS = 30_000; // 30 seconds
+
+// In-memory map: userId -> { previousHash, rotatedAt }
+// This avoids needing a DB column for the previous hash.
+const recentlyRotated = new Map<string, { previousHash: string; rotatedAt: number }>();
+
+function cleanupRotatedEntries() {
+  const now = Date.now();
+  for (const [key, entry] of recentlyRotated) {
+    if (now - entry.rotatedAt > REFRESH_GRACE_MS) {
+      recentlyRotated.delete(key);
+    }
+  }
+}
+
 export async function refresh(params: {
   refreshToken: unknown;
 }): Promise<ServiceResult<{ accessToken: string; refreshToken: string }>> {
@@ -229,7 +247,19 @@ export async function refresh(params: {
   }
 
   const presentedHash = hashRefreshToken(refreshToken);
-  if (!user.refresh_token_hash || !safeCompare(user.refresh_token_hash, presentedHash)) {
+  const matchesCurrent =
+    user.refresh_token_hash && safeCompare(user.refresh_token_hash, presentedHash);
+
+  // Check if this token was recently rotated out (grace period for race conditions)
+  let matchesGrace = false;
+  if (!matchesCurrent) {
+    const recent = recentlyRotated.get(user.id);
+    if (recent && Date.now() - recent.rotatedAt < REFRESH_GRACE_MS) {
+      matchesGrace = safeCompare(recent.previousHash, presentedHash);
+    }
+  }
+
+  if (!matchesCurrent && !matchesGrace) {
     return {
       ok: false,
       status: 401,
@@ -241,8 +271,24 @@ export async function refresh(params: {
     };
   }
 
+  // If this request matched the grace period (old token), return the
+  // current tokens without rotating again to avoid an endless cycle.
+  if (matchesGrace) {
+    const currentAccessToken = generateAccessToken(user.id, user.role);
+    // Don't rotate the refresh token again — just return a fresh access token.
+    // The client will receive the latest refresh token cookie from the
+    // first successful refresh that already rotated it.
+    return { ok: true, data: { accessToken: currentAccessToken, refreshToken } };
+  }
+
+  // Normal rotation: generate new tokens and remember the old hash
   const newAccessToken = generateAccessToken(user.id, user.role);
   const newRefreshToken = generateRefreshToken(user.id, user.role);
+
+  // Remember the old hash for the grace period
+  recentlyRotated.set(user.id, { previousHash: presentedHash, rotatedAt: Date.now() });
+  cleanupRotatedEntries();
+
   await userRepository.updateUser({
     id: user.id,
     data: { refresh_token_hash: hashRefreshToken(newRefreshToken) },

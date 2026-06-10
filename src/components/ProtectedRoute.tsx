@@ -1,8 +1,8 @@
 import React, { useEffect, useRef } from 'react';
-import axios from 'axios';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { ProtectedRouteProps } from '../types/protectedroute';
+import api from '../services/api';
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles, children }) => {
   const { isAuthenticated, user, setAuth, logout } = useAuthStore();
@@ -40,13 +40,15 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles, ch
 
     const verify = async (attempt = 0) => {
       try {
-        await axios.post('/api/auth/refresh', {}, { withCredentials: true });
+        await api.post('/auth/refresh', {});
         if (!cancelled) {
           sessionVerifiedRef.current = true;
           setAuth(user);
         }
       } catch (err: unknown) {
         const status = (err as { response?: { status?: number } })?.response?.status;
+
+        // Rate limited — retry with backoff
         if (!cancelled && status === 429) {
           const delayMs = Math.min(30_000, 2000 * (attempt + 1));
           retryTimer = setTimeout(() => {
@@ -54,7 +56,10 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles, ch
           }, delayMs);
           return;
         }
-        if (!cancelled) {
+
+        // Only logout on definitive auth failures (401/403).
+        // Network errors, 500s, etc. should NOT force a logout.
+        if (!cancelled && (status === 401 || status === 403)) {
           sessionVerifiedRef.current = false;
           logout();
         }

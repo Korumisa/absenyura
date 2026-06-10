@@ -123,11 +123,18 @@ api.interceptors.response.use(
             ?.status;
           if (shouldLogoutFromRefresh(refreshStatus)) {
             useAuthStore.getState().logout();
-            window.location.href = '/login';
+            if (window.location.pathname !== '/login') {
+              window.location.href = '/login';
+            }
           }
           return Promise.reject(refreshError);
         }
       }
+    }
+
+    // Skip retry logic if the request itself was an auth refresh to prevent deadlocks
+    if (originalRequest?.url?.includes('/auth/refresh')) {
+      return Promise.reject(error);
     }
 
     if (error.response?.status === 401 && (!isAuthenticated || isPublicRequest)) {
@@ -160,7 +167,9 @@ api.interceptors.response.use(
           ?.status;
         if (shouldLogoutFromRefresh(refreshStatus)) {
           useAuthStore.getState().logout();
-          window.location.href = '/login';
+          if (window.location.pathname !== '/login') {
+            window.location.href = '/login';
+          }
         }
         return Promise.reject(refreshError);
       } finally {
