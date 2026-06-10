@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { ProtectedRouteProps } from '../types/protectedroute';
-import api from '../services/api';
+import api, { verifySession } from '../services/api';
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles, children }) => {
   const { isAuthenticated, user, setAuth, logout } = useAuthStore();
@@ -40,7 +40,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles, ch
 
     const verify = async (attempt = 0) => {
       try {
-        await api.post('/auth/refresh', {});
+        await verifySession();
         if (!cancelled) {
           sessionVerifiedRef.current = true;
           setAuth(user);

@@ -49,6 +49,33 @@ const processQueue = (error: any) => {
   failedQueue = [];
 };
 
+export const verifySession = async () => {
+  if (isRefreshing) {
+    return new Promise(function (resolve, reject) {
+      failedQueue.push({ resolve, reject });
+    });
+  }
+
+  isRefreshing = true;
+  try {
+    const res = await api.post('/auth/refresh', {});
+    processQueue(null);
+    return res;
+  } catch (refreshError) {
+    processQueue(refreshError);
+    const refreshStatus = (refreshError as { response?: { status?: number } })?.response?.status;
+    if (shouldLogoutFromRefresh(refreshStatus)) {
+      useAuthStore.getState().logout();
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+    }
+    throw refreshError;
+  } finally {
+    isRefreshing = false;
+  }
+};
+
 api.interceptors.request.use((config) => {
   const method = String(config.method || 'get').toUpperCase();
   const isSafe = method === 'GET' || method === 'HEAD' || method === 'OPTIONS';
@@ -116,17 +143,9 @@ api.interceptors.response.use(
       if (apiError === 'CSRF validation failed') {
         originalRequest._csrfRetry = true;
         try {
-          await api.post('/auth/refresh', {});
+          await verifySession();
           return api.request(originalRequest);
         } catch (refreshError) {
-          const refreshStatus = (refreshError as { response?: { status?: number } })?.response
-            ?.status;
-          if (shouldLogoutFromRefresh(refreshStatus)) {
-            useAuthStore.getState().logout();
-            if (window.location.pathname !== '/login') {
-              window.location.href = '/login';
-            }
-          }
           return Promise.reject(refreshError);
         }
       }
@@ -142,38 +161,13 @@ api.interceptors.response.use(
     }
 
     if (error.response?.status === 401 && !originalRequest._retry) {
-      if (isRefreshing) {
-        return new Promise(function (resolve, reject) {
-          failedQueue.push({ resolve, reject });
-        })
-          .then(() => {
-            return api.request(originalRequest);
-          })
-          .catch((err) => {
-            return Promise.reject(err);
-          });
-      }
-
       originalRequest._retry = true;
-      isRefreshing = true;
 
       try {
-        await api.post('/auth/refresh', {});
-        processQueue(null);
+        await verifySession();
         return api.request(originalRequest);
       } catch (refreshError) {
-        processQueue(refreshError);
-        const refreshStatus = (refreshError as { response?: { status?: number } })?.response
-          ?.status;
-        if (shouldLogoutFromRefresh(refreshStatus)) {
-          useAuthStore.getState().logout();
-          if (window.location.pathname !== '/login') {
-            window.location.href = '/login';
-          }
-        }
         return Promise.reject(refreshError);
-      } finally {
-        isRefreshing = false;
       }
     }
     return Promise.reject(error);
