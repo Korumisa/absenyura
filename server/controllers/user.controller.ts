@@ -238,7 +238,8 @@ export const getUserEnrollments = async (req: Request, res: Response): Promise<v
 
 export const createUser = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, email, password, role, nim_nip, department, phone, semester, class_ids } = req.body;
+    const { name, email, password, role, nim_nip, department, phone, semester, class_ids } =
+      req.body;
 
     const nameValue = typeof name === 'string' ? name.trim() : '';
     const emailValue = typeof email === 'string' ? email.trim().toLowerCase() : '';
@@ -273,7 +274,11 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
     }
 
     const semesterRaw =
-      typeof semester === 'string' ? parseInt(semester, 10) : typeof semester === 'number' ? semester : NaN;
+      typeof semester === 'string'
+        ? parseInt(semester, 10)
+        : typeof semester === 'number'
+          ? semester
+          : NaN;
     const semesterValue = Number.isFinite(semesterRaw) ? Math.trunc(semesterRaw) : 1;
 
     if (roleValue === 'USER' && (!Number.isFinite(semesterRaw) || semesterValue <= 0)) {
@@ -335,7 +340,7 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
         target_id: user.id,
         new_value: JSON.stringify({ ...user, enrolled_classes: enrolledCount }),
         ip_address: req.ip,
-      }
+      },
     });
 
     res.status(201).json({
@@ -368,7 +373,18 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
   try {
     const { id } = req.params;
     const actor = (req as any).user;
-    let { name, email, role, nim_nip, department, phone, is_active, password, semester, class_ids } = req.body;
+    let {
+      name,
+      email,
+      role,
+      nim_nip,
+      department,
+      phone,
+      is_active,
+      password,
+      semester,
+      class_ids,
+    } = req.body;
 
     if (actor.role === 'ADMIN') {
       const target = await prisma.user.findUnique({ where: { id }, select: { role: true } });
@@ -393,10 +409,17 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
-    const oldUser = await prisma.user.findUnique({ where: { id }, select: { name: true, role: true, is_active: true, semester: true } });
+    const oldUser = await prisma.user.findUnique({
+      where: { id },
+      select: { name: true, role: true, is_active: true, semester: true },
+    });
     const nextRole = (typeof role === 'string' ? role : oldUser?.role) || 'USER';
     const semesterRaw =
-      typeof semester === 'string' ? parseInt(semester, 10) : typeof semester === 'number' ? semester : NaN;
+      typeof semester === 'string'
+        ? parseInt(semester, 10)
+        : typeof semester === 'number'
+          ? semester
+          : NaN;
     const semesterValue = Number.isFinite(semesterRaw) ? Math.trunc(semesterRaw) : undefined;
     if (nextRole === 'USER' && semester !== undefined) {
       if (!Number.isFinite(semesterRaw) || (semesterValue ?? 0) <= 0) {
@@ -410,7 +433,12 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
       email: typeof email === 'string' ? email.trim().toLowerCase() : email,
       role,
       nim_nip: typeof nim_nip === 'string' ? (nim_nip.trim() ? nim_nip.trim() : null) : nim_nip,
-      department: typeof department === 'string' ? (department.trim() ? department.trim() : null) : department,
+      department:
+        typeof department === 'string'
+          ? department.trim()
+            ? department.trim()
+            : null
+          : department,
       phone: typeof phone === 'string' ? (phone.trim() ? phone.trim() : null) : phone,
       is_active,
     };
@@ -453,7 +481,7 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
         old_value: JSON.stringify(oldUser),
         new_value: JSON.stringify({ ...user, enrolled_added: enrolledAdded }),
         ip_address: req.ip,
-      }
+      },
     });
 
     res.status(200).json({
@@ -496,7 +524,7 @@ export const deleteUser = async (req: Request, res: Response): Promise<void> => 
         target_id: id,
         old_value: JSON.stringify(oldUser),
         ip_address: req.ip,
-      }
+      },
     });
 
     res.status(200).json({ success: true, message: 'User deleted successfully' });
@@ -516,7 +544,7 @@ export const importUsers = async (req: Request, res: Response): Promise<void> =>
 
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.readFile(filePath);
-    
+
     const worksheet = workbook.worksheets[0]; // Get the first sheet
     if (!worksheet) {
       res.status(400).json({ success: false, error: 'Format Excel tidak valid atau kosong' });
@@ -525,6 +553,15 @@ export const importUsers = async (req: Request, res: Response): Promise<void> =>
 
     const newUsers: any[] = [];
     const defaultPasswordHash = await bcrypt.hash('password123', 12);
+    const requestedImportYearMode =
+      typeof req.body?.importEnrollmentYearMode === 'string'
+        ? req.body.importEnrollmentYearMode.trim().toUpperCase()
+        : '';
+    const importYear =
+      requestedImportYearMode === 'PREVIOUS_YEAR'
+        ? new Date().getFullYear() - 1
+        : new Date().getFullYear();
+    const importEnrollmentDate = new Date(importYear, 7, 1);
 
     let isFirstRow = true;
     worksheet.eachRow((row, _rowNumber) => {
@@ -541,8 +578,11 @@ export const importUsers = async (req: Request, res: Response): Promise<void> =>
       const semester = parseInt(row.getCell(5).value?.toString().trim() || '1') || 1;
       const phone = row.getCell(6).value?.toString().trim();
       const rawRole = row.getCell(7).value?.toString().trim().toUpperCase();
-      
-      const role = (rawRole === 'ADMIN' || rawRole === 'SUPER_ADMIN' || rawRole === 'CONTENT_ADMIN') ? rawRole : 'USER';
+
+      const role =
+        rawRole === 'ADMIN' || rawRole === 'SUPER_ADMIN' || rawRole === 'CONTENT_ADMIN'
+          ? rawRole
+          : 'USER';
 
       if (name && email) {
         newUsers.push({
@@ -554,12 +594,15 @@ export const importUsers = async (req: Request, res: Response): Promise<void> =>
           phone: phone || null,
           role,
           password: defaultPasswordHash,
+          enrollment_date: importEnrollmentDate,
         });
       }
     });
 
     if (newUsers.length === 0) {
-      res.status(400).json({ success: false, error: 'Tidak ada data valid yang ditemukan di Excel' });
+      res
+        .status(400)
+        .json({ success: false, error: 'Tidak ada data valid yang ditemukan di Excel' });
       return;
     }
 
@@ -577,18 +620,19 @@ export const importUsers = async (req: Request, res: Response): Promise<void> =>
         target_id: 'MULTIPLE',
         new_value: `Imported ${createdUsers.count} users`,
         ip_address: req.ip,
-      }
+      },
     });
 
-    res.status(200).json({ 
-      success: true, 
-      message: `${createdUsers.count} pengguna berhasil diimpor. (Email yang sudah ada diabaikan)`,
-      data: { count: createdUsers.count }
+    res.status(200).json({
+      success: true,
+      message: `${createdUsers.count} pengguna berhasil diimpor. Enrollment date disetel ke 1 Agustus ${importEnrollmentDate.getFullYear()}. (Email yang sudah ada diabaikan)`,
+      data: { count: createdUsers.count, enrollment_date: importEnrollmentDate.toISOString() },
     });
-
   } catch (error: unknown) {
     console.error('Error importing users:', error);
-    res.status(500).json({ success: false, error: 'Gagal mengimpor file Excel. Pastikan format benar.' });
+    res
+      .status(500)
+      .json({ success: false, error: 'Gagal mengimpor file Excel. Pastikan format benar.' });
   } finally {
     if (filePath) {
       await fs.promises.unlink(filePath).catch(() => {});

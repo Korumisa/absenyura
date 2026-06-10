@@ -298,12 +298,14 @@ export default function Users() {
   const handleDownloadTemplate = async () => {
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Data Mahasiswa');
+    const importYear = new Date().getFullYear();
 
     sheet.columns = [
       { header: 'Nama Lengkap', key: 'name', width: 25 },
       { header: 'Email', key: 'email', width: 25 },
       { header: 'NIM_NIP', key: 'nim', width: 20 },
       { header: 'Departemen', key: 'dept', width: 25 },
+      { header: 'Semester', key: 'semester', width: 12 },
       { header: 'No_HP', key: 'phone', width: 20 },
       { header: 'Role (USER/ADMIN/CONTENT_ADMIN)', key: 'role', width: 26 },
     ];
@@ -317,9 +319,17 @@ export default function Users() {
       email: 'budi@mhs.kampus.ac.id',
       nim: '210010101',
       dept: 'Teknik Informatika',
+      semester: 1,
       phone: '081234567890',
       role: 'USER',
     });
+
+    sheet.addRow([]);
+    sheet.addRow({
+      name: `Catatan: hasil import otomatis memakai enrollment_date 1 Agustus ${importYear}.`,
+    });
+    sheet.mergeCells(`A4:G4`);
+    sheet.getCell('A4').font = { italic: true, color: { argb: 'FF475569' } };
 
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], {
@@ -343,12 +353,24 @@ export default function Users() {
     setImporting(true);
     const formData = new FormData();
     formData.append('file', importFile);
+    formData.append('importEnrollmentYearMode', 'PREVIOUS_YEAR');
 
     try {
       const res = await api.post('/users/import', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      toast.success(res.data.message);
+      const importedAt = res.data?.data?.enrollment_date
+        ? new Date(res.data.data.enrollment_date).toLocaleDateString('id-ID', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+          })
+        : null;
+      toast.success(
+        importedAt
+          ? `${res.data.message} Enrollment date default: ${importedAt}.`
+          : res.data.message
+      );
       setIsImportModalOpen(false);
       setImportFile(null);
       mutate(); // Refresh list
@@ -911,7 +933,9 @@ export default function Users() {
             <DialogHeader>
               <DialogTitle>Import Mahasiswa</DialogTitle>
               <DialogDescription>
-                Unduh template Excel, isi data mahasiswa, lalu unggah kembali.
+                Unduh template Excel, isi data mahasiswa, lalu unggah kembali. Semua akun hasil
+                import dari layar ini sementara akan disimpan dengan enrollment date 1 Agustus tahun
+                lalu.
               </DialogDescription>
             </DialogHeader>
 
