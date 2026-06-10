@@ -83,7 +83,9 @@ api.interceptors.request.use((config) => {
   if (!isSafe) {
     const token = getCookie('csrfToken');
     if (token) {
-      const headers: any = config.headers ?? {};
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore - Axios types are inconsistent between versions
+      const headers = config.headers ?? {};
       if (typeof headers.set === 'function') {
         headers.set('X-CSRF-Token', token);
         config.headers = headers;
