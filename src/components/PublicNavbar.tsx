@@ -8,6 +8,7 @@ import type { PublicProfile } from '@/types/publicSite';
 import { useReducedMotion } from '@/lib/a11y/useReducedMotion';
 import { BrandLogoImage } from '@/components/public/BrandLogoImage';
 import { DEFAULT_BRAND_LOGO_PNG } from '@/lib/media/staticBrandAssets';
+import { Skeleton } from '@/components/ui/skeleton';
 
 type NavItem = { label: string; to: string };
 type NavGroup = { label: string; items: NavItem[] };
@@ -105,20 +106,21 @@ export default function PublicNavbar() {
         <Link to="/" className="flex min-h-11 min-w-11 items-center gap-3">
           <BrandMark />
           <div className="hidden flex-col leading-tight md:flex">
-            <div className="text-sm font-extrabold tracking-tight text-slate-900">
-              {isLoadingProfile
-                ? 'Memuat...'
-                : profile?.org_name
-                  ? profile.org_name
-                  : 'Profil belum diatur'}
-            </div>
-            <div className="text-xs font-medium text-muted-foreground">
-              {isLoadingProfile
-                ? ''
-                : profile?.campus_name
-                  ? profile.campus_name
-                  : 'Konten Website'}
-            </div>
+            {isLoadingProfile ? (
+              <div className="space-y-2" aria-busy="true" aria-label="Memuat profil organisasi">
+                <Skeleton className="h-4 w-44" />
+                <Skeleton className="h-3 w-28" />
+              </div>
+            ) : (
+              <>
+                <div className="text-sm font-extrabold tracking-tight text-slate-900">
+                  {profile?.org_name ? profile.org_name : 'Profil belum diatur'}
+                </div>
+                <div className="text-xs font-medium text-muted-foreground">
+                  {profile?.campus_name ? profile.campus_name : 'Konten Website'}
+                </div>
+              </>
+            )}
           </div>
         </Link>
 

@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
 import { CardSkeletonList } from '@/components/admin/CardSkeleton';
+import { Skeleton } from '@/components/ui/skeleton';
 import { userRoleLabel } from '@/lib/utils/sessionStatusLabel';
 import { toastErrorMessage } from '@/lib/utils/toastMessage';
 import * as ExcelJS from 'exceljs';
@@ -549,11 +550,13 @@ export default function Users() {
                 </TableHeader>
                 <TableBody>
                   {loading ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
-                        Memuat data...
-                      </TableCell>
-                    </TableRow>
+                    Array.from({ length: 6 }).map((_, i) => (
+                      <TableRow key={i}>
+                        <TableCell colSpan={7}>
+                          <Skeleton className="h-10 w-full" />
+                        </TableCell>
+                      </TableRow>
+                    ))
                   ) : filteredUsers.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={7} className="p-0">

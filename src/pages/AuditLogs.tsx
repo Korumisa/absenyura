@@ -18,6 +18,7 @@ import AdminPageShell from '@/components/AdminPageShell';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
 import { TablePagination } from '@/components/ui/TablePagination';
 import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
+import { Skeleton } from '@/components/ui/skeleton';
 import type { AuditLog } from '@/types/audit';
 import type { PaginationMeta } from '@/types/common';
 import {
@@ -127,7 +128,15 @@ export default function AuditLogs() {
 
           <ul className="space-y-3 p-5 md:hidden" aria-label="Daftar audit log">
             {loading ? (
-              <li className="py-8 text-center text-muted-foreground">Memuat data...</li>
+              Array.from({ length: 4 }).map((_, i) => (
+                <li key={i} className="rounded-2xl border border-border bg-card p-4">
+                  <Skeleton className="h-6 w-32 rounded-full" />
+                  <Skeleton className="mt-3 h-3 w-20" />
+                  <Skeleton className="mt-4 h-4 w-36" />
+                  <Skeleton className="mt-2 h-4 w-full" />
+                  <Skeleton className="mt-4 h-3 w-40" />
+                </li>
+              ))
             ) : logs.length === 0 ? (
               <li>
                 <AdminEmptyState
@@ -167,11 +176,13 @@ export default function AuditLogs() {
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                      Memuat data...
-                    </TableCell>
-                  </TableRow>
+                  Array.from({ length: 6 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell colSpan={6}>
+                        <Skeleton className="h-10 w-full" />
+                      </TableCell>
+                    </TableRow>
+                  ))
                 ) : logs.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="p-0">

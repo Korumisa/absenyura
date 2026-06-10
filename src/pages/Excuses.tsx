@@ -539,11 +539,13 @@ export default function Excuses() {
                 </TableHeader>
                 <TableBody>
                   {loading ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                        Memuat data...
-                      </TableCell>
-                    </TableRow>
+                    Array.from({ length: 6 }).map((_, i) => (
+                      <TableRow key={i}>
+                        <TableCell colSpan={currentUser?.role !== 'USER' ? 6 : 5}>
+                          <Skeleton className="h-10 w-full" />
+                        </TableCell>
+                      </TableRow>
+                    ))
                   ) : filteredExcuses.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={currentUser?.role !== 'USER' ? 6 : 5} className="p-0">

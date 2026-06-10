@@ -447,11 +447,13 @@ export default function Locations() {
                 </TableHeader>
                 <TableBody>
                   {loading ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                        Memuat data...
-                      </TableCell>
-                    </TableRow>
+                    Array.from({ length: 6 }).map((_, i) => (
+                      <TableRow key={i}>
+                        <TableCell colSpan={6}>
+                          <Skeleton className="h-10 w-full" />
+                        </TableCell>
+                      </TableRow>
+                    ))
                   ) : filteredLocations.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={6} className="p-0">

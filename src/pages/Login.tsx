@@ -18,7 +18,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import PublicLayout from '@/components/PublicLayout';
 import PublicEnter from '@/components/PublicEnter';
-import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 import useSWR from 'swr';
 import type { PublicProfile } from '@/types/publicSite';
 import { getErrorMessage } from '@/lib/http/errorMessage';
@@ -84,7 +83,6 @@ export default function Login() {
   return (
     <PublicLayout>
       <PublicEnter>
-        <PublicLoadingOverlay show={loading} label="Memverifikasi akun…" />
         <section className="relative flex flex-1 items-center overflow-hidden bg-[radial-gradient(circle_at_20%_20%,rgba(37,99,235,0.18),transparent_50%),radial-gradient(circle_at_70%_10%,rgba(59,130,246,0.14),transparent_55%),linear-gradient(180deg,rgba(15,23,42,0.02),transparent)] px-4 py-10">
           <div className="absolute -left-12 top-16 size-72 rounded-full bg-[var(--public-primary)]/20 blur-3xl" />
           <div className="absolute -right-16 bottom-10 size-80 rounded-full bg-sky-400/15 blur-3xl" />
