@@ -478,6 +478,18 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
       updateData.semester = semesterValue;
     }
 
+    const effectiveSemester =
+      nextRole === 'USER'
+        ? semester !== undefined
+          ? semesterValue
+          : oldUser?.semester
+        : undefined;
+    if (nextRole === 'USER' && typeof effectiveSemester === 'number' && effectiveSemester >= 10) {
+      updateData.semester = effectiveSemester;
+      updateData.is_active = false;
+      updateData.refresh_token_hash = null;
+    }
+
     if (password) {
       updateData.password = await bcrypt.hash(password, 12);
     }

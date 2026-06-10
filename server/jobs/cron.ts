@@ -347,10 +347,13 @@ export const runSemesterUpdateJob = async () => {
       (now.getMonth() - enrollmentDate.getMonth());
     const newSemester = Math.max(1, Math.min(14, Math.floor(monthsDiff / 6) + 1));
 
-    if (newSemester !== (user as any).semester) {
+    if (newSemester !== (user as any).semester || newSemester >= 10) {
       await prisma.user.update({
         where: { id: user.id },
-        data: { semester: newSemester },
+        data:
+          newSemester >= 10
+            ? { semester: newSemester, is_active: false, refresh_token_hash: null }
+            : { semester: newSemester },
       });
       updatedCount++;
     }

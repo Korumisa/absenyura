@@ -17,6 +17,27 @@ function getCookie(name: string): string | undefined {
   return decodeURIComponent(hit.slice(name.length + 1));
 }
 
+function shouldLogoutFromRefresh(status?: number): boolean {
+  return status === 401 || status === 403;
+}
+
+let maintenanceTimer: ReturnType<typeof setTimeout> | null = null;
+
+function clearPendingMaintenance() {
+  if (maintenanceTimer) {
+    clearTimeout(maintenanceTimer);
+    maintenanceTimer = null;
+  }
+}
+
+function scheduleMaintenance(reason: string) {
+  if (maintenanceTimer) return;
+  maintenanceTimer = setTimeout(() => {
+    maintenanceTimer = null;
+    useAppStatusStore.getState().setMaintenance(reason);
+  }, 2000);
+}
+
 let isRefreshing = false;
 let failedQueue: any[] = [];
 
@@ -51,20 +72,11 @@ api.interceptors.request.use((config) => {
 
 api.interceptors.response.use(
   (response) => {
+    clearPendingMaintenance();
     useAppStatusStore.getState().clearNetworkIssues();
     return response;
   },
   async (error) => {
-    if (!error?.response) {
-      if (typeof navigator !== 'undefined' && !navigator.onLine) {
-        useAppStatusStore.getState().setOffline(true);
-      } else {
-        useAppStatusStore.getState().setMaintenance(
-          'Server sibuk atau tidak dapat dihubungi. Mencoba lagi otomatis saat koneksi stabil.',
-        );
-      }
-    }
-
     const originalRequest = error.config;
 
     const url = String(originalRequest?.url || '');
@@ -73,6 +85,22 @@ api.interceptors.response.use(
       pathname = new URL(url, window.location.origin).pathname;
     } catch {
       pathname = url;
+    }
+
+    if (error?.response) {
+      clearPendingMaintenance();
+      useAppStatusStore.getState().clearNetworkIssues();
+    }
+
+    if (!error?.response) {
+      clearPendingMaintenance();
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        useAppStatusStore.getState().setOffline(true);
+      } else {
+        if (pathname !== '/status') {
+          scheduleMaintenance('Menghubungkan ke server...');
+        }
+      }
     }
     const isPublicSiteRequest = pathname.includes('/public-site/');
     const isAdminPublicSiteRequest = pathname.includes('/public-site/admin');
@@ -91,8 +119,9 @@ api.interceptors.response.use(
           await api.post('/auth/refresh', {});
           return api.request(originalRequest);
         } catch (refreshError) {
-          const refreshStatus = (refreshError as { response?: { status?: number } })?.response?.status;
-          if (refreshStatus !== 429) {
+          const refreshStatus = (refreshError as { response?: { status?: number } })?.response
+            ?.status;
+          if (shouldLogoutFromRefresh(refreshStatus)) {
             useAuthStore.getState().logout();
             window.location.href = '/login';
           }
@@ -127,8 +156,9 @@ api.interceptors.response.use(
         return api.request(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError);
-        const refreshStatus = (refreshError as { response?: { status?: number } })?.response?.status;
-        if (refreshStatus !== 429) {
+        const refreshStatus = (refreshError as { response?: { status?: number } })?.response
+          ?.status;
+        if (shouldLogoutFromRefresh(refreshStatus)) {
           useAuthStore.getState().logout();
           window.location.href = '/login';
         }

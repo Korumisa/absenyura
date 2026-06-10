@@ -26,6 +26,13 @@ import type { Report } from '@/types/report';
 import type { PaginationMeta } from '@/types/common';
 import { attendanceBadgeVariant, attendanceStatusLabel } from '@/lib/utils/statusLabel';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import type { User } from '@/types/user';
@@ -71,10 +78,13 @@ export default function StudentAttendanceRecap() {
   const [endDate, setEndDate] = useState('');
 
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState('20');
+  const [stickySummary, setStickySummary] = useState<Summary | null>(null);
+  const [excuseDetail, setExcuseDetail] = useState<Report | null>(null);
 
   useEffect(() => {
     setPage(1);
-  }, [startDate, endDate, classIdFromState]);
+  }, [startDate, endDate, classIdFromState, pageSize]);
 
   const profileSwr = useSWR<User>(studentId ? `/users/${studentId}` : null, profileFetcher, {
     revalidateOnFocus: false,
@@ -83,8 +93,9 @@ export default function StudentAttendanceRecap() {
 
   const queryParams = new URLSearchParams({
     page: page.toString(),
-    limit: '50',
+    limit: pageSize,
     userId: studentId,
+    withSummary: page === 1 ? '1' : '0',
   });
   if (classIdFromState) queryParams.append('classId', classIdFromState);
   if (startDate && endDate) {
@@ -94,6 +105,7 @@ export default function StudentAttendanceRecap() {
 
   const swr = useSWR(studentId ? `/reports?${queryParams.toString()}` : null, fetcher, {
     revalidateOnFocus: false,
+    keepPreviousData: true,
   });
   const { data, isPending: loading, isError, retry } = useSwrPageState(swr);
 
@@ -104,8 +116,12 @@ export default function StudentAttendanceRecap() {
   const meta = (data?.meta as (PaginationMeta & { summary?: Summary }) | undefined) ?? null;
   const providedSummary = meta?.summary ?? null;
 
+  useEffect(() => {
+    if (providedSummary) setStickySummary(providedSummary);
+  }, [providedSummary]);
+
   const computedSummary = useMemo(() => {
-    if (providedSummary) return providedSummary;
+    if (stickySummary) return stickySummary;
     return reports.reduce(
       (acc, r) => {
         const s = String(r.status ?? '').toUpperCase();
@@ -120,7 +136,17 @@ export default function StudentAttendanceRecap() {
       },
       { total: 0, present: 0, late: 0, absent: 0, sick: 0, excused: 0, other: 0 }
     );
-  }, [providedSummary, reports]);
+  }, [reports, stickySummary]);
+
+  const resolveAssetUrl = (assetUrl: string | null | undefined) => {
+    if (!assetUrl) return null;
+    if (assetUrl.startsWith('http') || assetUrl.startsWith('data:')) return assetUrl;
+    const apiBase = String(import.meta.env.VITE_API_BASE_URL || '/api');
+    const assetBase = apiBase.startsWith('http')
+      ? new URL(apiBase).origin
+      : apiBase.replace(/\/api\/?$/, '');
+    return `${assetBase}${assetUrl}`;
+  };
 
   const filteredReports = useMemo(() => {
     const q = searchTerm.trim().toLowerCase();
@@ -315,12 +341,13 @@ export default function StudentAttendanceRecap() {
                         <TableHead>Kelas</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Check-in</TableHead>
+                        <TableHead className="text-right">Bukti</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredReports.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={6} className="p-0">
+                          <TableCell colSpan={7} className="p-0">
                             <AdminEmptyState
                               compact
                               icon={UserCircle2}
@@ -351,6 +378,38 @@ export default function StudentAttendanceRecap() {
                             <TableCell className="text-sm text-muted-foreground">
                               {safeFormat(r.check_in_time, 'dd MMM yyyy, HH:mm')}
                             </TableCell>
+                            <TableCell className="text-right">
+                              {String(r.status).toUpperCase() === 'SICK' ||
+                              String(r.status).toUpperCase() === 'EXCUSED' ? (
+                                <div className="flex items-center justify-end gap-2">
+                                  {r.excuse_proof_url ? (
+                                    <Button asChild variant="link" className="px-0">
+                                      <a
+                                        href={resolveAssetUrl(r.excuse_proof_url) || '#'}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                      >
+                                        Bukti
+                                      </a>
+                                    </Button>
+                                  ) : null}
+                                  {r.excuse_description || r.excuse_proof_url ? (
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => setExcuseDetail(r)}
+                                    >
+                                      Detail
+                                    </Button>
+                                  ) : (
+                                    <span className="text-muted-foreground">—</span>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground">—</span>
+                              )}
+                            </TableCell>
                           </TableRow>
                         ))
                       )}
@@ -358,7 +417,18 @@ export default function StudentAttendanceRecap() {
                   </Table>
                 </div>
                 {meta ? (
-                  <div className="border-t border-border">
+                  <div className="flex flex-col gap-3 border-t border-border p-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">Per halaman</span>
+                      <select
+                        className="h-9 rounded-md border border-border bg-background px-2 text-sm"
+                        value={pageSize}
+                        onChange={(e) => setPageSize(e.target.value)}
+                      >
+                        <option value="20">20</option>
+                        <option value="50">50</option>
+                      </select>
+                    </div>
                     <TablePagination meta={meta} onPageChange={setPage} itemLabel="absensi" />
                   </div>
                 ) : null}
@@ -367,6 +437,45 @@ export default function StudentAttendanceRecap() {
           </div>
         </div>
       )}
+
+      <Dialog
+        open={Boolean(excuseDetail)}
+        onOpenChange={(open) => {
+          if (!open) setExcuseDetail(null);
+        }}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Detail Izin/Sakit</DialogTitle>
+            <DialogDescription>
+              {excuseDetail
+                ? `${excuseDetail.session_title} • ${safeFormat(excuseDetail.session_date, 'dd MMM yyyy')}`
+                : ''}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="text-sm">
+              <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Keterangan
+              </div>
+              <div className="mt-1 text-foreground">{excuseDetail?.excuse_description || '—'}</div>
+            </div>
+            <div className="flex items-center justify-end">
+              {excuseDetail?.excuse_proof_url ? (
+                <Button asChild variant="outline">
+                  <a
+                    href={resolveAssetUrl(excuseDetail.excuse_proof_url) || '#'}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Buka Bukti
+                  </a>
+                </Button>
+              ) : null}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AdminPageShell>
   );
 }

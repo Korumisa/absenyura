@@ -10,7 +10,6 @@ import {
   XCircle,
   Clock,
   Download,
-  UploadCloud,
   X,
   Loader2,
 } from 'lucide-react';
@@ -60,6 +59,12 @@ import { TablePagination } from '@/components/ui/TablePagination';
 import { FileText as FileTextIcon } from 'lucide-react';
 import ActionLoadingOverlay from '@/components/ActionLoadingOverlay';
 import { ConfirmModal } from '@/components/ConfirmModal';
+import {
+  acquireCameraStream,
+  humanizeCameraError,
+  releaseMediaStream,
+  waitForCameraRelease,
+} from '@/lib/media/camera';
 
 export default function Excuses() {
   const { user: currentUser } = useAuthStore();
@@ -84,9 +89,12 @@ export default function Excuses() {
     reason: 'SICK',
     description: '',
   });
-  const [file, setFile] = useState<File | null>(null);
-  const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
+  const [photoBlob, setPhotoBlob] = useState<Blob | null>(null);
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [cameraStarting, setCameraStarting] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment');
   const [submitting, setSubmitting] = useState(false);
   const [reviewingId, setReviewingId] = useState<string | null>(null);
   const [reviewConfirm, setReviewConfirm] = useState<{
@@ -94,33 +102,116 @@ export default function Excuses() {
     status: 'APPROVED' | 'REJECTED';
     studentName: string;
   } | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  const acceptFile = (f: File | null | undefined) => {
-    if (!f) return;
-    const ok = f.type === 'application/pdf' || f.type.startsWith('image/');
-    if (!ok) {
-      toast.error('File harus berupa gambar atau PDF');
-      return;
+  const clearPhoto = () => {
+    setPhotoBlob(null);
+    if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
+    setPhotoPreviewUrl(null);
+    setCameraError(null);
+  };
+
+  const stopCamera = () => {
+    const stream = videoRef.current?.srcObject as MediaStream | null;
+    if (stream) {
+      releaseMediaStream(stream);
     }
-    setFile(f);
-    if (filePreviewUrl) URL.revokeObjectURL(filePreviewUrl);
-    setFilePreviewUrl(f.type.startsWith('image/') ? URL.createObjectURL(f) : null);
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    setIsCameraActive(false);
   };
 
-  const clearFile = () => {
-    setFile(null);
-    if (filePreviewUrl) URL.revokeObjectURL(filePreviewUrl);
-    setFilePreviewUrl(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
+  useEffect(() => {
+    return () => {
+      stopCamera();
+      if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
+    };
+  }, [photoPreviewUrl]);
+
+  const startCamera = async (mode = facingMode) => {
+    if (cameraStarting) return;
+    setCameraStarting(true);
+    setCameraError(null);
+    try {
+      stopCamera();
+      await waitForCameraRelease(400);
+      const stream = await acquireCameraStream({
+        facingMode: mode,
+        preferRear: mode === 'environment',
+      });
+      setIsCameraActive(true);
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play().catch(() => undefined);
+      }
+    } catch (err) {
+      const msg = humanizeCameraError(err);
+      setCameraError(msg);
+      toast.error(msg);
+    } finally {
+      setCameraStarting(false);
+    }
   };
 
-  useEffect(
-    () => () => {
-      if (filePreviewUrl) URL.revokeObjectURL(filePreviewUrl);
-    },
-    [filePreviewUrl]
-  );
+  const switchCamera = () => {
+    const next = facingMode === 'user' ? 'environment' : 'user';
+    setFacingMode(next);
+    if (isCameraActive) void startCamera(next);
+  };
+
+  const takePhoto = () => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas) return;
+    const MAX_WIDTH = 900;
+    let width = video.videoWidth;
+    let height = video.videoHeight;
+    if (width > MAX_WIDTH) {
+      height = Math.round((height * MAX_WIDTH) / width);
+      width = MAX_WIDTH;
+    }
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    if (facingMode === 'user') {
+      ctx.translate(canvas.width, 0);
+      ctx.scale(-1, 1);
+    }
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    if (facingMode === 'user') {
+      ctx.translate(canvas.width, 0);
+      ctx.scale(-1, 1);
+    }
+
+    ctx.font = '14px Arial';
+    ctx.fillStyle = 'yellow';
+    ctx.shadowColor = 'black';
+    ctx.shadowBlur = 4;
+    ctx.fillText(`${new Date().toLocaleString()}`, 10, canvas.height - 10);
+    ctx.shadowBlur = 0;
+
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) return;
+        setPhotoBlob(blob);
+        if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
+        setPhotoPreviewUrl(URL.createObjectURL(blob));
+        stopCamera();
+      },
+      'image/jpeg',
+      0.75
+    );
+  };
+
+  const retakePhoto = () => {
+    clearPhoto();
+    void startCamera();
+  };
 
   const fetcher = (url: string) => api.get(url).then((res) => res.data.data);
   const swr = useSWR<Excuse[]>('/excuses', fetcher, { revalidateOnFocus: false });
@@ -167,18 +258,36 @@ export default function Excuses() {
       toast.error('Pilih sesi kelas terlebih dahulu');
       return;
     }
-    if (!file) {
-      toast.error('Unggah bukti dokumen/foto terlebih dahulu');
+    if (!photoBlob) {
+      toast.error('Ambil foto bukti terlebih dahulu');
       return;
     }
 
     setSubmitting(true);
     try {
+      const photoType = photoBlob.type || 'image/jpeg';
+      const challengeRes = await api.get('/excuses/challenge', {
+        params: {
+          session_id: formData.session_id,
+          photo_size: photoBlob.size,
+          photo_type: photoType,
+        },
+      });
+      const nonce = challengeRes.data?.data?.nonce;
+      const signature = challengeRes.data?.data?.signature;
+      if (!nonce || !signature) {
+        throw new Error('Gagal mendapatkan security token dari server');
+      }
+
       const form = new FormData();
       form.append('session_id', formData.session_id);
       form.append('reason', formData.reason);
       form.append('description', formData.description);
-      form.append('proof', file);
+      form.append('nonce', nonce);
+      form.append('signature', signature);
+      form.append('photo_size', photoBlob.size.toString());
+      form.append('photo_type', photoType);
+      form.append('proof', photoBlob, 'excuse.jpg');
 
       await api.post('/excuses', form, {
         headers: { 'Content-Type': 'multipart/form-data' },
@@ -186,7 +295,7 @@ export default function Excuses() {
       toast.success('Pengajuan izin berhasil dikirim');
       setIsModalOpen(false);
       setFormData({ session_id: '', reason: 'SICK', description: '' });
-      clearFile();
+      clearPhoto();
       mutate();
     } catch (error: unknown) {
       toast.error(toastErrorMessage(error, 'Terjadi kesalahan saat mengajukan izin'));
@@ -705,6 +814,10 @@ export default function Excuses() {
           open={isModalOpen}
           onOpenChange={(open) => {
             if (!open && submitting) return;
+            if (!open) {
+              stopCamera();
+              clearPhoto();
+            }
             setIsModalOpen(open);
           }}
         >
@@ -784,97 +897,93 @@ export default function Excuses() {
 
               <div className="space-y-2">
                 <Label>
-                  Bukti Dokumen/Foto (Surat Dokter/Kegiatan) <span className="text-red-500">*</span>
+                  Foto Bukti (wajib foto baru) <span className="text-red-500">*</span>
                 </Label>
-                <Input
-                  ref={fileInputRef as any}
-                  type="file"
-                  className="hidden"
-                  accept="image/*,.pdf"
-                  onChange={(e) => acceptFile(e.target.files?.[0])}
-                />
-                <div
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => fileInputRef.current?.click()}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') fileInputRef.current?.click();
-                  }}
-                  onDragEnter={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setIsDragging(true);
-                  }}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setIsDragging(true);
-                  }}
-                  onDragLeave={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setIsDragging(false);
-                  }}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setIsDragging(false);
-                    acceptFile(e.dataTransfer.files?.[0]);
-                  }}
-                  className={cn(
-                    'flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed px-5 py-8 text-center transition-colors',
-                    'border-border hover:bg-slate-50 border-border dark:hover:bg-zinc-900/40',
-                    isDragging && 'border-indigo-500 bg-indigo-50/60 dark:bg-indigo-950/20',
-                    file && 'py-4'
-                  )}
-                >
-                  {!file ? (
-                    <>
-                      <UploadCloud className="size-5 text-muted-foreground" />
-                      <div className="text-sm font-medium text-slate-800 dark:text-zinc-200">
-                        Drag & drop file di sini, atau klik untuk upload
-                      </div>
-                      <div className="text-xs text-muted-foreground">Gambar atau PDF</div>
-                    </>
-                  ) : (
-                    <div className="flex w-full flex-col gap-3">
-                      {filePreviewUrl ? (
-                        <img
-                          src={filePreviewUrl}
-                          alt="Pratinjau bukti"
-                          className="mx-auto max-h-40 rounded-lg object-contain"
-                        />
-                      ) : file.type === 'application/pdf' ? (
-                        <p className="text-sm text-muted-foreground">
-                          Pratinjau PDF: buka setelah upload untuk memastikan isi dokumen benar.
-                        </p>
-                      ) : null}
-                      <div className="flex w-full items-center justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="truncate text-sm font-medium text-slate-800 dark:text-zinc-200">
-                            {file.name}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {(file.size / 1024 / 1024).toFixed(2)} MB
-                          </div>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            clearFile();
-                          }}
-                          aria-label="Hapus file"
-                        >
-                          <X className="size-4" />
-                        </Button>
-                      </div>
+                {cameraError ? <div className="text-xs text-red-600">{cameraError}</div> : null}
+
+                {!isCameraActive && !photoBlob ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="min-h-11"
+                      disabled={!formData.session_id || cameraStarting}
+                      onClick={() => void startCamera()}
+                    >
+                      {cameraStarting ? 'Membuka kamera…' : 'Buka Kamera'}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="min-h-11"
+                      disabled={!formData.session_id || cameraStarting}
+                      onClick={switchCamera}
+                    >
+                      Ganti Kamera
+                    </Button>
+                  </div>
+                ) : null}
+
+                {isCameraActive ? (
+                  <div className="space-y-3 rounded-xl border border-border bg-muted/10 p-3">
+                    <video
+                      ref={videoRef}
+                      className="aspect-video w-full rounded-lg bg-black object-cover"
+                      playsInline
+                      muted
+                    />
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="min-h-11"
+                        onClick={switchCamera}
+                      >
+                        Ganti Kamera
+                      </Button>
+                      <Button type="button" className="min-h-11" onClick={takePhoto}>
+                        Ambil Foto
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="min-h-11"
+                        onClick={stopCamera}
+                      >
+                        Tutup
+                      </Button>
                     </div>
-                  )}
-                </div>
+                    <canvas ref={canvasRef} className="hidden" />
+                  </div>
+                ) : null}
+
+                {photoPreviewUrl ? (
+                  <div className="space-y-3 rounded-xl border border-border bg-muted/10 p-3">
+                    <img
+                      src={photoPreviewUrl}
+                      alt="Pratinjau foto bukti"
+                      className="mx-auto max-h-56 rounded-lg object-contain"
+                    />
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="min-h-11"
+                        onClick={retakePhoto}
+                      >
+                        Foto Ulang
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="min-h-11"
+                        onClick={clearPhoto}
+                      >
+                        Hapus
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
               </div>
 
               <DialogFooter className="mt-4 gap-4 sm:gap-3">

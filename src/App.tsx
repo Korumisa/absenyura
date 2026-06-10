@@ -197,24 +197,37 @@ export default function App() {
     let cancelled = false;
 
     const checkHealth = async () => {
-      try {
-        const res = await api.get('/status');
+      const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+      if (!navigator.onLine) {
+        setOffline(true);
+        return;
+      }
+
+      const retryDelays = [0, 800, 1600, 2400];
+      for (let i = 0; i < retryDelays.length; i += 1) {
         if (cancelled) return;
-        if (res?.status === 200 && res?.data?.success === true) {
-          clearNetworkIssues();
-          return;
-        }
-        setMaintenance('Layanan sedang mengalami gangguan. Silakan coba lagi.');
-      } catch {
+        if (i > 0) await sleep(retryDelays[i]);
         if (cancelled) return;
-        if (navigator.onLine) {
-          setMaintenance(
-            'Server tidak dapat dihubungi. Mencoba lagi otomatis saat koneksi stabil.'
-          );
-        } else {
-          setOffline(true);
+
+        try {
+          const res = await api.get('/status');
+          if (cancelled) return;
+          if (res?.status === 200 && res?.data?.success === true) {
+            clearNetworkIssues();
+            return;
+          }
+        } catch {
+          if (cancelled) return;
+          if (!navigator.onLine) {
+            setOffline(true);
+            return;
+          }
         }
       }
+
+      if (cancelled) return;
+      setMaintenance('Server tidak dapat dihubungi. Silakan coba lagi.');
     };
 
     const onOnline = () => {

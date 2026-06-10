@@ -80,6 +80,7 @@ type ExportSessionMeta = {
   sessionId: string;
   sessionTitle: string;
   classesLabel: string;
+  classSheets: string[];
 };
 
 async function buildSessionAttendUrl(sessionId: string): Promise<string> {
@@ -198,6 +199,154 @@ export default function Reports() {
         Boolean(r && (r as any).id)
       );
       const workbook = new ExcelJS.Workbook();
+
+      if (sessionMeta?.sessionId) {
+        const resolveAssetUrl = (assetUrl: string) => {
+          if (!assetUrl) return '';
+          if (assetUrl.startsWith('http') || assetUrl.startsWith('data:')) return assetUrl;
+          const apiBase = String(import.meta.env.VITE_API_BASE_URL || '/api');
+          const assetBase = apiBase.startsWith('http')
+            ? new URL(apiBase).origin
+            : apiBase.replace(/\/api\/?$/, '');
+          return `${assetBase}${assetUrl}`;
+        };
+
+        const sheetNames = (sessionMeta.classSheets.length ? sessionMeta.classSheets : ['Kelas'])
+          .map((s) => String(s || '').trim())
+          .filter(Boolean);
+
+        const usedNames = new Set<string>();
+        const safeSheetName = (name: string) => {
+          let base = name.replace(/[\\/*?:[\]]/g, ' ').trim() || 'Kelas';
+          if (base.length > 31) base = base.slice(0, 31);
+          let candidate = base;
+          let idx = 2;
+          while (usedNames.has(candidate)) {
+            const suffix = ` (${idx})`;
+            candidate = (base.slice(0, Math.max(0, 31 - suffix.length)) + suffix).trim();
+            idx += 1;
+          }
+          usedNames.add(candidate);
+          return candidate;
+        };
+
+        const orderedSheets = sheetNames.length ? sheetNames : ['Kelas'];
+        for (const clsLabel of orderedSheets) {
+          const sheet = workbook.addWorksheet(safeSheetName(clsLabel));
+          sheet.columns = [
+            { header: 'No', key: 'no', width: 6 },
+            { header: 'Nama', key: 'user_name', width: 26 },
+            { header: 'NIM/NIP', key: 'nim_nip', width: 16 },
+            { header: 'Status', key: 'status', width: 12 },
+            { header: 'Check-in', key: 'check_in', width: 20 },
+            { header: 'Keterangan Izin', key: 'excuse_desc', width: 34 },
+            { header: 'Bukti', key: 'proof', width: 22 },
+          ];
+          sheet.getRow(1).font = { bold: true };
+          sheet.getRow(1).fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFE0E7FF' },
+          };
+
+          const rowsForClass = safeRows.filter((r) => reportClassLabel(r) === clsLabel);
+          rowsForClass.forEach((r, idx) => {
+            const proofUrlRaw = (r as any).excuse_proof_url
+              ? String((r as any).excuse_proof_url)
+              : '';
+            const proofUrl = proofUrlRaw ? resolveAssetUrl(proofUrlRaw) : '';
+            const row = sheet.addRow({
+              no: idx + 1,
+              user_name: String((r as any).user_name ?? '-'),
+              nim_nip: r.nim_nip || '-',
+              status: r.status,
+              check_in: safeFormat((r as any).check_in_time, 'dd/MM/yyyy HH:mm'),
+              excuse_desc: String((r as any).excuse_description ?? ''),
+              proof: proofUrl ? 'Lihat' : '',
+            });
+            if (proofUrl) {
+              const cell = row.getCell('proof');
+              cell.value = { text: 'Lihat', hyperlink: proofUrl };
+              cell.font = { color: { argb: 'FF2563EB' }, underline: true };
+            }
+          });
+        }
+
+        const sheetLabelSet = new Set(orderedSheets);
+        const otherRows = safeRows.filter((r) => !sheetLabelSet.has(reportClassLabel(r)));
+        if (otherRows.length) {
+          const sheet = workbook.addWorksheet(safeSheetName('Lainnya'));
+          sheet.columns = [
+            { header: 'No', key: 'no', width: 6 },
+            { header: 'Nama', key: 'user_name', width: 26 },
+            { header: 'NIM/NIP', key: 'nim_nip', width: 16 },
+            { header: 'Kelas', key: 'kelas', width: 22 },
+            { header: 'Status', key: 'status', width: 12 },
+            { header: 'Check-in', key: 'check_in', width: 20 },
+            { header: 'Keterangan Izin', key: 'excuse_desc', width: 34 },
+            { header: 'Bukti', key: 'proof', width: 22 },
+          ];
+          sheet.getRow(1).font = { bold: true };
+          sheet.getRow(1).fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFE0E7FF' },
+          };
+          otherRows.forEach((r, idx) => {
+            const proofUrlRaw = (r as any).excuse_proof_url
+              ? String((r as any).excuse_proof_url)
+              : '';
+            const proofUrl = proofUrlRaw ? resolveAssetUrl(proofUrlRaw) : '';
+            const row = sheet.addRow({
+              no: idx + 1,
+              user_name: String((r as any).user_name ?? '-'),
+              nim_nip: r.nim_nip || '-',
+              kelas: reportClassLabel(r),
+              status: r.status,
+              check_in: safeFormat((r as any).check_in_time, 'dd/MM/yyyy HH:mm'),
+              excuse_desc: String((r as any).excuse_description ?? ''),
+              proof: proofUrl ? 'Lihat' : '',
+            });
+            if (proofUrl) {
+              const cell = row.getCell('proof');
+              cell.value = { text: 'Lihat', hyperlink: proofUrl };
+              cell.font = { color: { argb: 'FF2563EB' }, underline: true };
+            }
+          });
+        }
+
+        const qrSheet = workbook.addWorksheet('QR Scan Absensi');
+        const attendUrl = await buildSessionAttendUrl(sessionMeta.sessionId);
+        qrSheet.mergeCells('A1', 'D1');
+        qrSheet.getCell('A1').value = `QR Absensi — ${sessionMeta.sessionTitle}`;
+        qrSheet.getCell('A1').font = { bold: true, size: 14 };
+        qrSheet.getCell('A2').value = `Kelas: ${sessionMeta.classesLabel}`;
+        qrSheet.getCell('A3').value = 'Tautan scan (buka di browser HP):';
+        qrSheet.getCell('A4').value = attendUrl;
+        qrSheet.getCell('A4').font = { color: { argb: 'FF2563EB' }, underline: true };
+        try {
+          const base64 = await qrImageBase64(attendUrl);
+          const imageId = workbook.addImage({ base64, extension: 'png' });
+          qrSheet.addImage(imageId, { tl: { col: 0, row: 5 }, ext: { width: 220, height: 220 } });
+        } catch {
+          qrSheet.getCell('A6').value = '(QR gagal dibuat — gunakan tautan di atas)';
+        }
+        qrSheet.getColumn(1).width = 72;
+
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], {
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `Rekap_Sesi_${fileSuffix}_${format(new Date(), 'yyyyMMdd_HHmm')}.xlsx`;
+        link.click();
+        URL.revokeObjectURL(url);
+        toast.success('Laporan Excel berhasil diunduh');
+        return;
+      }
+
       const sheet = workbook.addWorksheet('Rekap Matriks Kehadiran');
 
       // Dapatkan daftar sesi unik dari laporan yang difilter
@@ -358,6 +507,8 @@ export default function Reports() {
       while (true) {
         const params = new URLSearchParams({ page: String(p), limit: String(limit) });
         if (sid) params.set('sessionId', sid);
+        if (sid) params.set('withClassBreakdown', '1');
+        params.set('withSummary', '0');
         if (startDate) params.set('startDate', startDate);
         if (endDate) params.set('endDate', endDate);
         if (statusFilter !== 'ALL') params.set('status', statusFilter);
@@ -387,7 +538,8 @@ export default function Reports() {
       : s.class
         ? formatClassLabel(s.class)
         : 'Umum';
-    return { sessionId, sessionTitle: s.title, classesLabel };
+    const classSheets = labels.length ? labels : s.class ? [formatClassLabel(s.class)] : ['Umum'];
+    return { sessionId, sessionTitle: s.title, classesLabel, classSheets };
   }, [sessionId, sessions]);
 
   const handleExportExcel = useCallback(async () => {

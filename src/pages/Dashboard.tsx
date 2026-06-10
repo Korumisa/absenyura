@@ -20,6 +20,7 @@ import { AttendanceChartLoadingOverlay } from '@/components/charts/AttendanceCha
 import { AttendanceChartSkeleton } from '@/components/charts/AttendanceChartSkeleton';
 import { type ChartFilterValue } from '@/lib/utils/attendanceChartTheme';
 import { cn } from '@/lib/utils/utils';
+import { useSwrPageState } from '@/hooks/useSwrPageState';
 
 const DashboardAttendanceBarChart = lazy(
   () => import('@/components/charts/DashboardAttendanceBarChart')
@@ -102,16 +103,12 @@ export default function Dashboard() {
   const [dateRange, setDateRange] = useState('30');
 
   const fetcher = (url: string) => api.get(url).then((res) => res.data.data);
-  const {
-    data,
-    error,
-    isLoading: loading,
-    isValidating,
-    mutate,
-  } = useSWR(user?.id ? `/dashboard?range=${dateRange}` : null, fetcher, {
+  const swr = useSWR(user?.id ? `/dashboard?range=${dateRange}` : null, fetcher, {
     revalidateOnFocus: false,
     keepPreviousData: true,
   });
+  const { data, isValidating } = swr;
+  const page = useSwrPageState(swr);
 
   const chartRefreshing = isValidating && data !== undefined;
 
@@ -142,15 +139,19 @@ export default function Dashboard() {
       }
       icon={<BarChart3 className="size-5" />}
     >
-      {loading && !data ? (
+      {page.isPending && !page.data ? (
         isUser ? (
           <DashboardUserSkeleton />
         ) : (
           <DashboardAdminSkeleton />
         )
-      ) : error && !data ? (
-        <ErrorWithRetry title="Gagal memuat dashboard" error={error} onRetry={() => mutate()} />
-      ) : !data ? null : isUser ? (
+      ) : page.isError && !page.data ? (
+        <ErrorWithRetry
+          title="Gagal memuat dashboard"
+          error={page.error}
+          onRetry={() => page.retry()}
+        />
+      ) : !page.data ? null : isUser ? (
         // ================= USER DASHBOARD (Modern & Clean) =================
         <div className="space-y-8">
           <AttendOnboardingBanner
