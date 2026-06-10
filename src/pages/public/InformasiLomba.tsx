@@ -69,8 +69,12 @@ export default function InformasiLomba() {
         <PublicReveal className="mx-auto max-w-7xl px-4 pb-16 sm:px-6">
           <div className="mt-8 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
             <div className="relative w-full md:max-w-sm">
+              <label htmlFor="competition-search" className="sr-only">
+                Cari nama lomba
+              </label>
               <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
               <input
+                id="competition-search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Cari nama lomba..."
@@ -179,12 +183,15 @@ export default function InformasiLomba() {
             ref={modalRef}
             role="dialog"
             aria-modal="true"
+            aria-labelledby="competition-dialog-title"
             tabIndex={-1}
             className="relative w-full max-w-3xl overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_30px_80px_-45px_rgba(15,23,42,0.55)] outline-none"
           >
             <div className="flex items-center justify-between gap-4 border-b border-black/10 bg-white px-4 py-4 sm:px-6">
               <div className="min-w-0">
-                <div className="truncate text-base font-semibold text-slate-900">{selected.title}</div>
+                <h2 id="competition-dialog-title" className="truncate text-base font-semibold text-slate-900">
+                  {selected.title}
+                </h2>
                 <div className="mt-1 text-sm text-muted-foreground">{selected.date_label ?? '-'}</div>
               </div>
               <div className="flex items-center gap-3">

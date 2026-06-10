@@ -220,7 +220,14 @@ export default function PublicHome() {
   }, [coreMembers]);
 
   if (isProfileError && !profile) {
-    return <PublicPageError title="Gagal memuat beranda" error={profileState.swr.error} onRetry={retryProfile} />;
+    return (
+      <PublicPageError
+        title="Beranda sedang tidak tersedia"
+        error={profileState.swr.error}
+        onRetry={retryProfile}
+        message="Beranda belum dapat dimuat karena layanan sedang mengalami gangguan sementara. Silakan coba lagi dalam beberapa saat."
+      />
+    );
   }
 
   if (isLoadingProfile && !profile) {
@@ -254,7 +261,14 @@ export default function PublicHome() {
               <div className="flex items-start gap-6">
                 <BrandMark className="hidden size-28 shrink-0 sm:block" src={logoSrc} name={orgName || campusName} />
                 <div>
-                  <div className="font-display text-4xl italic tracking-tight text-slate-900 md:text-5xl">Kabinet</div>
+                  <h1 className="tracking-tight text-slate-900">
+                    <span className="block font-display text-4xl italic md:text-5xl">Kabinet</span>
+                    {heroKabinetName ? (
+                      <span className="mt-1 block text-5xl font-extrabold uppercase text-[var(--public-primary)] md:text-7xl">
+                        {heroKabinetName}
+                      </span>
+                    ) : null}
+                  </h1>
                   {isLoadingProfile ? (
                     <div className="mt-2 space-y-3" aria-busy="true" aria-label="Memuat profil organisasi">
                       <Skeleton className="h-14 w-full max-w-md md:h-16" />
@@ -268,22 +282,17 @@ export default function PublicHome() {
                     </div>
                   ) : (
                     <>
-                      {heroKabinetName ? (
-                        <div className="mt-1 text-5xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] md:text-7xl">
-                          {heroKabinetName}
-                        </div>
-                      ) : null}
                       {kabinetPeriod ? (
-                        <div className="mt-2 text-sm font-semibold tracking-wide text-muted-foreground">{kabinetPeriod}</div>
+                        <p className="mt-2 text-sm font-semibold tracking-wide text-muted-foreground">{kabinetPeriod}</p>
                       ) : null}
-                      <div className="mt-5 max-w-md text-sm font-medium text-slate-700 md:text-base">
+                      <p className="mt-5 max-w-md text-sm font-medium text-slate-700 md:text-base">
                         {orgName}
-                        <div className="text-muted-foreground">{campusName}</div>
-                      </div>
+                        <span className="block text-muted-foreground">{campusName}</span>
+                      </p>
                     </>
                   )}
                   {heroSubtitle ? (
-                    <div className="mt-4 max-w-xl text-sm text-muted-foreground md:text-base">{heroSubtitle}</div>
+                    <p className="mt-4 max-w-xl text-sm text-muted-foreground md:text-base">{heroSubtitle}</p>
                   ) : null}
 
                   <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">

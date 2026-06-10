@@ -163,12 +163,15 @@ export default function Galeri() {
             ref={lightboxDialogRef}
             role="dialog"
             aria-modal="true"
+            aria-labelledby="gallery-lightbox-title"
             tabIndex={-1}
             className="relative w-full max-w-5xl overflow-hidden rounded-2xl bg-white shadow-[0_30px_80px_-45px_rgba(15,23,42,0.65)] outline-none"
           >
             <div className="flex items-center justify-between gap-4 border-b border-black/10 bg-white px-4 py-3 sm:px-6">
               <div className="min-w-0">
-                <div className="truncate text-sm font-extrabold tracking-tight text-slate-900">{lightboxAlbum.title}</div>
+                <h2 id="gallery-lightbox-title" className="truncate text-sm font-extrabold tracking-tight text-slate-900">
+                  {lightboxAlbum.title}
+                </h2>
                 <div className="mt-0.5 truncate text-xs text-muted-foreground">{lightboxItem.caption || 'Foto'}</div>
               </div>
               <button

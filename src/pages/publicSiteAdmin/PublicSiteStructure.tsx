@@ -18,6 +18,7 @@ import { CmsEditorLayout } from '@/components/cms/CmsEditorLayout';
 import { Layers } from 'lucide-react';
 
 export default function PublicSiteStructure() {
+  const formId = React.useId();
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
   const { data: structure = [], mutate } = useSWR<PublicStructureGroup[]>(
     '/public-site/admin/structure',
@@ -201,8 +202,9 @@ export default function PublicSiteStructure() {
                 <div key={gi} className="rounded-2xl border border-border bg-muted/20 p-4">
                   <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                     <div className="w-full space-y-2">
-                      <Label>Nama Grup</Label>
+                      <Label htmlFor={`${formId}-group-title-${gi}`}>Nama Grup</Label>
                       <Input
+                        id={`${formId}-group-title-${gi}`}
                         value={g.title}
                         onChange={(e) =>
                           setGroupsDirty((prev) =>
@@ -213,6 +215,7 @@ export default function PublicSiteStructure() {
                       />
                       <div className="flex items-center gap-2 text-sm text-foreground">
                         <Checkbox
+                          id={`${formId}-group-core-${gi}`}
                           checked={Boolean(g.isCore)}
                           onCheckedChange={(checked) =>
                             setGroupsDirty((prev) =>
@@ -222,7 +225,7 @@ export default function PublicSiteStructure() {
                             )
                           }
                         />
-                        <span>Divisi inti</span>
+                        <Label htmlFor={`${formId}-group-core-${gi}`}>Divisi inti</Label>
                       </div>
                     </div>
                     <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-end md:w-auto">
@@ -356,7 +359,11 @@ export default function PublicSiteStructure() {
                             ) : null}
                           </div>
                         </div>
+                        <Label htmlFor={`${formId}-member-name-${gi}-${pi}`} className="sr-only">
+                          Nama anggota {pi + 1} pada grup {g.title || gi + 1}
+                        </Label>
                         <Input
+                          id={`${formId}-member-name-${gi}-${pi}`}
                           value={p.name}
                           onChange={(e) =>
                             setGroupsDirty((prev) =>
@@ -375,7 +382,11 @@ export default function PublicSiteStructure() {
                           placeholder="Nama"
                         />
                         <div className="flex flex-col gap-2 sm:flex-row">
+                          <Label htmlFor={`${formId}-member-role-${gi}-${pi}`} className="sr-only">
+                            Jabatan anggota {pi + 1} pada grup {g.title || gi + 1}
+                          </Label>
                           <Input
+                            id={`${formId}-member-role-${gi}-${pi}`}
                             value={p.role}
                             onChange={(e) =>
                               setGroupsDirty((prev) =>
@@ -422,10 +433,14 @@ export default function PublicSiteStructure() {
                           </Button>
                         </div>
                         <div className="flex items-center justify-start gap-2 md:justify-center">
-                          <span className="text-sm font-medium text-foreground md:hidden">
+                          <Label
+                            htmlFor={`${formId}-member-spotlight-${gi}-${pi}`}
+                            className="text-sm font-medium text-foreground md:hidden"
+                          >
                             Spotlight
-                          </span>
+                          </Label>
                           <Checkbox
+                            id={`${formId}-member-spotlight-${gi}-${pi}`}
                             checked={Boolean(p.isSpotlight)}
                             onCheckedChange={(checked) => {
                               const next = Boolean(checked);

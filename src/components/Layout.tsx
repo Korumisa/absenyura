@@ -148,6 +148,8 @@ export default function Layout() {
                     <button
                       type="button"
                       onClick={() => setPublicSiteOpen((v) => !v)}
+                      aria-expanded={publicSiteOpen}
+                      aria-controls="public-site-subnav"
                       className={`flex w-full items-center rounded-xl px-4 py-3 transition-colors ${navLinkClass(isActive)}`}
                     >
                       <Icon size={20} className={`mr-3 ${navIconClass(isActive)}`} />
@@ -159,6 +161,7 @@ export default function Layout() {
                     </button>
 
                     <div
+                      id="public-site-subnav"
                       className={`overflow-hidden pl-4 transition-all duration-200 ease-out ${
                         publicSiteOpen
                           ? 'max-h-96 translate-y-0 opacity-100'

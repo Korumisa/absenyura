@@ -175,12 +175,15 @@ export default function Kegiatan() {
             ref={modalRef}
             role="dialog"
             aria-modal="true"
+            aria-labelledby="public-post-dialog-title"
             tabIndex={-1}
             className="relative w-full max-w-3xl overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_30px_80px_-45px_rgba(15,23,42,0.55)] outline-none"
           >
             <div className="flex items-center justify-between gap-4 border-b border-black/10 bg-white px-4 py-3 sm:px-6">
               <div className="min-w-0">
-                <div className="truncate text-base font-extrabold tracking-tight text-slate-900">{selected.title}</div>
+                <h2 id="public-post-dialog-title" className="truncate text-base font-extrabold tracking-tight text-slate-900">
+                  {selected.title}
+                </h2>
                 <div className="mt-1 text-sm text-muted-foreground">{selected.date_label ?? '-'}</div>
               </div>
               <button

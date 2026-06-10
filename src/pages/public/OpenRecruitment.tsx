@@ -70,8 +70,12 @@ export default function OpenRecruitment() {
         <PublicReveal className="mx-auto max-w-7xl px-4 pb-16 sm:px-6">
           <div className="mt-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="relative w-full md:max-w-sm">
+              <label htmlFor="recruitment-search" className="sr-only">
+                Cari open recruitment
+              </label>
               <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
               <input
+                id="recruitment-search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Cari open recruitment..."
@@ -159,6 +163,7 @@ export default function OpenRecruitment() {
             ref={modalRef}
             role="dialog"
             aria-modal="true"
+            aria-labelledby="recruitment-dialog-title"
             tabIndex={-1}
             className="relative w-full max-w-5xl overflow-hidden rounded-3xl border border-black/10 bg-white shadow-[0_30px_80px_-45px_rgba(15,23,42,0.55)] outline-none"
           >
@@ -167,7 +172,9 @@ export default function OpenRecruitment() {
               <div className="relative flex items-start justify-between gap-4 border-b border-black/10 px-5 py-5 sm:px-7">
                 <div className="min-w-0">
                   <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Open Recruitment</div>
-                  <div className="mt-2 truncate text-lg font-extrabold tracking-tight text-slate-900 sm:text-xl">{selected.title}</div>
+                  <h2 id="recruitment-dialog-title" className="mt-2 truncate text-lg font-extrabold tracking-tight text-slate-900 sm:text-xl">
+                    {selected.title}
+                  </h2>
                   <div className="mt-1 text-sm font-semibold text-muted-foreground">{selected.date_range ?? '-'}</div>
                 </div>
                 <button

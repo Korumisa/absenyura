@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import api from '@/services/api';
 import { Bell, Check, Trash2, X } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
@@ -11,6 +11,9 @@ export function NotificationMenu() {
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const popupId = 'notification-menu-panel';
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -20,6 +23,21 @@ export function NotificationMenu() {
     }
     fetchNotifications();
   }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    panelRef.current?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsOpen(false);
+        triggerRef.current?.focus();
+      }
+    };
+
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [isOpen]);
 
   const fetchNotifications = async () => {
     try {
@@ -54,9 +72,13 @@ export function NotificationMenu() {
   return (
     <div className="relative">
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         aria-label="Notifikasi"
+        aria-haspopup="dialog"
+        aria-expanded={isOpen}
+        aria-controls={popupId}
         className="relative flex min-h-11 min-w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-brand focus:outline-none dark:hover:text-indigo-400"
       >
         <Bell size={22} />
@@ -70,7 +92,14 @@ export function NotificationMenu() {
       {isOpen && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)}></div>
-          <div className="absolute -right-12 sm:right-0 mt-2 w-[320px] max-w-[calc(100vw-2rem)] bg-card text-card-foreground border border-border shadow-xl rounded-xl z-50 overflow-hidden animate-in slide-in-from-top-2 duration-200">
+          <div
+            id={popupId}
+            ref={panelRef}
+            role="dialog"
+            aria-label="Panel notifikasi"
+            tabIndex={-1}
+            className="absolute -right-12 sm:right-0 mt-2 w-[320px] max-w-[calc(100vw-2rem)] bg-card text-card-foreground border border-border shadow-xl rounded-xl z-50 overflow-hidden animate-in slide-in-from-top-2 duration-200"
+          >
             <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 bg-muted/50">
               <h3 className="font-bold text-foreground">Notifikasi</h3>
               {unreadCount > 0 && (
@@ -91,10 +120,13 @@ export function NotificationMenu() {
               ) : (
                 <div className="divide-y divide-slate-100 dark:divide-zinc-700/50">
                   {notifications.map((notif) => (
-                    <div
+                    <button
                       key={notif.id}
-                      onClick={() => !notif.is_read && markAsRead(notif.id)}
-                      className={`p-4 hover:bg-slate-50 dark:hover:bg-zinc-700/30 transition-colors cursor-pointer relative ${!notif.is_read ? 'bg-indigo-50/50 dark:bg-indigo-900/10' : ''}`}
+                      type="button"
+                      onClick={() => {
+                        if (!notif.is_read) void markAsRead(notif.id);
+                      }}
+                      className={`relative w-full cursor-pointer p-4 text-left transition-colors hover:bg-slate-50 dark:hover:bg-zinc-700/30 ${!notif.is_read ? 'bg-indigo-50/50 dark:bg-indigo-900/10' : ''}`}
                     >
                       {!notif.is_read && (
                         <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-500"></div>
@@ -117,7 +149,7 @@ export function NotificationMenu() {
                           </p>
                         </div>
                       </div>
-                    </div>
+                    </button>
                   ))}
                 </div>
               )}

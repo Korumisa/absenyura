@@ -36,6 +36,7 @@ const PAGE_TABS: readonly CmsTabItem<PageTab>[] = [
 ];
 
 export default function PublicSiteGalleries() {
+  const formId = React.useId();
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
   const { data: galleries = [], mutate } = useSWR<PublicGalleryAlbum[]>(
     '/public-site/admin/galleries',
@@ -176,8 +177,9 @@ export default function PublicSiteGalleries() {
             >
               <form onSubmit={upsert} className="space-y-4">
                 <div className="space-y-2 md:col-span-2">
-                  <Label>Judul Album</Label>
+                  <Label htmlFor={`${formId}-album-title`}>Judul Album</Label>
                   <Input
+                    id={`${formId}-album-title`}
                     value={form.title ?? ''}
                     onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
                   />
@@ -190,8 +192,9 @@ export default function PublicSiteGalleries() {
                   />
                 </div>
                 <div className="space-y-2 md:col-span-2">
-                  <Label>Deskripsi</Label>
+                  <Label htmlFor={`${formId}-album-description`}>Deskripsi</Label>
                   <Textarea
+                    id={`${formId}-album-description`}
                     value={form.description ?? ''}
                     onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
                   />
@@ -215,8 +218,9 @@ export default function PublicSiteGalleries() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Upload Foto</Label>
+                    <Label htmlFor={`${formId}-album-upload`}>Upload Foto</Label>
                     <Input
+                      id={`${formId}-album-upload`}
                       type="file"
                       accept="image/*"
                       multiple
@@ -252,7 +256,11 @@ export default function PublicSiteGalleries() {
                             ) : null}
                           </div>
                           <div className="mt-3 space-y-2">
+                            <Label htmlFor={`${formId}-item-url-${idx}`} className="sr-only">
+                              URL gambar item {idx + 1}
+                            </Label>
                             <Input
+                              id={`${formId}-item-url-${idx}`}
                               value={it.imageUrl}
                               onChange={(e) =>
                                 setForm((p) => ({
@@ -264,7 +272,11 @@ export default function PublicSiteGalleries() {
                               }
                               placeholder="Image URL"
                             />
+                            <Label htmlFor={`${formId}-item-caption-${idx}`} className="sr-only">
+                              Caption item {idx + 1}
+                            </Label>
                             <Input
+                              id={`${formId}-item-caption-${idx}`}
                               value={it.caption}
                               onChange={(e) =>
                                 setForm((p) => ({

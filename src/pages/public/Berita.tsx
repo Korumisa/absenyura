@@ -81,8 +81,12 @@ export default function Berita() {
       <PublicEnter>
         <PublicPageHero top="Berita" bottom="Terbaru" subtitle="Baca update kampus, prestasi, dan info penting. Formatnya singkat, jelas, dan enak dibagikan.">
           <div className="relative w-full max-w-md">
+            <label htmlFor="public-news-search" className="sr-only">
+              Cari berita
+            </label>
             <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
             <input
+              id="public-news-search"
               value={q}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Cari berita..."

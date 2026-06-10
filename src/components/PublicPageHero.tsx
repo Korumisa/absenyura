@@ -54,28 +54,30 @@ export default function PublicPageHero({
             compact ? 'px-5 py-6 sm:px-7 sm:py-7' : 'px-5 py-8 sm:px-8 sm:py-10'
           }`}
         >
-          <div
-            className={`font-display italic tracking-tight text-slate-900 ${
-              compact ? 'text-3xl sm:text-4xl md:text-5xl' : 'text-4xl sm:text-5xl md:text-6xl'
-            }`}
-          >
-            {top}
-          </div>
-          <div
-            className={`font-extrabold uppercase tracking-tight text-[var(--public-primary)] ${
-              compact
-                ? '-mt-1 text-3xl sm:-mt-1.5 sm:text-4xl md:text-5xl'
-                : '-mt-1 text-4xl sm:-mt-2 sm:text-5xl md:text-6xl'
-            }`}
-          >
-            {bottom}
-          </div>
+          <h1 className="tracking-tight text-slate-900">
+            <span
+              className={`block font-display italic ${
+                compact ? 'text-3xl sm:text-4xl md:text-5xl' : 'text-4xl sm:text-5xl md:text-6xl'
+              }`}
+            >
+              {top}
+            </span>
+            <span
+              className={`block font-extrabold uppercase text-[var(--public-primary)] ${
+                compact
+                  ? '-mt-1 text-3xl sm:-mt-1.5 sm:text-4xl md:text-5xl'
+                  : '-mt-1 text-4xl sm:-mt-2 sm:text-5xl md:text-6xl'
+              }`}
+            >
+              {bottom}
+            </span>
+          </h1>
           {subtitle ? (
-            <div
+            <p
               className={`mx-auto max-w-2xl text-sm leading-relaxed text-slate-700 ${compact ? 'mt-3' : 'mt-4'}`}
             >
               {subtitle}
-            </div>
+            </p>
           ) : null}
           {children ? (
             <div

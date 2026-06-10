@@ -9,12 +9,17 @@ export function ErrorWithRetry({
   error,
   onRetry,
   className = '',
+  message,
 }: {
   title?: string;
   error: unknown;
   onRetry: () => void;
   className?: string;
+  message?: string;
 }) {
+  const resolvedMessage =
+    message || getErrorMessage(error, 'Periksa koneksi internet Anda lalu coba muat ulang.');
+
   return (
     <FadeIn className={className}>
       <div
@@ -23,9 +28,7 @@ export function ErrorWithRetry({
       >
         <AlertCircle className="mx-auto mb-4 size-12 text-red-500" aria-hidden="true" />
         <h2 className="text-lg font-bold text-foreground">{title}</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          {getErrorMessage(error, 'Periksa koneksi internet Anda lalu coba muat ulang.')}
-        </p>
+        <p className="mt-2 text-sm text-muted-foreground">{resolvedMessage}</p>
         <Button type="button" className="mt-6 min-h-11" onClick={onRetry}>
           <RefreshCw className="mr-2 size-4" aria-hidden="true" />
           Muat ulang

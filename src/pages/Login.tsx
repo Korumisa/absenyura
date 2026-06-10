@@ -120,15 +120,15 @@ export default function Login() {
                 )}
               </div>
 
-              <div className="mt-6 font-display text-4xl italic tracking-tight text-slate-900 md:text-5xl">
-                Masuk
-              </div>
-              <div className="mt-1 text-5xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] md:text-6xl">
-                Dashboard
-              </div>
-              <div className="mt-4 max-w-md text-sm text-slate-700">
+              <h1 className="mt-6 tracking-tight text-slate-900">
+                <span className="block font-display text-4xl italic md:text-5xl">Masuk</span>
+                <span className="mt-1 block text-5xl font-extrabold uppercase text-[var(--public-primary)] md:text-6xl">
+                  Dashboard
+                </span>
+              </h1>
+              <p className="mt-4 max-w-md text-sm text-slate-700">
                 Masuk untuk absen, lihat riwayat kehadiran, dan persentase kehadiran Anda.
-              </div>
+              </p>
 
               <div className="mt-8">
                 <Link
