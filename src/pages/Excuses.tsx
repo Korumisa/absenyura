@@ -162,11 +162,17 @@ export default function Excuses() {
             facingMode: mode,
             preferRear: mode === 'environment',
           });
-          setIsCameraActive(true);
+          // FIX: Set srcObject on the video element BEFORE calling setIsCameraActive.
+          // The <video> is always mounted in the DOM (hidden via CSS when inactive),
+          // so videoRef.current is always populated and the assignment is safe here.
+          // Previously the video was conditionally rendered, so videoRef.current was
+          // null at this point (the React re-render from setIsCameraActive hadn't run
+          // yet), causing the stream to be orphaned and the preview to stay black.
           if (videoRef.current) {
             videoRef.current.srcObject = stream;
             await videoRef.current.play().catch(() => undefined);
           }
+          setIsCameraActive(true);
           return;
         } catch (err) {
           lastErr = err;
@@ -950,38 +956,48 @@ export default function Excuses() {
                   </div>
                 ) : null}
 
-                {isCameraActive ? (
-                  <div className="space-y-3 rounded-xl border border-border bg-muted/10 p-3">
-                    <video
-                      ref={videoRef}
-                      className="aspect-video w-full rounded-lg bg-black object-cover"
-                      playsInline
-                      muted
-                    />
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="min-h-11"
-                        onClick={switchCamera}
-                      >
-                        Ganti Kamera
-                      </Button>
-                      <Button type="button" className="min-h-11" onClick={takePhoto}>
-                        Ambil Foto
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        className="min-h-11"
-                        onClick={stopCamera}
-                      >
-                        Tutup
-                      </Button>
-                    </div>
-                    <canvas ref={canvasRef} className="hidden" />
+                {/*
+                  FIX: The <video> element is now ALWAYS in the DOM (hidden via CSS when
+                  the camera is inactive). Previously it was inside {isCameraActive ? ... : null},
+                  which meant videoRef.current was null when startCamera() tried to assign
+                  srcObject right after calling setIsCameraActive(true) — React's re-render
+                  hadn't run yet, so the video element hadn't mounted yet, and the stream
+                  was silently dropped, leaving the preview black.
+
+                  By keeping the video mounted and toggling visibility with the `hidden` class,
+                  videoRef.current is always populated and the stream assignment works immediately.
+                */}
+                <div
+                  className={cn(
+                    'space-y-3 rounded-xl border border-border bg-muted/10 p-3',
+                    !isCameraActive && 'hidden'
+                  )}
+                >
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    className="aspect-video w-full rounded-lg bg-black object-cover"
+                    playsInline
+                    muted
+                  />
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="min-h-11"
+                      onClick={switchCamera}
+                    >
+                      Ganti Kamera
+                    </Button>
+                    <Button type="button" className="min-h-11" onClick={takePhoto}>
+                      Ambil Foto
+                    </Button>
+                    <Button type="button" variant="ghost" className="min-h-11" onClick={stopCamera}>
+                      Tutup
+                    </Button>
                   </div>
-                ) : null}
+                  <canvas ref={canvasRef} className="hidden" />
+                </div>
 
                 {photoPreviewUrl ? (
                   <div className="space-y-3 rounded-xl border border-border bg-muted/10 p-3">
