@@ -123,9 +123,19 @@ export default function Excuses() {
     setIsCameraActive(false);
   };
 
+  // Camera: dilepas HANYA saat unmount — jangan gabungkan dengan photoPreviewUrl
+  // sebab cleanup effect dengan deps [photoPreviewUrl] akan memanggil stopCamera()
+  // setiap kali URL berubah, termasuk saat retakePhoto() sedang mengakuisisi stream baru.
+   
   useEffect(() => {
     return () => {
       stopCamera();
+    };
+  }, []);
+
+  // URL revocation: closure menangkap nilai lama — ini benar untuk revoke URL lama
+  useEffect(() => {
+    return () => {
       if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
     };
   }, [photoPreviewUrl]);
@@ -137,17 +147,31 @@ export default function Excuses() {
     try {
       stopCamera();
       await waitForCameraRelease(400);
-      const stream = await acquireCameraStream({
-        facingMode: mode,
-        preferRear: mode === 'environment',
-      });
-      setIsCameraActive(true);
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play().catch(() => undefined);
+
+      // Retry loop — hardware kamera kadang butuh waktu extra untuk dilepas
+      // (terutama setelah navigasi dari halaman Attend yang pakai QR scanner)
+      let lastErr: unknown;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        if (attempt > 0) {
+          await waitForCameraRelease(600 + attempt * 300); // 600ms, 900ms
+        }
+        try {
+          const stream = await acquireCameraStream({
+            facingMode: mode,
+            preferRear: mode === 'environment',
+          });
+          setIsCameraActive(true);
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+            await videoRef.current.play().catch(() => undefined);
+          }
+          return;
+        } catch (err) {
+          lastErr = err;
+        }
       }
-    } catch (err) {
-      const msg = humanizeCameraError(err);
+
+      const msg = humanizeCameraError(lastErr);
       setCameraError(msg);
       toast.error(msg);
     } finally {

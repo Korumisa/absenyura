@@ -530,11 +530,29 @@ export default function Attend() {
     setIsCameraActive(false);
   };
 
-  // Add cleanup effect for camera to prevent memory/hardware leak when unmounting
+  // Cleanup saat unmount: lepas video camera DAN QR scanner
+  // Tanpa ini, Html5Qrcode tetap memegang hardware kamera setelah navigasi,
+  // sehingga halaman lain (misal Excuses) mendapat error "camera already in use".
   useEffect(() => {
     return () => {
+      // 1. Lepas video camera
       stopCamera();
+      // 2. Lepas QR scanner — Html5Qrcode punya MediaStream tersendiri
+      //    yang TIDAK dibersihkan oleh stopCamera()
+      const instance = scannerRef.current;
+      scannerRef.current = null;
+      if (instance) {
+        void (async () => {
+          try {
+            if (instance.isScanning) await instance.stop();
+            instance.clear();
+          } catch {
+            void 0;
+          }
+        })();
+      }
     };
+     
   }, []);
 
   const startCamera = useCallback(
