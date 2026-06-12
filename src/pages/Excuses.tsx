@@ -135,6 +135,15 @@ export default function Excuses() {
     };
   }, []);
 
+  // Re-trigger play() when the video container becomes visible.
+  // On mobile Android Chrome, play() called while the element is invisible/collapsed
+  // may silently succeed but the decoder never activates, resulting in a black frame.
+  useEffect(() => {
+    if (isCameraActive && videoRef.current && videoRef.current.srcObject) {
+      videoRef.current.play().catch(() => undefined);
+    }
+  }, [isCameraActive]);
+
   // URL revocation: closure menangkap nilai lama — ini benar untuk revoke URL lama
   useEffect(() => {
     return () => {
@@ -957,20 +966,21 @@ export default function Excuses() {
                 ) : null}
 
                 {/*
-                  FIX: The <video> element is now ALWAYS in the DOM (hidden via CSS when
-                  the camera is inactive). Previously it was inside {isCameraActive ? ... : null},
-                  which meant videoRef.current was null when startCamera() tried to assign
-                  srcObject right after calling setIsCameraActive(true) — React's re-render
-                  hadn't run yet, so the video element hadn't mounted yet, and the stream
-                  was silently dropped, leaving the preview black.
+                  FIX: The <video> element is always in the DOM. When the camera is inactive
+                  the container uses `invisible h-0 overflow-hidden` instead of `hidden`
+                  (display:none). This keeps the video element in the browser's rendering
+                  pipeline so that play() and the video decoder actually activate when
+                  srcObject is assigned. Using display:none caused mobile Android Chrome
+                  to silently skip decoder activation, resulting in a permanently black frame
+                  even after the element became visible.
 
-                  By keeping the video mounted and toggling visibility with the `hidden` class,
-                  videoRef.current is always populated and the stream assignment works immediately.
+                  A useEffect re-triggers play() when isCameraActive flips to true as an
+                  additional safeguard.
                 */}
                 <div
                   className={cn(
                     'space-y-3 rounded-xl border border-border bg-muted/10 p-3',
-                    !isCameraActive && 'hidden'
+                    !isCameraActive && 'invisible h-0 overflow-hidden p-0 m-0 border-0'
                   )}
                 >
                   <video
