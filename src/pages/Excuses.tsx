@@ -64,6 +64,7 @@ import {
   humanizeCameraError,
   releaseMediaStream,
   waitForCameraRelease,
+  releaseActiveVideoTracks,
 } from '@/lib/media/camera';
 
 export default function Excuses() {
@@ -126,10 +127,11 @@ export default function Excuses() {
   // Camera: dilepas HANYA saat unmount — jangan gabungkan dengan photoPreviewUrl
   // sebab cleanup effect dengan deps [photoPreviewUrl] akan memanggil stopCamera()
   // setiap kali URL berubah, termasuk saat retakePhoto() sedang mengakuisisi stream baru.
-   
+
   useEffect(() => {
     return () => {
       stopCamera();
+      void releaseActiveVideoTracks();
     };
   }, []);
 

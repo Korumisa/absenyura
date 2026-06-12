@@ -15,11 +15,30 @@ const prismaMock = vi.hoisted(() => ({
   notification: {
     create: vi.fn(),
   },
+  challengeNonce: {
+    delete: vi.fn(),
+  },
   $transaction: vi.fn(),
 }));
 
 vi.mock('../utils/prisma.js', () => ({ default: prismaMock }));
 vi.mock('../utils/sessionAccess.js', () => ({ assertAdminSessionScope: vi.fn() }));
+vi.mock('../utils/excuseProof.js', () => ({
+  getExcuseProofSecret: vi.fn().mockReturnValue('test-secret'),
+  buildExcuseProofPayload: vi.fn().mockReturnValue('test-payload'),
+  signExcuseProof: vi.fn().mockReturnValue('test-signature'),
+  isTimingSafeMatch: vi.fn().mockReturnValue(true),
+}));
+vi.mock('fs', () => ({
+  default: {
+    existsSync: vi.fn().mockReturnValue(true),
+    mkdirSync: vi.fn(),
+    promises: {
+      rename: vi.fn().mockResolvedValue(undefined),
+      unlink: vi.fn().mockResolvedValue(undefined),
+    },
+  },
+}));
 
 import { assertAdminSessionScope } from '../utils/sessionAccess.js';
 import { createExcuse, reviewExcuse } from './excuse.controller';
@@ -44,15 +63,26 @@ describe('excuse controller tests', () => {
     });
     prismaMock.classEnrollment.findFirst.mockResolvedValue({ id: 'enroll-1' });
     prismaMock.excuseRequest.findFirst.mockResolvedValue(null);
+    prismaMock.challengeNonce.delete.mockResolvedValue({
+      expires_at: new Date(Date.now() + 100000),
+    });
 
     const err = new Error('unique constraint');
     (err as any).code = 'P2002';
     prismaMock.excuseRequest.create.mockRejectedValue(err);
 
     const req = {
-      body: { session_id: 'session-1', reason: 'SICK', description: 'Demam' },
+      body: {
+        session_id: 'session-1',
+        reason: 'SICK',
+        description: 'Demam',
+        nonce: 'test-nonce',
+        signature: 'test-signature',
+        photo_size: '100',
+        photo_type: 'image/jpeg',
+      },
       user: { id: 'user-1', role: 'USER' },
-      file: undefined,
+      file: { path: 'test-path', originalname: 'test.jpg', mimetype: 'image/jpeg' },
     } as any;
     const res = createRes();
 

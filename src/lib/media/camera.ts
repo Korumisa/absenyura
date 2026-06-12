@@ -23,6 +23,44 @@ export const pickPreferredCameraId = (devices: CameraDevice[], opts?: { preferRe
   return scored[0]?.id ?? null;
 };
 
+const activeStreams = new Set<MediaStream>();
+
+if (typeof window !== 'undefined' && navigator?.mediaDevices?.getUserMedia) {
+  const originalGetUserMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+  navigator.mediaDevices.getUserMedia = async function (constraints) {
+    const stream = await originalGetUserMedia(constraints);
+    activeStreams.add(stream);
+
+    const removeIfEnded = () => {
+      const hasActiveTracks = stream
+        .getTracks()
+        .some((t: MediaStreamTrack) => t.readyState === 'live');
+      if (!hasActiveTracks) {
+        activeStreams.delete(stream);
+      }
+    };
+
+    stream.getTracks().forEach((t: MediaStreamTrack) => {
+      t.addEventListener('ended', removeIfEnded);
+    });
+
+    return stream;
+  };
+}
+
+export function stopAllActiveStreams() {
+  activeStreams.forEach((stream) => {
+    stream.getTracks().forEach((track) => {
+      try {
+        track.stop();
+      } catch {
+        /* ignore */
+      }
+    });
+  });
+  activeStreams.clear();
+}
+
 export function releaseMediaStream(stream: MediaStream | null | undefined) {
   if (!stream) return;
   stream.getTracks().forEach((t) => {
@@ -50,6 +88,7 @@ export async function releaseActiveVideoTracks() {
       el.srcObject = null;
     }
   });
+  stopAllActiveStreams();
 }
 
 export function humanizeCameraError(err: unknown): string {

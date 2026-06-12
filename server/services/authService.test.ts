@@ -25,6 +25,7 @@ function sha256(input: string) {
 describe('authService refresh token hash', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useRealTimers();
   });
 
   test('refresh rotates hash and rejects old refresh token afterwards', async () => {
@@ -51,6 +52,8 @@ describe('authService refresh token hash', () => {
 
     userRepositoryMock.updateUser.mockResolvedValue({ id: 'user-1' });
 
+    vi.useFakeTimers();
+
     const first = await refresh({ refreshToken: oldToken });
     expect(first.ok).toBe(true);
     if (first.ok) {
@@ -64,6 +67,9 @@ describe('authService refresh token hash', () => {
       })
     );
 
+    // Advance time past the 30-second grace period
+    vi.advanceTimersByTime(35000);
+
     const second = await refresh({ refreshToken: oldToken });
     expect(second.ok).toBe(false);
     if (!second.ok) {
@@ -75,6 +81,7 @@ describe('authService refresh token hash', () => {
         })
       );
     }
+    vi.useRealTimers();
   });
 
   test('logout clears refresh token hash', async () => {

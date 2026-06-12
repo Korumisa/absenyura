@@ -35,6 +35,7 @@ import {
   pickPreferredCameraId,
   releaseMediaStream,
   waitForCameraRelease,
+  releaseActiveVideoTracks,
 } from '@/lib/media/camera';
 import ActionLoadingOverlay from '@/components/ActionLoadingOverlay';
 
@@ -551,8 +552,9 @@ export default function Attend() {
           }
         })();
       }
+      // 3. Pastikan semua track video aktif dilepas secara global
+      void releaseActiveVideoTracks();
     };
-     
   }, []);
 
   const startCamera = useCallback(
