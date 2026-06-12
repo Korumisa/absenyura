@@ -23,6 +23,10 @@ export const pickPreferredCameraId = (devices: CameraDevice[], opts?: { preferRe
   return scored[0]?.id ?? null;
 };
 
+// ---------------------------------------------------------------------------
+// Global stream registry — tracks every MediaStream opened via getUserMedia
+// so we can force-stop all of them when the QR scanner page unmounts.
+// ---------------------------------------------------------------------------
 const activeStreams = new Set<MediaStream>();
 
 if (typeof window !== 'undefined' && navigator?.mediaDevices?.getUserMedia) {
@@ -59,6 +63,32 @@ export function stopAllActiveStreams() {
     });
   });
   activeStreams.clear();
+}
+
+// ---------------------------------------------------------------------------
+// Global pending-release promise
+// When the QR scanner page (Attend) unmounts it registers a Promise here.
+// Any page that wants to open the camera (Excuses) must await this first
+// so it does not race with the async QR scanner teardown.
+// ---------------------------------------------------------------------------
+let _pendingRelease: Promise<void> | null = null;
+
+/** Register a promise that represents an in-progress camera teardown. */
+export function registerPendingCameraRelease(p: Promise<void>): void {
+  _pendingRelease = p.finally(() => {
+    _pendingRelease = null;
+  });
+}
+
+/** Await any currently-pending camera teardown before proceeding. */
+export async function awaitPendingCameraRelease(): Promise<void> {
+  if (_pendingRelease) {
+    try {
+      await _pendingRelease;
+    } catch {
+      /* ignore errors from the releasing side */
+    }
+  }
 }
 
 export function releaseMediaStream(stream: MediaStream | null | undefined) {
@@ -133,6 +163,9 @@ export async function acquireCameraStream(opts: AcquireCameraOptions = {}): Prom
   if (!navigator.mediaDevices?.getUserMedia) {
     throw new Error('Browser tidak mendukung kamera (gunakan HTTPS).');
   }
+
+  // Wait for any pending QR scanner teardown from a previously-visited page
+  await awaitPendingCameraRelease();
 
   const preferRear = opts.preferRear ?? opts.facingMode === 'environment';
   let deviceId = opts.deviceId ?? null;

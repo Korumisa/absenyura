@@ -36,6 +36,7 @@ import {
   releaseMediaStream,
   waitForCameraRelease,
   releaseActiveVideoTracks,
+  registerPendingCameraRelease,
 } from '@/lib/media/camera';
 import ActionLoadingOverlay from '@/components/ActionLoadingOverlay';
 
@@ -538,22 +539,32 @@ export default function Attend() {
     return () => {
       // 1. Lepas video camera
       stopCamera();
+
       // 2. Lepas QR scanner — Html5Qrcode punya MediaStream tersendiri
-      //    yang TIDAK dibersihkan oleh stopCamera()
+      //    yang TIDAK dibersihkan oleh stopCamera().
+      //    Kita bungkus proses async ini dalam Promise dan mendaftarkannya
+      //    secara global agar halaman lain (Excuses) bisa menunggunya
+      //    sebelum membuka kamera baru.
       const instance = scannerRef.current;
       scannerRef.current = null;
-      if (instance) {
-        void (async () => {
+
+      const teardown = (async () => {
+        if (instance) {
           try {
             if (instance.isScanning) await instance.stop();
             instance.clear();
           } catch {
             void 0;
           }
-        })();
-      }
-      // 3. Pastikan semua track video aktif dilepas secara global
-      void releaseActiveVideoTracks();
+        }
+        // Force-stop any remaining tracks after the library finishes
+        await releaseActiveVideoTracks();
+        // Extra settle time so hardware is truly released
+        await new Promise<void>((r) => setTimeout(r, 300));
+      })();
+
+      // Register so acquireCameraStream() can await this before opening
+      registerPendingCameraRelease(teardown);
     };
   }, []);
 
