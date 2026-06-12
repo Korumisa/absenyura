@@ -101,6 +101,7 @@ export default function Attend() {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
+  const pendingStreamRef = React.useRef<MediaStream | null>(null);
   const [isCameraActive, setIsCameraActive] = useState(false);
   const scannerRef = React.useRef<Html5Qrcode | null>(null);
   const qrCameraIdRef = React.useRef<string | null>(null);
@@ -525,12 +526,33 @@ export default function Attend() {
   };
 
   const stopCamera = () => {
+    // Release any pending stream that hasn't been assigned yet
+    if (pendingStreamRef.current) {
+      releaseMediaStream(pendingStreamRef.current);
+      pendingStreamRef.current = null;
+    }
     if (videoRef.current?.srcObject) {
       releaseMediaStream(videoRef.current.srcObject as MediaStream);
       videoRef.current.srcObject = null;
     }
     setIsCameraActive(false);
   };
+
+  // When isCameraActive flips to true, assign the pending stream to the <video>
+  // after the DOM has painted (requestAnimationFrame). This avoids the mobile
+  // Android Chrome bug where play() on a display:none element skips decoder init.
+  useEffect(() => {
+    if (isCameraActive && pendingStreamRef.current && videoRef.current) {
+      const stream = pendingStreamRef.current;
+      pendingStreamRef.current = null;
+      requestAnimationFrame(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play().catch(() => undefined);
+        }
+      });
+    }
+  }, [isCameraActive]);
 
   // Cleanup saat unmount: lepas video camera DAN QR scanner
   // Tanpa ini, Html5Qrcode tetap memegang hardware kamera setelah navigasi,
@@ -590,11 +612,11 @@ export default function Attend() {
               facingMode: mode,
               preferRear: mode === 'environment',
             });
+            // Store stream in ref — the useEffect watching isCameraActive will
+            // assign it to the <video> after React re-renders and the element
+            // is visible (no longer display:none).
+            pendingStreamRef.current = stream;
             setIsCameraActive(true);
-            if (videoRef.current) {
-              videoRef.current.srcObject = stream;
-              await videoRef.current.play().catch(() => undefined);
-            }
             return;
           } catch (err) {
             lastErr = err;

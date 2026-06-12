@@ -105,6 +105,7 @@ export default function Excuses() {
   } | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const pendingStreamRef = useRef<MediaStream | null>(null);
 
   const clearPhoto = () => {
     setPhotoBlob(null);
@@ -135,12 +136,20 @@ export default function Excuses() {
     };
   }, []);
 
-  // Re-trigger play() when the video container becomes visible.
-  // On mobile Android Chrome, play() called while the element is invisible/collapsed
-  // may silently succeed but the decoder never activates, resulting in a black frame.
+  // When isCameraActive flips to true the container's `hidden` class is removed.
+  // We use requestAnimationFrame so the browser has painted the now-visible <video>
+  // before we assign the stream and call play(). This avoids the mobile Android
+  // Chrome bug where play() on a display:none element silently skips decoder init.
   useEffect(() => {
-    if (isCameraActive && videoRef.current && videoRef.current.srcObject) {
-      videoRef.current.play().catch(() => undefined);
+    if (isCameraActive && pendingStreamRef.current && videoRef.current) {
+      const stream = pendingStreamRef.current;
+      pendingStreamRef.current = null;
+      requestAnimationFrame(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play().catch(() => undefined);
+        }
+      });
     }
   }, [isCameraActive]);
 
@@ -171,16 +180,10 @@ export default function Excuses() {
             facingMode: mode,
             preferRear: mode === 'environment',
           });
-          // FIX: Set srcObject on the video element BEFORE calling setIsCameraActive.
-          // The <video> is always mounted in the DOM (hidden via CSS when inactive),
-          // so videoRef.current is always populated and the assignment is safe here.
-          // Previously the video was conditionally rendered, so videoRef.current was
-          // null at this point (the React re-render from setIsCameraActive hadn't run
-          // yet), causing the stream to be orphaned and the preview to stay black.
-          if (videoRef.current) {
-            videoRef.current.srcObject = stream;
-            await videoRef.current.play().catch(() => undefined);
-          }
+          // Store stream in ref — the useEffect watching isCameraActive will
+          // pick it up and assign it to the <video> after React re-renders
+          // and the container's `hidden` class is removed.
+          pendingStreamRef.current = stream;
           setIsCameraActive(true);
           return;
         } catch (err) {
@@ -862,7 +865,7 @@ export default function Excuses() {
             setIsModalOpen(open);
           }}
         >
-          <DialogContent className="max-w-lg p-0">
+          <DialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto p-0">
             <div className="border-b border-border px-6 py-5 border-border">
               <DialogHeader>
                 <DialogTitle className="text-xl font-bold text-foreground">
@@ -966,21 +969,17 @@ export default function Excuses() {
                 ) : null}
 
                 {/*
-                  FIX: The <video> element is always in the DOM. When the camera is inactive
-                  the container uses `invisible h-0 overflow-hidden` instead of `hidden`
-                  (display:none). This keeps the video element in the browser's rendering
-                  pipeline so that play() and the video decoder actually activate when
-                  srcObject is assigned. Using display:none caused mobile Android Chrome
-                  to silently skip decoder activation, resulting in a permanently black frame
-                  even after the element became visible.
-
-                  A useEffect re-triggers play() when isCameraActive flips to true as an
-                  additional safeguard.
+                  FIX: The <video> element is always in the DOM. We use `hidden` (display:none)
+                  to avoid layout/interaction issues when the camera is inactive. The stream
+                  is assigned via a useEffect + requestAnimationFrame after isCameraActive
+                  flips to true and React removes the `hidden` class, ensuring the video
+                  decoder activates on a visible element (mobile Android Chrome skips
+                  decoder init on display:none elements).
                 */}
                 <div
                   className={cn(
                     'space-y-3 rounded-xl border border-border bg-muted/10 p-3',
-                    !isCameraActive && 'invisible h-0 overflow-hidden p-0 m-0 border-0'
+                    !isCameraActive && 'hidden'
                   )}
                 >
                   <video
