@@ -27,17 +27,34 @@ export const createLocation = async (req: Request, res: Response): Promise<void>
 
     // Auth middleware ensures req.user exists
     const user_id = (req as any).user.id;
+    const ip_address = req.ip;
 
-    const location = await prisma.location.create({
-      data: {
-        name,
-        address,
-        latitude: parseFloat(latitude),
-        longitude: parseFloat(longitude),
-        radius: parseInt(radius, 10) || 100,
-        wifi_bssid: wifi_bssid ? JSON.stringify(wifi_bssid) : '[]',
-        created_by: user_id,
-      },
+    const location = await prisma.$transaction(async (tx) => {
+      const loc = await tx.location.create({
+        data: {
+          name,
+          address,
+          latitude: parseFloat(latitude),
+          longitude: parseFloat(longitude),
+          radius: parseInt(radius, 10) || 100,
+          wifi_bssid: wifi_bssid ? JSON.stringify(wifi_bssid) : '[]',
+          created_by: user_id,
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          action: 'CREATE_LOCATION',
+          target_table: 'location',
+          target_id: loc.id,
+          actor_id: user_id,
+          ip_address,
+          old_value: null,
+          new_value: JSON.stringify({ name, address, latitude, longitude, radius, wifi_bssid }),
+        },
+      });
+
+      return loc;
     });
 
     res.status(201).json({
@@ -76,16 +93,35 @@ export const updateLocation = async (req: Request, res: Response): Promise<void>
       }
     }
 
-    const location = await prisma.location.update({
-      where: { id },
-      data: {
-        name,
-        address,
-        latitude: parseFloat(latitude),
-        longitude: parseFloat(longitude),
-        radius: parseInt(radius, 10),
-        wifi_bssid: wifi_bssid ? JSON.stringify(wifi_bssid) : '[]',
-      },
+    const location = await prisma.$transaction(async (tx) => {
+      const oldLoc = await tx.location.findUnique({ where: { id } });
+      if (!oldLoc) throw new Error('Location not found');
+
+      const loc = await tx.location.update({
+        where: { id },
+        data: {
+          name,
+          address,
+          latitude: parseFloat(latitude),
+          longitude: parseFloat(longitude),
+          radius: parseInt(radius, 10),
+          wifi_bssid: wifi_bssid ? JSON.stringify(wifi_bssid) : '[]',
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          action: 'UPDATE_LOCATION',
+          target_table: 'location',
+          target_id: loc.id,
+          actor_id: user.id,
+          ip_address: req.ip,
+          old_value: JSON.stringify(oldLoc),
+          new_value: JSON.stringify({ name, address, latitude, longitude, radius, wifi_bssid }),
+        },
+      });
+
+      return loc;
     });
 
     res.status(200).json({
@@ -122,7 +158,26 @@ export const deleteLocation = async (req: Request, res: Response): Promise<void>
         return;
       }
     }
-    await prisma.location.delete({ where: { id } });
+
+    await prisma.$transaction(async (tx) => {
+      const oldLoc = await tx.location.findUnique({ where: { id } });
+      if (!oldLoc) throw new Error('Location not found');
+
+      await tx.location.delete({ where: { id } });
+
+      await tx.auditLog.create({
+        data: {
+          action: 'DELETE_LOCATION',
+          target_table: 'location',
+          target_id: id,
+          actor_id: user.id,
+          ip_address: req.ip,
+          old_value: JSON.stringify(oldLoc),
+          new_value: null,
+        },
+      });
+    });
+
     res.status(200).json({ success: true, message: 'Location deleted successfully' });
   } catch (error) {
     console.error('Error deleting location:', error);

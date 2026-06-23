@@ -51,6 +51,46 @@ import { toastErrorMessage } from '@/lib/utils/toastMessage';
 
 fixLeafletDefaultIcons();
 
+// Map Click Handler Component
+interface MapEventsProps {
+  formData: {
+    latitude: number;
+    longitude: number;
+  };
+  setFormData: React.Dispatch<
+    React.SetStateAction<{
+      name: string;
+      address: string;
+      latitude: number;
+      longitude: number;
+      radius: number;
+      wifi_bssid: string;
+    }>
+  >;
+}
+
+const MapEvents: React.FC<MapEventsProps> = ({ formData, setFormData }) => {
+  const map = useMapEvents({
+    click(e) {
+      setFormData((prev) => ({
+        ...prev,
+        latitude: e.latlng.lat,
+        longitude: e.latlng.lng,
+      }));
+    },
+  });
+
+  // Auto center map when coordinate inputs change
+  useEffect(() => {
+    map.setView([formData.latitude, formData.longitude], map.getZoom(), {
+      animate: true,
+      duration: 1,
+    });
+  }, [formData.latitude, formData.longitude, map]);
+
+  return null;
+};
+
 export default function Locations() {
   const currentUser = useAuthStore((s) => s.user);
   const [searchTerm, setSearchTerm] = useState('');
@@ -224,29 +264,6 @@ export default function Locations() {
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
-  };
-
-  // Map Click Handler Component
-  const MapEvents = () => {
-    const map = useMapEvents({
-      click(e) {
-        setFormData({
-          ...formData,
-          latitude: e.latlng.lat,
-          longitude: e.latlng.lng,
-        });
-      },
-    });
-
-    // Auto center map when coordinate inputs change
-    useEffect(() => {
-      map.setView([formData.latitude, formData.longitude], map.getZoom(), {
-        animate: true,
-        duration: 1,
-      });
-    }, [formData.latitude, formData.longitude, map]);
-
-    return null;
   };
 
   const handleAddressChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -680,7 +697,7 @@ export default function Locations() {
                         radius={formData.radius}
                         pathOptions={{ color: 'indigo', fillColor: 'indigo', fillOpacity: 0.2 }}
                       />
-                      <MapEvents />
+                      <MapEvents formData={formData} setFormData={setFormData} />
                       <MapResizeOnOpen when={isModalOpen} />
                     </MapContainer>
                   ) : null}

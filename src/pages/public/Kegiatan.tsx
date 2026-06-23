@@ -19,7 +19,7 @@ import { PublicPageError } from '@/components/public/PublicPageError';
 import { PublicEmptyState } from '@/components/public/PublicEmptyState';
 
 const TABS: Array<{ label: string; type?: PublicPostType }> = [
-  { label: 'Semua' },
+  { label: 'Semua (tanpa lomba)' },
   { label: 'Kegiatan', type: 'KEGIATAN' },
   { label: 'Berita', type: 'BERITA' },
   { label: 'Pengumuman', type: 'PENGUMUMAN' },
@@ -29,7 +29,7 @@ type Paged<T> = { items: T[]; total: number; page: number; pageSize: number; tot
 
 export default function Kegiatan() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
-  const [tab, setTab] = useState<string>('Semua');
+  const [tab, setTab] = useState<string>('Semua (tanpa lomba)');
   const [openId, setOpenId] = useState<string | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   useDialogA11y(Boolean(openId), () => setOpenId(null), { containerRef: modalRef });

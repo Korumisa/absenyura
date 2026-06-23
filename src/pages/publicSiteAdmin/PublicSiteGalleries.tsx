@@ -256,22 +256,45 @@ export default function PublicSiteGalleries() {
                             ) : null}
                           </div>
                           <div className="mt-3 space-y-2">
-                            <Label htmlFor={`${formId}-item-url-${idx}`} className="sr-only">
-                              URL gambar item {idx + 1}
-                            </Label>
-                            <Input
-                              id={`${formId}-item-url-${idx}`}
-                              value={it.imageUrl}
-                              onChange={(e) =>
-                                setForm((p) => ({
-                                  ...p,
-                                  items: (p.items ?? []).map((x, i) =>
-                                    i === idx ? { ...x, imageUrl: e.target.value } : x
-                                  ),
-                                }))
-                              }
-                              placeholder="Image URL"
-                            />
+                            <div className="flex justify-end">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  const el = document.getElementById(
+                                    `${formId}-item-url-toggle-${idx}`
+                                  );
+                                  el?.classList.toggle('hidden');
+                                }}
+                              >
+                                Masukkan URL manual
+                              </Button>
+                            </div>
+                            <div
+                              id={`${formId}-item-url-toggle-${idx}`}
+                              className="hidden space-y-2"
+                            >
+                              <Label
+                                htmlFor={`${formId}-item-url-${idx}`}
+                                className="text-xs text-muted-foreground"
+                              >
+                                URL gambar item {idx + 1}
+                              </Label>
+                              <Input
+                                id={`${formId}-item-url-${idx}`}
+                                value={it.imageUrl}
+                                onChange={(e) =>
+                                  setForm((p) => ({
+                                    ...p,
+                                    items: (p.items ?? []).map((x, i) =>
+                                      i === idx ? { ...x, imageUrl: e.target.value } : x
+                                    ),
+                                  }))
+                                }
+                                placeholder="Image URL"
+                              />
+                            </div>
                             <Label htmlFor={`${formId}-item-caption-${idx}`} className="sr-only">
                               Caption item {idx + 1}
                             </Label>

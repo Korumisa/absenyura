@@ -56,6 +56,7 @@ import {
 import AdminPageShell from '@/components/AdminPageShell';
 import { TablePagination } from '@/components/ui/TablePagination';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
+import { useFacultyDirectory } from '@/hooks/useFacultyDirectory';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
 import { SlowLoadingHint } from '@/components/admin/SlowLoadingHint';
 import type { User } from '@/types/user';
@@ -105,8 +106,13 @@ export default function Users() {
     phone: '',
     semester: 1,
   });
-  const [facultiesData, setFacultiesData] = useState<{ name: string; departments: string[] }[]>([]);
-  const [departmentQuery, setDepartmentQuery] = useState('');
+  const {
+    facultiesData,
+    departmentQuery,
+    setDepartmentQuery,
+    totalDepartments,
+    filteredFacultiesData,
+  } = useFacultyDirectory();
   const [classIds, setClassIds] = useState<string[]>([]);
   const [enrolledClasses, setEnrolledClasses] = useState<ClassOption[]>([]);
 
@@ -138,40 +144,6 @@ export default function Users() {
 
   const users: User[] = Array.isArray(data?.data) ? data.data : [];
   const meta: PaginationMeta | null = data?.meta || null;
-
-  const fetchFaculties = async () => {
-    try {
-      const res = await api.get('/settings/departments');
-      if (res.data.data) {
-        setFacultiesData(res.data.data);
-      }
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  useEffect(() => {
-    fetchFaculties();
-  }, []);
-
-  const totalDepartments = useMemo(() => {
-    return facultiesData.reduce((acc, f) => acc + (f?.departments?.length ?? 0), 0);
-  }, [facultiesData]);
-
-  const filteredFacultiesData = useMemo(() => {
-    const q = departmentQuery.trim().toLowerCase();
-    if (!q) return facultiesData;
-    return facultiesData
-      .map((f) => {
-        const filteredDepartments = (f?.departments ?? []).filter((d) => {
-          const name =
-            typeof d === 'object' && d !== null ? (d as any).name || (d as any).id : String(d);
-          return String(name).toLowerCase().includes(q);
-        });
-        return { ...f, departments: filteredDepartments };
-      })
-      .filter((f) => (f?.departments?.length ?? 0) > 0);
-  }, [facultiesData, departmentQuery]);
 
   const handleOpenModal = async (user: User | null = null) => {
     setClassIds([]);
@@ -514,7 +486,7 @@ export default function Users() {
                       <Badge variant={user.is_active ? 'success' : 'destructive'}>
                         {user.is_active ? 'Aktif' : 'Nonaktif'}
                       </Badge>
-                      {user.device_fingerprint ? (
+                      {user.device_bound || user.device_fingerprint ? (
                         <Badge variant="success" className="gap-1.5">
                           <Smartphone size={12} aria-hidden="true" />
                           Terikat
@@ -524,7 +496,7 @@ export default function Users() {
                       )}
                     </div>
                     <div className="mt-3 flex flex-wrap gap-2">
-                      {user.device_fingerprint ? (
+                      {user.device_bound || user.device_fingerprint ? (
                         <Button
                           type="button"
                           size="sm"
@@ -625,7 +597,7 @@ export default function Users() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          {user.device_fingerprint ? (
+                          {user.device_bound || user.device_fingerprint ? (
                             <Badge variant="success" className="gap-1.5">
                               <Smartphone size={12} />
                               Terikat
@@ -636,7 +608,7 @@ export default function Users() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
-                            {user.device_fingerprint ? (
+                            {user.device_bound || user.device_fingerprint ? (
                               <Button
                                 variant="outline"
                                 size="sm"

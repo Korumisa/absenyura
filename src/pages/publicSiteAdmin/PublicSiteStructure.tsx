@@ -45,12 +45,12 @@ export default function PublicSiteStructure() {
     if (dirtyRef.current) return;
     const mapped: GroupDraft[] = (structure ?? []).map((g) => ({
       title: g.title ?? '',
-      isCore: Boolean((g as any).is_core ?? false),
+      isCore: Boolean(g.is_core ?? false),
       people: (g.members ?? []).map((m) => ({
         name: m.name ?? '',
         role: m.role ?? '',
         photoUrl: m.photo_url ?? '',
-        isSpotlight: Boolean((m as any).is_spotlight ?? false),
+        isSpotlight: Boolean(m.is_spotlight ?? false),
       })),
     }));
     setGroups(mapped);
@@ -134,12 +134,12 @@ export default function PublicSiteStructure() {
   const handleReset = () => {
     const mapped: GroupDraft[] = (structure ?? []).map((g) => ({
       title: g.title ?? '',
-      isCore: Boolean((g as any).is_core ?? false),
+      isCore: Boolean(g.is_core ?? false),
       people: (g.members ?? []).map((m) => ({
         name: m.name ?? '',
         role: m.role ?? '',
         photoUrl: m.photo_url ?? '',
-        isSpotlight: Boolean((m as any).is_spotlight ?? false),
+        isSpotlight: Boolean(m.is_spotlight ?? false),
       })),
     }));
     dirtyRef.current = false;

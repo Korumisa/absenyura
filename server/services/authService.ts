@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../utils/jwt.js';
+import { safeCompare } from '../utils/security.js';
 import * as maintenanceRepository from '../repositories/maintenanceRepository.js';
 import * as userRepository from '../repositories/userRepository.js';
 
@@ -29,13 +30,6 @@ function normalizeDeviceFingerprint(raw: string): string {
 
 function hashRefreshToken(token: string): string {
   return crypto.createHash('sha256').update(token).digest('hex');
-}
-
-function safeCompare(a: string, b: string): boolean {
-  const bufA = Buffer.from(a);
-  const bufB = Buffer.from(b);
-  if (bufA.length !== bufB.length) return false;
-  return crypto.timingSafeEqual(bufA, bufB);
 }
 
 function isValidSeedSecret(incoming: string, expected: string): boolean {
@@ -181,21 +175,19 @@ export async function login(params: {
 }
 
 // Grace period (in ms) to accept a recently-rotated refresh token.
-// This prevents logout when multiple requests hit 401 at the same time
-// and race to call /auth/refresh with the same (now-old) token.
-const REFRESH_GRACE_MS = 30_000; // 30 seconds
+// This covers the SEQUENTIAL case: a request arrives shortly after a prior
+// rotation already completed and presents the now-superseded token (e.g. a
+// queued request, a slightly-stale client tab). It does NOT, by itself,
+// make concurrent rotation safe — see rotateRefreshTokenHash() / the CAS
+// retry path below for that.
+export const REFRESH_GRACE_MS = 60_000; // 60 seconds
 
-// In-memory map: userId -> { previousHash, rotatedAt }
-// This avoids needing a DB column for the previous hash.
-const recentlyRotated = new Map<string, { previousHash: string; rotatedAt: number }>();
-
-function cleanupRotatedEntries() {
-  const now = Date.now();
-  for (const [key, entry] of recentlyRotated) {
-    if (now - entry.rotatedAt > REFRESH_GRACE_MS) {
-      recentlyRotated.delete(key);
-    }
-  }
+function isWithinGrace(row: {
+  previous_refresh_token_hash: string | null;
+  previous_refresh_rotated_at: Date | null;
+}): boolean {
+  if (!row.previous_refresh_token_hash || !row.previous_refresh_rotated_at) return false;
+  return Date.now() - row.previous_refresh_rotated_at.getTime() < REFRESH_GRACE_MS;
 }
 
 export async function refresh(params: {
@@ -231,7 +223,14 @@ export async function refresh(params: {
 
   const user = await userRepository.findById({
     id: decoded.id,
-    select: { id: true, role: true, is_active: true, refresh_token_hash: true },
+    select: {
+      id: true,
+      role: true,
+      is_active: true,
+      refresh_token_hash: true,
+      previous_refresh_token_hash: true,
+      previous_refresh_rotated_at: true,
+    },
   });
 
   if (!user || !user.is_active) {
@@ -247,55 +246,93 @@ export async function refresh(params: {
   }
 
   const presentedHash = hashRefreshToken(refreshToken);
-  const matchesCurrent =
-    user.refresh_token_hash && safeCompare(user.refresh_token_hash, presentedHash);
+  const matchesCurrent = Boolean(
+    user.refresh_token_hash && safeCompare(user.refresh_token_hash, presentedHash)
+  );
 
-  // Check if this token was recently rotated out (grace period for race conditions)
-  let matchesGrace = false;
   if (!matchesCurrent) {
-    const recent = recentlyRotated.get(user.id);
-    if (recent && Date.now() - recent.rotatedAt < REFRESH_GRACE_MS) {
-      matchesGrace = safeCompare(recent.previousHash, presentedHash);
+    // Sequential grace case: not the current token, but it matches the
+    // most recently rotated-out one and we're still inside the window.
+    const matchesGrace =
+      isWithinGrace(user) && safeCompare(user.previous_refresh_token_hash as string, presentedHash);
+
+    if (!matchesGrace) {
+      return {
+        ok: false,
+        status: 401,
+        body: {
+          success: false,
+          error_code: 'INVALID_REFRESH_TOKEN',
+          message: 'Sesi login habis. Silakan login ulang.',
+        },
+      };
     }
-  }
 
-  if (!matchesCurrent && !matchesGrace) {
-    return {
-      ok: false,
-      status: 401,
-      body: {
-        success: false,
-        error_code: 'INVALID_REFRESH_TOKEN',
-        message: 'Sesi login habis. Silakan login ulang.',
-      },
-    };
-  }
-
-  // If this request matched the grace period (old token), return the
-  // current tokens without rotating again to avoid an endless cycle.
-  if (matchesGrace) {
+    // Don't rotate again — just hand back a fresh access token and the same
+    // refresh token the client already has, so it keeps matching "previous"
+    // until it naturally picks up the real current token via a later call.
     const currentAccessToken = generateAccessToken(user.id, user.role);
-    // Don't rotate the refresh token again — just return a fresh access token.
-    // The client will receive the latest refresh token cookie from the
-    // first successful refresh that already rotated it.
     return { ok: true, data: { accessToken: currentAccessToken, refreshToken } };
   }
 
-  // Normal rotation: generate new tokens and remember the old hash
+  // Normal rotation path. Generate the new pair first, then attempt an
+  // atomic compare-and-swap write: only succeeds if `refresh_token_hash`
+  // is still exactly what we read above.
+  //
+  // Why this matters: if two requests both present the SAME current token
+  // (e.g. two in-flight calls that both got a 401 and both raced to
+  // refresh), a plain `update` would let both writes land, and whichever
+  // lands second silently discards the first response's tokens — that
+  // client is left holding a refreshToken the DB no longer recognizes as
+  // current OR previous, which is an immediate, unrecoverable lockout
+  // (not just a grace-window edge case). The CAS prevents that: only one
+  // write can win.
   const newAccessToken = generateAccessToken(user.id, user.role);
   const newRefreshToken = generateRefreshToken(user.id, user.role);
+  const rotatedAt = new Date();
 
-  // Remember the old hash for the grace period
-  recentlyRotated.set(user.id, { previousHash: presentedHash, rotatedAt: Date.now() });
-  cleanupRotatedEntries();
-
-  await userRepository.updateUser({
+  const { rotated } = await userRepository.rotateRefreshTokenHash({
     id: user.id,
-    data: { refresh_token_hash: hashRefreshToken(newRefreshToken) },
-    select: { id: true },
+    expectedCurrentHash: user.refresh_token_hash as string,
+    newHash: hashRefreshToken(newRefreshToken),
+    previousHash: presentedHash,
+    previousRotatedAt: rotatedAt,
   });
 
-  return { ok: true, data: { accessToken: newAccessToken, refreshToken: newRefreshToken } };
+  if (rotated) {
+    return { ok: true, data: { accessToken: newAccessToken, refreshToken: newRefreshToken } };
+  }
+
+  // Lost the CAS race: another request already rotated this exact same
+  // current token first. Both requests presented identical input, so the
+  // winner's write set `previous_refresh_token_hash` to this same
+  // presentedHash — re-read and fall back to the grace path instead of
+  // handing back newRefreshToken, which the DB never actually recorded.
+  const latest = await userRepository.findById({
+    id: user.id,
+    select: { previous_refresh_token_hash: true, previous_refresh_rotated_at: true },
+  });
+
+  if (
+    latest &&
+    isWithinGrace(latest) &&
+    safeCompare(latest.previous_refresh_token_hash as string, presentedHash)
+  ) {
+    return { ok: true, data: { accessToken: newAccessToken, refreshToken } };
+  }
+
+  // Shouldn't normally happen (would mean a third actor — e.g. a concurrent
+  // logout — changed state between our read and the CAS attempt), but fail
+  // closed rather than guessing.
+  return {
+    ok: false,
+    status: 401,
+    body: {
+      success: false,
+      error_code: 'INVALID_REFRESH_TOKEN',
+      message: 'Sesi login habis. Silakan login ulang.',
+    },
+  };
 }
 
 export async function logout(params: { refreshToken: unknown }): Promise<ServiceResult<null>> {
@@ -303,9 +340,16 @@ export async function logout(params: { refreshToken: unknown }): Promise<Service
   if (refreshToken) {
     try {
       const decoded = verifyRefreshToken(refreshToken);
+      // Clear current AND grace-period state. Leaving previous_* set would
+      // let a token rotated out shortly before logout remain usable via the
+      // grace path for up to REFRESH_GRACE_MS after the user logged out.
       await userRepository.updateUser({
         id: decoded.id,
-        data: { refresh_token_hash: null },
+        data: {
+          refresh_token_hash: null,
+          previous_refresh_token_hash: null,
+          previous_refresh_rotated_at: null,
+        },
         select: { id: true },
       });
     } catch {

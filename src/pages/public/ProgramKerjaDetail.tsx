@@ -11,30 +11,24 @@ import { ArrowLeft } from 'lucide-react';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { PublicPageError } from '@/components/public/PublicPageError';
 
-type ParsedProgram = {
-  fields: Array<{ label: string; value: string }>;
-  body: string | null;
-};
-
-function parseProgramDescription(description: string | null): ParsedProgram {
+function parseProgramDescriptionFallback(description: string | null) {
   const raw = String(description ?? '').trim();
-  if (!raw) return { fields: [], body: null };
+  if (!raw) return { division: null, fundingSource: null, location: null, target: null, body: null };
 
   const lines = raw.split('\n');
-  const fields: Array<{ label: string; value: string }> = [];
   const bodyLines: string[] = [];
+  let division: string | null = null;
+  let fundingSource: string | null = null;
+  let location: string | null = null;
+  let target: string | null = null;
 
-  const known = new Map<string, string>([
-    ['divisi', 'Divisi'],
-    ['nama', 'Nama'],
-    ['tanggal kegiatan', 'Tanggal Kegiatan'],
-    ['tanggal', 'Tanggal'],
-    ['sumber dana', 'Sumber Dana'],
-    ['anggaran', 'Anggaran'],
-    ['lokasi', 'Lokasi'],
-    ['target', 'Target'],
-    ['sasaran', 'Target'],
-    ['rasional', 'Rasional'],
+  const known = new Map<string, keyof { division: string | null; fundingSource: string | null; location: string | null; target: string | null }>([
+    ['divisi', 'division'],
+    ['sumber dana', 'fundingSource'],
+    ['anggaran', 'fundingSource'],
+    ['lokasi', 'location'],
+    ['target', 'target'],
+    ['sasaran', 'target'],
   ]);
 
   for (const line of lines) {
@@ -50,20 +44,21 @@ function parseProgramDescription(description: string | null): ParsedProgram {
     }
     const key = m[1].trim().toLowerCase();
     const value = m[2].trim();
-    const label = known.get(key);
-    if (!label) {
-      bodyLines.push(line);
+    const field = known.get(key);
+    if (field) {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const _assign = { [field]: value };
+      if (field === 'division') division = value;
+      if (field === 'fundingSource') fundingSource = value;
+      if (field === 'location') location = value;
+      if (field === 'target') target = value;
       continue;
     }
-    if (label === 'Rasional') {
-      bodyLines.push(value);
-      continue;
-    }
-    fields.push({ label, value });
+    bodyLines.push(line);
   }
 
   const body = bodyLines.join('\n').trim() || null;
-  return { fields, body };
+  return { division, fundingSource, location, target, body };
 }
 
 export default function ProgramKerjaDetail() {
@@ -73,7 +68,12 @@ export default function ProgramKerjaDetail() {
   const { data: items = [], isInitialLoading: isLoading, isError, retry } = useSwrPageState(swr);
 
   const program = useMemo(() => items.find((p) => p.id === id) ?? null, [items, id]);
-  const parsed = useMemo(() => parseProgramDescription(program?.description ?? null), [program?.description]);
+  const parsedFallback = useMemo(() => parseProgramDescriptionFallback(program?.description ?? null), [program?.description]);
+  const division = program?.division ?? parsedFallback.division;
+  const fundingSource = program?.funding_source ?? parsedFallback.fundingSource;
+  const location = program?.location ?? parsedFallback.location;
+  const target = program?.target ?? parsedFallback.target;
+  const rationale = program?.rationale ?? parsedFallback.body;
   if (isError) {
     return <PublicPageError title="Gagal memuat program" error={swr.error} onRetry={retry} />;
   }
@@ -111,8 +111,8 @@ export default function ProgramKerjaDetail() {
                   <div className="mt-2 text-2xl font-extrabold tracking-tight text-slate-900">{program.title}</div>
                 </div>
                 <div className="p-4 sm:p-6">
-                  {parsed.body ? (
-                    <div className="whitespace-pre-wrap text-sm leading-relaxed text-slate-700">{parsed.body}</div>
+                  {rationale ? (
+                    <div className="whitespace-pre-wrap text-sm leading-relaxed text-slate-700">{rationale}</div>
                   ) : (
                     <div className="text-sm text-muted-foreground">Deskripsi belum diisi.</div>
                   )}
@@ -130,19 +130,28 @@ export default function ProgramKerjaDetail() {
                       <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Tanggal</div>
                       <div className="mt-1 text-sm font-semibold text-slate-900">{program.date_range ?? '-'}</div>
                     </div>
-                    {parsed.fields.length > 0 ? (
-                      <div className="space-y-3">
-                        {parsed.fields.map((f) => (
-                          <div key={`${f.label}-${f.value}`} className="rounded-2xl border border-black/10 bg-white px-4 py-3">
-                            <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{f.label}</div>
-                            <div className="mt-1 text-sm font-semibold text-slate-900">{f.value}</div>
-                          </div>
-                        ))}
+                    {division ? (
+                      <div className="rounded-2xl border border-black/10 bg-white px-4 py-3">
+                        <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Divisi</div>
+                        <div className="mt-1 text-sm font-semibold text-slate-900">{division}</div>
                       </div>
                     ) : null}
-                    {parsed.fields.length === 0 ? (
-                      <div className="rounded-2xl border border-dashed border-black/15 bg-white/70 px-4 py-4 text-sm text-muted-foreground">
-                        Untuk menampilkan rincian seperti sumber dana/target/lokasi, admin bisa menulis format: “Sumber Dana: …” pada Deskripsi.
+                    {fundingSource ? (
+                      <div className="rounded-2xl border border-black/10 bg-white px-4 py-3">
+                        <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Sumber Dana</div>
+                        <div className="mt-1 text-sm font-semibold text-slate-900">{fundingSource}</div>
+                      </div>
+                    ) : null}
+                    {location ? (
+                      <div className="rounded-2xl border border-black/10 bg-white px-4 py-3">
+                        <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Lokasi</div>
+                        <div className="mt-1 text-sm font-semibold text-slate-900">{location}</div>
+                      </div>
+                    ) : null}
+                    {target ? (
+                      <div className="rounded-2xl border border-black/10 bg-white px-4 py-3">
+                        <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Target</div>
+                        <div className="mt-1 text-sm font-semibold text-slate-900">{target}</div>
                       </div>
                     ) : null}
                   </div>

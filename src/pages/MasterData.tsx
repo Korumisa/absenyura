@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import api from '@/services/api';
 import useSWR from 'swr';
@@ -21,7 +21,7 @@ export default function MasterData() {
 
   const [faculties, setFaculties] = useState<{ name: string; departments: string[] }[]>([]);
   const [newFaculty, setNewFaculty] = useState('');
-  const [newDepartments, setNewDepartments] = useState<Record<number, string>>({});
+  const [newDepartments, setNewDepartments] = useState<Record<string, string>>({});
 
   const [subjects, setSubjects] = useState<{ code: string; name: string }[]>([]);
   const [newSubjectCode, setNewSubjectCode] = useState('');
@@ -149,15 +149,16 @@ export default function MasterData() {
                     ) : null}
                     {faculties.map((faculty, index) => {
                       if (!faculty) return null;
-                      const facultyName =
+                      let facultyName =
                         typeof faculty.name === 'object' && faculty.name !== null
                           ? (faculty.name as { name?: string; id?: string }).name ||
                             (faculty.name as { id?: string }).id
                           : faculty.name;
+                      facultyName = String(facultyName || `faculty-${index}`);
 
                       return (
                         <div
-                          key={index}
+                          key={facultyName}
                           className="rounded-xl border border-border bg-muted/30 p-4"
                         >
                           <div className="mb-4 flex items-center justify-between gap-2">
@@ -170,7 +171,9 @@ export default function MasterData() {
                               variant="ghost"
                               size="sm"
                               className="text-red-500"
-                              onClick={() => setFaculties(faculties.filter((_, i) => i !== index))}
+                              onClick={() =>
+                                setFaculties(faculties.filter((f) => f.name !== facultyName))
+                              }
                             >
                               Hapus fakultas
                             </Button>
@@ -185,7 +188,7 @@ export default function MasterData() {
                                   : dept;
                               return (
                                 <div
-                                  key={dIndex}
+                                  key={deptName}
                                   className="flex items-center justify-between rounded-lg border border-border bg-background px-3 py-2"
                                 >
                                   <span className="text-sm text-foreground">{deptName}</span>
@@ -196,10 +199,15 @@ export default function MasterData() {
                                     className="size-8 text-slate-400 hover:text-red-500"
                                     onClick={() => {
                                       const newFacs = [...faculties];
-                                      newFacs[index].departments = newFacs[
-                                        index
-                                      ].departments.filter((_, i) => i !== dIndex);
-                                      setFaculties(newFacs);
+                                      const facultyIndex = newFacs.findIndex(
+                                        (f) => f.name === facultyName
+                                      );
+                                      if (facultyIndex !== -1) {
+                                        newFacs[facultyIndex].departments = newFacs[
+                                          facultyIndex
+                                        ].departments.filter((d) => d !== deptName);
+                                        setFaculties(newFacs);
+                                      }
                                     }}
                                   >
                                     <Trash2 className="size-4" />
@@ -212,17 +220,27 @@ export default function MasterData() {
                               <Input
                                 placeholder="Nama prodi baru…"
                                 className="h-9 text-sm"
-                                value={newDepartments[index] || ''}
+                                value={newDepartments[facultyName] || ''}
                                 onChange={(e) =>
-                                  setNewDepartments({ ...newDepartments, [index]: e.target.value })
+                                  setNewDepartments({
+                                    ...newDepartments,
+                                    [facultyName]: e.target.value,
+                                  })
                                 }
                                 onKeyDown={(e) => {
-                                  if (e.key === 'Enter' && newDepartments[index]) {
+                                  if (e.key === 'Enter' && newDepartments[facultyName]) {
                                     e.preventDefault();
                                     const newFacs = [...faculties];
-                                    newFacs[index].departments.push(newDepartments[index]);
-                                    setFaculties(newFacs);
-                                    setNewDepartments({ ...newDepartments, [index]: '' });
+                                    const facultyIndex = newFacs.findIndex(
+                                      (f) => f.name === facultyName
+                                    );
+                                    if (facultyIndex !== -1) {
+                                      newFacs[facultyIndex].departments.push(
+                                        newDepartments[facultyName]
+                                      );
+                                      setFaculties(newFacs);
+                                      setNewDepartments({ ...newDepartments, [facultyName]: '' });
+                                    }
                                   }
                                 }}
                               />
@@ -231,11 +249,18 @@ export default function MasterData() {
                                 size="sm"
                                 variant="secondary"
                                 onClick={() => {
-                                  if (newDepartments[index]) {
+                                  if (newDepartments[facultyName]) {
                                     const newFacs = [...faculties];
-                                    newFacs[index].departments.push(newDepartments[index]);
-                                    setFaculties(newFacs);
-                                    setNewDepartments({ ...newDepartments, [index]: '' });
+                                    const facultyIndex = newFacs.findIndex(
+                                      (f) => f.name === facultyName
+                                    );
+                                    if (facultyIndex !== -1) {
+                                      newFacs[facultyIndex].departments.push(
+                                        newDepartments[facultyName]
+                                      );
+                                      setFaculties(newFacs);
+                                      setNewDepartments({ ...newDepartments, [facultyName]: '' });
+                                    }
                                   }
                                 }}
                               >

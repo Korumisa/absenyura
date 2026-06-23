@@ -115,6 +115,11 @@ export default function Excuses() {
   };
 
   const stopCamera = () => {
+    // Release any pending stream that hasn't been assigned yet
+    if (pendingStreamRef.current) {
+      releaseMediaStream(pendingStreamRef.current);
+      pendingStreamRef.current = null;
+    }
     const stream = videoRef.current?.srcObject as MediaStream | null;
     if (stream) {
       releaseMediaStream(stream);
@@ -985,7 +990,7 @@ export default function Excuses() {
                   <video
                     ref={videoRef}
                     autoPlay
-                    className="aspect-video w-full rounded-lg bg-black object-cover"
+                    className="aspect-video w-full rounded-lg bg-black object-cover pointer-events-none"
                     playsInline
                     muted
                   />

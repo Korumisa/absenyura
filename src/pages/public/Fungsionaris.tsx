@@ -39,7 +39,7 @@ export default function Fungsionaris() {
 
   const advisorGroups = useMemo(() => ordered.filter((g) => isAdvisorByTitle(g.title)), [ordered]);
   const coreGroups = useMemo(
-    () => ordered.filter((g) => !advisorGroups.some((x) => x.id === g.id) && (Boolean((g as any).is_core) || isCoreByTitle(g.title))),
+    () => ordered.filter((g) => !advisorGroups.some((x) => x.id === g.id) && (Boolean(g.is_core) || isCoreByTitle(g.title))),
     [ordered, advisorGroups],
   );
   const bidangGroups = useMemo(
@@ -61,8 +61,8 @@ export default function Fungsionaris() {
 
   const corePeople = useMemo(() => sortedMembers(coreGroups.flatMap((g) => g.members ?? [])), [coreGroups]);
   const advisorPeople = useMemo(() => sortedMembers(advisorGroups.flatMap((g) => g.members ?? [])), [advisorGroups]);
-  const pickLeader = (people: any[]) => {
-    const spotlight = people.find((p) => Boolean((p as any).is_spotlight));
+  const pickLeader = (people: PublicStructureGroup['members']) => {
+    const spotlight = people.find((p) => Boolean(p.is_spotlight));
     if (spotlight) return spotlight;
     const ketua = people.find((p) => String(p.role ?? '').toLowerCase().includes('ketua'));
     if (ketua) return ketua;

@@ -7,7 +7,7 @@
     /* [TOKEN] Design tokens — admin & publik */
     --brand-primary: 214 84% 56%;
     --brand-primary-hex: #2f80ed;
-  /* Radius: control=rounded-md (--radius) | card=rounded-lg (--radius-card) | modal=rounded-xl */
+    /* Radius: control=rounded-md (--radius) | card=rounded-lg (--radius-card) | modal=rounded-xl */
     --radius-card: 0.5rem;
 
     /* [TOKEN] Admin shell */
@@ -142,6 +142,7 @@
   height: 100% !important;
   min-height: 300px;
   object-fit: cover;
+  pointer-events: none;
 }
 .attend-qr-root #qr-reader img[alt='Info icon'] {
   display: none !important;

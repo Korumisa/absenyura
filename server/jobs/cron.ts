@@ -36,6 +36,10 @@ export const runCronJob = async () => {
         });
         return Array.from(new Set(enrollments.map((e) => e.student_id)));
       }
+      // WARNING: Falling back to ALL active users because session has no class linked
+      console.warn(
+        `[Cron] resolveExpectedUserIds: Session id=${session.id} (title="${session.title}") has no linked classes. Falling back to ALL active USER role users.`
+      );
       const activeUsers = await prisma.user.findMany({
         where: { role: 'USER', is_active: true },
         select: { id: true },
@@ -101,8 +105,10 @@ export const runCronJob = async () => {
     }
 
     // ACTIVE/UPCOMING -> CLOSED (when check_in_close_at + 2 min grace period is reached)
+    const activatedSessionIds = sessionsToActivate.map((s) => s.id);
     const sessionsToClose = await prisma.session.findMany({
       where: {
+        id: { notIn: activatedSessionIds },
         status: { in: ['ACTIVE', 'UPCOMING'] },
         created_at: { lte: oneMinuteAgo },
         // Close only when now > check_in_close_at + 2 min (i.e. check_in_close_at <= now - 2 min)
@@ -297,30 +303,55 @@ export const runPhotoCleanupJob = async () => {
   let deletedCount = 0;
   for (const att of oldAttendances) {
     if (!att.photo_url) continue;
+    let deleteSuccess = false;
+    const photoUrl = att.photo_url;
 
-    if (att.photo_url.includes('cloudinary') || att.photo_url.includes('res.cloudinary.com')) {
+    if (photoUrl.includes('cloudinary') || photoUrl.includes('res.cloudinary.com')) {
       try {
-        const urlParts = att.photo_url.split('/');
-        const filenameWithExt = urlParts[urlParts.length - 1];
-        const publicId = `attendance/${filenameWithExt.split('.')[0]}`;
+        // Extract public ID correctly: remove version prefix (like /v1234567/) if exists
+        // Example: https://res.cloudinary.com/.../v1234567/attendance/abc123.jpg → publicId = attendance/abc123
+        const urlParts = photoUrl.split('/');
+        let startIndex = 0;
+        // Find the part that starts with 'v' followed by digits (version)
+        for (let i = 0; i < urlParts.length; i++) {
+          if (/^v\d+$/.test(urlParts[i])) {
+            startIndex = i + 1; // public ID starts right after version part
+            break;
+          }
+        }
+        // Join from startIndex, then remove the file extension
+        const publicIdWithExt = urlParts.slice(startIndex).join('/');
+        const publicId = publicIdWithExt.replace(/\.[^/.]+$/, ''); // remove file extension
+
         await cloudinary.uploader.destroy(publicId);
+        deleteSuccess = true;
       } catch (err) {
-        console.error('[Cron] Failed to destroy cloudinary image:', err);
+        console.error(
+          `[Cron] PHOTO_CLEANUP_FAILED attendanceId=${att.id} publicId=${att.photo_url}`,
+          err
+        );
+        deleteSuccess = false;
       }
     } else {
-      const fileName = path.basename(att.photo_url);
+      // Local file handling
+      const fileName = path.basename(photoUrl);
       const filePath = path.join(process.cwd(), 'uploads', 'attendance', fileName);
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
+        deleteSuccess = true;
+      } else {
+        // If local file doesn't exist, we can still mark it as deleted (orphaned)
+        deleteSuccess = true;
       }
     }
 
-    await prisma.attendance.update({
-      where: { id: att.id },
-      data: { photo_url: null },
-    });
-
-    deletedCount++;
+    if (deleteSuccess) {
+      await prisma.attendance.update({
+        where: { id: att.id },
+        data: { photo_url: null },
+      });
+      deletedCount++;
+    }
   }
 
   if (deletedCount > 0) {
@@ -347,6 +378,7 @@ export const runSemesterUpdateJob = async () => {
       (now.getMonth() - enrollmentDate.getMonth());
     const newSemester = Math.max(1, Math.min(14, Math.floor(monthsDiff / 6) + 1));
 
+    // Deactivate users at semester >=10: this is end of typical 4-year (8-semester) program + 2-semester buffer for extensions
     if (newSemester !== (user as any).semester || newSemester >= 10) {
       await prisma.user.update({
         where: { id: user.id },

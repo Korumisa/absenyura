@@ -302,16 +302,7 @@ export default function PublicSiteRecruitments() {
                     />
                   </div>
                   <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor="recruitment-poster-url">Poster Image URL</Label>
-                    <Input
-                      id="recruitment-poster-url"
-                      value={form.posterImageUrl ?? ''}
-                      onChange={(e) => setForm((p) => ({ ...p, posterImageUrl: e.target.value }))}
-                      placeholder="https://..."
-                    />
-                  </div>
-                  <div className="space-y-2 md:col-span-2">
-                    <Label>Upload Poster</Label>
+                    <Label>Poster</Label>
                     <div className="grid gap-3 md:grid-cols-[1fr_180px]">
                       <div className="space-y-2">
                         <Input
@@ -362,6 +353,33 @@ export default function PublicSiteRecruitments() {
                               Hapus
                             </Button>
                           ) : null}
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              const el = document.getElementById('recruitment-poster-url-toggle');
+                              el?.classList.toggle('hidden');
+                            }}
+                          >
+                            Atau masukkan URL secara manual
+                          </Button>
+                        </div>
+                        <div id="recruitment-poster-url-toggle" className="hidden space-y-2">
+                          <Label
+                            htmlFor="recruitment-poster-url"
+                            className="text-xs text-muted-foreground"
+                          >
+                            Poster Image URL
+                          </Label>
+                          <Input
+                            id="recruitment-poster-url"
+                            value={form.posterImageUrl ?? ''}
+                            onChange={(e) =>
+                              setForm((p) => ({ ...p, posterImageUrl: e.target.value }))
+                            }
+                            placeholder="https://..."
+                          />
                         </div>
                       </div>
                       <div className="overflow-hidden rounded-xl border border-border">

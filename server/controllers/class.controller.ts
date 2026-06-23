@@ -1,11 +1,7 @@
 import { Request, Response } from 'express';
 import prisma from '../utils/prisma.js';
 import { sendForbidden } from '../utils/errorResponse.js';
-
-const isMissingSemesterColumn = (err: any) =>
-  Boolean(
-    err && err.code === 'P2022' && String(err?.meta?.column || '').includes('Class.semester')
-  );
+import { isMissingSemesterColumn } from '../utils/prismaErrors.js';
 
 const classInclude = {
   lecturer: { select: { id: true, name: true } },
@@ -242,6 +238,7 @@ export const updateClass = async (req: Request, res: Response): Promise<void> =>
 };
 
 export const deleteClass = async (req: Request, res: Response): Promise<void> => {
+  // Authorization enforced at route level — see server/routes/classes.ts
   try {
     const { id } = req.params;
     await prisma.class.delete({ where: { id } });

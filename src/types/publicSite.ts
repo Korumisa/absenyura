@@ -41,6 +41,11 @@ export type PublicProgram = {
   is_published: boolean;
   created_at: string;
   updated_at: string;
+  division?: string | null;
+  funding_source?: string | null;
+  location?: string | null;
+  target?: string | null;
+  rationale?: string | null;
 };
 
 export type PublicPostType = 'BERITA' | 'KEGIATAN' | 'LOMBA' | 'PENGUMUMAN';
@@ -101,6 +106,12 @@ export type PublicStructureGroup = {
   title: string;
   sort_order: number;
   is_core?: boolean;
-  members: { id: string; name: string; role: string; photo_url: string | null; is_spotlight?: boolean; sort_order: number }[];
+  members: {
+    id: string;
+    name: string;
+    role: string;
+    photo_url: string | null;
+    is_spotlight?: boolean;
+    sort_order: number;
+  }[];
 };
-

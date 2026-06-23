@@ -15,11 +15,7 @@ import {
   assertAdminSessionScope,
 } from '../utils/sessionAccess.js';
 import { sendForbidden } from '../utils/errorResponse.js';
-
-const isMissingSemesterColumn = (err: any) =>
-  Boolean(
-    err && err.code === 'P2022' && String(err?.meta?.column || '').includes('Class.semester')
-  );
+import { isMissingSemesterColumn } from '../utils/prismaErrors.js';
 
 const VALID_QR_MODES = new Set(['NONE', 'STATIC', 'DYNAMIC']);
 const VALID_SESSION_STATUSES = new Set(['UPCOMING', 'ACTIVE', 'CLOSED']);
@@ -480,6 +476,27 @@ export const deleteSession = async (req: Request, res: Response): Promise<void> 
     }
 
     await prisma.$transaction(async (tx) => {
+      // First, count what we're about to delete for the audit log
+      const attendanceCount = await tx.attendance.count({ where: { session_id: id } });
+      const excuseCount = await tx.excuseRequest.count({ where: { session_id: id } });
+
+      // Create audit log entry inside the transaction for atomicity
+      await tx.auditLog.create({
+        data: {
+          actor_id: user.id,
+          action: 'DELETE_SESSION',
+          target_table: 'Session',
+          target_id: id,
+          new_value: JSON.stringify({
+            session_id: id,
+            attendance_count: attendanceCount,
+            excuse_count: excuseCount,
+          }),
+          ip_address: req.ip,
+        },
+      });
+
+      // Now perform the deletions
       await tx.attendance.deleteMany({ where: { session_id: id } });
       await tx.excuseRequest.deleteMany({ where: { session_id: id } });
       await tx.sessionClass.deleteMany({ where: { session_id: id } });

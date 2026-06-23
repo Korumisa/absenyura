@@ -152,10 +152,7 @@ export default function AuditLogs() {
               </li>
             ) : (
               logs.map((log) => (
-                <li
-                  key={log.id}
-                  className="rounded-2xl border border-border rounded-2xl border border-border bg-card p-4"
-                >
+                <li key={log.id} className="rounded-2xl border border-border bg-card p-4">
                   {renderLogRow(log)}
                 </li>
               ))

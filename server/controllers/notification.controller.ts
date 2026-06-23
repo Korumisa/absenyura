@@ -9,17 +9,17 @@ export const getNotifications = async (req: Request, res: Response): Promise<voi
       orderBy: { created_at: 'desc' },
       take: 50, // Limit to recent 50
     });
-    
+
     const unreadCount = await prisma.notification.count({
-      where: { user_id, is_read: false }
+      where: { user_id, is_read: false },
     });
 
-    res.status(200).json({ 
-      success: true, 
+    res.status(200).json({
+      success: true,
       data: {
         notifications,
-        unread_count: unreadCount
-      } 
+        unread_count: unreadCount,
+      },
     });
   } catch (error) {
     console.error('Error fetching notifications:', error);
@@ -34,12 +34,16 @@ export const markAsRead = async (req: Request, res: Response): Promise<void> => 
 
     await prisma.notification.update({
       where: { id, user_id },
-      data: { is_read: true }
+      data: { is_read: true },
     });
 
     res.status(200).json({ success: true, message: 'Marked as read' });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error marking notification as read:', error);
+    if (error.code === 'P2025') {
+      res.status(404).json({ success: false, error: 'Notifikasi tidak ditemukan' });
+      return;
+    }
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 };
@@ -50,7 +54,7 @@ export const markAllAsRead = async (req: Request, res: Response): Promise<void> 
 
     await prisma.notification.updateMany({
       where: { user_id, is_read: false },
-      data: { is_read: true }
+      data: { is_read: true },
     });
 
     res.status(200).json({ success: true, message: 'All marked as read' });

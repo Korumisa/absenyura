@@ -5,11 +5,7 @@ import { fillChartData, getWibRangeUtc, type ChartRow } from '../utils/dashboard
 import { sessionApiSelect, sessionListSelect } from '../utils/sessionQuerySelect.js';
 import { triggerSessionCronLazy } from '../jobs/cron.js';
 import { adminSessionScopeWhere } from '../utils/sessionAccess.js';
-
-const isMissingSemesterColumn = (err: any) =>
-  Boolean(
-    err && err.code === 'P2022' && String(err?.meta?.column || '').includes('Class.semester')
-  );
+import { isMissingSemesterColumn } from '../utils/prismaErrors.js';
 
 export const getDashboardStats = async (req: Request, res: Response): Promise<void> => {
   triggerSessionCronLazy();

@@ -14,7 +14,7 @@ import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { PublicPageError } from '@/components/public/PublicPageError';
 import { PublicEmptyState } from '@/components/public/PublicEmptyState';
 
-function extractDivision(program: PublicProgram) {
+function extractDivisionFallback(program: PublicProgram) {
   const raw = String(program.description ?? '').trim();
   if (raw) {
     for (const line of raw.split('\n')) {
@@ -37,7 +37,7 @@ export default function ProgramKerja() {
     const orderedKeys: string[] = [];
     const map = new Map<string, PublicProgram[]>();
     for (const p of items) {
-      const div = extractDivision(p) || 'Lainnya';
+      const div = p.division || extractDivisionFallback(p) || 'Lainnya';
       if (!map.has(div)) {
         map.set(div, []);
         orderedKeys.push(div);

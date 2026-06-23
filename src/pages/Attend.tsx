@@ -1323,7 +1323,7 @@ export default function Attend() {
                       autoPlay
                       playsInline
                       muted
-                      className={`w-full h-full object-cover absolute inset-0 z-10 ${isCameraActive ? 'block' : 'hidden'} ${facingMode === 'user' ? 'scale-x-[-1]' : ''}`}
+                      className={`w-full h-full object-cover absolute inset-0 z-10 ${isCameraActive ? 'block' : 'hidden'} ${facingMode === 'user' ? 'scale-x-[-1]' : ''} pointer-events-none`}
                     ></video>
 
                     {!isCameraActive && (

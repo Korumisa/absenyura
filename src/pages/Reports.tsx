@@ -1020,7 +1020,7 @@ export default function Reports() {
 
           <form onSubmit={handleOverrideSubmit} className="p-6">
             {selectedReport && (
-              <div className="mb-4 ...">
+              <div className="mb-4 space-y-1 rounded-lg bg-muted/50 p-3 text-sm text-foreground">
                 <p>
                   <strong>Nama:</strong> {selectedReport.user_name}
                 </p>

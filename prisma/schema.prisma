@@ -9,22 +9,24 @@ datasource db {
 }
 
 model User {
-  id                 String   @id @default(uuid())
-  name               String
-  email              String   @unique
-  password           String
-  role               String   @default("USER") // SUPER_ADMIN, ADMIN, USER
-  avatar_url         String?
-  nim_nip            String?  @unique
-  department         String?
-  phone              String?
-  is_active          Boolean  @default(true)
-  semester           Int      @default(1)
-  enrollment_date    DateTime @default(now())
-  device_fingerprint String?
-  refresh_token_hash String?
-  created_at         DateTime @default(now())
-  updated_at         DateTime @updatedAt
+  id                          String   @id @default(uuid())
+  name                        String
+  email                       String   @unique
+  password                    String
+  role                        String   @default("USER") // SUPER_ADMIN, ADMIN, USER
+  avatar_url                  String?
+  nim_nip                     String?  @unique
+  department                  String?
+  phone                       String?
+  is_active                   Boolean  @default(true)
+  semester                    Int      @default(1)
+  enrollment_date             DateTime @default(now())
+  device_fingerprint          String?
+  refresh_token_hash          String?
+  previous_refresh_token_hash String?
+  previous_refresh_rotated_at DateTime?
+  created_at                  DateTime @default(now())
+  updated_at                  DateTime @updatedAt
 
   created_sessions Session[]       @relation("CreatedSessions")
   attendances      Attendance[]

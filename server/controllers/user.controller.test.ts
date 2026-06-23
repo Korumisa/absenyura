@@ -40,7 +40,15 @@ describe('getUsers controller tests', () => {
     expect(prismaMock.user.findMany).toHaveBeenCalledTimes(1);
     expect(prismaMock.user.count).toHaveBeenCalledTimes(0);
     expect(res.status).toHaveBeenCalledWith(200);
-    expect(res.json).toHaveBeenCalledWith({ success: true, data: mockUsers });
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: true,
+        data: expect.arrayContaining([
+          expect.objectContaining(mockUsers[0]),
+          expect.objectContaining(mockUsers[1]),
+        ]),
+      })
+    );
   });
 
   test('paginated request: validates and caps parameters correctly', async () => {
@@ -72,16 +80,18 @@ describe('getUsers controller tests', () => {
 
     expect(prismaMock.user.count).toHaveBeenCalledTimes(1);
     expect(res.status).toHaveBeenCalledWith(200);
-    expect(res.json).toHaveBeenCalledWith({
-      success: true,
-      data: mockUsers,
-      meta: {
-        total: 100,
-        page: 2,
-        limit: 50,
-        totalPages: 2,
-      },
-    });
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: true,
+        data: expect.arrayContaining([expect.objectContaining(mockUsers[0])]),
+        meta: {
+          total: 100,
+          page: 2,
+          limit: 50,
+          totalPages: 2,
+        },
+      })
+    );
   });
 
   test('invalid page and limit inputs fallback correctly', async () => {

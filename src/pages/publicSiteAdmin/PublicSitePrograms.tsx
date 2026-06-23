@@ -48,6 +48,11 @@ export default function PublicSitePrograms() {
     title?: string;
     description?: string;
     isPublished?: boolean;
+    division?: string;
+    fundingSource?: string;
+    location?: string;
+    target?: string;
+    rationale?: string;
   }>({});
   const [dateStart, setDateStart] = useState('');
   const [dateEnd, setDateEnd] = useState('');
@@ -106,6 +111,11 @@ export default function PublicSitePrograms() {
           dateRange,
           description: form.description,
           isPublished: form.isPublished ?? false,
+          division: form.division,
+          fundingSource: form.fundingSource,
+          location: form.location,
+          target: form.target,
+          rationale: form.rationale,
         });
         toast.success('Program kerja diperbarui');
       } else {
@@ -114,6 +124,11 @@ export default function PublicSitePrograms() {
           dateRange,
           description: form.description,
           isPublished: form.isPublished ?? false,
+          division: form.division,
+          fundingSource: form.fundingSource,
+          location: form.location,
+          target: form.target,
+          rationale: form.rationale,
         });
         toast.success('Program kerja ditambahkan');
       }
@@ -148,8 +163,12 @@ export default function PublicSitePrograms() {
               <PublicSiteProgramPreview
                 title={form.title}
                 dateRange={dateRangePreview}
-                description={form.description}
+                description={form.rationale ?? form.description}
                 isPublished={form.isPublished}
+                division={form.division}
+                fundingSource={form.fundingSource}
+                location={form.location}
+                target={form.target}
               />
             }
           >
@@ -184,6 +203,38 @@ export default function PublicSitePrograms() {
                   </div>
                 </div>
                 <div className="space-y-2">
+                  <Label>Divisi</Label>
+                  <Input
+                    value={form.division ?? ''}
+                    onChange={(e) => setForm((p) => ({ ...p, division: e.target.value }))}
+                    placeholder="Divisi yang bertanggung jawab"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Sumber Dana</Label>
+                  <Input
+                    value={form.fundingSource ?? ''}
+                    onChange={(e) => setForm((p) => ({ ...p, fundingSource: e.target.value }))}
+                    placeholder="Sumber dana program"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Lokasi</Label>
+                  <Input
+                    value={form.location ?? ''}
+                    onChange={(e) => setForm((p) => ({ ...p, location: e.target.value }))}
+                    placeholder="Lokasi program"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Target</Label>
+                  <Input
+                    value={form.target ?? ''}
+                    onChange={(e) => setForm((p) => ({ ...p, target: e.target.value }))}
+                    placeholder="Target program"
+                  />
+                </div>
+                <div className="space-y-2">
                   <Label>Status publikasi</Label>
                   <CmsPublishTabs
                     published={form.isPublished ?? false}
@@ -191,11 +242,11 @@ export default function PublicSitePrograms() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Deskripsi</Label>
+                  <Label>Rasional / Deskripsi</Label>
                   <Textarea
                     rows={5}
-                    value={form.description ?? ''}
-                    onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
+                    value={form.rationale ?? form.description ?? ''}
+                    onChange={(e) => setForm((p) => ({ ...p, rationale: e.target.value }))}
                   />
                 </div>
                 <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
@@ -253,6 +304,11 @@ export default function PublicSitePrograms() {
                           title: p.title,
                           description: p.description ?? '',
                           isPublished: p.is_published,
+                          division: p.division ?? '',
+                          fundingSource: p.funding_source ?? '',
+                          location: p.location ?? '',
+                          target: p.target ?? '',
+                          rationale: p.rationale ?? p.description ?? '',
                         });
                         resetDatesFromRange(p.date_range ?? '');
                         setPageTab('form');
@@ -312,6 +368,11 @@ export default function PublicSitePrograms() {
                                 title: p.title,
                                 description: p.description ?? '',
                                 isPublished: p.is_published,
+                                division: p.division ?? '',
+                                fundingSource: p.funding_source ?? '',
+                                location: p.location ?? '',
+                                target: p.target ?? '',
+                                rationale: p.rationale ?? p.description ?? '',
                               });
                               resetDatesFromRange(p.date_range ?? '');
                               setPageTab('form');

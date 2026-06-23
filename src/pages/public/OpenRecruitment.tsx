@@ -33,7 +33,21 @@ export default function OpenRecruitment() {
   const selected = useMemo(() => items.find((x) => x.id === openId) ?? null, [items, openId]);
   const selectedFormUrl = ensureHttpsUrl(selected?.form_url);
   useLockBodyScroll(Boolean(selected));
-  useDialogA11y(Boolean(selected), () => setOpenId(null), { containerRef: modalRef });
+  useDialogA11y(Boolean(selected), () => closeModal(), { containerRef: modalRef });
+
+  const openModal = (id: string) => {
+    setOpenId(id);
+    const next = new URLSearchParams(searchParams);
+    next.set('id', id);
+    setSearchParams(next);
+  };
+
+  const closeModal = () => {
+    setOpenId(null);
+    const next = new URLSearchParams(searchParams);
+    next.delete('id');
+    setSearchParams(next);
+  };
 
   useEffect(() => {
     const id = searchParams.get('id');
@@ -115,12 +129,7 @@ export default function OpenRecruitment() {
                 <button
                   key={r.id}
                   type="button"
-                  onClick={() => {
-                    setOpenId(r.id);
-                    const next = new URLSearchParams(searchParams);
-                    next.set('id', r.id);
-                    setSearchParams(next);
-                  }}
+                  onClick={() => openModal(r.id)}
                   className="group w-full max-w-[260px] overflow-hidden rounded-2xl border border-black/10 bg-white text-left shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-[var(--public-primary)]/25"
                 >
                   <div className="aspect-[4/5] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))]">
@@ -152,12 +161,7 @@ export default function OpenRecruitment() {
             type="button"
             aria-label="Tutup"
             className="absolute inset-0 bg-black/45 backdrop-blur-[2px]"
-            onClick={() => {
-              setOpenId(null);
-              const next = new URLSearchParams(searchParams);
-              next.delete('id');
-              setSearchParams(next);
-            }}
+            onClick={closeModal}
           />
           <div
             ref={modalRef}
@@ -180,12 +184,7 @@ export default function OpenRecruitment() {
                 <button
                   type="button"
                   className="inline-flex items-center justify-center rounded-2xl border border-black/10 bg-white p-2 text-slate-800 hover:bg-slate-50"
-                  onClick={() => {
-                    setOpenId(null);
-                    const next = new URLSearchParams(searchParams);
-                    next.delete('id');
-                    setSearchParams(next);
-                  }}
+                  onClick={closeModal}
                   aria-label="Tutup"
                 >
                   <X size={18} />
@@ -257,12 +256,7 @@ export default function OpenRecruitment() {
                         <button
                           type="button"
                           className="w-full rounded-xl border border-black/10 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 hover:border-[var(--public-primary)]/25 sm:w-auto"
-                          onClick={() => {
-                            setOpenId(null);
-                            const next = new URLSearchParams(searchParams);
-                            next.delete('id');
-                            setSearchParams(next);
-                          }}
+                          onClick={closeModal}
                         >
                           Tutup
                         </button>
@@ -279,9 +273,9 @@ export default function OpenRecruitment() {
                           <button
                             type="button"
                             onClick={() => {
+                              openModal(selected.id);
                               const next = new URLSearchParams(searchParams);
                               next.set('id', selected.id);
-                              setSearchParams(next);
                               navigate('/login', { state: { from: { pathname: location.pathname, search: `?${next.toString()}` } } });
                             }}
                             className="w-full rounded-xl bg-[var(--public-primary)] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_16px_32px_rgba(37,99,235,0.35)] transition hover:brightness-110 sm:w-auto"

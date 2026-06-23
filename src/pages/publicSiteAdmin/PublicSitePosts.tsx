@@ -36,6 +36,7 @@ import { CmsEditorLayout } from '@/components/cms/CmsEditorLayout';
 import { CmsCollapsibleSection } from '@/components/cms/CmsCollapsibleSection';
 import { CmsListToolbar } from '@/components/cms/CmsListToolbar';
 import { AdminContentTransition } from '@/components/admin/AdminContentTransition';
+import { slugify } from '@/lib/utils/slugify';
 
 const POST_TYPE_TABS: readonly CmsTabItem<PublicPostType>[] = [
   { id: 'BERITA', label: 'Berita' },
@@ -68,6 +69,7 @@ export default function PublicSitePosts() {
   const [categoryForm, setCategoryForm] = useState<{ id?: string; name?: string; slug?: string }>(
     {}
   );
+  const [categorySlugEdited, setCategorySlugEdited] = useState(false);
   const [postForm, setPostForm] = useState<{
     id?: string;
     type?: PublicPostType;
@@ -82,9 +84,16 @@ export default function PublicSitePosts() {
     categoryId?: string;
     isPublished?: boolean;
   }>({ type: 'BERITA' });
+  const [postSlugEdited, setPostSlugEdited] = useState(false);
 
-  const resetCategoryForm = () => setCategoryForm({});
-  const resetPostForm = () => setPostForm({ type: postType });
+  const resetCategoryForm = () => {
+    setCategoryForm({});
+    setCategorySlugEdited(false);
+  };
+  const resetPostForm = () => {
+    setPostForm({ type: postType });
+    setPostSlugEdited(false);
+  };
 
   useEffect(() => {
     resetPostForm();
@@ -143,17 +152,24 @@ export default function PublicSitePosts() {
 
   const upsertCategory = async (e: React.FormEvent) => {
     e.preventDefault();
+    const finalSlug = slugify(categoryForm.slug ?? '');
+    const isDuplicate = categories.some((c) => c.slug === finalSlug && c.id !== categoryForm.id);
+    if (isDuplicate) {
+      toast.error('Slug sudah digunakan, silakan gunakan slug lain');
+      return;
+    }
+
     try {
       if (categoryForm.id) {
         await api.put(`/public-site/admin/categories/${categoryForm.id}`, {
           name: categoryForm.name,
-          slug: categoryForm.slug,
+          slug: finalSlug,
         });
         toast.success('Kategori diperbarui');
       } else {
         await api.post('/public-site/admin/categories', {
           name: categoryForm.name,
-          slug: categoryForm.slug,
+          slug: finalSlug,
         });
         toast.success('Kategori ditambahkan');
       }
@@ -166,11 +182,18 @@ export default function PublicSitePosts() {
 
   const upsertPost = async (e: React.FormEvent) => {
     e.preventDefault();
+    const finalSlug = slugify(postForm.slug ?? '');
+    const isDuplicate = posts.some((p) => p.slug === finalSlug && p.id !== postForm.id);
+    if (isDuplicate) {
+      toast.error('Slug sudah digunakan, silakan gunakan slug lain');
+      return;
+    }
+
     try {
       const payload = {
         type: postForm.type ?? postType,
         title: postForm.title,
-        slug: postForm.slug,
+        slug: finalSlug,
         dateLabel: postForm.dateLabel,
         status: postForm.status,
         formUrl: postForm.formUrl,
@@ -210,6 +233,7 @@ export default function PublicSitePosts() {
       categoryId: p.category_id ?? p.category?.id,
       isPublished: p.is_published,
     });
+    setPostSlugEdited(true);
     setContentTab('edit');
   };
 
@@ -269,14 +293,23 @@ export default function PublicSitePosts() {
                     <Label>Nama</Label>
                     <Input
                       value={categoryForm.name ?? ''}
-                      onChange={(e) => setCategoryForm((p) => ({ ...p, name: e.target.value }))}
+                      onChange={(e) => {
+                        const name = e.target.value;
+                        setCategoryForm((p) => {
+                          const newSlug = !categorySlugEdited ? slugify(name) : p.slug;
+                          return { ...p, name, slug: newSlug };
+                        });
+                      }}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label>Slug (opsional)</Label>
                     <Input
                       value={categoryForm.slug ?? ''}
-                      onChange={(e) => setCategoryForm((p) => ({ ...p, slug: e.target.value }))}
+                      onChange={(e) => {
+                        setCategorySlugEdited(true);
+                        setCategoryForm((p) => ({ ...p, slug: e.target.value }));
+                      }}
                       placeholder="contoh: prestasi-mahasiswa"
                     />
                   </div>
@@ -348,7 +381,13 @@ export default function PublicSitePosts() {
                   <Label>Judul</Label>
                   <Input
                     value={postForm.title ?? ''}
-                    onChange={(e) => setPostForm((p) => ({ ...p, title: e.target.value }))}
+                    onChange={(e) => {
+                      const title = e.target.value;
+                      setPostForm((p) => {
+                        const newSlug = !postSlugEdited ? slugify(title) : p.slug;
+                        return { ...p, title, slug: newSlug };
+                      });
+                    }}
                   />
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -356,7 +395,10 @@ export default function PublicSitePosts() {
                     <Label>Slug (opsional)</Label>
                     <Input
                       value={postForm.slug ?? ''}
-                      onChange={(e) => setPostForm((p) => ({ ...p, slug: e.target.value }))}
+                      onChange={(e) => {
+                        setPostSlugEdited(true);
+                        setPostForm((p) => ({ ...p, slug: e.target.value }));
+                      }}
                     />
                   </div>
                   <div className="space-y-2">

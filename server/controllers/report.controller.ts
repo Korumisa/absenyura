@@ -1,10 +1,6 @@
 import { Request, Response } from 'express';
 import prisma from '../utils/prisma.js';
-
-const isMissingSemesterColumn = (err: any) =>
-  Boolean(
-    err && err.code === 'P2022' && String(err?.meta?.column || '').includes('Class.semester')
-  );
+import { isMissingSemesterColumn } from '../utils/prismaErrors.js';
 
 function parsePagination(
   query: Request['query'],

@@ -268,6 +268,17 @@ export const replaceAdminStructure = async (
       }
     });
 
+    await prisma.auditLog.create({
+      data: {
+        actor_id: req.user?.id ?? null,
+        action: 'REPLACE_PUBLIC_STRUCTURE',
+        target_table: 'PublicStructure',
+        target_id: 'ALL',
+        new_value: JSON.stringify(data),
+        ip_address: req.ip,
+      },
+    });
+
     res.status(200).json({ success: true, message: 'Struktur organisasi berhasil disimpan' });
   } catch (error) {
     console.error('Error replacing structure:', error);

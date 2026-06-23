@@ -1,12 +1,5 @@
-import { timingSafeEqual } from 'crypto';
 import { Request, Response, NextFunction } from 'express';
-
-function safeCompare(a: string, b: string): boolean {
-  const bufA = Buffer.from(a);
-  const bufB = Buffer.from(b);
-  if (bufA.length !== bufB.length) return false;
-  return timingSafeEqual(bufA, bufB);
-}
+import { safeCompare } from '../utils/security.js';
 
 export const guardInternal = (req: Request, res: Response, next: NextFunction): void => {
   const token = Array.isArray(req.headers['x-internal-token'])
@@ -19,13 +12,6 @@ export const guardInternal = (req: Request, res: Response, next: NextFunction): 
   }
   next();
 };
-
-function timingSafeEqualStrings(a: string, b: string): boolean {
-  const bufA = Buffer.from(a, 'utf8');
-  const bufB = Buffer.from(b, 'utf8');
-  if (bufA.length !== bufB.length) return false;
-  return timingSafeEqual(bufA, bufB);
-}
 
 function getCronSecretFromRequest(req: Request): string | null {
   const headerSecret = Array.isArray(req.headers['x-cron-secret'])
@@ -55,7 +41,7 @@ export const guardCron = (req: Request, res: Response, next: NextFunction): void
   }
 
   const provided = getCronSecretFromRequest(req);
-  if (!provided || !timingSafeEqualStrings(provided, expected)) {
+  if (!provided || !safeCompare(provided, expected)) {
     res.status(404).json({ message: 'Not found' });
     return;
   }

@@ -10,4 +10,5 @@ export interface User {
   semester?: number;
   enrollment_date?: string;
   device_fingerprint?: string | null;
+  device_bound?: boolean;
 }

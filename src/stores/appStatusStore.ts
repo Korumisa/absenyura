@@ -16,11 +16,15 @@ export const useAppStatusStore = create<AppStatusState>((set) => ({
   isOffline: false,
   reason: undefined,
   setOffline: (offline) =>
-    set({
-      isOffline: offline,
-      reason: offline ? OFFLINE_USER_MESSAGE : undefined,
-      ...(offline ? { isMaintenance: false } : {}),
-    }),
+    set((state) =>
+      offline
+        ? {
+            isOffline: true,
+            reason: OFFLINE_USER_MESSAGE,
+            isMaintenance: false,
+          }
+        : { isOffline: false }
+    ),
   setMaintenance: (reason) => set({ isMaintenance: true, isOffline: false, reason }),
   clearMaintenance: () => set({ isMaintenance: false, reason: undefined }),
   clearNetworkIssues: () => set({ isMaintenance: false, isOffline: false, reason: undefined }),

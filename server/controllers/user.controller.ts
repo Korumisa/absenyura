@@ -109,7 +109,11 @@ export const getUsers = async (req: Request, res: Response): Promise<void> => {
 
       res.status(200).json({
         success: true,
-        data: users,
+        data: users.map((user) => ({
+          ...user,
+          device_bound: Boolean(user.device_fingerprint),
+          device_fingerprint: undefined, // Omit raw fingerprint
+        })),
         meta: {
           total,
           page,
@@ -136,7 +140,14 @@ export const getUsers = async (req: Request, res: Response): Promise<void> => {
         },
         orderBy: { created_at: 'desc' },
       });
-      res.status(200).json({ success: true, data: users });
+      res.status(200).json({
+        success: true,
+        data: users.map((user) => ({
+          ...user,
+          device_bound: Boolean(user.device_fingerprint),
+          device_fingerprint: undefined, // Omit raw fingerprint
+        })),
+      });
     }
   } catch (error: unknown) {
     console.error('Error fetching users:', error);
@@ -186,8 +197,14 @@ export const getUserById = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
+    const transformedUser = {
+      ...user,
+      device_bound: Boolean(user.device_fingerprint),
+      device_fingerprint: undefined, // Omit raw fingerprint
+    };
+
     if (actor.role === 'SUPER_ADMIN') {
-      res.status(200).json({ success: true, data: user });
+      res.status(200).json({ success: true, data: transformedUser });
       return;
     }
 
@@ -201,7 +218,7 @@ export const getUserById = async (req: Request, res: Response): Promise<void> =>
         res.status(403).json({ success: false, error: 'Akses ditolak' });
         return;
       }
-      res.status(200).json({ success: true, data: user });
+      res.status(200).json({ success: true, data: transformedUser });
       return;
     }
 
@@ -552,6 +569,7 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
 };
 
 export const deleteUser = async (req: Request, res: Response): Promise<void> => {
+  // Authorization enforced at route level — see server/routes/users.ts
   try {
     const { id } = req.params;
     const oldUser = await prisma.user.findUnique({ where: { id }, select: { email: true } });

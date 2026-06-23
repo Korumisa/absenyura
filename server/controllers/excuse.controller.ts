@@ -13,16 +13,12 @@ import {
   isTimingSafeMatch,
   signExcuseProof,
 } from '../utils/excuseProof.js';
+import { isMissingSemesterColumn } from '../utils/prismaErrors.js';
 
 // Configure Cloudinary if ENV vars exist
 if (process.env.CLOUDINARY_URL) {
   // Automatically uses CLOUDINARY_URL
 }
-
-const isMissingSemesterColumn = (err: any) =>
-  Boolean(
-    err && err.code === 'P2022' && String(err?.meta?.column || '').includes('Class.semester')
-  );
 
 const VALID_EXCUSE_REASONS = new Set(['SICK', 'EXCUSED']);
 const VALID_REVIEW_STATUSES = new Set(['APPROVED', 'REJECTED']);

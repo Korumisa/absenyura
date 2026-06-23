@@ -205,9 +205,9 @@ export default function PublicHome() {
 
   const coreMembers = useMemo(() => {
     const coreGroups = structure.filter(
-      (g) => Boolean((g as { is_core?: boolean }).is_core) || isCoreStructureGroup(g.title),
+      (g) => Boolean(g.is_core) || isCoreStructureGroup(g.title),
     );
-    return coreGroups.flatMap((g) => (g.members ?? []) as any[]);
+    return coreGroups.flatMap((g) => g.members ?? []);
   }, [structure]);
 
   const ketua = useMemo(() => {

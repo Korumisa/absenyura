@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import api from '@/services/api';
 import { useAuthStore } from '@/stores/authStore';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
+import { useFacultyDirectory } from '@/hooks/useFacultyDirectory';
 import AdminPageShell from '@/components/AdminPageShell';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
 import { AdminBreadcrumbs } from '@/components/admin/AdminBreadcrumbs';
@@ -66,35 +67,19 @@ export default function StudentDetail() {
   });
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
-  const [facultiesData, setFacultiesData] = useState<{ name: string; departments: string[] }[]>([]);
-  const [departmentQuery, setDepartmentQuery] = useState('');
+  const {
+    facultiesData,
+    departmentQuery,
+    setDepartmentQuery,
+    totalDepartments,
+    filteredFacultiesData,
+  } = useFacultyDirectory();
   const [saving, setSaving] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
   const [resettingDevice, setResettingDevice] = useState(false);
   const [isSaveConfirmOpen, setIsSaveConfirmOpen] = useState(false);
   const [isPasswordConfirmOpen, setIsPasswordConfirmOpen] = useState(false);
   const [isResetDeviceOpen, setIsResetDeviceOpen] = useState(false);
-
-  const totalDepartments = useMemo(() => {
-    return facultiesData.reduce((acc, f) => acc + (f?.departments?.length ?? 0), 0);
-  }, [facultiesData]);
-
-  const filteredFacultiesData = useMemo(() => {
-    const q = departmentQuery.trim().toLowerCase();
-    if (!q) return facultiesData;
-    return facultiesData
-      .map((f) => {
-        const filteredDepartments = (f?.departments ?? []).filter((d) => {
-          const name =
-            typeof d === 'object' && d !== null
-              ? ((d as { name?: string }).name ?? String(d))
-              : String(d);
-          return String(name).toLowerCase().includes(q);
-        });
-        return { ...f, departments: filteredDepartments };
-      })
-      .filter((f) => (f?.departments?.length ?? 0) > 0);
-  }, [facultiesData, departmentQuery]);
 
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
 
@@ -116,12 +101,6 @@ export default function StudentDetail() {
     { revalidateOnFocus: false }
   );
   const { data: enrollments = [], isInitialLoading: loadingClasses } = useSwrPageState(enrollSwr);
-
-  useEffect(() => {
-    void api.get('/settings/departments').then((res) => {
-      if (res.data.data) setFacultiesData(res.data.data);
-    });
-  }, []);
 
   useEffect(() => {
     if (!profile) return;
@@ -308,7 +287,7 @@ export default function StudentDetail() {
                     <Badge variant={form.is_active ? 'secondary' : 'outline'}>
                       {form.is_active ? 'Aktif' : 'Nonaktif'}
                     </Badge>
-                    {profile?.device_fingerprint ? (
+                    {profile?.device_bound || profile?.device_fingerprint ? (
                       <Badge variant="outline" className="gap-1">
                         <Smartphone className="size-3" />
                         Perangkat terikat
@@ -326,7 +305,7 @@ export default function StudentDetail() {
               )}
             </section>
 
-            {profile?.device_fingerprint ? (
+            {profile?.device_bound || profile?.device_fingerprint ? (
               <section className="rounded-lg border border-orange-200 bg-orange-50/50 p-4 dark:border-orange-900/50 dark:bg-orange-950/20">
                 <p className="text-sm font-medium text-foreground">Reset perangkat absensi</p>
                 <p className="mt-1 text-xs text-muted-foreground">
