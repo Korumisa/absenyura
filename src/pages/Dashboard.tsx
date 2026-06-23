@@ -129,16 +129,7 @@ export default function Dashboard() {
   const isUser = user?.role === 'USER';
 
   return (
-    <AdminPageShell
-      title="Dashboard"
-      description={
-        <>
-          Selamat datang kembali,{' '}
-          <span className="font-medium text-brand text-brand">{user?.name}</span>!
-        </>
-      }
-      icon={<BarChart3 className="size-5" />}
-    >
+    <AdminPageShell title="Dashboard" icon={<BarChart3 className="size-5" />}>
       {page.isPending && !page.data ? (
         isUser ? (
           <DashboardUserSkeleton />
