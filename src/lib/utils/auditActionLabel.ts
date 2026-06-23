@@ -49,14 +49,30 @@ export function formatAuditDetail(log: AuditLog): string | null {
     try {
       const parsed = JSON.parse(log.new_value);
       if (typeof parsed === 'object' && parsed !== null) {
+        // For import users, show a summary instead of raw JSON
+        if (log.action === 'IMPORT_USERS') {
+          const parts: string[] = [];
+          if ('imported_users' in parsed) parts.push(`${parsed.imported_users} pengguna`);
+          if ('created_classes' in parsed) parts.push(`${parsed.created_classes} kelas`);
+          if ('created_enrollments' in parsed)
+            parts.push(`${parsed.created_enrollments} pendaftaran`);
+          if (parts.length > 0) return parts.join(', ');
+        }
+
         const email = (parsed as { email?: string }).email;
         const name = (parsed as { name?: string }).name;
         if (email) return email;
         if (name) return name;
+
+        // For other JSON objects, stringify nicely and truncate
+        const formatted = JSON.stringify(parsed, null, 2);
+        if (formatted.length <= 150) return formatted;
+        return `${formatted.slice(0, 147)}…`;
       }
     } catch {
       /* raw string */
     }
+
     if (log.new_value.length <= 80) return log.new_value;
     return `${log.new_value.slice(0, 77)}…`;
   }

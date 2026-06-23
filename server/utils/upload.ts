@@ -90,7 +90,13 @@ export async function validateUploadedFileContent(
     };
   }
 
-  const meta = await fileTypeFromFile(filePath);
+  // Use fileTypeFromBuffer to avoid file-type's dependency issues
+  const fileHandle = await fs.promises.open(filePath, 'r');
+  const buffer = Buffer.alloc(4100);
+  const { bytesRead } = await fileHandle.read(buffer, 0, 4100, 0);
+  await fileHandle.close();
+
+  const meta = await fileTypeFromBuffer(buffer.subarray(0, bytesRead));
   if (!meta) {
     return { ok: false, error: 'Konten file tidak dapat divalidasi.' };
   }
