@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import PublicLayout from '@/components/PublicLayout';
 import { ArrowRight, Lightbulb, PenLine, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import type { PublicPost, PublicProgram, PublicRecruitment } from '@/types/publicSite';
+import type { PublicProgram } from '@/types/publicSite';
 import PublicEnter from '@/components/PublicEnter';
 import PublicReveal from '@/components/PublicReveal';
 import PublicCoverImage from '@/components/PublicCoverImage';
@@ -18,6 +18,7 @@ import { normalizeYoutubeEmbedUrl } from '@/lib/media/normalizeYoutubeEmbedUrl';
 import { PublicSlowLoadingHint } from '@/components/public/PublicSlowLoadingHint';
 import { usePublicHomeData, isPublicProfileSparse } from '@/hooks/usePublicHomeData';
 import { ensureHttpsUrl } from '@/lib/http/ensureHttpsUrl';
+import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 
 function PublicHomeSkeleton({
   showSlowHint,
@@ -29,6 +30,7 @@ function PublicHomeSkeleton({
   const cards = Array.from({ length: 3 });
   return (
     <PublicLayout>
+      <PublicLoadingOverlay show label="Memuat halaman publik..." />
       <div className="relative">
         <div>
           <section
@@ -162,7 +164,9 @@ export default function PublicHome() {
 
   const programs = programsState.data ?? [];
   const isLoadingPrograms = programsState.isPending;
-  const structure = structureState.data ?? [];
+  const isProgramsError = programsState.isError;
+  const retryPrograms = programsState.retry;
+  const structure = useMemo(() => structureState.data ?? [], [structureState.data]);
   const isLoadingStructure = structureState.isPending;
   const latest = latestState.data;
   const isLoadingLatest = latestState.isPending;
@@ -529,6 +533,24 @@ export default function PublicHome() {
             <div className="pointer-events-none absolute -right-10 bottom-8 size-52 rounded-full bg-sky-400/10 blur-3xl" />
             {isLoadingPrograms ? (
               <div className="h-40" aria-busy="true" />
+            ) : isProgramsError ? (
+              <div className="relative overflow-hidden rounded-2xl border border-dashed border-red-200/80 bg-white/70 p-6 text-left sm:p-10">
+                <div className="relative">
+                  <div className="text-base font-extrabold tracking-tight text-slate-900">
+                    Gagal memuat program kerja
+                  </div>
+                  <div className="mt-2 max-w-2xl text-sm text-muted-foreground">
+                    Daftar program kerja belum dapat dimuat saat ini. Silakan coba lagi beberapa saat lagi.
+                  </div>
+                  <button
+                    type="button"
+                    onClick={retryPrograms}
+                    className="mt-4 inline-flex items-center justify-center rounded-xl border border-black/10 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:border-[var(--public-primary)]/40"
+                  >
+                    Muat ulang program
+                  </button>
+                </div>
+              </div>
             ) : programs.length === 0 ? (
               <div className="relative overflow-hidden rounded-2xl border border-dashed border-black/15 bg-white/60 p-6 text-left text-sm text-muted-foreground sm:p-10">
                 <div className="pointer-events-none absolute -left-16 -top-16 size-52 rounded-[48%_52%_58%_42%/44%_43%_57%_56%] bg-[var(--public-primary)]/14 blur-3xl" />

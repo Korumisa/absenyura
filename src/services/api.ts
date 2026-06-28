@@ -23,6 +23,7 @@ function shouldLogoutFromRefresh(status?: number): boolean {
 }
 
 let maintenanceTimer: ReturnType<typeof setTimeout> | null = null;
+const MAINTENANCE_OVERLAY_DELAY_MS = 5000;
 
 function clearPendingMaintenance() {
   if (maintenanceTimer) {
@@ -36,7 +37,7 @@ function scheduleMaintenance(reason: string) {
   maintenanceTimer = setTimeout(() => {
     maintenanceTimer = null;
     useAppStatusStore.getState().setMaintenance(reason);
-  }, 2000);
+  }, MAINTENANCE_OVERLAY_DELAY_MS);
 }
 
 let isRefreshing = false;
@@ -135,6 +136,10 @@ api.interceptors.response.use(
       pathname = url;
     }
 
+    const isPublicSiteRequest = pathname.includes('/public-site/');
+    const isAdminPublicSiteRequest = pathname.includes('/public-site/admin');
+    const isPublicRequest = isPublicSiteRequest && !isAdminPublicSiteRequest;
+
     if (error?.response) {
       clearPendingMaintenance();
       useAppStatusStore.getState().clearNetworkIssues();
@@ -145,15 +150,11 @@ api.interceptors.response.use(
       if (typeof navigator !== 'undefined' && !navigator.onLine) {
         useAppStatusStore.getState().setOffline(true);
       } else {
-        if (pathname !== '/status') {
+        if (pathname !== '/status' && !isPublicRequest) {
           scheduleMaintenance('Menghubungkan ke server...');
         }
       }
     }
-
-    const isPublicSiteRequest = pathname.includes('/public-site/');
-    const isAdminPublicSiteRequest = pathname.includes('/public-site/admin');
-    const isPublicRequest = isPublicSiteRequest && !isAdminPublicSiteRequest;
     const { isAuthenticated } = useAuthStore.getState();
 
     if (error.response?.status === 429) {

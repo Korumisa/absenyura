@@ -15,6 +15,7 @@ import useLockBodyScroll from '@/lib/a11y/useLockBodyScroll';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { PublicPageError } from '@/components/public/PublicPageError';
 import { PublicEmptyState } from '@/components/public/PublicEmptyState';
+import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 
 export default function Galeri() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
@@ -46,6 +47,7 @@ export default function Galeri() {
 
   return (
     <PublicLayout>
+      <PublicLoadingOverlay show={isLoading} label="Memuat galeri..." />
       <PublicEnter>
         <PublicPageHero top="Galeri" bottom="Kegiatan" subtitle="Dokumentasi kegiatan, momen, dan karya. Album bisa dikelola dari menu Konten Website." />
 

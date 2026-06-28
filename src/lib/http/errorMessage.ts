@@ -21,9 +21,9 @@ export function getErrorMessage(err: any, fallback: string) {
   const errorCode = err?.response?.data?.error_code;
   if (typeof errorCode === 'string') {
     if (errorCode === 'MISSING_CREDENTIALS')
-      return 'Sistem membutuhkan email/NIM dan kata sandi Anda untuk masuk. Mari lengkapi kolom yang kosong.';
+      return 'Sistem membutuhkan NIM dan kata sandi Anda untuk masuk. Mari lengkapi kolom yang kosong.';
     if (errorCode === 'INVALID_CREDENTIALS')
-      return 'Data login tidak cocok dengan catatan kami. Silakan periksa kembali email/NIM dan kata sandi Anda.';
+      return 'Data login tidak cocok dengan catatan kami. Silakan periksa kembali NIM dan kata sandi Anda.';
     if (errorCode === 'ACCOUNT_INACTIVE')
       return 'Akun Anda sedang dinonaktifkan demi keamanan. Silakan hubungi tim Admin untuk mengaktifkannya kembali.';
     if (errorCode === 'DEVICE_BOUND')
@@ -66,7 +66,7 @@ export function getErrorMessage(err: any, fallback: string) {
 
     // Login 401 fallback
     if (status === 401 && method === 'POST' && url.includes('/auth/login')) {
-      return 'Data login tidak cocok dengan catatan kami. Silakan periksa kembali email/NIM dan kata sandi Anda.';
+      return 'Data login tidak cocok dengan catatan kami. Silakan periksa kembali NIM dan kata sandi Anda.';
     }
     if (
       lowered.includes('no token provided') ||

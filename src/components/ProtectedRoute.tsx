@@ -1,23 +1,35 @@
 // ProtectedRoute.tsx — perubahan: hapus import ganda & double-refresh
-import React, { useEffect, useRef } from 'react';
+import React, { useLayoutEffect, useRef } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { ProtectedRouteProps } from '../types/protectedroute';
 // ─── BARU: hanya satu import, tanpa `api` karena sudah tidak dipakai langsung ─
 import { verifySession } from '../services/api';
+import PageSkeleton from './PageSkeleton';
 // ────────────────────────────────────────────────────────────────────────────
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles, children }) => {
-  const { isAuthenticated, user, setAuth, logout } = useAuthStore();
+  const {
+    hasHydrated,
+    isAuthenticated,
+    user,
+    sessionStatus,
+    setAuth,
+    logout,
+    startSessionVerification,
+    completeSessionVerification,
+  } = useAuthStore();
   const location = useLocation();
-  const sessionVerifiedRef = useRef(false);
 
   const bypass =
     import.meta.env.MODE === 'development' &&
     (import.meta.env.VITE_DEV_BYPASS_AUTH === 'true' ||
       import.meta.env.VITE_DEV_BYPASS_AUTH === '1');
+  const hasStartedVerificationRef = useRef(false);
+  const isSessionPending =
+    !bypass && hasHydrated && isAuthenticated && Boolean(user) && sessionStatus !== 'verified';
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     let cancelled = false;
     let retryTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -35,12 +47,28 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles, ch
       };
     }
 
+    if (!hasHydrated) {
+      return () => {
+        cancelled = true;
+      };
+    }
+
     if (!isAuthenticated || !user) {
-      sessionVerifiedRef.current = false;
+      hasStartedVerificationRef.current = false;
       return;
     }
 
-    if (sessionVerifiedRef.current) return;
+    if (sessionStatus === 'verified') {
+      hasStartedVerificationRef.current = true;
+      return;
+    }
+
+    if (sessionStatus === 'verifying' && hasStartedVerificationRef.current) {
+      return;
+    }
+
+    hasStartedVerificationRef.current = true;
+    startSessionVerification();
 
     const verify = async (attempt = 0) => {
       try {
@@ -53,8 +81,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles, ch
         // ────────────────────────────────────────────────────────────────────
 
         if (!cancelled) {
-          sessionVerifiedRef.current = true;
-          setAuth(user);
+          completeSessionVerification();
         }
       } catch (err: unknown) {
         const status = (err as { response?: { status?: number } })?.response?.status;
@@ -71,8 +98,13 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles, ch
         // Logout hanya untuk kegagalan auth yang definitif (401/403)
         // Network error, 500, dll → jangan paksa logout
         if (!cancelled && (status === 401 || status === 403)) {
-          sessionVerifiedRef.current = false;
+          hasStartedVerificationRef.current = false;
           logout();
+          return;
+        }
+
+        if (!cancelled) {
+          completeSessionVerification();
         }
       }
     };
@@ -83,10 +115,28 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles, ch
       cancelled = true;
       if (retryTimer) clearTimeout(retryTimer);
     };
-  }, [isAuthenticated, user?.id, setAuth, logout, bypass]);
+  }, [
+    hasHydrated,
+    isAuthenticated,
+    user,
+    sessionStatus,
+    setAuth,
+    logout,
+    bypass,
+    startSessionVerification,
+    completeSessionVerification,
+  ]);
 
   if (bypass) {
     return children ? <>{children}</> : <Outlet />;
+  }
+
+  if (!hasHydrated) {
+    return <PageSkeleton />;
+  }
+
+  if (isSessionPending) {
+    return <PageSkeleton />;
   }
 
   if (!isAuthenticated || !user) {

@@ -29,12 +29,14 @@ import { UserDropdown } from './UserDropdown';
 import { ThemeToggle } from './ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { AdminRouteTransition } from '@/components/admin/AdminRouteTransition';
+import PageSkeleton from '@/components/PageSkeleton';
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [publicSiteOpen, setPublicSiteOpen] = useState(false);
-  const { user } = useAuthStore();
+  const { user, isAuthenticated, hasHydrated, sessionStatus } = useAuthStore();
   const location = useLocation();
+  const shouldShowSkeleton = !hasHydrated || (isAuthenticated && sessionStatus !== 'verified');
 
   const navItems = [
     {
@@ -64,7 +66,12 @@ export default function Layout() {
     },
     { name: 'Riwayat Saya', path: '/history', icon: History, roles: ['USER'] },
     { name: 'Manajemen Lokasi', path: '/locations', icon: MapPin, roles: ['SUPER_ADMIN', 'ADMIN'] },
-    { name: 'Rekap Kehadiran', path: '/reports', icon: BarChart3, roles: ['SUPER_ADMIN', 'ADMIN'] },
+    {
+      name: 'Rekap Kehadiran',
+      path: '/reports',
+      icon: BarChart3,
+      roles: ['SUPER_ADMIN', 'ADMIN', 'USER'],
+    },
     {
       name: 'Konten Website',
       path: '/public-site',
@@ -92,6 +99,10 @@ export default function Layout() {
     isActive ? 'bg-sidebar-active text-brand' : 'text-muted-foreground hover:bg-muted';
 
   const navIconClass = (isActive: boolean) => (isActive ? 'text-brand' : 'text-muted-foreground');
+
+  if (shouldShowSkeleton) {
+    return <PageSkeleton />;
+  }
 
   return (
     <div className="admin-theme flex h-dvh overflow-hidden bg-sidebar font-sans">

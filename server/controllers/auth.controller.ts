@@ -17,7 +17,7 @@ function setCsrfCookie(res: Response, isProduction: boolean): void {
 export const login = async (req: Request, res: Response): Promise<void> => {
   try {
     const result = await authService.login({
-      email: req.body?.email,
+      nim: req.body?.nim,
       password: req.body?.password,
       device_fingerprint: req.body?.device_fingerprint,
     });
@@ -139,6 +139,7 @@ export const seedAdmin = async (req: Request, res: Response): Promise<void> => {
       seedEmail: process.env.SEED_SUPER_ADMIN_EMAIL,
       seedPassword: process.env.SEED_SUPER_ADMIN_PASSWORD,
       seedName: process.env.SEED_SUPER_ADMIN_NAME,
+      seedNimNip: process.env.SEED_SUPER_ADMIN_NIM_NIP,
     });
 
     if (!result.ok) {

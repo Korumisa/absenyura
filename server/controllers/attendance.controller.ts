@@ -22,6 +22,8 @@ import fsPromises from 'fs/promises';
 import path from 'path';
 import { v2 as cloudinary } from 'cloudinary';
 
+const CHECK_OUT_GRACE_MS = 2 * 60 * 1000;
+
 // Configure Cloudinary if ENV vars exist
 if (process.env.CLOUDINARY_URL) {
   // It will automatically use the CLOUDINARY_URL
@@ -649,7 +651,8 @@ export const checkOut = async (req: Request, res: Response): Promise<void> => {
     }
 
     const now = new Date();
-    if (now > session.session_end) {
+    const checkOutDeadline = new Date(session.session_end.getTime() + CHECK_OUT_GRACE_MS);
+    if (now > checkOutDeadline) {
       res.status(400).json({ success: false, error: 'Sesi sudah berakhir.' });
       return;
     }

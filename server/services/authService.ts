@@ -21,7 +21,7 @@ const authUserSelect = {
   device_fingerprint: true,
 } as const;
 
-type AuthUser = Awaited<ReturnType<typeof userRepository.findByEmail<typeof authUserSelect>>>;
+type AuthUser = Awaited<ReturnType<typeof userRepository.findByNim<typeof authUserSelect>>>;
 type AuthUserNonNull = Exclude<AuthUser, null>;
 
 function normalizeDeviceFingerprint(raw: string): string {
@@ -39,7 +39,7 @@ function isValidSeedSecret(incoming: string, expected: string): boolean {
 }
 
 export async function login(params: {
-  email: unknown;
+  nim: unknown;
   password: unknown;
   device_fingerprint: unknown;
 }): Promise<
@@ -56,25 +56,25 @@ export async function login(params: {
     refreshToken: string;
   }>
 > {
-  const email = typeof params.email === 'string' ? params.email : '';
+  const nim = typeof params.nim === 'string' ? params.nim.trim() : '';
   const password = typeof params.password === 'string' ? params.password : '';
   const device_fingerprint =
     typeof params.device_fingerprint === 'string' ? params.device_fingerprint : undefined;
 
-  if (!email || !password) {
+  if (!nim || !password) {
     return {
       ok: false,
       status: 400,
       body: {
         success: false,
         error_code: 'MISSING_CREDENTIALS',
-        message: 'Email/NIM dan kata sandi wajib diisi.',
+        message: 'NIM dan kata sandi wajib diisi.',
       },
     };
   }
 
-  const user = await userRepository.findByEmail({
-    email,
+  const user = await userRepository.findByNim({
+    nim,
     select: authUserSelect,
   });
 
@@ -85,7 +85,7 @@ export async function login(params: {
       body: {
         success: false,
         error_code: 'INVALID_CREDENTIALS',
-        message: 'Email/NIM atau kata sandi salah.',
+        message: 'NIM atau kata sandi salah.',
       },
     };
   }
@@ -110,7 +110,7 @@ export async function login(params: {
       body: {
         success: false,
         error_code: 'INVALID_CREDENTIALS',
-        message: 'Email/NIM atau kata sandi salah.',
+        message: 'NIM atau kata sandi salah.',
       },
     };
   }
@@ -366,6 +366,7 @@ export async function seedAdmin(params: {
   seedEmail: string | undefined;
   seedPassword: string | undefined;
   seedName: string | undefined;
+  seedNimNip: string | undefined;
 }): Promise<
   ServiceResult<{
     id: string;
@@ -410,7 +411,8 @@ export async function seedAdmin(params: {
 
   const email = params.seedEmail;
   const password = params.seedPassword;
-  if (!email || !password) {
+  const seedNimNip = params.seedNimNip?.trim();
+  if (!email || !password || !seedNimNip) {
     return { ok: false, status: 500, body: { success: false, error: 'Seeder env belum diatur' } };
   }
 
@@ -421,6 +423,7 @@ export async function seedAdmin(params: {
       email,
       password: hashedPassword,
       role: 'SUPER_ADMIN',
+      nim_nip: seedNimNip,
     },
     select: {
       id: true,

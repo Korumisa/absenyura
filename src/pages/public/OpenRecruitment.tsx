@@ -17,6 +17,7 @@ import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { PublicPageError } from '@/components/public/PublicPageError';
 import { PublicEmptyState } from '@/components/public/PublicEmptyState';
 import { ensureHttpsUrl } from '@/lib/http/ensureHttpsUrl';
+import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 
 export default function OpenRecruitment() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
@@ -78,6 +79,7 @@ export default function OpenRecruitment() {
 
   return (
     <PublicLayout>
+      <PublicLoadingOverlay show={isLoading} label="Memuat open recruitment..." />
       <PublicEnter>
         <PublicPageHero top="Open" bottom="Recruitment" subtitle="Informasi pendaftaran, deskripsi, dan link form. Bisa dikelola dari menu Konten Website." />
 

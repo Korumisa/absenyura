@@ -15,6 +15,7 @@ import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { PublicPageError } from '@/components/public/PublicPageError';
 import { PublicEmptyState } from '@/components/public/PublicEmptyState';
 import { ensureHttpsUrl } from '@/lib/http/ensureHttpsUrl';
+import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 
 type Status = 'Buka' | 'Tutup';
 type Paged<T> = { items: T[]; total: number; page: number; pageSize: number; totalPages: number };
@@ -63,6 +64,7 @@ export default function InformasiLomba() {
 
   return (
     <PublicLayout>
+      <PublicLoadingOverlay show={isLoading} label="Memuat informasi lomba..." />
       <PublicEnter>
         <PublicPageHero top="Informasi" bottom="Lomba" subtitle="Info lomba yang masih buka/tutup, lengkap dengan detail. Konten dikelola dari menu Konten Website." />
 

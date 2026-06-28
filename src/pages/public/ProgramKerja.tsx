@@ -13,6 +13,7 @@ import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { PublicPageError } from '@/components/public/PublicPageError';
 import { PublicEmptyState } from '@/components/public/PublicEmptyState';
+import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 
 function extractDivisionFallback(program: PublicProgram) {
   const raw = String(program.description ?? '').trim();
@@ -31,7 +32,8 @@ function extractDivisionFallback(program: PublicProgram) {
 export default function ProgramKerja() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
   const swr = useSWR<PublicProgram[]>('/public-site/programs', fetcher, { revalidateOnFocus: false });
-  const { data: items = [], isInitialLoading: isLoading, isError, retry } = useSwrPageState(swr);
+  const { data, isPending, isError, retry } = useSwrPageState(swr);
+  const items = useMemo(() => data ?? [], [data]);
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const groups = useMemo(() => {
     const orderedKeys: string[] = [];
@@ -61,11 +63,12 @@ export default function ProgramKerja() {
 
   return (
     <PublicLayout>
+      <PublicLoadingOverlay show={isPending} label="Memuat program kerja..." />
       <PublicEnter>
         <PublicPageHero top="Program" bottom="Kerja" subtitle="Daftar program kerja yang dapat dipantau publik dan dikelola oleh admin." />
 
         <PublicReveal className="mx-auto max-w-7xl px-4 pb-16 sm:px-6">
-          {isLoading ? (
+          {isPending ? (
             <div className="mt-6 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 6 }).map((_, idx) => (
               <div key={idx} className="rounded-2xl border border-black/10 bg-white p-6">

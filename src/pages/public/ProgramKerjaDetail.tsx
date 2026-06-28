@@ -10,6 +10,7 @@ import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { PublicPageError } from '@/components/public/PublicPageError';
+import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 
 function parseProgramDescriptionFallback(description: string | null) {
   const raw = String(description ?? '').trim();
@@ -80,6 +81,7 @@ export default function ProgramKerjaDetail() {
 
   return (
     <PublicLayout>
+      <PublicLoadingOverlay show={isLoading} label="Memuat detail program..." />
       <PublicEnter>
         <PublicPageHero top="Program" bottom="Kerja" subtitle="Detail program kerja yang dipublikasikan." />
 

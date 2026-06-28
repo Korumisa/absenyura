@@ -122,7 +122,7 @@ app.use(csrfProtect);
 
 /**
  * Rate limiting — dirancang untuk NAT kampus (banyak mahasiswa, satu IP publik).
- * - Login: per email/NIM, BUKAN per IP → 500 login bersamaan aman.
+ * - Login: per NIM, BUKAN per IP → 500 login bersamaan aman.
  * - Refresh/API: per cookie sesi (accessToken), BUKAN per IP.
  * - Halaman publik (/public-site): tidak dibatasi ketat.
  */
@@ -148,7 +148,7 @@ const loginLimiter = rateLimit({
     'Terlalu banyak percobaan login untuk akun ini. Tunggu beberapa menit lalu coba lagi.'
   ),
   keyGenerator: (req) => {
-    const identity = String((req.body as { email?: string })?.email ?? '')
+    const identity = String((req.body as { nim?: string })?.nim ?? '')
       .trim()
       .toLowerCase();
     if (identity) return `login:user:${identity}`;

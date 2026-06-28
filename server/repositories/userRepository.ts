@@ -12,14 +12,14 @@ export async function findById<TSelect extends Prisma.UserSelect>(params: {
   });
 }
 
-export async function findByEmail<TSelect extends Prisma.UserSelect>(params: {
-  email: string;
+export async function findByNim<TSelect extends Prisma.UserSelect>(params: {
+  nim: string;
   select: TSelect;
 }): Promise<Prisma.UserGetPayload<{ select: TSelect }> | null> {
-  const { email, select } = params;
+  const { nim, select } = params;
   return prisma.user.findFirst({
     where: {
-      OR: [{ email }, { nim_nip: email }],
+      nim_nip: nim,
     },
     select,
   });

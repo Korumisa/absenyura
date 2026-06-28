@@ -10,6 +10,7 @@ import PublicEnter from '@/components/PublicEnter';
 import PublicCoverImage from '@/components/PublicCoverImage';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { PublicPageError } from '@/components/public/PublicPageError';
+import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 
 export default function BeritaDetail() {
   const { slug } = useParams();
@@ -25,6 +26,7 @@ export default function BeritaDetail() {
 
   return (
     <PublicLayout>
+      <PublicLoadingOverlay show={isLoading} label="Memuat berita..." />
       <PublicEnter className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
         <Link to="/berita" className="inline-flex items-center gap-2 rounded-xl border border-[var(--public-primary)]/20 bg-[var(--public-primary)]/10 px-4 py-2 text-sm font-semibold text-[var(--public-primary)] transition hover:bg-[var(--public-primary)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/45">
           <ArrowLeft size={18} />

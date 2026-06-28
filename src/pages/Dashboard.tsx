@@ -59,6 +59,7 @@ type DashboardRecentSession = {
   status: string;
   session_start: string;
   class?: unknown;
+  session_classes?: Array<{ class?: unknown }>;
   location?: { name?: string } | null;
   _count?: { attendances?: number };
 };
@@ -72,6 +73,15 @@ function dashboardSessionTitle(session: DashboardRecentSession): string {
 }
 
 function dashboardSessionClass(session: DashboardRecentSession): string | null {
+  const multiClassLabels = (session.session_classes ?? []).flatMap((item) => {
+    const label = item?.class
+      ? formatClassLabel(item.class as Parameters<typeof formatClassLabel>[0])
+      : null;
+    return label ? [label] : [];
+  });
+  if (multiClassLabels.length > 0) {
+    return multiClassLabels.join(', ');
+  }
   if (!session.class) return null;
   if (typeof session.class === 'object' && session.class !== null) {
     const c = session.class as { name?: string; id?: string };

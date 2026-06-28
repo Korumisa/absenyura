@@ -105,7 +105,19 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
       });
     } else {
       // Admin / Super Admin stats
-      const totalUsers = await prisma.user.count({ where: { role: 'USER' } });
+      const totalUsers = await prisma.user.count({
+        where:
+          user.role === 'ADMIN'
+            ? {
+                role: 'USER',
+                enrollments: {
+                  some: {
+                    class: { lecturer_id: user.id },
+                  },
+                },
+              }
+            : { role: 'USER' },
+      });
       const totalSessions = await prisma.session.count(
         user.role === 'ADMIN' ? { where: adminSessionScopeWhere(user.id) } : undefined
       );
@@ -141,6 +153,12 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
           ...sessionApiSelect,
           _count: { select: { attendances: true } },
           location: { select: { name: true } },
+          class: { select: { id: true, name: true } },
+          session_classes: {
+            select: {
+              class: { select: { id: true, name: true } },
+            },
+          },
         },
       });
 

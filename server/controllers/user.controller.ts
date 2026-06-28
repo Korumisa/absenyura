@@ -37,6 +37,8 @@ const parseImportClassNames = (value: unknown): string[] =>
 const classIdentityKey = (lecturerId: string, semester: number, name: string): string =>
   `${lecturerId}::${semester}::${name.trim().toLowerCase()}`;
 
+const normalizeNimNip = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
+
 export const getUsers = async (req: Request, res: Response): Promise<void> => {
   try {
     const pageQuery = req.query.page;
@@ -291,7 +293,7 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
     const emailValue = typeof email === 'string' ? email.trim().toLowerCase() : '';
     const passwordValue = typeof password === 'string' ? password : '';
     const roleValue = typeof role === 'string' ? role : 'USER';
-    const nimValueRaw = typeof nim_nip === 'string' ? nim_nip.trim() : '';
+    const nimValueRaw = normalizeNimNip(nim_nip);
     const departmentValueRaw = typeof department === 'string' ? department.trim() : '';
     const phoneValueRaw = typeof phone === 'string' ? phone.trim() : '';
 
@@ -305,6 +307,10 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
     }
     if (!passwordValue) {
       res.status(400).json({ success: false, error: 'Kata sandi wajib diisi' });
+      return;
+    }
+    if (!nimValueRaw) {
+      res.status(400).json({ success: false, error: 'NIM/NIP wajib diisi' });
       return;
     }
 
@@ -343,7 +349,7 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
           email: emailValue,
           password: hashedPassword,
           role: roleValue || 'USER',
-          nim_nip: nimValueRaw ? nimValueRaw : null,
+          nim_nip: nimValueRaw,
           department: departmentValueRaw ? departmentValueRaw : null,
           phone: phoneValueRaw ? phoneValueRaw : null,
           semester: roleValue === 'USER' ? semesterValue : 1,
@@ -474,11 +480,17 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
       }
     }
 
+    const normalizedNimNip = normalizeNimNip(nim_nip);
+    if (nim_nip !== undefined && !normalizedNimNip) {
+      res.status(400).json({ success: false, error: 'NIM/NIP wajib diisi' });
+      return;
+    }
+
     const updateData: any = {
       name: typeof name === 'string' ? name.trim() : name,
       email: typeof email === 'string' ? email.trim().toLowerCase() : email,
       role,
-      nim_nip: typeof nim_nip === 'string' ? (nim_nip.trim() ? nim_nip.trim() : null) : nim_nip,
+      nim_nip: typeof nim_nip === 'string' ? normalizedNimNip : nim_nip,
       department:
         typeof department === 'string'
           ? department.trim()
@@ -614,6 +626,7 @@ export const importUsers = async (req: Request, res: Response): Promise<void> =>
     const parsedRows: ParsedImportUserRow[] = [];
     const seenEmails = new Set<string>();
     let duplicateRowCount = 0;
+    let missingNimNipRowCount = 0;
     const defaultPasswordHash = await bcrypt.hash('password123', 12);
     const requestedImportYearMode =
       typeof req.body?.importEnrollmentYearMode === 'string'
@@ -635,7 +648,7 @@ export const importUsers = async (req: Request, res: Response): Promise<void> =>
       // Expected Columns: A=Nama, B=Email, C=NIM_NIP, D=Departemen, E=Semester, F=No_HP, G=Role
       const name = row.getCell(1).value?.toString().trim();
       const email = normalizeImportEmail(row.getCell(2).value);
-      const nim_nip = row.getCell(3).value?.toString().trim();
+      const nim_nip = normalizeNimNip(row.getCell(3).value);
       const department = row.getCell(4).value?.toString().trim();
       const semester = parseInt(row.getCell(5).value?.toString().trim() || '1') || 1;
       const phone = row.getCell(6).value?.toString().trim();
@@ -648,6 +661,10 @@ export const importUsers = async (req: Request, res: Response): Promise<void> =>
           : 'USER';
 
       if (name && email) {
+        if (!nim_nip) {
+          missingNimNipRowCount++;
+          return;
+        }
         if (seenEmails.has(email)) {
           duplicateRowCount++;
           return;
@@ -656,7 +673,7 @@ export const importUsers = async (req: Request, res: Response): Promise<void> =>
         parsedRows.push({
           name,
           email,
-          nim_nip: nim_nip || null,
+          nim_nip,
           department: department || null,
           semester: role === 'USER' ? semester : null,
           phone: phone || null,
@@ -807,6 +824,7 @@ export const importUsers = async (req: Request, res: Response): Promise<void> =>
           created_enrollments: createdEnrollments.count,
           skipped_existing_users: parsedRows.length - rowsToCreate.length,
           skipped_duplicate_rows: duplicateRowCount,
+          skipped_missing_nim_nip_rows: missingNimNipRowCount,
         }),
         ip_address: req.ip,
       },
@@ -822,6 +840,7 @@ export const importUsers = async (req: Request, res: Response): Promise<void> =>
         class_enrollments_created: createdEnrollments.count,
         skipped_existing_users: parsedRows.length - rowsToCreate.length,
         skipped_duplicate_rows: duplicateRowCount,
+        skipped_missing_nim_nip_rows: missingNimNipRowCount,
       },
     });
   } catch (error: unknown) {

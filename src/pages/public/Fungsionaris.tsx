@@ -14,6 +14,7 @@ import PublicReveal from '@/components/PublicReveal';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { PublicPageError } from '@/components/public/PublicPageError';
 import { PublicEmptyState } from '@/components/public/PublicEmptyState';
+import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 
 export default function Fungsionaris() {
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
@@ -100,6 +101,7 @@ export default function Fungsionaris() {
 
   return (
     <PublicLayout>
+      <PublicLoadingOverlay show={isLoading} label="Memuat fungsionaris..." />
       <PublicEnter>
         <PublicPageHero
           top="Susunan"

@@ -49,8 +49,8 @@ export const runCronJob = async () => {
 
     const now = new Date();
 
-    // Transisi memakai `check_in_open_at` & `check_in_close_at` (bukan `session_start` / `session_end`)
-    // karena field-field tersebut adalah jendela waktu absensi yang otoritatif.
+    // Pembukaan sesi mengikuti jendela check-in, sedangkan penutupan final
+    // mengikuti `session_end` agar check-out tetap dapat dilakukan sampai kelas selesai.
     // UPCOMING -> ACTIVE (when check_in_open_at is reached and before check_in_close_at + 2 min grace period)
     const twoMinutesAgo = new Date(now.getTime() - 2 * 60000);
     const twoMinutesFuture = new Date(now.getTime() + 2 * 60000);
@@ -61,7 +61,7 @@ export const runCronJob = async () => {
     const sessionsToActivate = await prisma.session.findMany({
       where: {
         status: 'UPCOMING',
-        created_at: { lte: oneMinuteAgo },
+        updated_at: { lte: oneMinuteAgo },
         // Active when now >= check_in_open_at - 2 min
         check_in_open_at: { lte: twoMinutesFuture },
         // Must not have reached check_in_close_at + 2 min yet
@@ -104,15 +104,16 @@ export const runCronJob = async () => {
       console.log(`[Cron] Marked ${sessionsToActivate.length} sessions as ACTIVE`);
     }
 
-    // ACTIVE/UPCOMING -> CLOSED (when check_in_close_at + 2 min grace period is reached)
+    // ACTIVE/UPCOMING -> CLOSED (when the session has actually ended, plus a short grace period)
     const activatedSessionIds = sessionsToActivate.map((s) => s.id);
     const sessionsToClose = await prisma.session.findMany({
       where: {
         id: { notIn: activatedSessionIds },
         status: { in: ['ACTIVE', 'UPCOMING'] },
-        created_at: { lte: oneMinuteAgo },
-        // Close only when now > check_in_close_at + 2 min (i.e. check_in_close_at <= now - 2 min)
-        check_in_close_at: { lte: twoMinutesAgo },
+        updated_at: { lte: oneMinuteAgo },
+        // Keep sessions ACTIVE until shortly after `session_end` so required
+        // check-out remains possible for students who already checked in.
+        session_end: { lte: twoMinutesAgo },
       },
     });
 
@@ -173,7 +174,7 @@ export const runCronJob = async () => {
             data: absentUserIds.map((id) => ({
               user_id: id,
               title: 'Tidak hadir (Alfa)',
-              message: `Anda ditandai tidak hadir pada sesi "${session.title}" karena batas waktu check-in telah berakhir.`,
+              message: `Anda ditandai tidak hadir pada sesi "${session.title}" karena sesi telah berakhir tanpa check-in.`,
               type: 'WARNING',
             })),
           });

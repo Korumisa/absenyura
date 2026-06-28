@@ -17,6 +17,7 @@ import { useReducedMotion } from '@/lib/a11y/useReducedMotion';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { PublicPageError } from '@/components/public/PublicPageError';
 import { PublicEmptyState } from '@/components/public/PublicEmptyState';
+import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 
 const TABS: Array<{ label: string; type?: PublicPostType }> = [
   { label: 'Semua (tanpa lomba)' },
@@ -62,6 +63,7 @@ export default function Kegiatan() {
 
   return (
     <PublicLayout>
+      <PublicLoadingOverlay show={isLoading} label="Memuat kegiatan..." />
       <PublicEnter>
         <PublicPageHero
           top="Informasi"

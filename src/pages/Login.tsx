@@ -26,7 +26,7 @@ import { BrandLogoImage } from '@/components/public/BrandLogoImage';
 import { getPostLoginTarget } from '@/lib/auth/postLoginTarget';
 
 export default function Login() {
-  const [email, setEmail] = useState('');
+  const [nim, setNim] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -60,7 +60,7 @@ export default function Login() {
     try {
       const device_fingerprint = await getDeviceFingerprint();
 
-      const res = await api.post('/auth/login', { email, password, device_fingerprint });
+      const res = await api.post('/auth/login', { nim, password, device_fingerprint });
       const { user } = res.data.data;
       setAuth(user);
       toast.success('Berhasil masuk!');
@@ -72,7 +72,7 @@ export default function Login() {
       const msg =
         status === 429
           ? 'Terlalu banyak percobaan login. Tunggu 2–3 menit lalu coba lagi.'
-          : getErrorMessage(err, 'Gagal masuk. Periksa email/NIM dan kata sandi Anda.');
+          : getErrorMessage(err, 'Gagal masuk. Periksa NIM dan kata sandi Anda.');
       setLoginError(msg);
       toast.error(msg);
     } finally {
@@ -152,9 +152,7 @@ export default function Login() {
                     <div className="text-lg font-extrabold tracking-tight text-slate-900">
                       Masuk Akun
                     </div>
-                    <div className="text-sm text-muted-foreground">
-                      Gunakan email/NIM dan kata sandi.
-                    </div>
+                    <div className="text-sm text-muted-foreground">Gunakan NIM dan kata sandi.</div>
                   </div>
                 </div>
 
@@ -175,17 +173,17 @@ export default function Login() {
                     akademik fakultas Anda.
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="email">Email atau NIM</Label>
+                    <Label htmlFor="nim">NIM</Label>
                     <Input
-                      id="email"
+                      id="nim"
                       type="text"
-                      name="email"
-                      autoComplete="email"
+                      name="nim"
+                      autoComplete="username"
                       spellCheck={false}
                       required
-                      placeholder="email@kampus.ac.id atau NIM Anda"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="Masukkan NIM Anda"
+                      value={nim}
+                      onChange={(e) => setNim(e.target.value)}
                       className="h-11"
                     />
                   </div>
@@ -252,7 +250,7 @@ export default function Login() {
           <DialogHeader>
             <DialogTitle>Lupa kata sandi?</DialogTitle>
             <DialogDescription>
-              Reset kata sandi dilakukan oleh admin. Hubungi kontak berikut dengan email/NIM Anda.
+              Reset kata sandi dilakukan oleh admin. Hubungi kontak berikut dengan NIM Anda.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2 text-sm text-slate-700">

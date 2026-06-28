@@ -4,12 +4,13 @@ const prismaMock = vi.hoisted(() => ({
   user: {
     findMany: vi.fn(),
     count: vi.fn(),
+    findUnique: vi.fn(),
   },
 }));
 
 vi.mock('../utils/prisma.js', () => ({ default: prismaMock }));
 
-import { getUsers } from './user.controller';
+import { createUser, getUsers } from './user.controller';
 
 const createRes = () => {
   const res: { status?: any; json?: any } = {};
@@ -124,5 +125,28 @@ describe('getUsers controller tests', () => {
         totalPages: 0,
       },
     });
+  });
+
+  test('createUser rejects missing nim_nip before hitting persistence', async () => {
+    const req = {
+      body: {
+        name: 'Student',
+        email: 'student@example.com',
+        password: 'secret123',
+        role: 'USER',
+        nim_nip: '   ',
+        semester: 2,
+      },
+    } as any;
+    const res = createRes();
+
+    await createUser(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({
+      success: false,
+      error: 'NIM/NIP wajib diisi',
+    });
+    expect(prismaMock.user.findUnique).not.toHaveBeenCalled();
   });
 });

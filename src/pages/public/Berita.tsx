@@ -13,6 +13,7 @@ import PublicCoverImage from '@/components/PublicCoverImage';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { PublicPageError } from '@/components/public/PublicPageError';
 import { PublicEmptyState } from '@/components/public/PublicEmptyState';
+import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 
 type Paged<T> = { items: T[]; total: number; page: number; pageSize: number; totalPages: number };
 
@@ -78,6 +79,7 @@ export default function Berita() {
 
   return (
     <PublicLayout>
+      <PublicLoadingOverlay show={isLoading} label="Memuat berita..." />
       <PublicEnter>
         <PublicPageHero top="Berita" bottom="Terbaru" subtitle="Baca update kampus, prestasi, dan info penting. Formatnya singkat, jelas, dan enak dibagikan.">
           <div className="relative w-full max-w-md">
