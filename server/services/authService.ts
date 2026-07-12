@@ -192,8 +192,12 @@ function isWithinGrace(row: {
 
 export async function refresh(params: {
   refreshToken: unknown;
+  device_fingerprint?: unknown;
 }): Promise<ServiceResult<{ accessToken: string; refreshToken: string }>> {
   const refreshToken = typeof params.refreshToken === 'string' ? params.refreshToken : '';
+  const device_fingerprint =
+    typeof params.device_fingerprint === 'string' ? params.device_fingerprint : undefined;
+
   if (!refreshToken) {
     return {
       ok: false,
@@ -230,6 +234,7 @@ export async function refresh(params: {
       refresh_token_hash: true,
       previous_refresh_token_hash: true,
       previous_refresh_rotated_at: true,
+      device_fingerprint: true,
     },
   });
 
@@ -243,6 +248,34 @@ export async function refresh(params: {
         message: 'Sesi tidak valid. Silakan login ulang.',
       },
     };
+  }
+
+  // Check device fingerprint (only for USER role, admins can change devices)
+  if (device_fingerprint && device_fingerprint !== 'unknown-device') {
+    if (user.role === 'USER' && user.device_fingerprint) {
+      const storedDevice = normalizeDeviceFingerprint(user.device_fingerprint);
+      const incomingDevice = normalizeDeviceFingerprint(device_fingerprint);
+
+      if (storedDevice !== incomingDevice) {
+        return {
+          ok: false,
+          status: 403,
+          body: {
+            success: false,
+            error_code: 'DEVICE_BOUND',
+            message:
+              'Sesi ditolak: akun ini sudah terikat dengan perangkat lain. Hubungi admin untuk reset perangkat.',
+          },
+        };
+      }
+    } else if (!user.device_fingerprint && device_fingerprint) {
+      // If no device is bound yet, bind it now on refresh (for consistency)
+      await userRepository.updateUser({
+        id: user.id,
+        data: { device_fingerprint },
+        select: { id: true },
+      });
+    }
   }
 
   const presentedHash = hashRefreshToken(refreshToken);

@@ -1,7 +1,8 @@
-// api.ts — perubahan: tambah cooldown mechanism
+// api.ts — perubahan: tambah cooldown mechanism dan device fingerprint
 import axios from 'axios';
 import { useAuthStore } from '../stores/authStore';
 import { useAppStatusStore } from '../stores/appStatusStore';
+import { getDeviceFingerprint } from '../lib/storage/deviceFingerprint';
 
 const apiBaseUrl = (import.meta as any)?.env?.VITE_API_BASE_URL || '/api';
 
@@ -77,7 +78,8 @@ export const verifySession = async () => {
 
   isRefreshing = true;
   try {
-    const res = await api.post('/auth/refresh', {});
+    const device_fingerprint = await getDeviceFingerprint();
+    const res = await api.post('/auth/refresh', { device_fingerprint });
     lastSuccessfulRefreshAt = Date.now(); // ← catat waktu berhasil
     processQueue(null);
     return res;

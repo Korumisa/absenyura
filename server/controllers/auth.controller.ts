@@ -66,7 +66,10 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
 export const refresh = async (req: Request, res: Response): Promise<void> => {
   try {
-    const result = await authService.refresh({ refreshToken: req.cookies?.refreshToken });
+    const result = await authService.refresh({
+      refreshToken: req.cookies?.refreshToken,
+      device_fingerprint: req.body?.device_fingerprint,
+    });
 
     if (!result.ok) {
       res.status(result.status).json(result.body);
