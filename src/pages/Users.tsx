@@ -13,6 +13,8 @@ import {
   Upload,
   Smartphone,
   Users as UsersIcon,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
 import { CardSkeletonList } from '@/components/admin/CardSkeleton';
@@ -93,6 +95,7 @@ export default function Users() {
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importing, setImporting] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -148,6 +151,7 @@ export default function Users() {
   const handleOpenModal = async (user: User | null = null) => {
     setClassIds([]);
     setEnrolledClasses([]);
+    setShowPassword(false);
     if (user) {
       setEditingUser(user);
       setFormData({
@@ -270,7 +274,7 @@ export default function Users() {
   const handleDownloadTemplate = async () => {
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Data Mahasiswa');
-    const importYear = new Date().getFullYear() - 1;
+    const importYear = new Date().getFullYear();
 
     sheet.columns = [
       { header: 'Nama Lengkap', key: 'name', width: 25 },
@@ -327,7 +331,6 @@ export default function Users() {
     setImporting(true);
     const formData = new FormData();
     formData.append('file', importFile);
-    formData.append('importEnrollmentYearMode', 'PREVIOUS_YEAR');
 
     try {
       const res = await api.post('/users/import', formData, {
@@ -708,12 +711,23 @@ export default function Users() {
                       <span className="text-red-500">*</span>
                     )}
                   </Label>
-                  <Input
-                    type="password"
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    required={!editingUser}
-                  />
+                  <div className="relative">
+                    <Input
+                      type={showPassword ? 'text' : 'password'}
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      required={!editingUser}
+                      className="pr-12"
+                    />
+                    <button
+                      type="button"
+                      aria-label={showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex size-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-slate-50 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      onClick={() => setShowPassword((v) => !v)}
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label>
@@ -911,7 +925,7 @@ export default function Users() {
               <DialogDescription>
                 Unduh template Excel, isi data mahasiswa, lalu unggah kembali. Semua akun hasil
                 import dari layar ini sementara akan disimpan dengan enrollment date 1 Agustus tahun
-                lalu. Isi kolom kelas dalam sheet yang sama dan pisahkan beberapa kelas dengan tanda
+                ini. Isi kolom kelas dalam sheet yang sama dan pisahkan beberapa kelas dengan tanda
                 |. Jika nama kelas belum ada, sistem akan membuatnya otomatis atas akun Anda.
               </DialogDescription>
             </DialogHeader>

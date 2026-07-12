@@ -96,7 +96,9 @@ export default function Layout() {
   }, [location.pathname]);
 
   const navLinkClass = (isActive: boolean) =>
-    isActive ? 'bg-sidebar-active text-brand' : 'text-muted-foreground hover:bg-muted';
+    isActive
+      ? 'bg-sidebar-active text-brand select-none'
+      : 'text-muted-foreground hover:bg-muted select-none';
 
   const navIconClass = (isActive: boolean) => (isActive ? 'text-brand' : 'text-muted-foreground');
 
@@ -161,7 +163,7 @@ export default function Layout() {
                       onClick={() => setPublicSiteOpen((v) => !v)}
                       aria-expanded={publicSiteOpen}
                       aria-controls="public-site-subnav"
-                      className={`flex w-full items-center rounded-xl px-4 py-3 transition-colors ${navLinkClass(isActive)}`}
+                      className={`flex w-full items-center rounded-xl px-4 py-3 transition-colors select-none ${navLinkClass(isActive)}`}
                     >
                       <Icon size={20} className={`mr-3 ${navIconClass(isActive)}`} />
                       <span className="flex-1 text-left font-medium">{item.name}</span>
@@ -204,7 +206,7 @@ export default function Layout() {
                               to={sub.path}
                               aria-current={subActive ? 'page' : undefined}
                               onClick={() => setSidebarOpen(false)}
-                              className={`flex items-center rounded-xl px-4 py-2 text-sm transition-colors ${navLinkClass(subActive)}`}
+                              className={`flex items-center rounded-xl px-4 py-2 text-sm transition-colors select-none ${navLinkClass(subActive)}`}
                             >
                               <SubIcon size={18} className="mr-3 opacity-80" />
                               <span className="font-medium">{sub.name}</span>

@@ -309,6 +309,12 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
       res.status(400).json({ success: false, error: 'Kata sandi wajib diisi' });
       return;
     }
+    if (passwordValue.length < 8) {
+      res
+        .status(400)
+        .json({ success: false, error: 'Kata sandi harus terdiri dari minimal 8 karakter' });
+      return;
+    }
     if (!nimValueRaw) {
       res.status(400).json({ success: false, error: 'NIM/NIP wajib diisi' });
       return;
@@ -437,6 +443,20 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
       semester,
       class_ids,
     } = req.body;
+
+    if (password !== undefined && password !== null) {
+      const passwordValue = typeof password === 'string' ? password : '';
+      if (!passwordValue) {
+        res.status(400).json({ success: false, error: 'Kata sandi tidak boleh kosong' });
+        return;
+      }
+      if (passwordValue.length < 8) {
+        res
+          .status(400)
+          .json({ success: false, error: 'Kata sandi harus terdiri dari minimal 8 karakter' });
+        return;
+      }
+    }
 
     if (actor.role === 'ADMIN') {
       const target = await prisma.user.findUnique({ where: { id }, select: { role: true } });
