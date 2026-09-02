@@ -1,6 +1,8 @@
-import { Request, Response } from 'express';
+import type { Request } from 'express';
+import { Response } from 'express';
+import type { AuthRequest } from '../types/index.js';
 import prisma from '../utils/prisma.js';
-import { isMissingSemesterColumn } from '../utils/prismaErrors.js';
+import { queryWithSemesterFallback } from '../utils/prismaErrors.js';
 
 function parsePagination(
   query: Request['query'],
@@ -14,9 +16,9 @@ function parsePagination(
   return { page, limit, skip: (page - 1) * limit };
 }
 
-export const getReports = async (req: Request, res: Response): Promise<void> => {
+export const getReports = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const user = (req as any).user;
+    const user = req.user!;
 
     const { page, limit, skip } = parsePagination(req.query, { page: 1, limit: 50, max: 500 });
     const withSummary = String(req.query.withSummary ?? '1').trim() !== '0';
@@ -117,48 +119,49 @@ export const getReports = async (req: Request, res: Response): Promise<void> => 
     } else {
       total = await prisma.attendance.count({ where: whereClause });
     }
-    try {
-      attendances = await prisma.attendance.findMany({
-        where: whereClause,
-        include: {
-          session: {
-            select: {
-              title: true,
-              session_start: true,
-              class_id: true,
-              class: { select: { name: true, semester: true } },
-              session_classes: {
-                select: { class_id: true, class: { select: { name: true, semester: true } } },
+    // TODO: remove fallback once all envs confirm semester column exists (2026-02 migration applied)
+    attendances = await queryWithSemesterFallback(
+      () =>
+        prisma.attendance.findMany({
+          where: whereClause,
+          include: {
+            session: {
+              select: {
+                title: true,
+                session_start: true,
+                class_id: true,
+                class: { select: { name: true, semester: true } },
+                session_classes: {
+                  select: { class_id: true, class: { select: { name: true, semester: true } } },
+                },
               },
             },
+            user: { select: { name: true, nim_nip: true } },
           },
-          user: { select: { name: true, nim_nip: true } },
-        },
-        orderBy: { check_in_time: 'desc' },
-        skip,
-        take: limit,
-      });
-    } catch (err: any) {
-      if (!isMissingSemesterColumn(err)) throw err;
-      attendances = await prisma.attendance.findMany({
-        where: whereClause,
-        include: {
-          session: {
-            select: {
-              title: true,
-              session_start: true,
-              class_id: true,
-              class: { select: { name: true } },
-              session_classes: { select: { class_id: true, class: { select: { name: true } } } },
+          orderBy: { check_in_time: 'desc' },
+          skip,
+          take: limit,
+        }),
+      () =>
+        prisma.attendance.findMany({
+          where: whereClause,
+          include: {
+            session: {
+              select: {
+                title: true,
+                session_start: true,
+                class_id: true,
+                class: { select: { name: true } },
+                session_classes: { select: { class_id: true, class: { select: { name: true } } } },
+              },
             },
+            user: { select: { name: true, nim_nip: true } },
           },
-          user: { select: { name: true, nim_nip: true } },
-        },
-        orderBy: { check_in_time: 'desc' },
-        skip,
-        take: limit,
-      });
-    }
+          orderBy: { check_in_time: 'desc' },
+          skip,
+          take: limit,
+        })
+    );
 
     const formatClassLabel = (cls: any): string => {
       const name = String(cls?.name ?? '').trim();
@@ -247,23 +250,23 @@ export const getReports = async (req: Request, res: Response): Promise<void> => 
       );
 
       if (classIds.length && userIds.length) {
-        let enrollments: any[] = [];
-        try {
-          enrollments = await prisma.classEnrollment.findMany({
-            where: { class_id: { in: classIds }, student_id: { in: userIds } },
-            select: {
-              student_id: true,
-              class_id: true,
-              class: { select: { name: true, semester: true } },
-            },
-          });
-        } catch (err: any) {
-          if (!isMissingSemesterColumn(err)) throw err;
-          enrollments = await prisma.classEnrollment.findMany({
-            where: { class_id: { in: classIds }, student_id: { in: userIds } },
-            select: { student_id: true, class_id: true, class: { select: { name: true } } },
-          });
-        }
+        // TODO: remove fallback once all envs confirm semester column exists (2026-02 migration applied)
+        const enrollments = await queryWithSemesterFallback(
+          () =>
+            prisma.classEnrollment.findMany({
+              where: { class_id: { in: classIds }, student_id: { in: userIds } },
+              select: {
+                student_id: true,
+                class_id: true,
+                class: { select: { name: true, semester: true } },
+              },
+            }),
+          () =>
+            prisma.classEnrollment.findMany({
+              where: { class_id: { in: classIds }, student_id: { in: userIds } },
+              select: { student_id: true, class_id: true, class: { select: { name: true } } },
+            })
+        );
 
         const enrollmentMap = new Map<string, any>();
         for (const e of enrollments) {

@@ -18,9 +18,6 @@ import {
 import { toast } from 'sonner';
 import { format, isValid } from 'date-fns';
 import { id } from 'date-fns/locale';
-import * as ExcelJS from 'exceljs';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import QRCode from 'qrcode';
 import { reportClassLabel } from '@/lib/utils/reportLabel';
 import { Button } from '@/components/ui/button';
@@ -64,6 +61,7 @@ import { ErrorWithRetry } from '@/components/ErrorWithRetry';
 import { SlowLoadingHint } from '@/components/admin/SlowLoadingHint';
 import { attendanceBadgeVariant, attendanceStatusLabel } from '@/lib/utils/statusLabel';
 import { toastErrorMessage } from '@/lib/utils/toastMessage';
+import { useMutationToast } from '@/hooks/useMutationToast';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import { DatePicker } from '@/components/ui/date-picker';
 import { FadeIn } from '@/components/admin/FadeIn';
@@ -140,9 +138,6 @@ export default function Reports() {
   const { isPending: loading, isError, showSlowLoadingHint, retry } = useSwrPageState(swr);
   const { data, mutate } = swr;
 
-  const reports: Report[] = Array.isArray(data?.data)
-    ? (data.data.filter(Boolean) as Report[])
-    : [];
   const meta: PaginationMeta | null = data?.meta || null;
 
   const sessionsFetcher = (url: string) => api.get(url).then((res) => res.data.data);
@@ -161,6 +156,9 @@ export default function Reports() {
   }, [startDate, endDate, sessionId, statusFilter, searchTerm]);
 
   const filteredReports = useMemo(() => {
+    const reports: Report[] = Array.isArray(data?.data)
+      ? (data.data.filter(Boolean) as Report[])
+      : [];
     const q = String(searchTerm ?? '').toLowerCase();
     return reports
       .filter((r): r is Report => Boolean(r && (r as any).id))
@@ -175,7 +173,7 @@ export default function Reports() {
           nim.toLowerCase().includes(q);
         return matchStatus && matchSearch;
       });
-  }, [reports, statusFilter, searchTerm]);
+  }, [data, statusFilter, searchTerm]);
 
   const hasFilters =
     Boolean(searchTerm.trim()) ||
@@ -198,6 +196,7 @@ export default function Reports() {
       const safeRows = (Array.isArray(rows) ? rows : []).filter((r): r is Report =>
         Boolean(r && (r as any).id)
       );
+      const { default: ExcelJS } = await import('exceljs');
       const workbook = new ExcelJS.Workbook();
 
       if (sessionMeta?.sessionId) {
@@ -448,6 +447,10 @@ export default function Reports() {
       const safeRows = (Array.isArray(rows) ? rows : []).filter((r): r is Report =>
         Boolean(r && (r as any).id)
       );
+      const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+        import('jspdf'),
+        import('jspdf-autotable'),
+      ]);
       const doc = new jsPDF();
 
       let tableStartY = 35;
@@ -565,7 +568,7 @@ export default function Reports() {
     } finally {
       setExporting('none');
     }
-  }, [exportExcelMatrix, fetchAllReports, sessionExportMeta, sessionId, sessions, statusFilter]);
+  }, [exportExcelMatrix, fetchAllReports, sessionExportMeta, sessionId, sessions]);
 
   const handleExportPDF = useCallback(async () => {
     const sanitize = (s: string) =>
@@ -590,7 +593,7 @@ export default function Reports() {
     } finally {
       setExporting('none');
     }
-  }, [exportPdfList, fetchAllReports, sessionExportMeta, sessionId, sessions, statusFilter]);
+  }, [exportPdfList, fetchAllReports, sessionExportMeta, sessionId, sessions]);
 
   const handleOpenOverride = (report: Report) => {
     setSelectedReport(report);
@@ -599,27 +602,34 @@ export default function Reports() {
     setIsOverrideModalOpen(true);
   };
 
+  const doOverrideSubmit = useMutationToast(
+    async () => {
+      if (!selectedReport) return undefined as unknown as void;
+      return api.post('/attendance/override', {
+        session_id: selectedReport.session_id,
+        user_id: selectedReport.user_id,
+        status: overrideStatus,
+        notes: overrideNotes,
+      });
+    },
+    {
+      successMsg: 'Status kehadiran berhasil diubah',
+      errorMsg: (err) => toastErrorMessage(err, 'Gagal mengubah status'),
+    }
+  );
+
   const handleOverrideSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedReport || overrideSubmitting) return;
 
     setOverrideSubmitting(true);
     try {
-      await api.post('/attendance/override', {
-        session_id: selectedReport.session_id,
-        user_id: selectedReport.user_id,
-        status: overrideStatus,
-        notes: overrideNotes,
-      });
-
-      toast.success('Status kehadiran berhasil diubah');
-      setIsOverrideConfirmOpen(false);
-      setIsOverrideModalOpen(false);
-
-      // Refresh reports
-      mutate();
-    } catch (error: unknown) {
-      toast.error(toastErrorMessage(error, 'Gagal mengubah status'));
+      const result = await doOverrideSubmit();
+      if (result !== undefined) {
+        setIsOverrideConfirmOpen(false);
+        setIsOverrideModalOpen(false);
+        mutate();
+      }
     } finally {
       setOverrideSubmitting(false);
     }

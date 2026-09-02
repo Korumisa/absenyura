@@ -12,7 +12,7 @@ export default function useHorizontalWheelScroll(enabled: boolean) {
     rafId.current = null;
   };
 
-  const animateToTarget = () => {
+  const animateToTarget = useCallback(() => {
     const el = lastEl.current;
     if (!el) return;
     const max = el.scrollWidth - el.clientWidth;
@@ -27,7 +27,7 @@ export default function useHorizontalWheelScroll(enabled: boolean) {
     }
     el.scrollLeft = cur + diff * 0.22;
     rafId.current = requestAnimationFrame(animateToTarget);
-  };
+  }, []);
 
   const handle = useCallback(
     (
@@ -56,7 +56,7 @@ export default function useHorizontalWheelScroll(enabled: boolean) {
       targetLeft.current = Math.min(max, Math.max(0, el.scrollLeft + delta * 0.9));
       if (!rafId.current) rafId.current = requestAnimationFrame(animateToTarget);
     },
-    [enabled]
+    [enabled, animateToTarget]
   );
 
   const onWheel = useCallback(

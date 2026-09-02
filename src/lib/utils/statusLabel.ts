@@ -1,50 +1,35 @@
-/** [SYSTEMIC] M-04, M-05, ST-01 — sumber kebenaran label status Bahasa Indonesia */
+/** @deprecated Use the single source of truth in @/lib/utils/classLabel instead.
+ *
+ * Prefer:
+ *   import { formatLabel } from '@/lib/utils/classLabel';
+ *   formatLabel('session-status', status)
+ *   formatLabel('attendance-status', status)
+ *   formatLabel('user-role', role)
+ *   formatLabel('excuse-status', status)
+ *
+ * and for badges:
+ *   import { attendanceBadgeVariant } from '@/lib/utils/classLabel';
+ */
+import { formatLabel } from '@/lib/utils/classLabel';
 
 export function sessionStatusLabel(status: string): string {
-  const map: Record<string, string> = {
-    ACTIVE: 'Aktif',
-    UPCOMING: 'Akan datang',
-    CLOSED: 'Selesai',
-  };
-  return map[status] ?? status;
+  return formatLabel('session-status', status);
 }
 
 export function attendanceStatusLabel(status: string): string {
-  const map: Record<string, string> = {
-    PRESENT: 'Hadir',
-    LATE: 'Terlambat',
-    ABSENT: 'Alfa',
-    SICK: 'Sakit',
-    EXCUSED: 'Izin',
-    EXCUSED_APPROVED: 'Izin disetujui',
-  };
-  return map[status] ?? status;
+  return formatLabel('attendance-status', status);
 }
 
 export function userRoleLabel(role: string): string {
-  const map: Record<string, string> = {
-    USER: 'Mahasiswa',
-    ADMIN: 'Admin',
-    SUPER_ADMIN: 'Super Admin',
-    CONTENT_ADMIN: 'Admin Konten',
-  };
-  return map[role] ?? role;
+  return formatLabel('user-role', role);
 }
 
 export function excuseStatusLabel(status: string): string {
-  const map: Record<string, string> = {
-    PENDING: 'Menunggu',
-    APPROVED: 'Disetujui',
-    REJECTED: 'Ditolak',
-  };
-  return map[status] ?? status;
+  return formatLabel('excuse-status', status);
 }
 
-export function attendanceBadgeVariant(
-  status: string
-): 'success' | 'warning' | 'destructive' | 'secondary' {
-  if (status === 'PRESENT') return 'success';
-  if (status === 'LATE') return 'warning';
-  if (status === 'ABSENT') return 'destructive';
-  return 'secondary';
-}
+/** @deprecated Import attendanceBadgeVariant directly from @/lib/utils/classLabel.
+ *  Re-exported here only to prevent duplicate-export ambiguity in the lib barrel;
+ *  the single source of truth lives in classLabel.ts.
+ */
+export { attendanceBadgeVariant } from '@/lib/utils/classLabel';

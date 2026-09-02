@@ -92,6 +92,7 @@ export default function Berita() {
               value={q}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Cari berita..."
+              aria-label="Cari berita"
               className="h-11 w-full rounded-xl border border-black/10 bg-white pl-11 pr-4 text-sm text-slate-700 outline-none focus:border-[var(--public-primary)]/60 focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/40"
             />
           </div>

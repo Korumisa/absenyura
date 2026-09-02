@@ -1,9 +1,10 @@
 import { Request, Response } from 'express';
+import type { AuthRequest } from '../types/index.js';
 import prisma from '../utils/prisma.js';
 
-export const getNotifications = async (req: Request, res: Response): Promise<void> => {
+export const getNotifications = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const user_id = (req as any).user.id;
+    const user_id = req.user!.id;
     const notifications = await prisma.notification.findMany({
       where: { user_id },
       orderBy: { created_at: 'desc' },
@@ -27,10 +28,10 @@ export const getNotifications = async (req: Request, res: Response): Promise<voi
   }
 };
 
-export const markAsRead = async (req: Request, res: Response): Promise<void> => {
+export const markAsRead = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const user_id = (req as any).user.id;
+    const user_id = req.user!.id;
 
     await prisma.notification.update({
       where: { id, user_id },
@@ -48,9 +49,9 @@ export const markAsRead = async (req: Request, res: Response): Promise<void> => 
   }
 };
 
-export const markAllAsRead = async (req: Request, res: Response): Promise<void> => {
+export const markAllAsRead = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const user_id = (req as any).user.id;
+    const user_id = req.user!.id;
 
     await prisma.notification.updateMany({
       where: { user_id, is_read: false },

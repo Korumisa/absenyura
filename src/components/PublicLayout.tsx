@@ -10,12 +10,17 @@ import { useLocation } from 'react-router-dom';
 import { loadCormorantDisplayFont } from '@/lib/perf/loadFonts';
 import { ensureHttpsUrl } from '@/lib/http/ensureHttpsUrl';
 import { isCloudinaryUrl, optimizeCloudinaryUrl } from '@/lib/media/cloudinaryImage';
+import { PublicSiteDataProvider } from '@/components/PublicSiteDataContext';
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
-  const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
+  const fetcher = React.useCallback((url: string) => api.get(url).then((r) => r.data.data), []);
   const { mutate } = useSWRConfig();
-  const { data: profile } = useSWR<PublicProfile | null>('/public-site/profile', fetcher, {
+  const {
+    data: profile = null,
+    isLoading: loading,
+    error,
+  } = useSWR<PublicProfile | null, Error>('/public-site/profile', fetcher, {
     revalidateOnFocus: false,
   });
   const primary = profile?.primary_color || '#2563eb';
@@ -49,36 +54,37 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
     if (window.sessionStorage.getItem(key) === '1') return;
     window.sessionStorage.setItem(key, '1');
 
-    // Prefetch ringan — hindari membanjiri API (penting di NAT kampus / mobile)
     const urls = ['/public-site/profile', '/public-site/categories'];
     void Promise.allSettled(urls.map((url) => mutate(url, fetcher(url), { revalidate: false })));
-  }, [mutate]);
+  }, [mutate, fetcher]);
 
   const orgLabel = profile?.org_name?.trim() || 'HM SDP';
   const metaDescription =
     profile?.hero_subtitle?.trim() || profile?.about_content?.trim()?.slice(0, 160);
 
   return (
-    <div
-      className="flex min-h-screen flex-col overflow-x-hidden bg-white font-sans text-slate-900 selection:bg-blue-200/60 selection:text-slate-900"
-      style={{ ['--public-primary' as any]: primary }}
-    >
-      <PublicPageMeta
-        title={orgLabel}
-        description={metaDescription || undefined}
-        path={location.pathname}
-      />
-      <a
-        href="#public-main"
-        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-[var(--public-primary)]"
+    <PublicSiteDataProvider profile={profile} loading={loading} error={error ?? null}>
+      <div
+        className="flex min-h-screen flex-col overflow-x-hidden bg-white font-sans text-slate-900 selection:bg-blue-200/60 selection:text-slate-900"
+        style={{ ['--public-primary' as any]: primary }}
       >
-        Lewati ke konten utama
-      </a>
-      <PublicNavbar />
-      <main id="public-main" className="flex flex-1 flex-col pt-[4.25rem]">
-        {children}
-      </main>
-      <PublicFooter />
-    </div>
+        <PublicPageMeta
+          title={orgLabel}
+          description={metaDescription || undefined}
+          path={location.pathname}
+        />
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 rounded-lg bg-brand px-4 py-2 z-50"
+        >
+          Lewati ke konten utama
+        </a>
+        <PublicNavbar />
+        <main id="main-content" className="flex flex-1 flex-col pt-[4.25rem]">
+          {children}
+        </main>
+        <PublicFooter />
+      </div>
+    </PublicSiteDataProvider>
   );
 }

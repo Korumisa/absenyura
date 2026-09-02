@@ -22,7 +22,7 @@ export default function Fungsionaris() {
   const { data: structureData, isInitialLoading: isLoading, isError, retry } = useSwrPageState(structureSwr);
   const [selectedCabinetId, setSelectedCabinetId] = useState<string | null>(null);
   
-  const allCabinets = structureData?.allCabinets ?? [];
+  const allCabinets = useMemo(() => structureData?.allCabinets ?? [], [structureData]);
   const activeCabinet = structureData?.cabinet;
   const selectedCabinet = useMemo(() => {
     if (selectedCabinetId) {
@@ -31,7 +31,7 @@ export default function Fungsionaris() {
     return activeCabinet;
   }, [allCabinets, selectedCabinetId, activeCabinet]);
   
-  const groups = selectedCabinet?.groups ?? [];
+  const groups = useMemo(() => selectedCabinet?.groups ?? [], [selectedCabinet]);
   const cabinet = selectedCabinet ?? null;
   const { data: profile } = useSWR<PublicProfile | null>('/public-site/profile', (url) => api.get(url).then(r => r.data.data), { revalidateOnFocus: false });
   const reducedMotion = useReducedMotion();

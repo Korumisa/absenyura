@@ -1,16 +1,11 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import useSWR from 'swr';
-import api from '@/services/api';
-import type { PublicProfile } from '@/types/publicSite';
+import { usePublicSiteData } from '@/components/PublicSiteDataContext';
 import { Instagram, Music2, Youtube } from 'lucide-react';
 import { ensureHttpsUrl } from '@/lib/http/ensureHttpsUrl';
 
 export default function PublicFooter() {
-  const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
-  const { data: profile } = useSWR<PublicProfile | null>('/public-site/profile', fetcher, {
-    revalidateOnFocus: false,
-  });
+  const { profile } = usePublicSiteData();
 
   const orgName = profile?.org_name ?? '';
   const campusName = profile?.campus_name ?? '';

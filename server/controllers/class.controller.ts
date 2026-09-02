@@ -1,33 +1,46 @@
 import { Request, Response } from 'express';
+import type { AuthRequest } from '../types/index.js';
 import prisma from '../utils/prisma.js';
 import { sendForbidden } from '../utils/errorResponse.js';
-import { isMissingSemesterColumn } from '../utils/prismaErrors.js';
+import { queryWithSemesterFallback } from '../utils/prismaErrors.js';
 
 const classInclude = {
   lecturer: { select: { id: true, name: true } },
   _count: { select: { enrollments: true, sessions: true } },
 } as const;
 
+/**
+ * When the current DB has no `Class.semester` column (pre-migration / P2022)
+ * the fallback projections silently drop `semester`. Layer a default of `1`
+ * back onto any row whose shape has `semester` declared at type-level but is
+ * missing the physical column — keeps API response shape uniform for callers.
+ */
+function withDefaultSemester<T extends { semester?: number | null }>(
+  row: T
+): Omit<T, 'semester'> & { semester: number } {
+  return { ...row, semester: (row.semester as number | null | undefined) ?? 1 };
+}
+
 async function findClassById(id: string) {
-  try {
-    return await prisma.class.findUnique({ where: { id }, include: classInclude });
-  } catch (err: any) {
-    if (!isMissingSemesterColumn(err)) throw err;
-    const row = await prisma.class.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        name: true,
-        course_code: true,
-        description: true,
-        lecturer_id: true,
-        lecturer: { select: { id: true, name: true } },
-        _count: { select: { enrollments: true, sessions: true } },
-      },
-    });
-    if (!row) return null;
-    return { ...(row as any), semester: 1 };
-  }
+  // TODO: remove fallback once all envs confirm semester column exists (2026-02 migration applied)
+  const fallback = await queryWithSemesterFallback(
+    () => prisma.class.findUnique({ where: { id }, include: classInclude }),
+    () =>
+      prisma.class.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          name: true,
+          course_code: true,
+          description: true,
+          lecturer_id: true,
+          lecturer: { select: { id: true, name: true } },
+          _count: { select: { enrollments: true, sessions: true } },
+        },
+      })
+  );
+  if (!fallback) return null;
+  return withDefaultSemester(fallback as any);
 }
 
 async function userCanAccessClass(
@@ -50,90 +63,66 @@ async function userCanAccessClass(
   return false;
 }
 
-export const getClasses = async (req: Request, res: Response): Promise<void> => {
+export const getClasses = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const user = (req as any).user;
+    const user = req.user!;
     let classes;
+    const commonInclude = {
+      lecturer: { select: { name: true } },
+      _count: { select: { enrollments: true, sessions: true } },
+    } as const;
+    const commonFallbackSelect = {
+      id: true,
+      name: true,
+      course_code: true,
+      description: true,
+      lecturer_id: true,
+      lecturer: { select: { name: true } },
+      _count: { select: { enrollments: true, sessions: true } },
+    } as const;
+    const commonOrder = { created_at: 'desc' } as const;
 
     if (user.role === 'USER') {
-      try {
-        classes = await prisma.class.findMany({
-          where: { enrollments: { some: { student_id: user.id } } },
-          include: {
-            lecturer: { select: { name: true } },
-            _count: { select: { enrollments: true, sessions: true } },
-          },
-          orderBy: { created_at: 'desc' },
-        });
-      } catch (err: any) {
-        if (!isMissingSemesterColumn(err)) throw err;
-        const rows = await prisma.class.findMany({
-          where: { enrollments: { some: { student_id: user.id } } },
-          select: {
-            id: true,
-            name: true,
-            course_code: true,
-            description: true,
-            lecturer_id: true,
-            lecturer: { select: { name: true } },
-            _count: { select: { enrollments: true, sessions: true } },
-          },
-          orderBy: { created_at: 'desc' },
-        });
-        classes = rows.map((r: any) => ({ ...r, semester: 1 }));
-      }
+      // TODO: remove fallback once all envs confirm semester column exists (2026-02 migration applied)
+      const rows = await queryWithSemesterFallback(
+        () =>
+          prisma.class.findMany({
+            where: { enrollments: { some: { student_id: user.id } } },
+            include: commonInclude,
+            orderBy: commonOrder,
+          }),
+        () =>
+          prisma.class.findMany({
+            where: { enrollments: { some: { student_id: user.id } } },
+            select: commonFallbackSelect,
+            orderBy: commonOrder,
+          })
+      );
+      classes = rows.map((r: any) => withDefaultSemester(r));
     } else if (user.role === 'ADMIN') {
-      try {
-        classes = await prisma.class.findMany({
-          where: { lecturer_id: user.id },
-          include: {
-            lecturer: { select: { name: true } },
-            _count: { select: { enrollments: true, sessions: true } },
-          },
-          orderBy: { created_at: 'desc' },
-        });
-      } catch (err: any) {
-        if (!isMissingSemesterColumn(err)) throw err;
-        const rows = await prisma.class.findMany({
-          where: { lecturer_id: user.id },
-          select: {
-            id: true,
-            name: true,
-            course_code: true,
-            description: true,
-            lecturer_id: true,
-            lecturer: { select: { name: true } },
-            _count: { select: { enrollments: true, sessions: true } },
-          },
-          orderBy: { created_at: 'desc' },
-        });
-        classes = rows.map((r: any) => ({ ...r, semester: 1 }));
-      }
+      // TODO: remove fallback once all envs confirm semester column exists (2026-02 migration applied)
+      const rows = await queryWithSemesterFallback(
+        () =>
+          prisma.class.findMany({
+            where: { lecturer_id: user.id },
+            include: commonInclude,
+            orderBy: commonOrder,
+          }),
+        () =>
+          prisma.class.findMany({
+            where: { lecturer_id: user.id },
+            select: commonFallbackSelect,
+            orderBy: commonOrder,
+          })
+      );
+      classes = rows.map((r: any) => withDefaultSemester(r));
     } else {
-      try {
-        classes = await prisma.class.findMany({
-          include: {
-            lecturer: { select: { name: true } },
-            _count: { select: { enrollments: true, sessions: true } },
-          },
-          orderBy: { created_at: 'desc' },
-        });
-      } catch (err: any) {
-        if (!isMissingSemesterColumn(err)) throw err;
-        const rows = await prisma.class.findMany({
-          select: {
-            id: true,
-            name: true,
-            course_code: true,
-            description: true,
-            lecturer_id: true,
-            lecturer: { select: { name: true } },
-            _count: { select: { enrollments: true, sessions: true } },
-          },
-          orderBy: { created_at: 'desc' },
-        });
-        classes = rows.map((r: any) => ({ ...r, semester: 1 }));
-      }
+      // TODO: remove fallback once all envs confirm semester column exists (2026-02 migration applied)
+      const rows = await queryWithSemesterFallback(
+        () => prisma.class.findMany({ include: commonInclude, orderBy: commonOrder }),
+        () => prisma.class.findMany({ select: commonFallbackSelect, orderBy: commonOrder })
+      );
+      classes = rows.map((r: any) => withDefaultSemester(r));
     }
 
     res.status(200).json({ success: true, data: classes });
@@ -143,39 +132,39 @@ export const getClasses = async (req: Request, res: Response): Promise<void> => 
   }
 };
 
-export const createClass = async (req: Request, res: Response): Promise<void> => {
+export const createClass = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const user = (req as any).user;
+    const user = req.user!;
     const { name, course_code, description, lecturer_id, semester } = req.body;
     const sem = Math.max(1, Math.min(14, Number.parseInt(String(semester ?? '1'), 10) || 1));
     const resolvedLecturerId = user?.role === 'ADMIN' ? user.id : lecturer_id;
 
-    let newClass;
-    try {
-      newClass = await prisma.class.create({
-        data: {
-          name,
-          semester: sem,
-          course_code,
-          description,
-          lecturer_id: resolvedLecturerId,
-        },
-        include: {
-          lecturer: { select: { name: true } },
-          _count: { select: { enrollments: true, sessions: true } },
-        },
-      });
-    } catch (err: any) {
-      if (!isMissingSemesterColumn(err)) throw err;
-      const created = await prisma.class.create({
-        data: { name, course_code, description, lecturer_id: resolvedLecturerId },
-        include: {
-          lecturer: { select: { name: true } },
-          _count: { select: { enrollments: true, sessions: true } },
-        },
-      });
-      newClass = { ...(created as any), semester: 1 };
-    }
+    // TODO: remove fallback once all envs confirm semester column exists (2026-02 migration applied)
+    const created = await queryWithSemesterFallback(
+      () =>
+        prisma.class.create({
+          data: {
+            name,
+            semester: sem,
+            course_code,
+            description,
+            lecturer_id: resolvedLecturerId,
+          },
+          include: {
+            lecturer: { select: { name: true } },
+            _count: { select: { enrollments: true, sessions: true } },
+          },
+        }),
+      () =>
+        prisma.class.create({
+          data: { name, course_code, description, lecturer_id: resolvedLecturerId },
+          include: {
+            lecturer: { select: { name: true } },
+            _count: { select: { enrollments: true, sessions: true } },
+          },
+        })
+    );
+    const newClass = withDefaultSemester(created as any);
 
     res.status(201).json({ success: true, data: newClass });
   } catch (error) {
@@ -184,10 +173,10 @@ export const createClass = async (req: Request, res: Response): Promise<void> =>
   }
 };
 
-export const updateClass = async (req: Request, res: Response): Promise<void> => {
+export const updateClass = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const user = (req as any).user;
+    const user = req.user!;
     const allowed = await userCanAccessClass(user, id);
     if (!allowed || user.role === 'USER') {
       sendForbidden(res, {
@@ -207,28 +196,28 @@ export const updateClass = async (req: Request, res: Response): Promise<void> =>
     }
     const resolvedLecturerId = user.role === 'ADMIN' ? user.id : lecturer_id;
 
-    let updatedClass;
-    try {
-      updatedClass = await prisma.class.update({
-        where: { id },
-        data: { name, semester: sem, course_code, description, lecturer_id: resolvedLecturerId },
-        include: {
-          lecturer: { select: { name: true } },
-          _count: { select: { enrollments: true, sessions: true } },
-        },
-      });
-    } catch (err: any) {
-      if (!isMissingSemesterColumn(err)) throw err;
-      const updated = await prisma.class.update({
-        where: { id },
-        data: { name, course_code, description, lecturer_id: resolvedLecturerId },
-        include: {
-          lecturer: { select: { name: true } },
-          _count: { select: { enrollments: true, sessions: true } },
-        },
-      });
-      updatedClass = { ...(updated as any), semester: 1 };
-    }
+    // TODO: remove fallback once all envs confirm semester column exists (2026-02 migration applied)
+    const updated = await queryWithSemesterFallback(
+      () =>
+        prisma.class.update({
+          where: { id },
+          data: { name, semester: sem, course_code, description, lecturer_id: resolvedLecturerId },
+          include: {
+            lecturer: { select: { name: true } },
+            _count: { select: { enrollments: true, sessions: true } },
+          },
+        }),
+      () =>
+        prisma.class.update({
+          where: { id },
+          data: { name, course_code, description, lecturer_id: resolvedLecturerId },
+          include: {
+            lecturer: { select: { name: true } },
+            _count: { select: { enrollments: true, sessions: true } },
+          },
+        })
+    );
+    const updatedClass = withDefaultSemester(updated as any);
 
     res.status(200).json({ success: true, data: updatedClass });
   } catch (error) {
@@ -249,10 +238,10 @@ export const deleteClass = async (req: Request, res: Response): Promise<void> =>
   }
 };
 
-export const getClassById = async (req: Request, res: Response): Promise<void> => {
+export const getClassById = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const user = (req as any).user;
+    const user = req.user!;
     const cls = await findClassById(id);
     if (!cls) {
       res.status(404).json({ success: false, error: 'Kelas tidak ditemukan' });
@@ -271,9 +260,9 @@ export const getClassById = async (req: Request, res: Response): Promise<void> =
 };
 
 /** Daftar mahasiswa aktif untuk form enrollment (ADMIN & SUPER_ADMIN) */
-export const getEnrollmentOptions = async (req: Request, res: Response): Promise<void> => {
+export const getEnrollmentOptions = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const user = (req as any).user;
+    const user = req.user!;
     const students = await prisma.user.findMany({
       where: { role: 'USER', is_active: true },
       select: {
@@ -303,10 +292,10 @@ export const getEnrollmentOptions = async (req: Request, res: Response): Promise
   }
 };
 
-export const getStudents = async (req: Request, res: Response): Promise<void> => {
+export const getStudents = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const user = (req as any).user;
+    const user = req.user!;
     const allowed = await userCanAccessClass(user, id);
     if (!allowed) {
       res.status(403).json({ success: false, error: 'Akses ditolak' });
@@ -328,10 +317,10 @@ export const getStudents = async (req: Request, res: Response): Promise<void> =>
   }
 };
 
-export const enrollStudents = async (req: Request, res: Response): Promise<void> => {
+export const enrollStudents = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const user = (req as any).user;
+    const user = req.user!;
     const allowed = await userCanAccessClass(user, id);
     if (!allowed || user.role === 'USER') {
       res.status(403).json({ success: false, error: 'Akses ditolak' });
@@ -380,10 +369,10 @@ export const enrollStudents = async (req: Request, res: Response): Promise<void>
   }
 };
 
-export const removeStudent = async (req: Request, res: Response): Promise<void> => {
+export const removeStudent = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id, student_id } = req.params;
-    const user = (req as any).user;
+    const user = req.user!;
     const allowed = await userCanAccessClass(user, id);
     if (!allowed || user.role === 'USER') {
       res.status(403).json({ success: false, error: 'Akses ditolak' });

@@ -8,12 +8,15 @@ import { User, LogOut, Shield, Mail, Phone } from 'lucide-react';
 import { userRoleLabel } from '@/lib/utils/statusLabel';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { SubmitButton } from '@/components/ui/submit-button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { FormField } from '@/components/ui/form-field';
 import AdminPageShell from '@/components/AdminPageShell';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
 import { toastErrorMessage } from '@/lib/utils/toastMessage';
 import { forgetDeviceFingerprint } from '@/lib/storage/deviceFingerprint';
+import { useMutationToast } from '@/hooks/useMutationToast';
 import { cn } from '@/lib/utils/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -100,6 +103,26 @@ export default function Settings() {
 
   const isStudent = user?.role === 'USER';
 
+  const doSaveProfile = useMutationToast(
+    async () => {
+      return api.put('/settings/profile', {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        current_password: formData.current_password,
+        new_password: formData.new_password,
+      });
+    },
+    {
+      successMsg: (res) => res.data.message || 'Profil berhasil diperbarui',
+      errorMsg: (err) => {
+        const fields = parseFieldErrors(err);
+        if (Object.keys(fields).length > 0) setFieldErrors(fields);
+        return toastErrorMessage(err, 'Gagal memperbarui profil');
+      },
+    }
+  );
+
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (formData.new_password && formData.new_password !== formData.confirm_password) {
@@ -110,28 +133,16 @@ export default function Settings() {
     setSaving(true);
     setFieldErrors({});
     try {
-      const res = await api.put('/settings/profile', {
-        name: formData.name,
-        email: formData.email,
-        phone: formData.phone,
-        current_password: formData.current_password,
-        new_password: formData.new_password,
-      });
-
-      // Update local state
-      setAuth({ ...user!, name: formData.name, email: formData.email });
-
-      toast.success(res.data.message || 'Profil berhasil diperbarui');
-      setFormData((prev) => ({
-        ...prev,
-        current_password: '',
-        new_password: '',
-        confirm_password: '',
-      }));
-    } catch (error: unknown) {
-      const fields = parseFieldErrors(error);
-      if (Object.keys(fields).length > 0) setFieldErrors(fields);
-      toast.error(toastErrorMessage(error, 'Gagal memperbarui profil'));
+      const result = await doSaveProfile();
+      if (result !== undefined) {
+        setAuth({ ...user!, name: formData.name, email: formData.email });
+        setFormData((prev) => ({
+          ...prev,
+          current_password: '',
+          new_password: '',
+          confirm_password: '',
+        }));
+      }
     } finally {
       setSaving(false);
     }
@@ -313,74 +324,86 @@ export default function Settings() {
                     ) : (
                       <>
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                          <div className="space-y-2 sm:col-span-2">
-                            <Label>Nama Lengkap</Label>
-                            <Input
-                              type="text"
-                              required
-                              autoComplete="name"
-                              value={formData.name}
-                              onChange={(e) => {
-                                setFormData({ ...formData, name: e.target.value });
-                                if (fieldErrors.name)
-                                  setFieldErrors((f) => ({ ...f, name: undefined }));
-                              }}
-                              className={cn(fieldErrors.name && 'border-red-500')}
-                              aria-invalid={!!fieldErrors.name}
-                              aria-describedby={fieldErrors.name ? 'name-error' : undefined}
-                            />
-                            {fieldErrors.name ? (
-                              <p id="name-error" className="text-xs text-red-600">
-                                {fieldErrors.name}
-                              </p>
-                            ) : null}
-                          </div>
-                          <div className="space-y-2">
-                            <Label>No. HP</Label>
-                            <Input
-                              type="tel"
-                              autoComplete="tel"
-                              value={formData.phone}
-                              onChange={(e) => {
-                                setFormData({ ...formData, phone: e.target.value });
-                                if (fieldErrors.phone)
-                                  setFieldErrors((f) => ({ ...f, phone: undefined }));
-                              }}
-                              className={cn(fieldErrors.phone && 'border-red-500')}
-                              aria-invalid={!!fieldErrors.phone}
-                              aria-describedby={fieldErrors.phone ? 'phone-error' : undefined}
-                            />
-                            {fieldErrors.phone ? (
-                              <p id="phone-error" className="text-xs text-red-600">
-                                {fieldErrors.phone}
-                              </p>
-                            ) : null}
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Email</Label>
-                            <Input
-                              type="email"
-                              required
-                              autoComplete="email"
-                              value={formData.email}
-                              onChange={(e) => {
-                                setFormData({ ...formData, email: e.target.value });
-                                if (fieldErrors.email)
-                                  setFieldErrors((f) => ({ ...f, email: undefined }));
-                              }}
-                              className={cn(fieldErrors.email && 'border-red-500')}
-                              aria-invalid={!!fieldErrors.email}
-                              aria-describedby={fieldErrors.email ? 'email-error' : undefined}
-                            />
-                            {fieldErrors.email ? (
-                              <p id="email-error" className="text-xs text-red-600">
-                                {fieldErrors.email}
-                              </p>
-                            ) : null}
-                            <p className="mt-1 text-xs text-muted-foreground">
-                              Gunakan email yang aktif untuk notifikasi dan pemulihan akun.
-                            </p>
-                          </div>
+                          <FormField
+                            id="profile-name"
+                            label="Nama Lengkap"
+                            required
+                            error={fieldErrors.name}
+                            className="sm:col-span-2"
+                          >
+                            {({
+                              id,
+                              'aria-describedby': ariaDescribedBy,
+                              'aria-invalid': ariaInvalid,
+                            }) => (
+                              <Input
+                                id={id}
+                                type="text"
+                                required
+                                autoComplete="name"
+                                value={formData.name}
+                                onChange={(e) => {
+                                  setFormData({ ...formData, name: e.target.value });
+                                  if (fieldErrors.name)
+                                    setFieldErrors((f) => ({ ...f, name: undefined }));
+                                }}
+                                className={cn(fieldErrors.name && 'border-red-500')}
+                                aria-describedby={ariaDescribedBy}
+                                aria-invalid={ariaInvalid}
+                              />
+                            )}
+                          </FormField>
+                          <FormField id="profile-phone" label="No. HP" error={fieldErrors.phone}>
+                            {({
+                              id,
+                              'aria-describedby': ariaDescribedBy,
+                              'aria-invalid': ariaInvalid,
+                            }) => (
+                              <Input
+                                id={id}
+                                type="tel"
+                                autoComplete="tel"
+                                value={formData.phone}
+                                onChange={(e) => {
+                                  setFormData({ ...formData, phone: e.target.value });
+                                  if (fieldErrors.phone)
+                                    setFieldErrors((f) => ({ ...f, phone: undefined }));
+                                }}
+                                className={cn(fieldErrors.phone && 'border-red-500')}
+                                aria-describedby={ariaDescribedBy}
+                                aria-invalid={ariaInvalid}
+                              />
+                            )}
+                          </FormField>
+                          <FormField
+                            id="profile-email"
+                            label="Email"
+                            required
+                            error={fieldErrors.email}
+                            description="Gunakan email yang aktif untuk notifikasi dan pemulihan akun."
+                          >
+                            {({
+                              id,
+                              'aria-describedby': ariaDescribedBy,
+                              'aria-invalid': ariaInvalid,
+                            }) => (
+                              <Input
+                                id={id}
+                                type="email"
+                                required
+                                autoComplete="email"
+                                value={formData.email}
+                                onChange={(e) => {
+                                  setFormData({ ...formData, email: e.target.value });
+                                  if (fieldErrors.email)
+                                    setFieldErrors((f) => ({ ...f, email: undefined }));
+                                }}
+                                className={cn(fieldErrors.email && 'border-red-500')}
+                                aria-describedby={ariaDescribedBy}
+                                aria-invalid={ariaInvalid}
+                              />
+                            )}
+                          </FormField>
                         </div>
 
                         <hr className="my-6 border-border" />
@@ -393,81 +416,95 @@ export default function Settings() {
                         </p>
 
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                          <div className="space-y-2 sm:col-span-2">
-                            <Label>Kata Sandi Saat Ini</Label>
-                            <Input
-                              type="password"
-                              autoComplete="current-password"
-                              value={formData.current_password}
-                              onChange={(e) => {
-                                setFormData({ ...formData, current_password: e.target.value });
-                                if (fieldErrors.current_password)
-                                  setFieldErrors((f) => ({ ...f, current_password: undefined }));
-                              }}
-                              className={cn(fieldErrors.current_password && 'border-red-500')}
-                              aria-invalid={!!fieldErrors.current_password}
-                              aria-describedby={
-                                fieldErrors.current_password ? 'current-password-error' : undefined
-                              }
-                            />
-                            {fieldErrors.current_password ? (
-                              <p id="current-password-error" className="text-xs text-red-600">
-                                {fieldErrors.current_password}
-                              </p>
-                            ) : null}
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Kata Sandi Baru</Label>
-                            <Input
-                              type="password"
-                              autoComplete="new-password"
-                              value={formData.new_password}
-                              onChange={(e) => {
-                                setFormData({ ...formData, new_password: e.target.value });
-                                if (fieldErrors.new_password)
-                                  setFieldErrors((f) => ({ ...f, new_password: undefined }));
-                              }}
-                              className={cn(fieldErrors.new_password && 'border-red-500')}
-                              aria-invalid={!!fieldErrors.new_password}
-                              aria-describedby={
-                                fieldErrors.new_password ? 'new-password-error' : undefined
-                              }
-                            />
-                            {fieldErrors.new_password ? (
-                              <p id="new-password-error" className="text-xs text-red-600">
-                                {fieldErrors.new_password}
-                              </p>
-                            ) : null}
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Konfirmasi Kata Sandi</Label>
-                            <Input
-                              type="password"
-                              autoComplete="new-password"
-                              value={formData.confirm_password}
-                              onChange={(e) => {
-                                setFormData({ ...formData, confirm_password: e.target.value });
-                                if (fieldErrors.confirm_password)
-                                  setFieldErrors((f) => ({ ...f, confirm_password: undefined }));
-                              }}
-                              className={cn(fieldErrors.confirm_password && 'border-red-500')}
-                              aria-invalid={!!fieldErrors.confirm_password}
-                              aria-describedby={
-                                fieldErrors.confirm_password ? 'confirm-password-error' : undefined
-                              }
-                            />
-                            {fieldErrors.confirm_password ? (
-                              <p id="confirm-password-error" className="text-xs text-red-600">
-                                {fieldErrors.confirm_password}
-                              </p>
-                            ) : null}
-                          </div>
+                          <FormField
+                            id="profile-current-password"
+                            label="Kata Sandi Saat Ini"
+                            error={fieldErrors.current_password}
+                            className="sm:col-span-2"
+                          >
+                            {({
+                              id,
+                              'aria-describedby': ariaDescribedBy,
+                              'aria-invalid': ariaInvalid,
+                            }) => (
+                              <Input
+                                id={id}
+                                type="password"
+                                autoComplete="current-password"
+                                value={formData.current_password}
+                                onChange={(e) => {
+                                  setFormData({ ...formData, current_password: e.target.value });
+                                  if (fieldErrors.current_password)
+                                    setFieldErrors((f) => ({ ...f, current_password: undefined }));
+                                }}
+                                className={cn(fieldErrors.current_password && 'border-red-500')}
+                                aria-describedby={ariaDescribedBy}
+                                aria-invalid={ariaInvalid}
+                              />
+                            )}
+                          </FormField>
+                          <FormField
+                            id="profile-new-password"
+                            label="Kata Sandi Baru"
+                            error={fieldErrors.new_password}
+                          >
+                            {({
+                              id,
+                              'aria-describedby': ariaDescribedBy,
+                              'aria-invalid': ariaInvalid,
+                            }) => (
+                              <Input
+                                id={id}
+                                type="password"
+                                autoComplete="new-password"
+                                value={formData.new_password}
+                                onChange={(e) => {
+                                  setFormData({ ...formData, new_password: e.target.value });
+                                  if (fieldErrors.new_password)
+                                    setFieldErrors((f) => ({ ...f, new_password: undefined }));
+                                }}
+                                className={cn(fieldErrors.new_password && 'border-red-500')}
+                                aria-describedby={ariaDescribedBy}
+                                aria-invalid={ariaInvalid}
+                              />
+                            )}
+                          </FormField>
+                          <FormField
+                            id="profile-confirm-password"
+                            label="Konfirmasi Kata Sandi"
+                            error={fieldErrors.confirm_password}
+                          >
+                            {({
+                              id,
+                              'aria-describedby': ariaDescribedBy,
+                              'aria-invalid': ariaInvalid,
+                            }) => (
+                              <Input
+                                id={id}
+                                type="password"
+                                autoComplete="new-password"
+                                value={formData.confirm_password}
+                                onChange={(e) => {
+                                  setFormData({ ...formData, confirm_password: e.target.value });
+                                  if (fieldErrors.confirm_password)
+                                    setFieldErrors((f) => ({ ...f, confirm_password: undefined }));
+                                }}
+                                className={cn(fieldErrors.confirm_password && 'border-red-500')}
+                                aria-describedby={ariaDescribedBy}
+                                aria-invalid={ariaInvalid}
+                              />
+                            )}
+                          </FormField>
                         </div>
 
                         <div className="flex justify-end pt-2">
-                          <Button type="submit" disabled={saving || profileLoading}>
-                            {saving ? 'Menyimpan...' : 'Simpan Perubahan'}
-                          </Button>
+                          <SubmitButton
+                            type="submit"
+                            disabled={profileLoading}
+                            isLoading={saving}
+                            label="Simpan Perubahan"
+                            loadingLabel="Menyimpan..."
+                          />
                         </div>
                       </>
                     )}

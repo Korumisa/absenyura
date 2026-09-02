@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import type { AuthRequest } from '../types/index.js';
 import prisma from '../utils/prisma.js';
 import { sessionCheckInSelect } from '../utils/sessionQuerySelect.js';
 import { validateDynamicQrToken } from '../utils/dynamicQr.js';
@@ -74,9 +75,9 @@ const uploadPhotoInBackground = async (
   }
 };
 
-export const getChallenge = async (req: Request, res: Response): Promise<void> => {
+export const getChallenge = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const user_id = (req as any).user?.id;
+    const user_id = req.user?.id;
     const sessionId = String(req.query.session_id || '').trim();
     const action: AttendanceProofAction =
       String(req.query.action || 'checkin').toLowerCase() === 'checkout' ? 'checkout' : 'checkin';
@@ -218,12 +219,12 @@ async function verifyAttendanceProof(input: {
   return { ok: true, expiresAt: nonceExpiresAt };
 }
 
-export const checkIn = async (req: Request, res: Response): Promise<void> => {
+export const checkIn = async (req: AuthRequest, res: Response): Promise<void> => {
   triggerSessionCronLazy();
   let isUploadingInBackground = false;
   const checkinStart = Date.now();
   try {
-    const user_id = (req as any).user.id;
+    const user_id = req.user!.id;
     const {
       session_id,
       qr_token,
@@ -574,10 +575,10 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-export const checkOut = async (req: Request, res: Response): Promise<void> => {
+export const checkOut = async (req: AuthRequest, res: Response): Promise<void> => {
   let isUploadingInBackground = false;
   try {
-    const user_id = (req as any).user.id;
+    const user_id = req.user!.id;
     const { id } = req.params;
     const {
       qr_token,

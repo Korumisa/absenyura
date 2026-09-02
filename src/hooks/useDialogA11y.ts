@@ -7,7 +7,10 @@ const FOCUSABLE =
 export function useDialogA11y(
   open: boolean,
   onClose: () => void,
-  options?: { containerRef?: RefObject<HTMLElement | null>; triggerRef?: RefObject<HTMLElement | null> },
+  options?: {
+    containerRef?: RefObject<HTMLElement | null>;
+    triggerRef?: RefObject<HTMLElement | null>;
+  }
 ) {
   const fallbackRef = useRef<HTMLElement | null>(null);
   const containerRef = options?.containerRef ?? fallbackRef;
@@ -19,8 +22,12 @@ export function useDialogA11y(
     const previousFocus = document.activeElement as HTMLElement | null;
     const root = containerRef.current;
     if (!root) return;
+    const trigger = triggerRef?.current ?? null;
 
-    const getFocusable = () => Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) => !el.hasAttribute('disabled'));
+    const getFocusable = () =>
+      Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
+        (el) => !el.hasAttribute('disabled')
+      );
 
     const focusFirst = () => {
       const list = getFocusable();
@@ -60,7 +67,7 @@ export function useDialogA11y(
       window.clearTimeout(t);
       document.removeEventListener('keydown', onKeyDown);
       document.body.style.overflow = prevOverflow;
-      (triggerRef?.current ?? previousFocus)?.focus?.();
+      (trigger ?? previousFocus)?.focus?.();
     };
   }, [open, onClose, containerRef, triggerRef]);
 }

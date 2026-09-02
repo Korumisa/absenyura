@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import type { AuthRequest } from '../types/index.js';
 import prisma from '../utils/prisma.js';
 import crypto from 'crypto';
 import { ipRestrictionEnabledFromWifiBssid } from '../utils/attendanceValidation.js';
@@ -15,7 +16,7 @@ import {
   assertAdminSessionScope,
 } from '../utils/sessionAccess.js';
 import { sendForbidden } from '../utils/errorResponse.js';
-import { isMissingSemesterColumn } from '../utils/prismaErrors.js';
+import { isMissingSemesterColumn, queryWithSemesterFallback } from '../utils/prismaErrors.js';
 
 const VALID_QR_MODES = new Set(['NONE', 'STATIC', 'DYNAMIC']);
 const VALID_SESSION_STATUSES = new Set(['UPCOMING', 'ACTIVE', 'CLOSED']);
@@ -38,65 +39,58 @@ function buildQrFields(qrMode: string) {
   return { qr_token: null, qr_secret: null };
 }
 
-export const getSessions = async (req: Request, res: Response): Promise<void> => {
+export const getSessions = async (req: AuthRequest, res: Response): Promise<void> => {
   triggerSessionCronLazy();
   try {
-    const user = (req as any).user;
+    const user = req.user!;
     let sessions;
 
     if (user.role === 'USER') {
       const userId = user.id as string;
-      try {
-        sessions = await prisma.session.findMany({
-          where: {
-            status: { in: ['UPCOMING', 'ACTIVE'] },
-            OR: [
-              { class_id: null, session_classes: { none: {} } },
-              { class: { enrollments: { some: { student_id: userId } } } },
-              {
-                session_classes: {
-                  some: { class: { enrollments: { some: { student_id: userId } } } },
-                },
-              },
-            ],
+      const baseWhere = {
+        status: { in: ['UPCOMING', 'ACTIVE'] },
+        OR: [
+          { class_id: null, session_classes: { none: {} } },
+          { class: { enrollments: { some: { student_id: userId } } } },
+          {
+            session_classes: {
+              some: { class: { enrollments: { some: { student_id: userId } } } },
+            },
           },
-          select: sessionListSelect({ userId, withSemester: true }),
-          orderBy: { session_start: 'asc' },
-        });
-      } catch (err: any) {
-        if (!isMissingSemesterColumn(err)) throw err;
-        sessions = await prisma.session.findMany({
-          where: {
-            status: { in: ['UPCOMING', 'ACTIVE'] },
-            OR: [
-              { class_id: null, session_classes: { none: {} } },
-              { class: { enrollments: { some: { student_id: userId } } } },
-              {
-                session_classes: {
-                  some: { class: { enrollments: { some: { student_id: userId } } } },
-                },
-              },
-            ],
-          },
-          select: sessionListSelect({ userId, withSemester: false }),
-          orderBy: { session_start: 'asc' },
-        });
-      }
+        ],
+      };
+      // TODO: remove fallback once all envs confirm semester column exists (2026-02 migration applied)
+      sessions = await queryWithSemesterFallback(
+        () =>
+          prisma.session.findMany({
+            where: baseWhere,
+            select: sessionListSelect({ userId, withSemester: true }),
+            orderBy: { session_start: 'asc' },
+          }),
+        () =>
+          prisma.session.findMany({
+            where: baseWhere,
+            select: sessionListSelect({ userId, withSemester: false }),
+            orderBy: { session_start: 'asc' },
+          })
+      );
     } else {
-      try {
-        sessions = await prisma.session.findMany({
-          where: user.role === 'ADMIN' ? adminSessionScopeWhere(user.id) : {},
-          select: sessionListSelect({ withSemester: true }),
-          orderBy: { created_at: 'desc' },
-        });
-      } catch (err: any) {
-        if (!isMissingSemesterColumn(err)) throw err;
-        sessions = await prisma.session.findMany({
-          where: user.role === 'ADMIN' ? adminSessionScopeWhere(user.id) : {},
-          select: sessionListSelect({ withSemester: false }),
-          orderBy: { created_at: 'desc' },
-        });
-      }
+      const scopeWhere = user.role === 'ADMIN' ? adminSessionScopeWhere(user.id) : {};
+      // TODO: remove fallback once all envs confirm semester column exists (2026-02 migration applied)
+      sessions = await queryWithSemesterFallback(
+        () =>
+          prisma.session.findMany({
+            where: scopeWhere,
+            select: sessionListSelect({ withSemester: true }),
+            orderBy: { created_at: 'desc' },
+          }),
+        () =>
+          prisma.session.findMany({
+            where: scopeWhere,
+            select: sessionListSelect({ withSemester: false }),
+            orderBy: { created_at: 'desc' },
+          })
+      );
     }
 
     res.status(200).json({ success: true, data: sessions });
@@ -167,7 +161,7 @@ const sendSessionTimeError = (res: Response, v: SessionTimeError): void => {
   });
 };
 
-export const createSession = async (req: Request, res: Response): Promise<void> => {
+export const createSession = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const {
       title,
@@ -183,7 +177,7 @@ export const createSession = async (req: Request, res: Response): Promise<void> 
       late_threshold_minutes,
       require_checkout,
     } = req.body;
-    const user = (req as any).user;
+    const user = req.user!;
     const user_id = user.id;
     const incomingClassIds = Array.isArray(class_ids)
       ? class_ids.flatMap((x: any) => {
@@ -320,10 +314,10 @@ export const createSession = async (req: Request, res: Response): Promise<void> 
   }
 };
 
-export const updateSession = async (req: Request, res: Response): Promise<void> => {
+export const updateSession = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const user = (req as any).user;
+    const user = req.user!;
     if (!(await assertAdminSessionScope(user, id))) {
       sendForbidden(res, {
         error_code: 'SESSION_OUT_OF_SCOPE',
@@ -463,10 +457,10 @@ export const updateSession = async (req: Request, res: Response): Promise<void> 
   }
 };
 
-export const deleteSession = async (req: Request, res: Response): Promise<void> => {
+export const deleteSession = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const user = (req as any).user;
+    const user = req.user!;
     if (!(await assertAdminSessionScope(user, id))) {
       sendForbidden(res, {
         error_code: 'SESSION_OUT_OF_SCOPE',
@@ -510,24 +504,25 @@ export const deleteSession = async (req: Request, res: Response): Promise<void> 
   }
 };
 
-export const getSessionById = async (req: Request, res: Response): Promise<void> => {
+export const getSessionById = async (req: AuthRequest, res: Response): Promise<void> => {
   triggerSessionCronLazy();
   try {
     const { id } = req.params;
-    const user = (req as any).user;
+    const user = req.user!;
     let session;
-    try {
-      session = await prisma.session.findUnique({
-        where: { id },
-        select: sessionDetailSelect({ withSemester: true }),
-      });
-    } catch (err: any) {
-      if (!isMissingSemesterColumn(err)) throw err;
-      session = await prisma.session.findUnique({
-        where: { id },
-        select: sessionDetailSelect({ withSemester: false }),
-      });
-    }
+    // TODO: remove fallback once all envs confirm semester column exists (2026-02 migration applied)
+    session = await queryWithSemesterFallback(
+      () =>
+        prisma.session.findUnique({
+          where: { id },
+          select: sessionDetailSelect({ withSemester: true }),
+        }),
+      () =>
+        prisma.session.findUnique({
+          where: { id },
+          select: sessionDetailSelect({ withSemester: false }),
+        })
+    );
 
     if (!session) {
       res.status(404).json({ success: false, error: 'Session not found' });
@@ -585,10 +580,10 @@ export const getSessionById = async (req: Request, res: Response): Promise<void>
 };
 
 // Generate Dynamic QR or return Static Token
-export const getSessionQR = async (req: Request, res: Response): Promise<void> => {
+export const getSessionQR = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const user = (req as any).user;
+    const user = req.user!;
     const session = await prisma.session.findUnique({
       where: { id },
       select: { id: true, qr_mode: true, qr_token: true, qr_secret: true },
@@ -635,10 +630,10 @@ export const getSessionQR = async (req: Request, res: Response): Promise<void> =
   }
 };
 
-export const getSessionAttendances = async (req: Request, res: Response): Promise<void> => {
+export const getSessionAttendances = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const user = (req as any).user;
+    const user = req.user!;
     if (!(await assertAdminSessionScope(user, id))) {
       sendForbidden(res, {
         error_code: 'SESSION_OUT_OF_SCOPE',

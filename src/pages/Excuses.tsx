@@ -14,11 +14,13 @@ import {
   Loader2,
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { id } from 'date-fns/locale';
+import { id as localeId } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { SubmitButton } from '@/components/ui/submit-button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { FormField } from '@/components/ui/form-field';
 import { Badge } from '@/components/ui/badge';
 import {
   Select,
@@ -52,6 +54,7 @@ import { ErrorWithRetry } from '@/components/ErrorWithRetry';
 import { SlowLoadingHint } from '@/components/admin/SlowLoadingHint';
 import { excuseStatusLabel } from '@/lib/utils/statusLabel';
 import { toastErrorMessage } from '@/lib/utils/toastMessage';
+import { useMutationToast } from '@/hooks/useMutationToast';
 import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { useClientPagination } from '@/hooks/useClientPagination';
@@ -274,6 +277,20 @@ export default function Excuses() {
   } = useSwrPageState(swr);
   const hasFilters = Boolean(searchTerm.trim()) || statusFilter !== 'ALL' || reasonFilter !== 'ALL';
 
+  const doReview = useMutationToast(
+    async () => {
+      if (!reviewConfirm) return undefined as unknown as void;
+      return api.put(`/excuses/${reviewConfirm.id}/review`, { status: reviewConfirm.status });
+    },
+    {
+      successMsg: () =>
+        reviewConfirm
+          ? `Pengajuan izin ${reviewConfirm.status === 'APPROVED' ? 'disetujui' : 'ditolak'}`
+          : 'Berhasil',
+      errorMsg: (err) => toastErrorMessage(err, 'Gagal mereview pengajuan izin'),
+    }
+  );
+
   const resolveProofUrl = (proofUrl: string | null | undefined) => {
     if (!proofUrl) return null;
     if (proofUrl.startsWith('http') || proofUrl.startsWith('data:')) return proofUrl;
@@ -338,8 +355,12 @@ export default function Excuses() {
       form.append('photo_type', photoType);
       form.append('proof', photoBlob, 'excuse.jpg');
 
+      const idempotencyKey = crypto.randomUUID();
       await api.post('/excuses', form, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          'X-Idempotency-Key': idempotencyKey,
+        },
       });
       toast.success('Pengajuan izin berhasil dikirim');
       setIsModalOpen(false);
@@ -359,15 +380,14 @@ export default function Excuses() {
 
   const confirmReview = async () => {
     if (!reviewConfirm || reviewingId) return;
-    const { id, status } = reviewConfirm;
+    const { id } = reviewConfirm;
     setReviewingId(id);
     try {
-      await api.put(`/excuses/${id}/review`, { status });
-      toast.success(`Pengajuan izin ${status === 'APPROVED' ? 'disetujui' : 'ditolak'}`);
-      mutate();
-      setReviewConfirm(null);
-    } catch (error: unknown) {
-      toast.error(toastErrorMessage(error, 'Gagal mereview pengajuan izin'));
+      const result = await doReview();
+      if (result !== undefined) {
+        mutate();
+        setReviewConfirm(null);
+      }
     } finally {
       setReviewingId(null);
     }
@@ -593,7 +613,7 @@ export default function Excuses() {
                       <p className="text-xs font-semibold text-brand">{classLabel}</p>
                       <p className="mt-1 text-xs text-muted-foreground">
                         {format(new Date(excuse.session.session_start), 'dd MMM yyyy HH:mm', {
-                          locale: id,
+                          locale: localeId,
                         })}
                       </p>
                       {excuse.description ? (
@@ -750,7 +770,7 @@ export default function Excuses() {
                           </div>
                           <div className="text-xs text-muted-foreground mt-1">
                             {format(new Date(excuse.session.session_start), 'dd MMM yyyy HH:mm', {
-                              locale: id,
+                              locale: localeId,
                             })}
                           </div>
                         </TableCell>
@@ -881,166 +901,181 @@ export default function Excuses() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6 p-6 sm:p-8">
-              <div className="space-y-2">
-                <Label>
-                  Pilih Sesi / Kelas <span className="text-red-500">*</span>
-                </Label>
-                <Select
-                  required
-                  value={formData.session_id}
-                  onValueChange={(val) => setFormData({ ...formData, session_id: val })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Pilih Sesi yang akan diizinkan" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {sessions.map((s) => (
-                      <SelectItem key={s.id} value={s.id}>
-                        {s.title} (
-                        {(() => {
-                          const labels = (s.session_classes ?? []).flatMap((x: any) => {
-                            const result = formatClassLabel(x?.class);
-                            return result ? [result] : [];
-                          });
-                          if (labels.length) return labels.join(', ');
-                          return s.class ? formatClassLabel(s.class) : 'Umum';
-                        })()}
-                        ) - {format(new Date(s.session_start), 'dd MMM', { locale: id })}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>
-                  Jenis Izin <span className="text-red-500">*</span>
-                </Label>
-                <Select
-                  required
-                  value={formData.reason}
-                  onValueChange={(val) => setFormData({ ...formData, reason: val })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="SICK">Sakit</SelectItem>
-                    <SelectItem value="EXCUSED">Izin (Kegiatan/Lainnya)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>
-                  Keterangan <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  type="text"
-                  required
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Mohon sebutkan alasan izin/sakit..."
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>
-                  Foto Bukti (wajib foto baru) <span className="text-red-500">*</span>
-                </Label>
-                {cameraError ? <div className="text-xs text-red-600">{cameraError}</div> : null}
-
-                {!isCameraActive && !photoBlob ? (
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="min-h-11"
-                      disabled={!formData.session_id || cameraStarting}
-                      onClick={() => void startCamera()}
+              <FormField id="excuse-session" label="Pilih Sesi / Kelas" required>
+                {({ id, 'aria-describedby': ariaDescribedBy, 'aria-invalid': ariaInvalid }) => (
+                  <Select
+                    required
+                    value={formData.session_id}
+                    onValueChange={(val) => setFormData({ ...formData, session_id: val })}
+                  >
+                    <SelectTrigger
+                      id={id}
+                      aria-describedby={ariaDescribedBy}
+                      aria-invalid={ariaInvalid}
                     >
-                      {cameraStarting ? 'Membuka kamera…' : 'Buka Kamera'}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      className="min-h-11"
-                      disabled={!formData.session_id || cameraStarting}
-                      onClick={switchCamera}
-                    >
-                      Ganti Kamera
-                    </Button>
-                  </div>
-                ) : null}
+                      <SelectValue placeholder="Pilih Sesi yang akan diizinkan" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {sessions.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.title} (
+                          {(() => {
+                            const labels = (s.session_classes ?? []).flatMap((x: any) => {
+                              const result = formatClassLabel(x?.class);
+                              return result ? [result] : [];
+                            });
+                            if (labels.length) return labels.join(', ');
+                            return s.class ? formatClassLabel(s.class) : 'Umum';
+                          })()}
+                          ) - {format(new Date(s.session_start), 'dd MMM', { locale: localeId })}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </FormField>
 
-                {/*
-                  FIX: The <video> element is always in the DOM. We use `hidden` (display:none)
-                  to avoid layout/interaction issues when the camera is inactive. The stream
-                  is assigned via a useEffect + requestAnimationFrame after isCameraActive
-                  flips to true and React removes the `hidden` class, ensuring the video
-                  decoder activates on a visible element (mobile Android Chrome skips
-                  decoder init on display:none elements).
-                */}
-                <div
-                  className={cn(
-                    'space-y-3 rounded-xl border border-border bg-muted/10 p-3',
-                    !isCameraActive && 'hidden'
-                  )}
-                >
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    className="aspect-video w-full rounded-lg bg-black object-cover pointer-events-none"
-                    playsInline
-                    muted
+              <FormField id="excuse-reason" label="Jenis Izin" required>
+                {({ id, 'aria-describedby': ariaDescribedBy, 'aria-invalid': ariaInvalid }) => (
+                  <Select
+                    required
+                    value={formData.reason}
+                    onValueChange={(val) => setFormData({ ...formData, reason: val })}
+                  >
+                    <SelectTrigger
+                      id={id}
+                      aria-describedby={ariaDescribedBy}
+                      aria-invalid={ariaInvalid}
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="SICK">Sakit</SelectItem>
+                      <SelectItem value="EXCUSED">Izin (Kegiatan/Lainnya)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              </FormField>
+
+              <FormField id="excuse-description" label="Keterangan" required>
+                {({ id, 'aria-describedby': ariaDescribedBy, 'aria-invalid': ariaInvalid }) => (
+                  <Input
+                    id={id}
+                    type="text"
+                    required
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    placeholder="Mohon sebutkan alasan izin/sakit..."
+                    aria-describedby={ariaDescribedBy}
+                    aria-invalid={ariaInvalid}
                   />
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="min-h-11"
-                      onClick={switchCamera}
-                    >
-                      Ganti Kamera
-                    </Button>
-                    <Button type="button" className="min-h-11" onClick={takePhoto}>
-                      Ambil Foto
-                    </Button>
-                    <Button type="button" variant="ghost" className="min-h-11" onClick={stopCamera}>
-                      Tutup
-                    </Button>
-                  </div>
-                  <canvas ref={canvasRef} className="hidden" />
-                </div>
+                )}
+              </FormField>
 
-                {photoPreviewUrl ? (
-                  <div className="space-y-3 rounded-xl border border-border bg-muted/10 p-3">
-                    <img
-                      src={photoPreviewUrl}
-                      alt="Pratinjau foto bukti"
-                      className="mx-auto max-h-56 rounded-lg object-contain"
-                    />
-                    <div className="flex flex-wrap items-center justify-end gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="min-h-11"
-                        onClick={retakePhoto}
-                      >
-                        Foto Ulang
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        className="min-h-11"
-                        onClick={clearPhoto}
-                      >
-                        Hapus
-                      </Button>
+              <FormField
+                id="excuse-photo"
+                label="Foto Bukti"
+                required
+                description="(wajib foto baru)"
+                error={cameraError || undefined}
+              >
+                {({ 'aria-describedby': ariaDescribedBy, 'aria-invalid': ariaInvalid }) => (
+                  <>
+                    {!isCameraActive && !photoBlob ? (
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="min-h-11"
+                          disabled={!formData.session_id || cameraStarting}
+                          onClick={() => void startCamera()}
+                        >
+                          {cameraStarting ? 'Membuka kamera…' : 'Buka Kamera'}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="min-h-11"
+                          disabled={!formData.session_id || cameraStarting}
+                          onClick={switchCamera}
+                        >
+                          Ganti Kamera
+                        </Button>
+                      </div>
+                    ) : null}
+
+                    <div
+                      className={cn(
+                        'space-y-3 rounded-xl border border-border bg-muted/10 p-3',
+                        !isCameraActive && 'hidden'
+                      )}
+                    >
+                      <video
+                        ref={videoRef}
+                        autoPlay
+                        className="aspect-video w-full rounded-lg bg-black object-cover pointer-events-none"
+                        playsInline
+                        muted
+                        aria-hidden="true"
+                      />
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="min-h-11"
+                          onClick={switchCamera}
+                        >
+                          Ganti Kamera
+                        </Button>
+                        <Button type="button" className="min-h-11" onClick={takePhoto}>
+                          Ambil Foto
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="min-h-11"
+                          onClick={stopCamera}
+                        >
+                          Tutup
+                        </Button>
+                      </div>
+                      <canvas ref={canvasRef} className="hidden" aria-hidden="true" />
                     </div>
-                  </div>
-                ) : null}
-              </div>
+
+                    {photoPreviewUrl ? (
+                      <div
+                        className="space-y-3 rounded-xl border border-border bg-muted/10 p-3"
+                        aria-describedby={ariaDescribedBy}
+                        aria-invalid={ariaInvalid}
+                      >
+                        <img
+                          src={photoPreviewUrl}
+                          alt="Pratinjau foto bukti"
+                          className="mx-auto max-h-56 rounded-lg object-contain"
+                        />
+                        <div className="flex flex-wrap items-center justify-end gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="min-h-11"
+                            onClick={retakePhoto}
+                          >
+                            Foto Ulang
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            className="min-h-11"
+                            onClick={clearPhoto}
+                          >
+                            Hapus
+                          </Button>
+                        </div>
+                      </div>
+                    ) : null}
+                  </>
+                )}
+              </FormField>
 
               <DialogFooter className="mt-4 gap-4 sm:gap-3">
                 <Button
@@ -1052,21 +1087,13 @@ export default function Excuses() {
                 >
                   Batal
                 </Button>
-                <Button
+                <SubmitButton
                   type="submit"
                   className="min-h-11"
-                  disabled={submitting}
-                  aria-busy={submitting}
-                >
-                  {submitting ? (
-                    <>
-                      <Loader2 className="mr-2 size-4 animate-spin" aria-hidden="true" />
-                      Mengirim…
-                    </>
-                  ) : (
-                    'Kirim Pengajuan'
-                  )}
-                </Button>
+                  isLoading={submitting}
+                  label="Kirim Pengajuan"
+                  loadingLabel="Mengirim…"
+                />
               </DialogFooter>
             </form>
           </DialogContent>

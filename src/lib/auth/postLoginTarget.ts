@@ -1,8 +1,37 @@
+const STORAGE_KEY = 'post-login-target';
+
 type LoginFromState = {
   pathname?: string;
   search?: string;
   hash?: string;
 };
+
+export function saveTarget(target: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.sessionStorage.setItem(STORAGE_KEY, target);
+  } catch {
+    // ignore
+  }
+}
+
+export function getTarget(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return window.sessionStorage.getItem(STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function clearTarget(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.sessionStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // ignore
+  }
+}
 
 export function getPostLoginTarget(
   from: LoginFromState | undefined,

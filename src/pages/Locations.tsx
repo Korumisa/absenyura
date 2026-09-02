@@ -1,9 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import api from '@/services/api';
 import { Plus, Edit2, Trash2, Search, X, MapPin, LocateFixed } from 'lucide-react';
 import { toast } from 'sonner';
-import { MapContainer, TileLayer, Marker, Circle, useMapEvents } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
 import { MapResizeOnOpen } from '@/components/MapResizeOnOpen';
 import useSWR from 'swr';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
@@ -14,9 +12,11 @@ import { TablePagination } from '@/components/ui/TablePagination';
 import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
+import { SubmitButton } from '@/components/ui/submit-button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { FormField } from '@/components/ui/form-field';
 import { Badge } from '@/components/ui/badge';
 import {
   Select,
@@ -48,10 +48,14 @@ import type { Location } from '@/types/location';
 import { fixLeafletDefaultIcons } from '@/lib/media/leafletIcon';
 import { useAuthStore } from '@/stores/authStore';
 import { toastErrorMessage } from '@/lib/utils/toastMessage';
+import { useMutationToast } from '@/hooks/useMutationToast';
 
-fixLeafletDefaultIcons();
+const MapContainer = lazy(() => import('react-leaflet').then((m) => ({ default: m.MapContainer })));
+const TileLayer = lazy(() => import('react-leaflet').then((m) => ({ default: m.TileLayer })));
+const Marker = lazy(() => import('react-leaflet').then((m) => ({ default: m.Marker })));
+const Circle = lazy(() => import('react-leaflet').then((m) => ({ default: m.Circle })));
+import { useMapEvents } from 'react-leaflet';
 
-// Map Click Handler Component
 interface MapEventsProps {
   formData: {
     latitude: number;
@@ -80,7 +84,6 @@ const MapEvents: React.FC<MapEventsProps> = ({ formData, setFormData }) => {
     },
   });
 
-  // Auto center map when coordinate inputs change
   useEffect(() => {
     map.setView([formData.latitude, formData.longitude], map.getZoom(), {
       animate: true,
@@ -92,6 +95,7 @@ const MapEvents: React.FC<MapEventsProps> = ({ formData, setFormData }) => {
 };
 
 export default function Locations() {
+  const [leafletLoaded, setLeafletLoaded] = useState(false);
   const currentUser = useAuthStore((s) => s.user);
   const [searchTerm, setSearchTerm] = useState('');
   const [wifiFilter, setWifiFilter] = useState('ALL');
@@ -99,6 +103,13 @@ export default function Locations() {
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingLocation, setEditingLocation] = useState<Location | null>(null);
+
+  useEffect(() => {
+    Promise.all([import('leaflet'), import('leaflet/dist/leaflet.css')]).then(() => {
+      fixLeafletDefaultIcons();
+      setLeafletLoaded(true);
+    });
+  }, []);
 
   // Delete Confirmation Modal state
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -136,6 +147,31 @@ export default function Locations() {
   } = useSwrPageState(swr);
 
   const hasFilters = Boolean(searchTerm.trim()) || wifiFilter !== 'ALL';
+
+  const doSaveLocation = useMutationToast(
+    async () => {
+      const payload = {
+        ...formData,
+        wifi_bssid: formData.wifi_bssid.split(',').flatMap((ip) => {
+          const result = ip.trim();
+          return result ? [result] : [];
+        }),
+      };
+      if (editingLocation) {
+        return api.put(`/locations/${editingLocation.id}`, payload);
+      }
+      return api.post('/locations', payload);
+    },
+    {
+      successMsg: editingLocation ? 'Lokasi berhasil diperbarui' : 'Lokasi berhasil ditambahkan',
+      errorMsg: (err) => toastErrorMessage(err, 'Terjadi kesalahan'),
+    }
+  );
+
+  const doDeleteLocation = useMutationToast(() => api.delete(`/locations/${locationToDelete}`), {
+    successMsg: 'Lokasi berhasil dihapus',
+    errorMsg: (err) => toastErrorMessage(err, 'Gagal menghapus lokasi'),
+  });
 
   const canManageLocation = (loc: Location): boolean => {
     if (!currentUser) return false;
@@ -182,25 +218,11 @@ export default function Locations() {
     if (saving) return;
     setSaving(true);
     try {
-      const payload = {
-        ...formData,
-        wifi_bssid: formData.wifi_bssid.split(',').flatMap((ip) => {
-          const result = ip.trim();
-          return result ? [result] : [];
-        }),
-      };
-
-      if (editingLocation) {
-        await api.put(`/locations/${editingLocation.id}`, payload);
-        toast.success('Lokasi berhasil diperbarui');
-      } else {
-        await api.post('/locations', payload);
-        toast.success('Lokasi berhasil ditambahkan');
+      const result = await doSaveLocation();
+      if (result !== undefined) {
+        setIsModalOpen(false);
+        mutate();
       }
-      setIsModalOpen(false);
-      mutate();
-    } catch (error: any) {
-      toast.error(toastErrorMessage(error, 'Terjadi kesalahan'));
     } finally {
       setSaving(false);
     }
@@ -219,13 +241,12 @@ export default function Locations() {
     if (!locationToDelete || deleting) return;
     setDeleting(true);
     try {
-      await api.delete(`/locations/${locationToDelete}`);
-      toast.success('Lokasi berhasil dihapus');
-      setIsDeleteModalOpen(false);
-      setLocationToDelete(null);
-      mutate();
-    } catch (error) {
-      toast.error(toastErrorMessage(error, 'Gagal menghapus lokasi'));
+      const result = await doDeleteLocation();
+      if (result !== undefined) {
+        setIsDeleteModalOpen(false);
+        setLocationToDelete(null);
+        mutate();
+      }
     } finally {
       setDeleting(false);
     }
@@ -582,124 +603,160 @@ export default function Locations() {
               className="flex flex-col overflow-hidden md:flex-row md:items-stretch"
             >
               <div className="relative z-10 shrink-0 space-y-4 overflow-y-auto border-r border-border border-r border-border bg-card p-6 md:w-1/2 md:max-h-[min(72vh,680px)]">
-                <div className="space-y-2">
-                  <Label>
-                    Nama Lokasi <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    type="text"
-                    required
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="Gedung A Ruang 201"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-2">
-                    Alamat <span className="text-red-500">*</span>
-                    {isGeocoding && (
-                      <span className="text-xs text-indigo-500 animate-pulse">
-                        (Mencari koordinat...)
-                      </span>
-                    )}
-                  </Label>
-                  <Textarea
-                    rows={2}
-                    required
-                    value={formData.address}
-                    onChange={handleAddressChange}
-                    placeholder="Ketik alamat (misal: Undiksha Singaraja)..."
-                  />
-                </div>
+                <FormField id="location-name" label="Nama Lokasi" required>
+                  {({ id, 'aria-describedby': ariaDescribedBy, 'aria-invalid': ariaInvalid }) => (
+                    <Input
+                      id={id}
+                      type="text"
+                      required
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      placeholder="Gedung A Ruang 201"
+                      aria-describedby={ariaDescribedBy}
+                      aria-invalid={ariaInvalid}
+                    />
+                  )}
+                </FormField>
+                <FormField
+                  id="location-address"
+                  label={
+                    <>
+                      Alamat
+                      {isGeocoding && (
+                        <span className="ml-2 text-xs text-indigo-500 animate-pulse">
+                          (Mencari koordinat...)
+                        </span>
+                      )}
+                    </>
+                  }
+                  required
+                >
+                  {({ id, 'aria-describedby': ariaDescribedBy, 'aria-invalid': ariaInvalid }) => (
+                    <Textarea
+                      id={id}
+                      rows={2}
+                      required
+                      value={formData.address}
+                      onChange={handleAddressChange}
+                      placeholder="Ketik alamat (misal: Undiksha Singaraja)..."
+                      aria-describedby={ariaDescribedBy}
+                      aria-invalid={ariaInvalid}
+                    />
+                  )}
+                </FormField>
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>
-                      Latitude <span className="text-red-500">*</span>
-                    </Label>
+                  <FormField id="location-latitude" label="Latitude" required>
+                    {({ id, 'aria-describedby': ariaDescribedBy, 'aria-invalid': ariaInvalid }) => (
+                      <Input
+                        id={id}
+                        type="number"
+                        step="any"
+                        required
+                        value={formData.latitude}
+                        onChange={(e) =>
+                          setFormData({ ...formData, latitude: parseFloat(e.target.value) })
+                        }
+                        aria-describedby={ariaDescribedBy}
+                        aria-invalid={ariaInvalid}
+                      />
+                    )}
+                  </FormField>
+                  <FormField id="location-longitude" label="Longitude" required>
+                    {({ id, 'aria-describedby': ariaDescribedBy, 'aria-invalid': ariaInvalid }) => (
+                      <Input
+                        id={id}
+                        type="number"
+                        step="any"
+                        required
+                        value={formData.longitude}
+                        onChange={(e) =>
+                          setFormData({ ...formData, longitude: parseFloat(e.target.value) })
+                        }
+                        aria-describedby={ariaDescribedBy}
+                        aria-invalid={ariaInvalid}
+                      />
+                    )}
+                  </FormField>
+                </div>
+                <FormField id="location-radius" label="Radius (Meter)" required>
+                  {({ id, 'aria-describedby': ariaDescribedBy, 'aria-invalid': ariaInvalid }) => (
+                    <div className="flex items-center gap-4">
+                      <input
+                        id={id}
+                        type="range"
+                        min="10"
+                        max="1000"
+                        step="10"
+                        value={formData.radius}
+                        onChange={(e) =>
+                          setFormData({ ...formData, radius: parseInt(e.target.value) })
+                        }
+                        className="flex-1 accent-indigo-600"
+                        aria-label="Radius lokasi dalam meter"
+                        aria-describedby={ariaDescribedBy}
+                        aria-invalid={ariaInvalid}
+                      />
+                      <span className="w-16 rounded border border-border bg-muted px-2 py-1 text-center font-mono text-sm text-foreground">
+                        {formData.radius}m
+                      </span>
+                    </div>
+                  )}
+                </FormField>
+                <FormField
+                  id="location-wifi"
+                  label="IP/WiFi yang Diizinkan (Pisahkan dengan koma)"
+                  description="Kosongkan jika tidak ada batasan IP"
+                >
+                  {({ id, 'aria-describedby': ariaDescribedBy, 'aria-invalid': ariaInvalid }) => (
                     <Input
-                      type="number"
-                      step="any"
-                      required
-                      value={formData.latitude}
-                      onChange={(e) =>
-                        setFormData({ ...formData, latitude: parseFloat(e.target.value) })
-                      }
+                      id={id}
+                      type="text"
+                      value={formData.wifi_bssid}
+                      onChange={(e) => setFormData({ ...formData, wifi_bssid: e.target.value })}
+                      placeholder="192.168.1.1, 10.0.0.0/24"
+                      className="font-mono"
+                      aria-describedby={ariaDescribedBy}
+                      aria-invalid={ariaInvalid}
                     />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>
-                      Longitude <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      type="number"
-                      step="any"
-                      required
-                      value={formData.longitude}
-                      onChange={(e) =>
-                        setFormData({ ...formData, longitude: parseFloat(e.target.value) })
-                      }
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>
-                    Radius (Meter) <span className="text-red-500">*</span>
-                  </Label>
-                  <div className="flex items-center gap-4">
-                    <input
-                      type="range"
-                      min="10"
-                      max="1000"
-                      step="10"
-                      value={formData.radius}
-                      onChange={(e) =>
-                        setFormData({ ...formData, radius: parseInt(e.target.value) })
-                      }
-                      className="flex-1 accent-indigo-600"
-                    />
-                    <span className="w-16 rounded border border-border bg-muted px-2 py-1 text-center font-mono text-sm text-foreground">
-                      {formData.radius}m
-                    </span>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>IP/WiFi yang Diizinkan (Pisahkan dengan koma)</Label>
-                  <Input
-                    type="text"
-                    value={formData.wifi_bssid}
-                    onChange={(e) => setFormData({ ...formData, wifi_bssid: e.target.value })}
-                    placeholder="192.168.1.1, 10.0.0.0/24"
-                    className="font-mono"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Kosongkan jika tidak ada batasan IP
-                  </p>
-                </div>
+                  )}
+                </FormField>
               </div>
 
               <div className="flex min-h-[360px] flex-1 flex-col md:w-1/2">
                 <div className="location-map-panel relative isolate z-0 min-h-[320px] flex-1 overflow-hidden bg-slate-100 bg-background md:min-h-[480px]">
-                  {isModalOpen ? (
-                    <MapContainer
-                      key={editingLocation?.id ?? 'new-location'}
-                      center={mapCenter}
-                      zoom={16}
-                      style={{ height: '100%', width: '100%', minHeight: 320 }}
-                      scrollWheelZoom={true}
+                  {isModalOpen && leafletLoaded ? (
+                    <Suspense
+                      fallback={
+                        <div className="flex h-full w-full items-center justify-center bg-muted">
+                          <span className="text-sm text-muted-foreground">Memuat peta…</span>
+                        </div>
+                      }
                     >
-                      <TileLayer
-                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                      />
-                      <Marker position={[formData.latitude, formData.longitude]} />
-                      <Circle
-                        center={[formData.latitude, formData.longitude]}
-                        radius={formData.radius}
-                        pathOptions={{ color: 'indigo', fillColor: 'indigo', fillOpacity: 0.2 }}
-                      />
-                      <MapEvents formData={formData} setFormData={setFormData} />
-                      <MapResizeOnOpen when={isModalOpen} />
-                    </MapContainer>
+                      <MapContainer
+                        key={editingLocation?.id ?? 'new-location'}
+                        center={mapCenter}
+                        zoom={16}
+                        style={{ height: '100%', width: '100%', minHeight: 320 }}
+                        scrollWheelZoom={true}
+                      >
+                        <TileLayer
+                          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                        />
+                        <Marker position={[formData.latitude, formData.longitude]} />
+                        <Circle
+                          center={[formData.latitude, formData.longitude]}
+                          radius={formData.radius}
+                          pathOptions={{ color: 'indigo', fillColor: 'indigo', fillOpacity: 0.2 }}
+                        />
+                        <MapEvents formData={formData} setFormData={setFormData} />
+                        <MapResizeOnOpen when={isModalOpen} />
+                      </MapContainer>
+                    </Suspense>
+                  ) : isModalOpen ? (
+                    <div className="flex h-full w-full items-center justify-center bg-muted">
+                      <span className="text-sm text-muted-foreground">Memuat peta…</span>
+                    </div>
                   ) : null}
 
                   {/* Geolocation Button overlay */}
@@ -733,9 +790,13 @@ export default function Locations() {
                   >
                     Batal
                   </Button>
-                  <Button type="submit" disabled={saving} aria-busy={saving}>
-                    {saving ? 'Menyimpan…' : 'Simpan Lokasi'}
-                  </Button>
+                  <SubmitButton
+                    type="submit"
+                    disabled={saving}
+                    isLoading={saving}
+                    label="Simpan Lokasi"
+                    loadingLabel="Menyimpan…"
+                  />
                 </div>
               </div>
             </form>

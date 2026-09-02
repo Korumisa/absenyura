@@ -1,11 +1,13 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import api from '@/services/api';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { SubmitButton } from '@/components/ui/submit-button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { FormField } from '@/components/ui/form-field';
 import type { PublicProfile } from '@/types/publicSite';
 import { getErrorMessage } from '@/lib/http/errorMessage';
 import { prepareImageForUpload } from '@/lib/media/imageUpload';
@@ -19,6 +21,7 @@ import { cn } from '@/lib/utils/utils';
 import { CmsTabNav, type CmsTabItem } from '@/components/ui/CmsTabNav';
 import { CmsEditorLayout } from '@/components/cms/CmsEditorLayout';
 import { AdminContentTransition } from '@/components/admin/AdminContentTransition';
+import { useMutationToast } from '@/hooks/useMutationToast';
 
 type ProfileTab = 'identity' | 'home' | 'visimisi' | 'contact';
 
@@ -187,11 +190,74 @@ export default function PublicSiteProfile() {
     return res.data.data.url as string;
   };
 
+  const CMS_SECTIONS: readonly { id: string; label: string; validate: (d: Draft) => boolean }[] = [
+    {
+      id: 'identity',
+      label: 'Identitas',
+      validate: (d) => d.orgName.trim().length > 0,
+    },
+    {
+      id: 'home',
+      label: 'Beranda',
+      validate: (d) => d.heroSubtitle.trim().length > 0 || d.aboutTitle.trim().length > 0,
+    },
+    {
+      id: 'homeCards',
+      label: 'Kartu Beranda',
+      validate: () => true,
+    },
+    {
+      id: 'visimisi',
+      label: 'Visi & Misi',
+      validate: (d) => d.vision.trim().length > 0 || d.mission.trim().length > 0,
+    },
+    {
+      id: 'contact',
+      label: 'Kontak',
+      validate: (d) =>
+        d.email.trim().length > 0 || d.phone.trim().length > 0 || d.address.trim().length > 0,
+    },
+    {
+      id: 'logo',
+      label: 'Logo',
+      validate: () => true,
+    },
+  ] as const;
+
   const handleSave = async () => {
     setSaving(true);
     try {
+      const sectionResults = await Promise.allSettled(
+        CMS_SECTIONS.map(
+          (section) =>
+            new Promise<string>((resolve, reject) => {
+              window.setTimeout(() => {
+                if (section.validate(draft)) {
+                  resolve(section.label);
+                } else {
+                  reject(new Error(section.label));
+                }
+              }, 0);
+            })
+        )
+      );
+
+      const successes = sectionResults.filter((r) => r.status === 'fulfilled');
+      const failures = sectionResults.filter((r) => r.status === 'rejected');
+      const failedLabels = failures
+        .map((r) => (r as PromiseRejectedResult).reason?.message)
+        .filter(Boolean) as string[];
+
+      if (failures.length > 0) {
+        const failureMsg = `${successes.length} bagian tersimpan, ${failures.length} gagal: ${failedLabels.join(', ')}`;
+        toast.error(failureMsg);
+        return;
+      }
+
       await api.put('/public-site/admin/profile', { data: draft });
-      toast.success('Profil publik tersimpan');
+      toast.success(
+        `${successes.length} bagian tersimpan, ${failures.length} gagal${failedLabels.length ? `: ${failedLabels.join(', ')}` : ''}`
+      );
       setDirty(false);
       mutate();
     } catch (e: any) {
@@ -278,274 +344,349 @@ export default function PublicSiteProfile() {
               <div
                 className={cn('grid gap-5 md:grid-cols-2', profileTab !== 'identity' && 'hidden')}
               >
-                <div className="space-y-2">
-                  <Label>Nama Organisasi</Label>
-                  <Input
-                    value={draft.orgName}
-                    onChange={(e) => updateDraft((p) => ({ ...p, orgName: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Nama Kampus</Label>
-                  <Input
-                    value={draft.campusName}
-                    onChange={(e) => updateDraft((p) => ({ ...p, campusName: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Nama Kabinet</Label>
-                  <Input
-                    value={draft.kabinetName}
-                    onChange={(e) => updateDraft((p) => ({ ...p, kabinetName: e.target.value }))}
-                    placeholder="Contoh: Aksara Muda"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Periode Kabinet</Label>
-                  <Input
-                    value={draft.kabinetPeriod}
-                    onChange={(e) => updateDraft((p) => ({ ...p, kabinetPeriod: e.target.value }))}
-                    placeholder="Contoh: 2026/2027"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Warna Utama</Label>
-                  <div className="flex items-center gap-3">
+                <FormField id="psp-orgname" label="Nama Organisasi">
+                  {({ id, 'aria-describedby': ariaDescribedBy, 'aria-invalid': ariaInvalid }) => (
                     <Input
-                      type="color"
-                      value={normalizeHexColor(draft.primaryColor)}
-                      onChange={(e) => updateDraft((p) => ({ ...p, primaryColor: e.target.value }))}
-                      className="h-10 w-14 p-1"
+                      id={id}
+                      value={draft.orgName}
+                      onChange={(e) => updateDraft((p) => ({ ...p, orgName: e.target.value }))}
+                      aria-describedby={ariaDescribedBy}
+                      aria-invalid={ariaInvalid}
                     />
+                  )}
+                </FormField>
+                <FormField id="psp-campusname" label="Nama Kampus">
+                  {({ id, 'aria-describedby': ariaDescribedBy, 'aria-invalid': ariaInvalid }) => (
                     <Input
-                      value={draft.primaryColor}
-                      onChange={(e) => updateDraft((p) => ({ ...p, primaryColor: e.target.value }))}
-                      placeholder="#2563eb"
+                      id={id}
+                      value={draft.campusName}
+                      onChange={(e) => updateDraft((p) => ({ ...p, campusName: e.target.value }))}
+                      aria-describedby={ariaDescribedBy}
+                      aria-invalid={ariaInvalid}
                     />
-                  </div>
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label>Hero Subtitle</Label>
-                  <Textarea
-                    value={draft.heroSubtitle}
-                    onChange={(e) => updateDraft((p) => ({ ...p, heroSubtitle: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label>Embed URL (YouTube / TikTok / Instagram)</Label>
-                  <Input
-                    value={draft.youtubeEmbedUrl}
-                    onChange={(e) =>
-                      updateDraft((p) => ({ ...p, youtubeEmbedUrl: e.target.value }))
-                    }
-                    placeholder="Link post / link embed"
-                  />
-                </div>
+                  )}
+                </FormField>
+                <FormField
+                  id="psp-kabinetname"
+                  label="Nama Kabinet"
+                  description="Contoh: Aksara Muda"
+                >
+                  {({ id, 'aria-describedby': ariaDescribedBy, 'aria-invalid': ariaInvalid }) => (
+                    <Input
+                      id={id}
+                      value={draft.kabinetName}
+                      onChange={(e) => updateDraft((p) => ({ ...p, kabinetName: e.target.value }))}
+                      aria-describedby={ariaDescribedBy}
+                      aria-invalid={ariaInvalid}
+                    />
+                  )}
+                </FormField>
+                <FormField
+                  id="psp-kabinetperiod"
+                  label="Periode Kabinet"
+                  description="Contoh: 2026/2027"
+                >
+                  {({ id, 'aria-describedby': ariaDescribedBy, 'aria-invalid': ariaInvalid }) => (
+                    <Input
+                      id={id}
+                      value={draft.kabinetPeriod}
+                      onChange={(e) =>
+                        updateDraft((p) => ({ ...p, kabinetPeriod: e.target.value }))
+                      }
+                      aria-describedby={ariaDescribedBy}
+                      aria-invalid={ariaInvalid}
+                    />
+                  )}
+                </FormField>
+                <FormField id="psp-primarycolor" label="Warna Utama">
+                  {({ 'aria-describedby': ariaDescribedBy, 'aria-invalid': ariaInvalid }) => (
+                    <div
+                      className="flex items-center gap-3"
+                      aria-describedby={ariaDescribedBy}
+                      aria-invalid={ariaInvalid}
+                    >
+                      <Input
+                        type="color"
+                        value={normalizeHexColor(draft.primaryColor)}
+                        onChange={(e) =>
+                          updateDraft((p) => ({ ...p, primaryColor: e.target.value }))
+                        }
+                        className="h-10 w-14 p-1"
+                      />
+                      <Input
+                        value={draft.primaryColor}
+                        onChange={(e) =>
+                          updateDraft((p) => ({ ...p, primaryColor: e.target.value }))
+                        }
+                        placeholder="#2563eb"
+                      />
+                    </div>
+                  )}
+                </FormField>
+                <FormField id="psp-herosubtitle" label="Hero Subtitle" className="md:col-span-2">
+                  {({ id, 'aria-describedby': ariaDescribedBy, 'aria-invalid': ariaInvalid }) => (
+                    <Textarea
+                      id={id}
+                      value={draft.heroSubtitle}
+                      onChange={(e) => updateDraft((p) => ({ ...p, heroSubtitle: e.target.value }))}
+                      aria-describedby={ariaDescribedBy}
+                      aria-invalid={ariaInvalid}
+                    />
+                  )}
+                </FormField>
+                <FormField
+                  id="psp-embedurl"
+                  label="Embed URL (YouTube / TikTok / Instagram)"
+                  description="Link post / link embed"
+                  className="md:col-span-2"
+                >
+                  {({ id, 'aria-describedby': ariaDescribedBy, 'aria-invalid': ariaInvalid }) => (
+                    <Input
+                      id={id}
+                      value={draft.youtubeEmbedUrl}
+                      onChange={(e) =>
+                        updateDraft((p) => ({ ...p, youtubeEmbedUrl: e.target.value }))
+                      }
+                      aria-describedby={ariaDescribedBy}
+                      aria-invalid={ariaInvalid}
+                    />
+                  )}
+                </FormField>
               </div>
 
               <div className={cn('grid gap-5 md:grid-cols-2', profileTab !== 'home' && 'hidden')}>
-                <div className="space-y-2 md:col-span-2">
-                  <Label>Judul “Tentang”</Label>
-                  <Input
-                    value={draft.aboutTitle}
-                    onChange={(e) => updateDraft((p) => ({ ...p, aboutTitle: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label>Konten “Tentang”</Label>
-                  <Textarea
-                    value={draft.aboutContent}
-                    onChange={(e) => updateDraft((p) => ({ ...p, aboutContent: e.target.value }))}
-                  />
-                  <div className="text-xs text-muted-foreground">
-                    Pisahkan paragraf dengan baris baru (Enter).
-                  </div>
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label>Beranda: Paragraf Kiri</Label>
-                  <div className="grid gap-3 md:grid-cols-2">
+                <FormField id="psp-abouttitle" label="Judul “Tentang”" className="md:col-span-2">
+                  {({ id, 'aria-describedby': ariaDescribedBy, 'aria-invalid': ariaInvalid }) => (
                     <Input
-                      value={draft.homeCardLeftTitle}
-                      onChange={(e) =>
-                        updateDraft((p) => ({ ...p, homeCardLeftTitle: e.target.value }))
-                      }
-                      placeholder="Judul paragraf kiri"
+                      id={id}
+                      value={draft.aboutTitle}
+                      onChange={(e) => updateDraft((p) => ({ ...p, aboutTitle: e.target.value }))}
+                      aria-describedby={ariaDescribedBy}
+                      aria-invalid={ariaInvalid}
                     />
-                    <Input
-                      value={draft.homeCardRightTitle}
-                      onChange={(e) =>
-                        updateDraft((p) => ({ ...p, homeCardRightTitle: e.target.value }))
-                      }
-                      placeholder="Judul paragraf kanan"
-                    />
+                  )}
+                </FormField>
+                <FormField
+                  id="psp-aboutcontent"
+                  label="Konten “Tentang”"
+                  description="Pisahkan paragraf dengan baris baru (Enter)."
+                  className="md:col-span-2"
+                >
+                  {({ id, 'aria-describedby': ariaDescribedBy, 'aria-invalid': ariaInvalid }) => (
                     <Textarea
-                      value={draft.homeCardLeftBody}
-                      onChange={(e) =>
-                        updateDraft((p) => ({ ...p, homeCardLeftBody: e.target.value }))
-                      }
-                      placeholder="Isi paragraf kiri"
-                      className="min-h-[110px]"
+                      id={id}
+                      value={draft.aboutContent}
+                      onChange={(e) => updateDraft((p) => ({ ...p, aboutContent: e.target.value }))}
+                      aria-describedby={ariaDescribedBy}
+                      aria-invalid={ariaInvalid}
                     />
-                    <Textarea
-                      value={draft.homeCardRightBody}
-                      onChange={(e) =>
-                        updateDraft((p) => ({ ...p, homeCardRightBody: e.target.value }))
-                      }
-                      placeholder="Isi paragraf kanan"
-                      className="min-h-[110px]"
-                    />
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    Ini akan tampil sebagai 2 kartu paragraf di beranda.
-                  </div>
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label>Foto Anggota (URL)</Label>
-                  <Input
-                    value={draft.homeImageUrl}
-                    onChange={(e) => updateDraft((p) => ({ ...p, homeImageUrl: e.target.value }))}
-                    placeholder="https://..."
-                  />
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label>Upload Foto Anggota</Label>
-                  <div className="grid gap-3 md:grid-cols-[1fr_220px]">
-                    <div className="space-y-2">
+                  )}
+                </FormField>
+                <FormField
+                  id="psp-homecards"
+                  label="Beranda: Paragraf Kiri & Kanan"
+                  description="Ini akan tampil sebagai 2 kartu paragraf di beranda."
+                  className="md:col-span-2"
+                >
+                  {({ 'aria-describedby': ariaDescribedBy, 'aria-invalid': ariaInvalid }) => (
+                    <div
+                      className="grid gap-3 md:grid-cols-2"
+                      aria-describedby={ariaDescribedBy}
+                      aria-invalid={ariaInvalid}
+                    >
                       <Input
-                        id="profile-home-image"
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        disabled={uploading.home || uploading.light || uploading.dark}
-                        onChange={async (e) => {
-                          const file = e.currentTarget.files?.[0];
-                          if (!file) return;
-                          setUploading((x) => ({ ...x, home: true }));
-                          try {
-                            const url = await uploadImage(file);
-                            updateDraft((p) => ({ ...p, homeImageUrl: url }));
-                            toast.success('Upload foto anggota berhasil');
-                          } catch (err: any) {
-                            toast.error(String(getErrorMessage(err, 'Gagal upload')));
-                          } finally {
-                            setUploading((x) => ({ ...x, home: false }));
-                            e.currentTarget.value = '';
-                          }
-                        }}
+                        value={draft.homeCardLeftTitle}
+                        onChange={(e) =>
+                          updateDraft((p) => ({ ...p, homeCardLeftTitle: e.target.value }))
+                        }
+                        placeholder="Judul paragraf kiri"
                       />
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Button
-                          asChild
-                          variant="outline"
-                          disabled={
-                            uploading.home ||
-                            uploading.light ||
-                            uploading.dark ||
-                            uploading.visi ||
-                            uploading.misi
-                          }
-                        >
-                          <Label htmlFor="profile-home-image" className="cursor-pointer">
-                            {uploading.home
-                              ? 'Uploading...'
-                              : draft.homeImageUrl
-                                ? 'Ganti Foto'
-                                : 'Upload Foto'}
-                          </Label>
-                        </Button>
+                      <Input
+                        value={draft.homeCardRightTitle}
+                        onChange={(e) =>
+                          updateDraft((p) => ({ ...p, homeCardRightTitle: e.target.value }))
+                        }
+                        placeholder="Judul paragraf kanan"
+                      />
+                      <Textarea
+                        value={draft.homeCardLeftBody}
+                        onChange={(e) =>
+                          updateDraft((p) => ({ ...p, homeCardLeftBody: e.target.value }))
+                        }
+                        placeholder="Isi paragraf kiri"
+                        className="min-h-[110px]"
+                      />
+                      <Textarea
+                        value={draft.homeCardRightBody}
+                        onChange={(e) =>
+                          updateDraft((p) => ({ ...p, homeCardRightBody: e.target.value }))
+                        }
+                        placeholder="Isi paragraf kanan"
+                        className="min-h-[110px]"
+                      />
+                    </div>
+                  )}
+                </FormField>
+                <FormField
+                  id="psp-homeimageurl"
+                  label="Foto Anggota (URL)"
+                  description="https://..."
+                  className="md:col-span-2"
+                >
+                  {({ id, 'aria-describedby': ariaDescribedBy, 'aria-invalid': ariaInvalid }) => (
+                    <Input
+                      id={id}
+                      value={draft.homeImageUrl}
+                      onChange={(e) => updateDraft((p) => ({ ...p, homeImageUrl: e.target.value }))}
+                      aria-describedby={ariaDescribedBy}
+                      aria-invalid={ariaInvalid}
+                    />
+                  )}
+                </FormField>
+                <FormField
+                  id="psp-homeimageupload"
+                  label="Upload Foto Anggota"
+                  className="md:col-span-2"
+                >
+                  {({ id, 'aria-describedby': ariaDescribedBy, 'aria-invalid': ariaInvalid }) => (
+                    <div
+                      className="grid gap-3 md:grid-cols-[1fr_220px]"
+                      aria-describedby={ariaDescribedBy}
+                      aria-invalid={ariaInvalid}
+                    >
+                      <div className="space-y-2">
+                        <Input
+                          id={id}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          disabled={uploading.home || uploading.light || uploading.dark}
+                          onChange={async (e) => {
+                            const file = e.currentTarget.files?.[0];
+                            if (!file) return;
+                            setUploading((x) => ({ ...x, home: true }));
+                            try {
+                              const url = await uploadImage(file);
+                              updateDraft((p) => ({ ...p, homeImageUrl: url }));
+                              toast.success('Upload foto anggota berhasil');
+                            } catch (err: any) {
+                              toast.error(String(getErrorMessage(err, 'Gagal upload')));
+                            } finally {
+                              setUploading((x) => ({ ...x, home: false }));
+                              e.currentTarget.value = '';
+                            }
+                          }}
+                        />
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Button
+                            asChild
+                            variant="outline"
+                            disabled={
+                              uploading.home ||
+                              uploading.light ||
+                              uploading.dark ||
+                              uploading.visi ||
+                              uploading.misi
+                            }
+                          >
+                            <Label htmlFor={id} className="cursor-pointer">
+                              {uploading.home
+                                ? 'Uploading...'
+                                : draft.homeImageUrl
+                                  ? 'Ganti Foto'
+                                  : 'Upload Foto'}
+                            </Label>
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="overflow-hidden rounded-xl border border-border bg-slate-50 border-border">
+                        {draft.homeImageUrl ? (
+                          <img
+                            src={draft.homeImageUrl}
+                            alt="Pratinjau foto anggota"
+                            className="aspect-[4/3] w-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex aspect-[4/3] items-center justify-center text-xs text-muted-foreground">
+                            Belum ada foto
+                          </div>
+                        )}
                       </div>
                     </div>
-                    <div className="overflow-hidden rounded-xl border border-border bg-slate-50 border-border">
-                      {draft.homeImageUrl ? (
-                        <img
-                          src={draft.homeImageUrl}
-                          alt="Pratinjau foto anggota"
-                          className="aspect-[4/3] w-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex aspect-[4/3] items-center justify-center text-xs text-muted-foreground">
-                          Belum ada foto
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                  )}
+                </FormField>
               </div>
 
               <div
                 className={cn('grid gap-5 md:grid-cols-2', profileTab !== 'visimisi' && 'hidden')}
               >
-                <div className="space-y-2 md:col-span-2">
-                  <Label>Visi</Label>
-                  <Textarea
-                    value={draft.vision}
-                    onChange={(e) => updateDraft((p) => ({ ...p, vision: e.target.value }))}
-                  />
-                  <div className="text-xs text-muted-foreground">
-                    Gunakan paragraf singkat, bisa dipisah dengan baris baru.
-                  </div>
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label>Misi</Label>
-                  <Textarea
-                    value={draft.mission}
-                    onChange={(e) => updateDraft((p) => ({ ...p, mission: e.target.value }))}
-                  />
-                  <div className="text-xs text-muted-foreground">Satu baris = satu poin misi.</div>
-                </div>
-                <div className="space-y-3 md:col-span-2">
-                  <Label>Beranda: Foto Visi</Label>
-                  <div className="grid gap-3 md:grid-cols-[1fr_220px]">
-                    <div className="space-y-3">
-                      <Input
-                        value={draft.visiRole}
-                        onChange={(e) => updateDraft((p) => ({ ...p, visiRole: e.target.value }))}
-                        placeholder="Jabatan (contoh: Ketua Umum)"
-                      />
-                      <Input
-                        value={draft.visiName}
-                        onChange={(e) => updateDraft((p) => ({ ...p, visiName: e.target.value }))}
-                        placeholder="Nama"
-                      />
-                      <Input
-                        value={draft.visiPhotoUrl}
-                        onChange={(e) =>
-                          updateDraft((p) => ({ ...p, visiPhotoUrl: e.target.value }))
-                        }
-                        placeholder="URL Foto"
-                      />
-                      <Input
-                        id="profile-visi-photo"
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        disabled={
-                          uploading.visi ||
-                          uploading.home ||
-                          uploading.light ||
-                          uploading.dark ||
-                          uploading.misi
-                        }
-                        onChange={async (e) => {
-                          const file = e.currentTarget.files?.[0];
-                          if (!file) return;
-                          setUploading((x) => ({ ...x, visi: true }));
-                          try {
-                            const url = await uploadImage(file);
-                            updateDraft((p) => ({ ...p, visiPhotoUrl: url }));
-                            toast.success('Upload foto visi berhasil');
-                          } catch (err: any) {
-                            toast.error(String(getErrorMessage(err, 'Gagal upload')));
-                          } finally {
-                            setUploading((x) => ({ ...x, visi: false }));
-                            e.currentTarget.value = '';
+                <FormField
+                  id="psp-vision"
+                  label="Visi"
+                  description="Gunakan paragraf singkat, bisa dipisah dengan baris baru."
+                  className="md:col-span-2"
+                >
+                  {({ id, 'aria-describedby': ariaDescribedBy, 'aria-invalid': ariaInvalid }) => (
+                    <Textarea
+                      id={id}
+                      value={draft.vision}
+                      onChange={(e) => updateDraft((p) => ({ ...p, vision: e.target.value }))}
+                      aria-describedby={ariaDescribedBy}
+                      aria-invalid={ariaInvalid}
+                    />
+                  )}
+                </FormField>
+                <FormField
+                  id="psp-mission"
+                  label="Misi"
+                  description="Satu baris = satu poin misi."
+                  className="md:col-span-2"
+                >
+                  {({ id, 'aria-describedby': ariaDescribedBy, 'aria-invalid': ariaInvalid }) => (
+                    <Textarea
+                      id={id}
+                      value={draft.mission}
+                      onChange={(e) => updateDraft((p) => ({ ...p, mission: e.target.value }))}
+                      aria-describedby={ariaDescribedBy}
+                      aria-invalid={ariaInvalid}
+                    />
+                  )}
+                </FormField>
+                <FormField
+                  id="psp-visionphoto"
+                  label="Beranda: Foto Visi"
+                  description="PNG/JPG. Maks 4MB."
+                  className="md:col-span-2"
+                >
+                  {({ id, 'aria-describedby': ariaDescribedBy, 'aria-invalid': ariaInvalid }) => (
+                    <div
+                      className="grid gap-3 md:grid-cols-[1fr_220px]"
+                      aria-describedby={ariaDescribedBy}
+                      aria-invalid={ariaInvalid}
+                    >
+                      <div className="space-y-3">
+                        <Input
+                          value={draft.visiRole}
+                          onChange={(e) => updateDraft((p) => ({ ...p, visiRole: e.target.value }))}
+                          placeholder="Jabatan (contoh: Ketua Umum)"
+                        />
+                        <Input
+                          value={draft.visiName}
+                          onChange={(e) => updateDraft((p) => ({ ...p, visiName: e.target.value }))}
+                          placeholder="Nama"
+                        />
+                        <Input
+                          value={draft.visiPhotoUrl}
+                          onChange={(e) =>
+                            updateDraft((p) => ({ ...p, visiPhotoUrl: e.target.value }))
                           }
-                        }}
-                      />
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Button
-                          asChild
-                          variant="outline"
+                          placeholder="URL Foto"
+                        />
+                        <Input
+                          id={id}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
                           disabled={
                             uploading.visi ||
                             uploading.home ||
@@ -553,20 +694,26 @@ export default function PublicSiteProfile() {
                             uploading.dark ||
                             uploading.misi
                           }
-                        >
-                          <Label htmlFor="profile-visi-photo" className="cursor-pointer">
-                            {uploading.visi
-                              ? 'Uploading...'
-                              : draft.visiPhotoUrl
-                                ? 'Ganti Foto'
-                                : 'Upload Foto'}
-                          </Label>
-                        </Button>
-                        {draft.visiPhotoUrl ? (
+                          onChange={async (e) => {
+                            const file = e.currentTarget.files?.[0];
+                            if (!file) return;
+                            setUploading((x) => ({ ...x, visi: true }));
+                            try {
+                              const url = await uploadImage(file);
+                              updateDraft((p) => ({ ...p, visiPhotoUrl: url }));
+                              toast.success('Upload foto visi berhasil');
+                            } catch (err: any) {
+                              toast.error(String(getErrorMessage(err, 'Gagal upload')));
+                            } finally {
+                              setUploading((x) => ({ ...x, visi: false }));
+                              e.currentTarget.value = '';
+                            }
+                          }}
+                        />
+                        <div className="flex flex-wrap items-center gap-2">
                           <Button
-                            type="button"
-                            variant="ghost"
-                            onClick={() => updateDraft((p) => ({ ...p, visiPhotoUrl: '' }))}
+                            asChild
+                            variant="outline"
                             disabled={
                               uploading.visi ||
                               uploading.home ||
@@ -575,74 +722,314 @@ export default function PublicSiteProfile() {
                               uploading.misi
                             }
                           >
-                            Hapus
+                            <Label htmlFor={id} className="cursor-pointer">
+                              {uploading.visi
+                                ? 'Uploading...'
+                                : draft.visiPhotoUrl
+                                  ? 'Ganti Foto'
+                                  : 'Upload Foto'}
+                            </Label>
                           </Button>
-                        ) : null}
+                          {draft.visiPhotoUrl ? (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              onClick={() => updateDraft((p) => ({ ...p, visiPhotoUrl: '' }))}
+                              disabled={
+                                uploading.visi ||
+                                uploading.home ||
+                                uploading.light ||
+                                uploading.dark ||
+                                uploading.misi
+                              }
+                            >
+                              Hapus
+                            </Button>
+                          ) : null}
+                        </div>
                       </div>
-                      <div className="text-xs text-muted-foreground">PNG/JPG. Maks 4MB.</div>
-                    </div>
-                    <div className="overflow-hidden rounded-xl border border-border bg-muted/30">
-                      <div className="aspect-[4/3] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.2),rgba(255,255,255,0.04))]">
-                        {draft.visiPhotoUrl ? (
-                          <img
-                            src={draft.visiPhotoUrl}
-                            alt="Foto Visi"
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center px-4 text-center text-xs text-muted-foreground dark:text-zinc-300">
-                            Belum ada foto
-                          </div>
-                        )}
+                      <div className="overflow-hidden rounded-xl border border-border bg-muted/30">
+                        <div className="aspect-[4/3] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.2),rgba(255,255,255,0.04))]">
+                          {draft.visiPhotoUrl ? (
+                            <img
+                              src={draft.visiPhotoUrl}
+                              alt="Foto Visi"
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center px-4 text-center text-xs text-muted-foreground dark:text-zinc-300">
+                              Belum ada foto
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </div>
-                <div className="space-y-3 md:col-span-2">
-                  <Label>Beranda: Foto Misi</Label>
-                  <div className="grid gap-3 md:grid-cols-[1fr_220px]">
-                    <div className="space-y-3">
+                  )}
+                </FormField>
+                <FormField
+                  id="psp-missionphoto"
+                  label="Beranda: Foto Misi"
+                  description="PNG/JPG. Maks 4MB."
+                  className="md:col-span-2"
+                >
+                  {({ id, 'aria-describedby': ariaDescribedBy, 'aria-invalid': ariaInvalid }) => (
+                    <div
+                      className="grid gap-3 md:grid-cols-[1fr_220px]"
+                      aria-describedby={ariaDescribedBy}
+                      aria-invalid={ariaInvalid}
+                    >
+                      <div className="space-y-3">
+                        <Input
+                          value={draft.misiRole}
+                          onChange={(e) => updateDraft((p) => ({ ...p, misiRole: e.target.value }))}
+                          placeholder="Jabatan (contoh: Wakil Ketua)"
+                        />
+                        <Input
+                          value={draft.misiName}
+                          onChange={(e) => updateDraft((p) => ({ ...p, misiName: e.target.value }))}
+                          placeholder="Nama"
+                        />
+                        <Input
+                          value={draft.misiPhotoUrl}
+                          onChange={(e) =>
+                            updateDraft((p) => ({ ...p, misiPhotoUrl: e.target.value }))
+                          }
+                          placeholder="URL Foto"
+                        />
+                        <Input
+                          id={id}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          disabled={
+                            uploading.misi ||
+                            uploading.home ||
+                            uploading.light ||
+                            uploading.dark ||
+                            uploading.visi
+                          }
+                          onChange={async (e) => {
+                            const file = e.currentTarget.files?.[0];
+                            if (!file) return;
+                            setUploading((x) => ({ ...x, misi: true }));
+                            try {
+                              const url = await uploadImage(file);
+                              updateDraft((p) => ({ ...p, misiPhotoUrl: url }));
+                              toast.success('Upload foto misi berhasil');
+                            } catch (err: any) {
+                              toast.error(String(getErrorMessage(err, 'Gagal upload')));
+                            } finally {
+                              setUploading((x) => ({ ...x, misi: false }));
+                              e.currentTarget.value = '';
+                            }
+                          }}
+                        />
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Button
+                            asChild
+                            variant="outline"
+                            disabled={
+                              uploading.misi ||
+                              uploading.home ||
+                              uploading.light ||
+                              uploading.dark ||
+                              uploading.visi
+                            }
+                          >
+                            <Label htmlFor={id} className="cursor-pointer">
+                              {uploading.misi
+                                ? 'Uploading...'
+                                : draft.misiPhotoUrl
+                                  ? 'Ganti Foto'
+                                  : 'Upload Foto'}
+                            </Label>
+                          </Button>
+                          {draft.misiPhotoUrl ? (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              onClick={() => updateDraft((p) => ({ ...p, misiPhotoUrl: '' }))}
+                              disabled={
+                                uploading.misi ||
+                                uploading.home ||
+                                uploading.light ||
+                                uploading.dark ||
+                                uploading.visi
+                              }
+                            >
+                              Hapus
+                            </Button>
+                          ) : null}
+                        </div>
+                      </div>
+                      <div className="overflow-hidden rounded-xl border border-border bg-muted/30">
+                        <div className="aspect-[4/3] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.2),rgba(255,255,255,0.04))]">
+                          {draft.misiPhotoUrl ? (
+                            <img
+                              src={draft.misiPhotoUrl}
+                              alt="Foto Misi"
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center px-4 text-center text-xs text-muted-foreground dark:text-zinc-300">
+                              Belum ada foto
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </FormField>
+              </div>
+
+              <div
+                className={cn('grid gap-5 md:grid-cols-2', profileTab !== 'contact' && 'hidden')}
+              >
+                <FormField id="psp-footertagline" label="Footer Tagline" className="md:col-span-2">
+                  {({ id, 'aria-describedby': ariaDescribedBy, 'aria-invalid': ariaInvalid }) => (
+                    <Input
+                      id={id}
+                      value={draft.footerTagline}
+                      onChange={(e) =>
+                        updateDraft((p) => ({ ...p, footerTagline: e.target.value }))
+                      }
+                      aria-describedby={ariaDescribedBy}
+                      aria-invalid={ariaInvalid}
+                    />
+                  )}
+                </FormField>
+                <FormField
+                  id="psp-instagram"
+                  label="Instagram URL"
+                  description="https://instagram.com/..."
+                >
+                  {({ id, 'aria-describedby': ariaDescribedBy, 'aria-invalid': ariaInvalid }) => (
+                    <Input
+                      id={id}
+                      value={draft.instagramUrl}
+                      onChange={(e) => updateDraft((p) => ({ ...p, instagramUrl: e.target.value }))}
+                      aria-describedby={ariaDescribedBy}
+                      aria-invalid={ariaInvalid}
+                    />
+                  )}
+                </FormField>
+                <FormField id="psp-tiktok" label="TikTok URL" description="https://tiktok.com/@...">
+                  {({ id, 'aria-describedby': ariaDescribedBy, 'aria-invalid': ariaInvalid }) => (
+                    <Input
+                      id={id}
+                      value={draft.tiktokUrl}
+                      onChange={(e) => updateDraft((p) => ({ ...p, tiktokUrl: e.target.value }))}
+                      aria-describedby={ariaDescribedBy}
+                      aria-invalid={ariaInvalid}
+                    />
+                  )}
+                </FormField>
+                <FormField
+                  id="psp-youtube"
+                  label="YouTube URL"
+                  description="https://youtube.com/@..."
+                >
+                  {({ id, 'aria-describedby': ariaDescribedBy, 'aria-invalid': ariaInvalid }) => (
+                    <Input
+                      id={id}
+                      value={draft.youtubeUrl}
+                      onChange={(e) => updateDraft((p) => ({ ...p, youtubeUrl: e.target.value }))}
+                      aria-describedby={ariaDescribedBy}
+                      aria-invalid={ariaInvalid}
+                    />
+                  )}
+                </FormField>
+                <FormField id="psp-email" label="Email">
+                  {({ id, 'aria-describedby': ariaDescribedBy, 'aria-invalid': ariaInvalid }) => (
+                    <Input
+                      id={id}
+                      value={draft.email}
+                      onChange={(e) => updateDraft((p) => ({ ...p, email: e.target.value }))}
+                      aria-describedby={ariaDescribedBy}
+                      aria-invalid={ariaInvalid}
+                    />
+                  )}
+                </FormField>
+                <FormField id="psp-phone" label="Telepon">
+                  {({ id, 'aria-describedby': ariaDescribedBy, 'aria-invalid': ariaInvalid }) => (
+                    <Input
+                      id={id}
+                      value={draft.phone}
+                      onChange={(e) => updateDraft((p) => ({ ...p, phone: e.target.value }))}
+                      aria-describedby={ariaDescribedBy}
+                      aria-invalid={ariaInvalid}
+                    />
+                  )}
+                </FormField>
+                <FormField id="psp-address" label="Alamat" className="md:col-span-2">
+                  {({ id, 'aria-describedby': ariaDescribedBy, 'aria-invalid': ariaInvalid }) => (
+                    <Input
+                      id={id}
+                      value={draft.address}
+                      onChange={(e) => updateDraft((p) => ({ ...p, address: e.target.value }))}
+                      aria-describedby={ariaDescribedBy}
+                      aria-invalid={ariaInvalid}
+                    />
+                  )}
+                </FormField>
+              </div>
+
+              <div
+                className={cn('grid gap-5 md:grid-cols-2', profileTab !== 'identity' && 'hidden')}
+              >
+                <FormField id="psp-logolighturl" label="Logo (Light URL)">
+                  {({ id, 'aria-describedby': ariaDescribedBy, 'aria-invalid': ariaInvalid }) => (
+                    <Input
+                      id={id}
+                      value={draft.logoLightUrl}
+                      onChange={(e) => updateDraft((p) => ({ ...p, logoLightUrl: e.target.value }))}
+                      aria-describedby={ariaDescribedBy}
+                      aria-invalid={ariaInvalid}
+                    />
+                  )}
+                </FormField>
+                <FormField id="psp-logodarkurl" label="Logo (Dark URL)">
+                  {({ id, 'aria-describedby': ariaDescribedBy, 'aria-invalid': ariaInvalid }) => (
+                    <Input
+                      id={id}
+                      value={draft.logoDarkUrl}
+                      onChange={(e) => updateDraft((p) => ({ ...p, logoDarkUrl: e.target.value }))}
+                      aria-describedby={ariaDescribedBy}
+                      aria-invalid={ariaInvalid}
+                    />
+                  )}
+                </FormField>
+                <FormField id="psp-logolightupload" label="Upload Logo Light">
+                  {({ id, 'aria-describedby': ariaDescribedBy, 'aria-invalid': ariaInvalid }) => (
+                    <div
+                      className="space-y-2"
+                      aria-describedby={ariaDescribedBy}
+                      aria-invalid={ariaInvalid}
+                    >
                       <Input
-                        value={draft.misiRole}
-                        onChange={(e) => updateDraft((p) => ({ ...p, misiRole: e.target.value }))}
-                        placeholder="Jabatan (contoh: Wakil Ketua)"
-                      />
-                      <Input
-                        value={draft.misiName}
-                        onChange={(e) => updateDraft((p) => ({ ...p, misiName: e.target.value }))}
-                        placeholder="Nama"
-                      />
-                      <Input
-                        value={draft.misiPhotoUrl}
-                        onChange={(e) =>
-                          updateDraft((p) => ({ ...p, misiPhotoUrl: e.target.value }))
-                        }
-                        placeholder="URL Foto"
-                      />
-                      <Input
-                        id="profile-misi-photo"
+                        id={id}
                         type="file"
                         accept="image/*"
                         className="hidden"
                         disabled={
-                          uploading.misi ||
-                          uploading.home ||
                           uploading.light ||
+                          uploading.home ||
                           uploading.dark ||
-                          uploading.visi
+                          uploading.visi ||
+                          uploading.misi
                         }
                         onChange={async (e) => {
                           const file = e.currentTarget.files?.[0];
                           if (!file) return;
-                          setUploading((x) => ({ ...x, misi: true }));
+                          setUploading((x) => ({ ...x, light: true }));
                           try {
                             const url = await uploadImage(file);
-                            updateDraft((p) => ({ ...p, misiPhotoUrl: url }));
-                            toast.success('Upload foto misi berhasil');
+                            updateDraft((p) => ({ ...p, logoLightUrl: url }));
+                            toast.success('Upload logo light berhasil');
                           } catch (err: any) {
                             toast.error(String(getErrorMessage(err, 'Gagal upload')));
                           } finally {
-                            setUploading((x) => ({ ...x, misi: false }));
+                            setUploading((x) => ({ ...x, light: false }));
                             e.currentTarget.value = '';
                           }
                         }}
@@ -652,273 +1039,116 @@ export default function PublicSiteProfile() {
                           asChild
                           variant="outline"
                           disabled={
-                            uploading.misi ||
-                            uploading.home ||
                             uploading.light ||
+                            uploading.home ||
                             uploading.dark ||
-                            uploading.visi
+                            uploading.visi ||
+                            uploading.misi
                           }
                         >
-                          <Label htmlFor="profile-misi-photo" className="cursor-pointer">
-                            {uploading.misi
+                          <Label htmlFor={id} className="cursor-pointer">
+                            {uploading.light
                               ? 'Uploading...'
-                              : draft.misiPhotoUrl
-                                ? 'Ganti Foto'
-                                : 'Upload Foto'}
+                              : draft.logoLightUrl
+                                ? 'Ganti Logo'
+                                : 'Upload Logo'}
                           </Label>
                         </Button>
-                        {draft.misiPhotoUrl ? (
+                        {draft.logoLightUrl ? (
                           <Button
                             type="button"
                             variant="ghost"
-                            onClick={() => updateDraft((p) => ({ ...p, misiPhotoUrl: '' }))}
+                            onClick={() => updateDraft((p) => ({ ...p, logoLightUrl: '' }))}
                             disabled={
-                              uploading.misi ||
-                              uploading.home ||
                               uploading.light ||
+                              uploading.home ||
                               uploading.dark ||
-                              uploading.visi
+                              uploading.visi ||
+                              uploading.misi
                             }
                           >
                             Hapus
                           </Button>
                         ) : null}
                       </div>
-                      <div className="text-xs text-muted-foreground">PNG/JPG. Maks 4MB.</div>
                     </div>
-                    <div className="overflow-hidden rounded-xl border border-border bg-muted/30">
-                      <div className="aspect-[4/3] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.2),rgba(255,255,255,0.04))]">
-                        {draft.misiPhotoUrl ? (
-                          <img
-                            src={draft.misiPhotoUrl}
-                            alt="Foto Misi"
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center px-4 text-center text-xs text-muted-foreground dark:text-zinc-300">
-                            Belum ada foto
-                          </div>
-                        )}
+                  )}
+                </FormField>
+                <FormField id="psp-logodarkupload" label="Upload Logo Dark">
+                  {({ id, 'aria-describedby': ariaDescribedBy, 'aria-invalid': ariaInvalid }) => (
+                    <div
+                      className="space-y-2"
+                      aria-describedby={ariaDescribedBy}
+                      aria-invalid={ariaInvalid}
+                    >
+                      <Input
+                        id={id}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        disabled={
+                          uploading.dark ||
+                          uploading.home ||
+                          uploading.light ||
+                          uploading.visi ||
+                          uploading.misi
+                        }
+                        onChange={async (e) => {
+                          const file = e.currentTarget.files?.[0];
+                          if (!file) return;
+                          setUploading((x) => ({ ...x, dark: true }));
+                          try {
+                            const url = await uploadImage(file);
+                            updateDraft((p) => ({ ...p, logoDarkUrl: url }));
+                            toast.success('Upload logo dark berhasil');
+                          } catch (err: any) {
+                            toast.error(String(getErrorMessage(err, 'Gagal upload')));
+                          } finally {
+                            setUploading((x) => ({ ...x, dark: false }));
+                            e.currentTarget.value = '';
+                          }
+                        }}
+                      />
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          asChild
+                          variant="outline"
+                          disabled={
+                            uploading.dark ||
+                            uploading.home ||
+                            uploading.light ||
+                            uploading.visi ||
+                            uploading.misi
+                          }
+                        >
+                          <Label htmlFor={id} className="cursor-pointer">
+                            {uploading.dark
+                              ? 'Uploading...'
+                              : draft.logoDarkUrl
+                                ? 'Ganti Logo'
+                                : 'Upload Logo'}
+                          </Label>
+                        </Button>
+                        {draft.logoDarkUrl ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => updateDraft((p) => ({ ...p, logoDarkUrl: '' }))}
+                            disabled={
+                              uploading.dark ||
+                              uploading.home ||
+                              uploading.light ||
+                              uploading.visi ||
+                              uploading.misi
+                            }
+                          >
+                            Hapus
+                          </Button>
+                        ) : null}
                       </div>
                     </div>
-                  </div>
-                </div>
-              </div>
-
-              <div
-                className={cn('grid gap-5 md:grid-cols-2', profileTab !== 'contact' && 'hidden')}
-              >
-                <div className="space-y-2 md:col-span-2">
-                  <Label>Footer Tagline</Label>
-                  <Input
-                    value={draft.footerTagline}
-                    onChange={(e) => updateDraft((p) => ({ ...p, footerTagline: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Instagram URL</Label>
-                  <Input
-                    value={draft.instagramUrl}
-                    onChange={(e) => updateDraft((p) => ({ ...p, instagramUrl: e.target.value }))}
-                    placeholder="https://instagram.com/..."
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>TikTok URL</Label>
-                  <Input
-                    value={draft.tiktokUrl}
-                    onChange={(e) => updateDraft((p) => ({ ...p, tiktokUrl: e.target.value }))}
-                    placeholder="https://tiktok.com/@..."
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>YouTube URL</Label>
-                  <Input
-                    value={draft.youtubeUrl}
-                    onChange={(e) => updateDraft((p) => ({ ...p, youtubeUrl: e.target.value }))}
-                    placeholder="https://youtube.com/@..."
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Email</Label>
-                  <Input
-                    value={draft.email}
-                    onChange={(e) => updateDraft((p) => ({ ...p, email: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Telepon</Label>
-                  <Input
-                    value={draft.phone}
-                    onChange={(e) => updateDraft((p) => ({ ...p, phone: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label>Alamat</Label>
-                  <Input
-                    value={draft.address}
-                    onChange={(e) => updateDraft((p) => ({ ...p, address: e.target.value }))}
-                  />
-                </div>
-              </div>
-
-              <div
-                className={cn('grid gap-5 md:grid-cols-2', profileTab !== 'identity' && 'hidden')}
-              >
-                <div className="space-y-2">
-                  <Label>Logo (Light URL)</Label>
-                  <Input
-                    value={draft.logoLightUrl}
-                    onChange={(e) => updateDraft((p) => ({ ...p, logoLightUrl: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Logo (Dark URL)</Label>
-                  <Input
-                    value={draft.logoDarkUrl}
-                    onChange={(e) => updateDraft((p) => ({ ...p, logoDarkUrl: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Upload Logo Light</Label>
-                  <div className="space-y-2">
-                    <Input
-                      id="profile-logo-light"
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      disabled={
-                        uploading.light ||
-                        uploading.home ||
-                        uploading.dark ||
-                        uploading.visi ||
-                        uploading.misi
-                      }
-                      onChange={async (e) => {
-                        const file = e.currentTarget.files?.[0];
-                        if (!file) return;
-                        setUploading((x) => ({ ...x, light: true }));
-                        try {
-                          const url = await uploadImage(file);
-                          updateDraft((p) => ({ ...p, logoLightUrl: url }));
-                          toast.success('Upload logo light berhasil');
-                        } catch (err: any) {
-                          toast.error(String(getErrorMessage(err, 'Gagal upload')));
-                        } finally {
-                          setUploading((x) => ({ ...x, light: false }));
-                          e.currentTarget.value = '';
-                        }
-                      }}
-                    />
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Button
-                        asChild
-                        variant="outline"
-                        disabled={
-                          uploading.light ||
-                          uploading.home ||
-                          uploading.dark ||
-                          uploading.visi ||
-                          uploading.misi
-                        }
-                      >
-                        <Label htmlFor="profile-logo-light" className="cursor-pointer">
-                          {uploading.light
-                            ? 'Uploading...'
-                            : draft.logoLightUrl
-                              ? 'Ganti Logo'
-                              : 'Upload Logo'}
-                        </Label>
-                      </Button>
-                      {draft.logoLightUrl ? (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          onClick={() => updateDraft((p) => ({ ...p, logoLightUrl: '' }))}
-                          disabled={
-                            uploading.light ||
-                            uploading.home ||
-                            uploading.dark ||
-                            uploading.visi ||
-                            uploading.misi
-                          }
-                        >
-                          Hapus
-                        </Button>
-                      ) : null}
-                    </div>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Upload Logo Dark</Label>
-                  <div className="space-y-2">
-                    <Input
-                      id="profile-logo-dark"
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      disabled={
-                        uploading.dark ||
-                        uploading.home ||
-                        uploading.light ||
-                        uploading.visi ||
-                        uploading.misi
-                      }
-                      onChange={async (e) => {
-                        const file = e.currentTarget.files?.[0];
-                        if (!file) return;
-                        setUploading((x) => ({ ...x, dark: true }));
-                        try {
-                          const url = await uploadImage(file);
-                          updateDraft((p) => ({ ...p, logoDarkUrl: url }));
-                          toast.success('Upload logo dark berhasil');
-                        } catch (err: any) {
-                          toast.error(String(getErrorMessage(err, 'Gagal upload')));
-                        } finally {
-                          setUploading((x) => ({ ...x, dark: false }));
-                          e.currentTarget.value = '';
-                        }
-                      }}
-                    />
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Button
-                        asChild
-                        variant="outline"
-                        disabled={
-                          uploading.dark ||
-                          uploading.home ||
-                          uploading.light ||
-                          uploading.visi ||
-                          uploading.misi
-                        }
-                      >
-                        <Label htmlFor="profile-logo-dark" className="cursor-pointer">
-                          {uploading.dark
-                            ? 'Uploading...'
-                            : draft.logoDarkUrl
-                              ? 'Ganti Logo'
-                              : 'Upload Logo'}
-                        </Label>
-                      </Button>
-                      {draft.logoDarkUrl ? (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          onClick={() => updateDraft((p) => ({ ...p, logoDarkUrl: '' }))}
-                          disabled={
-                            uploading.dark ||
-                            uploading.home ||
-                            uploading.light ||
-                            uploading.visi ||
-                            uploading.misi
-                          }
-                        >
-                          Hapus
-                        </Button>
-                      ) : null}
-                    </div>
-                  </div>
-                </div>
+                  )}
+                </FormField>
               </div>
             </AdminContentTransition>
 
@@ -932,15 +1162,15 @@ export default function PublicSiteProfile() {
               >
                 Reset
               </Button>
-              <Button
+              <SubmitButton
                 type="button"
                 onClick={handleSave}
-                disabled={saving || !dirty}
+                disabled={!dirty}
                 className="min-h-11 w-full sm:w-auto"
-                aria-busy={saving}
-              >
-                {saving ? 'Menyimpan…' : 'Simpan'}
-              </Button>
+                isLoading={saving}
+                label="Simpan"
+                loadingLabel="Menyimpan…"
+              />
             </AdminCardActions>
           </div>
         </CmsEditorLayout>

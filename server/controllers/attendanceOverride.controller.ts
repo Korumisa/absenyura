@@ -1,12 +1,13 @@
 import { Request, Response } from 'express';
+import type { AuthRequest } from '../types/index.js';
 import prisma from '../utils/prisma.js';
 import { assertAdminSessionScope } from '../utils/sessionAccess.js';
 import { sendForbidden } from '../utils/errorResponse.js';
 
-export const overrideAttendance = async (req: Request, res: Response): Promise<void> => {
+export const overrideAttendance = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const user = (req as any).user;
-    const adminId = user.id;
+    const user = req.user!;
+    const adminId = user!.id;
     const { session_id, user_id, status, notes } = req.body;
     const allowedStatuses = new Set(['PRESENT', 'LATE', 'ABSENT', 'SICK', 'EXCUSED']);
     if (!allowedStatuses.has(String(status))) {
@@ -19,7 +20,7 @@ export const overrideAttendance = async (req: Request, res: Response): Promise<v
       res.status(404).json({ success: false, error: 'Sesi tidak ditemukan' });
       return;
     }
-    if (!(await assertAdminSessionScope(user, session_id))) {
+    if (!(await assertAdminSessionScope(user!, session_id))) {
       sendForbidden(res, {
         error_code: 'SESSION_OUT_OF_SCOPE',
         message: 'Sesi ini di luar akses Anda.',
@@ -52,7 +53,7 @@ export const overrideAttendance = async (req: Request, res: Response): Promise<v
         target_table: 'Attendance',
         target_id: attendance.id,
         new_value: JSON.stringify({ status, notes }),
-        ip_address: (req as any).ip,
+        ip_address: req.ip,
       },
     });
 

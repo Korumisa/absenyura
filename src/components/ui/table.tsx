@@ -2,10 +2,36 @@ import * as React from 'react';
 
 import { cn } from '@/lib/utils/utils';
 
-const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableElement>>(
-  ({ className, ...props }, ref) => (
+type TableElementProps = React.HTMLAttributes<HTMLTableElement> & {
+  /**
+   * Accessible table caption — rendered as a native <caption> element.
+   * Screen readers announce this before column headers, so users know what
+   * data the table represents.
+   */
+  caption?: React.ReactNode;
+  /**
+   * Optional `aria-describedby` target ID for longer-form prose descriptions
+   * that live outside the table (e.g. footnotes, filter summaries).
+   */
+  descriptionId?: string;
+};
+
+const Table = React.forwardRef<HTMLTableElement, TableElementProps>(
+  ({ className, caption, descriptionId, children, ...props }, ref) => (
     <div className="relative w-full overflow-auto">
-      <table ref={ref} className={cn('w-full caption-bottom text-sm', className)} {...props} />
+      <table
+        ref={ref}
+        aria-describedby={descriptionId}
+        className={cn('w-full caption-bottom text-sm', className)}
+        {...props}
+      >
+        {caption ? (
+          <caption className="sr-only not-sr-only-caption-bottom mt-2 mb-3 text-left text-xs font-medium text-muted-foreground">
+            {caption}
+          </caption>
+        ) : null}
+        {children}
+      </table>
     </div>
   )
 );

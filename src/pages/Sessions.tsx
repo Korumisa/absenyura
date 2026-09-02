@@ -8,10 +8,13 @@ import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { toastErrorMessage } from '@/lib/utils/toastMessage';
+import { useMutationToast } from '@/hooks/useMutationToast';
 import { sessionStatusLabel } from '@/lib/utils/statusLabel';
 import { Button } from '@/components/ui/button';
+import { SubmitButton } from '@/components/ui/submit-button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { FormField } from '@/components/ui/form-field';
 import { Badge } from '@/components/ui/badge';
 import {
   Select,
@@ -142,6 +145,42 @@ export default function Sessions() {
   const fetcher = (url: string) => api.get(url).then((res) => res.data.data);
   const swr = useSWR<Session[]>('/sessions', fetcher, { revalidateOnFocus: false });
   const { data: sessions = [], isPending, isError, retry, mutate } = useSwrPageState(swr);
+
+  const doSaveSession = useMutationToast(
+    async () => {
+      const payload = buildSessionPayload();
+      if (editingSession) {
+        const res = await api.put(`/sessions/${editingSession.id}`, payload);
+        if (res.data?.success === false) {
+          throw new Error(res.data?.message || res.data?.error || 'Gagal memperbarui sesi');
+        }
+        return res.data;
+      }
+      const res = await api.post('/sessions', payload);
+      if (res.data?.success === false) {
+        throw new Error(res.data?.message || res.data?.error || 'Gagal membuat sesi');
+      }
+      return res.data;
+    },
+    {
+      successMsg: editingSession ? 'Sesi berhasil diperbarui' : 'Sesi berhasil dibuat',
+      errorMsg: (err: unknown) => {
+        const fieldErrors = applyApiFieldErrors(err, setFormErrors);
+        if (fieldErrors) {
+          focusWizardStepForErrors(fieldErrors);
+          return (
+            firstFieldErrorMessage(fieldErrors) ?? toastErrorMessage(err, 'Gagal menyimpan sesi')
+          );
+        }
+        return toastErrorMessage(err, 'Gagal menyimpan sesi');
+      },
+    }
+  );
+
+  const doDeleteSession = useMutationToast(() => api.delete(`/sessions/${sessionToDelete}`), {
+    successMsg: 'Sesi berhasil dihapus',
+    errorMsg: (err) => toastErrorMessage(err, 'Gagal menghapus sesi'),
+  });
 
   const hasFilters =
     Boolean(searchTerm.trim()) ||
@@ -335,33 +374,11 @@ export default function Sessions() {
         return;
       }
 
-      const payload = buildSessionPayload();
-
-      if (editingSession) {
-        const res = await api.put(`/sessions/${editingSession.id}`, payload);
-        if (res.data?.success === false) {
-          throw new Error(res.data?.message || res.data?.error || 'Gagal memperbarui sesi');
-        }
-        toast.success('Sesi berhasil diperbarui');
-      } else {
-        const res = await api.post('/sessions', payload);
-        if (res.data?.success === false) {
-          throw new Error(res.data?.message || res.data?.error || 'Gagal membuat sesi');
-        }
-        toast.success('Sesi berhasil dibuat');
-      }
-      setIsSaveConfirmOpen(false);
-      setIsModalOpen(false);
-      await mutate();
-    } catch (error: unknown) {
-      const fieldErrors = applyApiFieldErrors(error, setFormErrors);
-      if (fieldErrors) {
-        focusWizardStepForErrors(fieldErrors);
-        toast.error(
-          firstFieldErrorMessage(fieldErrors) ?? toastErrorMessage(error, 'Gagal menyimpan sesi')
-        );
-      } else {
-        toast.error(toastErrorMessage(error, 'Gagal menyimpan sesi'));
+      const result = await doSaveSession();
+      if (result !== undefined) {
+        setIsSaveConfirmOpen(false);
+        setIsModalOpen(false);
+        await mutate();
       }
     } finally {
       setSaving(false);
@@ -389,13 +406,12 @@ export default function Sessions() {
     if (!sessionToDelete || deleting) return;
     setDeleting(true);
     try {
-      await api.delete(`/sessions/${sessionToDelete}`);
-      toast.success('Sesi berhasil dihapus');
-      setIsDeleteModalOpen(false);
-      setSessionToDelete(null);
-      mutate();
-    } catch (error) {
-      toast.error(toastErrorMessage(error, 'Gagal menghapus sesi'));
+      const result = await doDeleteSession();
+      if (result !== undefined) {
+        setIsDeleteModalOpen(false);
+        setSessionToDelete(null);
+        mutate();
+      }
     } finally {
       setDeleting(false);
     }
@@ -876,195 +892,237 @@ export default function Sessions() {
                 <AdminContentTransition contentKey={String(wizardStep)} className="md:col-span-2">
                   {wizardStep === 1 ? (
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label>
-                          Judul / Mata Kuliah <span className="text-red-500">*</span>
-                        </Label>
-                        <Input
-                          type="text"
-                          required
-                          value={formData.title}
-                          onChange={(e) => {
-                            clearFieldError('title');
-                            setFormData({ ...formData, title: e.target.value });
-                          }}
-                          placeholder="Pemrograman Web Lanjut (A)"
-                          aria-invalid={Boolean(formErrors.title)}
-                        />
-                        {fieldError('title')}
-                      </div>
-                      <div className="space-y-2">
-                        <Label>
-                          Lokasi Ruangan <span className="text-red-500">*</span>
-                        </Label>
-                        <Select
-                          required
-                          value={formData.location_id}
-                          onValueChange={(value) => {
-                            clearFieldError('location_id');
-                            setFormData({ ...formData, location_id: value });
-                          }}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Pilih Lokasi Geofencing..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {locations.map((loc) => (
-                              <SelectItem key={loc.id} value={loc.id}>
-                                {loc.name}
+                      <FormField
+                        id="session-title"
+                        label="Judul / Mata Kuliah"
+                        required
+                        error={formErrors.title}
+                      >
+                        {(fieldProps) => (
+                          <Input
+                            {...fieldProps}
+                            type="text"
+                            required
+                            value={formData.title}
+                            onChange={(e) => {
+                              clearFieldError('title');
+                              setFormData({ ...formData, title: e.target.value });
+                            }}
+                            placeholder="Pemrograman Web Lanjut (A)"
+                          />
+                        )}
+                      </FormField>
+                      <FormField
+                        id="session-location"
+                        label="Lokasi Ruangan"
+                        required
+                        error={formErrors.location_id}
+                      >
+                        {(fieldProps) => (
+                          <Select
+                            required
+                            value={formData.location_id}
+                            onValueChange={(value) => {
+                              clearFieldError('location_id');
+                              setFormData({ ...formData, location_id: value });
+                            }}
+                          >
+                            <SelectTrigger
+                              className="w-full"
+                              id={fieldProps.id}
+                              aria-describedby={fieldProps['aria-describedby']}
+                              aria-invalid={fieldProps['aria-invalid']}
+                            >
+                              <SelectValue placeholder="Pilih Lokasi Geofencing..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {locations.map((loc) => (
+                                <SelectItem key={loc.id} value={loc.id}>
+                                  {loc.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      </FormField>
+                      <FormField
+                        id="session-description"
+                        label="Deskripsi"
+                        error={formErrors.description}
+                      >
+                        {(fieldProps) => (
+                          <Textarea
+                            {...fieldProps}
+                            rows={3}
+                            value={formData.description}
+                            onChange={(e) => {
+                              clearFieldError('description');
+                              setFormData({ ...formData, description: e.target.value });
+                            }}
+                          />
+                        )}
+                      </FormField>
+                      <FormField
+                        id="session-qr-mode"
+                        label="Metode Validasi QR"
+                        required
+                        error={formErrors.qr_mode}
+                      >
+                        {(fieldProps) => (
+                          <Select
+                            required
+                            value={formData.qr_mode}
+                            onValueChange={(value: string) => {
+                              clearFieldError('qr_mode');
+                              setFormData({ ...formData, qr_mode: value });
+                            }}
+                          >
+                            <SelectTrigger
+                              className="w-full"
+                              id={fieldProps.id}
+                              aria-describedby={fieldProps['aria-describedby']}
+                              aria-invalid={fieldProps['aria-invalid']}
+                            >
+                              <SelectValue placeholder="Pilih Metode Validasi QR" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="DYNAMIC">
+                                QR Dinamis (ganti tiap 15 detik)
                               </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        {fieldError('location_id')}
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Deskripsi</Label>
-                        <Textarea
-                          rows={3}
-                          value={formData.description}
-                          onChange={(e) => {
-                            clearFieldError('description');
-                            setFormData({ ...formData, description: e.target.value });
-                          }}
-                          aria-invalid={Boolean(formErrors.description)}
-                        />
-                        {fieldError('description')}
-                      </div>
-                      <div className="space-y-2">
-                        <Label>
-                          Metode Validasi QR <span className="text-red-500">*</span>
-                        </Label>
-                        <Select
-                          required
-                          value={formData.qr_mode}
-                          onValueChange={(value: string) => {
-                            clearFieldError('qr_mode');
-                            setFormData({ ...formData, qr_mode: value });
-                          }}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Pilih Metode Validasi QR" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="DYNAMIC">
-                              QR Dinamis (ganti tiap 15 detik)
-                            </SelectItem>
-                            <SelectItem value="STATIC">QR Statis</SelectItem>
-                            <SelectItem value="NONE">Tanpa QR (GPS saja)</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        {fieldError('qr_mode')}
-                      </div>
+                              <SelectItem value="STATIC">QR Statis</SelectItem>
+                              <SelectItem value="NONE">Tanpa QR (GPS saja)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )}
+                      </FormField>
                     </div>
                   ) : wizardStep === 2 ? (
                     <div className="space-y-4">
                       <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
-                        <div className="min-w-0 flex-1 space-y-2">
-                          <Label>
-                            Waktu Mulai Sesi <span className="text-red-500">*</span>
-                          </Label>
-                          <Input
-                            type="datetime-local"
-                            required
-                            value={formData.session_start}
-                            onChange={(e) => {
-                              clearFieldError('session_start');
-                              setFormData({ ...formData, session_start: e.target.value });
-                            }}
-                            aria-invalid={Boolean(formErrors.session_start)}
-                          />
-                          {fieldError('session_start')}
-                        </div>
+                        <FormField
+                          id="session-start"
+                          label="Waktu Mulai Sesi"
+                          required
+                          error={formErrors.session_start}
+                          className="min-w-0 flex-1"
+                        >
+                          {(fieldProps) => (
+                            <Input
+                              {...fieldProps}
+                              type="datetime-local"
+                              required
+                              value={formData.session_start}
+                              onChange={(e) => {
+                                clearFieldError('session_start');
+                                setFormData({ ...formData, session_start: e.target.value });
+                              }}
+                            />
+                          )}
+                        </FormField>
                         <span
                           className="hidden shrink-0 px-1 pb-2 text-muted-foreground sm:inline"
                           aria-hidden="true"
                         >
                           –
                         </span>
-                        <div className="min-w-0 flex-1 space-y-2">
-                          <Label>
-                            Waktu Selesai Sesi <span className="text-red-500">*</span>
-                          </Label>
-                          <Input
-                            type="datetime-local"
-                            required
-                            value={formData.session_end}
-                            onChange={(e) => {
-                              clearFieldError('session_end');
-                              setFormData({ ...formData, session_end: e.target.value });
-                            }}
-                            aria-invalid={Boolean(formErrors.session_end)}
-                          />
-                          {fieldError('session_end')}
-                        </div>
+                        <FormField
+                          id="session-end"
+                          label="Waktu Selesai Sesi"
+                          required
+                          error={formErrors.session_end}
+                          className="min-w-0 flex-1"
+                        >
+                          {(fieldProps) => (
+                            <Input
+                              {...fieldProps}
+                              type="datetime-local"
+                              required
+                              value={formData.session_end}
+                              onChange={(e) => {
+                                clearFieldError('session_end');
+                                setFormData({ ...formData, session_end: e.target.value });
+                              }}
+                            />
+                          )}
+                        </FormField>
                       </div>
                       <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
-                        <div className="min-w-0 flex-1 space-y-2">
-                          <Label>
-                            Buka Check-in <span className="text-red-500">*</span>
-                          </Label>
-                          <Input
-                            type="datetime-local"
-                            required
-                            min={editingSession ? undefined : nowLocalMin}
-                            value={formData.check_in_open_at}
-                            onChange={(e) => {
-                              clearFieldError('check_in_open_at');
-                              setFormData({ ...formData, check_in_open_at: e.target.value });
-                            }}
-                            aria-invalid={Boolean(formErrors.check_in_open_at)}
-                          />
-                          {fieldError('check_in_open_at')}
-                        </div>
+                        <FormField
+                          id="session-check-in-open"
+                          label="Buka Check-in"
+                          required
+                          error={formErrors.check_in_open_at}
+                          className="min-w-0 flex-1"
+                        >
+                          {(fieldProps) => (
+                            <Input
+                              {...fieldProps}
+                              type="datetime-local"
+                              required
+                              min={editingSession ? undefined : nowLocalMin}
+                              value={formData.check_in_open_at}
+                              onChange={(e) => {
+                                clearFieldError('check_in_open_at');
+                                setFormData({ ...formData, check_in_open_at: e.target.value });
+                              }}
+                            />
+                          )}
+                        </FormField>
                         <span
                           className="hidden shrink-0 px-1 pb-2 text-muted-foreground sm:inline"
                           aria-hidden="true"
                         >
                           –
                         </span>
-                        <div className="min-w-0 flex-1 space-y-2">
-                          <Label>
-                            Tutup Check-in <span className="text-red-500">*</span>
-                          </Label>
-                          <Input
-                            type="datetime-local"
-                            required
-                            min={editingSession ? undefined : nowLocalMin}
-                            value={formData.check_in_close_at}
-                            onChange={(e) => {
-                              clearFieldError('check_in_close_at');
-                              setFormData({ ...formData, check_in_close_at: e.target.value });
-                            }}
-                            aria-invalid={Boolean(formErrors.check_in_close_at)}
-                          />
-                          {fieldError('check_in_close_at')}
-                        </div>
+                        <FormField
+                          id="session-check-in-close"
+                          label="Tutup Check-in"
+                          required
+                          error={formErrors.check_in_close_at}
+                          className="min-w-0 flex-1"
+                        >
+                          {(fieldProps) => (
+                            <Input
+                              {...fieldProps}
+                              type="datetime-local"
+                              required
+                              min={editingSession ? undefined : nowLocalMin}
+                              value={formData.check_in_close_at}
+                              onChange={(e) => {
+                                clearFieldError('check_in_close_at');
+                                setFormData({ ...formData, check_in_close_at: e.target.value });
+                              }}
+                            />
+                          )}
+                        </FormField>
                       </div>
                     </div>
                   ) : wizardStep === 3 ? (
                     <div className="space-y-4">
                       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        <div className="space-y-2">
-                          <Label>
-                            Toleransi Terlambat (Menit) <span className="text-red-500">*</span>
-                          </Label>
-                          <Input
-                            type="number"
-                            min="0"
-                            required
-                            value={formData.late_threshold_minutes}
-                            onChange={(e) => {
-                              clearFieldError('late_threshold_minutes');
-                              setFormData({
-                                ...formData,
-                                late_threshold_minutes: parseInt(e.target.value),
-                              });
-                            }}
-                            aria-invalid={Boolean(formErrors.late_threshold_minutes)}
-                          />
-                          {fieldError('late_threshold_minutes')}
-                        </div>
+                        <FormField
+                          id="session-late-threshold"
+                          label="Toleransi Terlambat (Menit)"
+                          required
+                          error={formErrors.late_threshold_minutes}
+                        >
+                          {(fieldProps) => (
+                            <Input
+                              {...fieldProps}
+                              type="number"
+                              min="0"
+                              required
+                              value={formData.late_threshold_minutes}
+                              onChange={(e) => {
+                                clearFieldError('late_threshold_minutes');
+                                setFormData({
+                                  ...formData,
+                                  late_threshold_minutes: parseInt(e.target.value),
+                                });
+                              }}
+                            />
+                          )}
+                        </FormField>
                         <div className="flex items-center gap-2 pt-8">
                           <Checkbox
                             checked={Boolean(formData.require_checkout)}
@@ -1078,154 +1136,167 @@ export default function Sessions() {
                         </div>
                       </div>
                       {editingSession && (
-                        <div className="space-y-2">
-                          <Label>Status Sesi (Override Manual)</Label>
-                          <Select
-                            value={formData.status}
-                            onValueChange={(value: string) => {
-                              clearFieldError('status');
-                              setFormData({ ...formData, status: value });
-                            }}
-                          >
-                            <SelectTrigger className="w-full">
-                              <SelectValue placeholder="Pilih Status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="UPCOMING">
-                                {sessionStatusLabel('UPCOMING')}
-                              </SelectItem>
-                              <SelectItem value="ACTIVE">{sessionStatusLabel('ACTIVE')}</SelectItem>
-                              <SelectItem value="CLOSED">{sessionStatusLabel('CLOSED')}</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          {fieldError('status')}
-                        </div>
+                        <FormField
+                          id="session-status"
+                          label="Status Sesi (Override Manual)"
+                          error={formErrors.status}
+                        >
+                          {(fieldProps) => (
+                            <Select
+                              value={formData.status}
+                              onValueChange={(value: string) => {
+                                clearFieldError('status');
+                                setFormData({ ...formData, status: value });
+                              }}
+                            >
+                              <SelectTrigger className="w-full" id={fieldProps.id}>
+                                <SelectValue placeholder="Pilih Status" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="UPCOMING">
+                                  {sessionStatusLabel('UPCOMING')}
+                                </SelectItem>
+                                <SelectItem value="ACTIVE">
+                                  {sessionStatusLabel('ACTIVE')}
+                                </SelectItem>
+                                <SelectItem value="CLOSED">
+                                  {sessionStatusLabel('CLOSED')}
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                          )}
+                        </FormField>
                       )}
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label>Target Kelas</Label>
-                        <div className="relative">
-                          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-                          <Input
-                            value={classSearch}
-                            onChange={(e) => setClassSearch(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') e.preventDefault();
-                            }}
-                            placeholder="Cari kelas..."
-                            className="pl-9"
-                          />
-                        </div>
-
-                        <div className="scrollbar-hide max-h-56 overflow-y-auto rounded-xl border border-border bg-card p-2">
-                          <div className="space-y-1.5">
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              className={[
-                                'h-auto w-full justify-between rounded-lg px-3 py-2.5 text-left',
-                                formData.class_ids.length === 0
-                                  ? 'bg-emerald-50 text-emerald-900 hover:bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-100 dark:hover:bg-emerald-950/30'
-                                  : 'hover:bg-slate-50 dark:hover:bg-zinc-900',
-                              ].join(' ')}
-                              onClick={() => setFormData((p) => ({ ...p, class_ids: [] }))}
-                            >
-                              <span className="font-medium">Semua Mahasiswa (Umum)</span>
-                              {formData.class_ids.length === 0 ? (
-                                <span className="text-xs font-semibold">Terpilih</span>
-                              ) : null}
-                            </Button>
-                            <div className="h-px bg-muted/70" />
-                            {classes
-                              .filter((c) =>
-                                c.name.toLowerCase().includes(classSearch.trim().toLowerCase())
-                              )
-                              .map((c) => {
-                                const selected = formData.class_ids.includes(c.id);
-                                return (
-                                  <Button
-                                    key={c.id}
-                                    type="button"
-                                    variant="ghost"
-                                    className={[
-                                      'h-auto w-full justify-between rounded-lg px-3 py-2.5 text-left',
-                                      selected
-                                        ? 'bg-emerald-50 text-emerald-900 hover:bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-100 dark:hover:bg-emerald-950/30'
-                                        : 'hover:bg-slate-50 dark:hover:bg-zinc-900',
-                                    ].join(' ')}
-                                    onClick={() => {
-                                      setFormData((p) => {
-                                        const set = new Set(p.class_ids);
-                                        if (selected) set.delete(c.id);
-                                        else set.add(c.id);
-                                        return { ...p, class_ids: Array.from(set) };
-                                      });
-                                    }}
-                                  >
-                                    <span className="font-medium">{formatClassLabel(c)}</span>
-                                    {selected ? (
-                                      <span className="text-xs font-semibold">Terpilih</span>
-                                    ) : (
-                                      <span className="text-xs text-muted-foreground">Tambah</span>
-                                    )}
-                                  </Button>
-                                );
-                              })}
-                          </div>
-                          {classes.filter((c) =>
-                            c.name.toLowerCase().includes(classSearch.trim().toLowerCase())
-                          ).length === 0 ? (
-                            <div className="px-3 py-2 text-sm text-muted-foreground">
-                              Tidak ada kelas.
+                      <FormField
+                        id="session-class-target"
+                        label="Target Kelas"
+                        description="Kosong = semua mahasiswa."
+                      >
+                        {() => (
+                          <>
+                            <div className="relative">
+                              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                              <Input
+                                value={classSearch}
+                                onChange={(e) => setClassSearch(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') e.preventDefault();
+                                }}
+                                placeholder="Cari kelas..."
+                                className="pl-9"
+                              />
                             </div>
-                          ) : null}
-                        </div>
 
-                        <div className="rounded-xl border border-border bg-muted/30 p-3">
-                          <div className="text-sm font-semibold text-foreground">
-                            Kelas Terpilih:
-                          </div>
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            {formData.class_ids.length === 0 ? (
-                              <Badge variant="secondary">Semua Mahasiswa</Badge>
-                            ) : (
-                              formData.class_ids
-                                .flatMap((id) => {
-                                  const result = classes.find((c) => c.id === id);
-                                  return result ? [result] : [];
-                                })
-                                .map((c: any) => (
-                                  <Badge key={c.id} variant="secondary" className="gap-1">
-                                    <span className="max-w-[260px] truncate">
-                                      {formatClassLabel(c)}
-                                    </span>
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="icon"
-                                      className="ml-1 size-5"
-                                      onClick={() =>
-                                        setFormData((p) => ({
-                                          ...p,
-                                          class_ids: p.class_ids.filter((x) => x !== c.id),
-                                        }))
-                                      }
-                                      aria-label="Hapus kelas"
-                                    >
-                                      <X className="size-3" />
-                                    </Button>
-                                  </Badge>
-                                ))
-                            )}
-                          </div>
-                        </div>
+                            <div className="scrollbar-hide max-h-56 overflow-y-auto rounded-xl border border-border bg-card p-2">
+                              <div className="space-y-1.5">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  className={[
+                                    'h-auto w-full justify-between rounded-lg px-3 py-2.5 text-left',
+                                    formData.class_ids.length === 0
+                                      ? 'bg-emerald-50 text-emerald-900 hover:bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-100 dark:hover:bg-emerald-950/30'
+                                      : 'hover:bg-slate-50 dark:hover:bg-zinc-900',
+                                  ].join(' ')}
+                                  onClick={() => setFormData((p) => ({ ...p, class_ids: [] }))}
+                                >
+                                  <span className="font-medium">Semua Mahasiswa (Umum)</span>
+                                  {formData.class_ids.length === 0 ? (
+                                    <span className="text-xs font-semibold">Terpilih</span>
+                                  ) : null}
+                                </Button>
+                                <div className="h-px bg-muted/70" />
+                                {classes
+                                  .filter((c) =>
+                                    c.name.toLowerCase().includes(classSearch.trim().toLowerCase())
+                                  )
+                                  .map((c) => {
+                                    const selected = formData.class_ids.includes(c.id);
+                                    return (
+                                      <Button
+                                        key={c.id}
+                                        type="button"
+                                        variant="ghost"
+                                        className={[
+                                          'h-auto w-full justify-between rounded-lg px-3 py-2.5 text-left',
+                                          selected
+                                            ? 'bg-emerald-50 text-emerald-900 hover:bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-100 dark:hover:bg-emerald-950/30'
+                                            : 'hover:bg-slate-50 dark:hover:bg-zinc-900',
+                                        ].join(' ')}
+                                        onClick={() => {
+                                          setFormData((p) => {
+                                            const set = new Set(p.class_ids);
+                                            if (selected) set.delete(c.id);
+                                            else set.add(c.id);
+                                            return { ...p, class_ids: Array.from(set) };
+                                          });
+                                        }}
+                                      >
+                                        <span className="font-medium">{formatClassLabel(c)}</span>
+                                        {selected ? (
+                                          <span className="text-xs font-semibold">Terpilih</span>
+                                        ) : (
+                                          <span className="text-xs text-muted-foreground">
+                                            Tambah
+                                          </span>
+                                        )}
+                                      </Button>
+                                    );
+                                  })}
+                              </div>
+                              {classes.filter((c) =>
+                                c.name.toLowerCase().includes(classSearch.trim().toLowerCase())
+                              ).length === 0 ? (
+                                <div className="px-3 py-2 text-sm text-muted-foreground">
+                                  Tidak ada kelas.
+                                </div>
+                              ) : null}
+                            </div>
 
-                        <div className="text-xs text-muted-foreground">
-                          Kosong = semua mahasiswa.
-                        </div>
-                      </div>
+                            <div className="rounded-xl border border-border bg-muted/30 p-3">
+                              <div className="text-sm font-semibold text-foreground">
+                                Kelas Terpilih:
+                              </div>
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                {formData.class_ids.length === 0 ? (
+                                  <Badge variant="secondary">Semua Mahasiswa</Badge>
+                                ) : (
+                                  formData.class_ids
+                                    .flatMap((id) => {
+                                      const result = classes.find((c) => c.id === id);
+                                      return result ? [result] : [];
+                                    })
+                                    .map((c: any) => (
+                                      <Badge key={c.id} variant="secondary" className="gap-1">
+                                        <span className="max-w-[260px] truncate">
+                                          {formatClassLabel(c)}
+                                        </span>
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="icon"
+                                          className="ml-1 size-5"
+                                          onClick={() =>
+                                            setFormData((p) => ({
+                                              ...p,
+                                              class_ids: p.class_ids.filter((x) => x !== c.id),
+                                            }))
+                                          }
+                                          aria-label="Hapus kelas"
+                                        >
+                                          <X className="size-3" />
+                                        </Button>
+                                      </Badge>
+                                    ))
+                                )}
+                              </div>
+                            </div>
+                          </>
+                        )}
+                      </FormField>
                     </div>
                   )}
                 </AdminContentTransition>
@@ -1261,15 +1332,15 @@ export default function Sessions() {
                     Lanjut
                   </Button>
                 ) : (
-                  <Button
+                  <SubmitButton
                     type="button"
                     disabled={saving}
-                    aria-busy={saving}
                     className="min-h-11"
                     onClick={openSaveConfirm}
-                  >
-                    {saving ? 'Menyimpan…' : editingSession ? 'Simpan Perubahan' : 'Buat Sesi'}
-                  </Button>
+                    isLoading={saving}
+                    label={editingSession ? 'Simpan Perubahan' : 'Buat Sesi'}
+                    loadingLabel="Menyimpan…"
+                  />
                 )}
               </DialogFooter>
             </form>

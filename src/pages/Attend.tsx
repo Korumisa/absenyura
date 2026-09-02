@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import api from '@/services/api';
 import { toast } from 'sonner';
 import {
@@ -23,8 +22,6 @@ import {
   ONLINE_USER_MESSAGE,
 } from '@/lib/perf/networkEvents';
 import { getErrorMessage } from '@/lib/http/errorMessage';
-import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
 import {
   saveOfflineAttendance,
   saveOfflinePhoto,
@@ -36,15 +33,16 @@ import { getDeviceFingerprint } from '@/lib/storage/deviceFingerprint';
 import {
   acquireCameraStream,
   humanizeCameraError,
-  pickPreferredCameraId,
   releaseMediaStream,
   waitForCameraRelease,
   releaseActiveVideoTracks,
   registerPendingCameraRelease,
 } from '@/lib/media/camera';
 import ActionLoadingOverlay from '@/components/ActionLoadingOverlay';
+import { useAppStatusStore } from '@/stores/appStatusStore';
 
 import { Button } from '@/components/ui/button';
+import { SubmitButton } from '@/components/ui/submit-button';
 import {
   Dialog,
   DialogContent,
@@ -53,10 +51,17 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter,
+} from '@/components/ui/card';
 
-import { fixLeafletDefaultIcons } from '@/lib/media/leafletIcon';
-
-fixLeafletDefaultIcons();
+const AttendQrScanner = lazy(() => import('@/pages/attend/AttendQrScanner'));
+const AttendLocationMap = lazy(() => import('@/pages/attend/AttendLocationMap'));
 
 const getDistanceMeters = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) => {
   const R = 6371000;
@@ -71,14 +76,6 @@ const getDistanceMeters = (a: { lat: number; lng: number }, b: { lat: number; ln
   return 2 * R * Math.asin(Math.sqrt(h));
 };
 
-const MapUpdater = ({ center }: { center: [number, number] }) => {
-  const map = useMap();
-  useEffect(() => {
-    map.setView(center);
-  }, [center, map]);
-  return null;
-};
-
 export default function Attend() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -87,6 +84,21 @@ export default function Attend() {
   const isCheckoutMode = searchParams.get('checkout') === 'true'; // [UX] A-01, D-02
   const attendanceParam = searchParams.get('attendance');
   const NO_QR_TOKEN = 'NO_QR_REQUIRED';
+
+  const wizardStep = useAppStatusStore((s) => s.wizardStep);
+  const draftSessionId = useAppStatusStore((s) => s.draftSessionId);
+  const pendingPhotoIdbKey = useAppStatusStore((s) => s.pendingPhotoIdbKey);
+  const setWizardDraft = useAppStatusStore((s) => s.setWizardDraft);
+  const clearWizardDraft = useAppStatusStore((s) => s.clearWizardDraft);
+
+  const [showResumeCard, setShowResumeCard] = useState(false);
+
+  useEffect(() => {
+    if (isCheckoutMode) return;
+    if (wizardStep !== null || draftSessionId !== null || pendingPhotoIdbKey !== null) {
+      setShowResumeCard(true);
+    }
+  }, [wizardStep, draftSessionId, pendingPhotoIdbKey, isCheckoutMode]);
 
   const [scanResult, setScanResult] = useState<string | null>(tokenParam);
   const [scanning, setScanning] = useState(!tokenParam);
@@ -115,42 +127,13 @@ export default function Attend() {
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
   const pendingStreamRef = React.useRef<MediaStream | null>(null);
   const [isCameraActive, setIsCameraActive] = useState(false);
-  const scannerRef = React.useRef<Html5Qrcode | null>(null);
-  const qrCameraIdRef = React.useRef<string | null>(null);
-  const qrBootGenRef = React.useRef(0);
   type QrErrorType = 'PERMISSION' | 'SCAN_TIMEOUT' | 'BAD_SIG' | 'NOT_ENROLLED';
   const [qrError, setQrError] = useState<{ code: QrErrorType; detail?: string } | null>(null);
-  const qrDecodeTimeoutRef = React.useRef<number | null>(null);
-  const qrDecodedSuccessRef = React.useRef(false);
-  const [camerasReady, setCamerasReady] = useState(false);
-  const [qrBootNonce, setQrBootNonce] = useState(0);
+  const [qrResetNonce, setQrResetNonce] = useState(0);
   const isSubmittingRef = React.useRef(false);
-  const [qrFacingMode, setQrFacingMode] = useState<'user' | 'environment'>('environment');
   const [submitError, setSubmitError] = useState<{ message: string; hint?: string } | null>(null);
   const [storageSaveFailed, setStorageSaveFailed] = useState(false);
   const storagePermanentlyFailedRef = React.useRef(false);
-
-  const loadQrCamera = useCallback(async (preferRear: boolean) => {
-    try {
-      const cameras = await Html5Qrcode.getCameras();
-      const preferredId = pickPreferredCameraId(
-        cameras.map((c) => ({ id: c.id, label: c.label })),
-        { preferRear }
-      );
-      qrCameraIdRef.current = preferredId;
-    } catch {
-      qrCameraIdRef.current = null;
-      const msg = 'Kamera tidak diizinkan. Buka pengaturan browser.';
-      setQrError({ code: 'PERMISSION' });
-      toast.error(msg);
-    } finally {
-      setCamerasReady(true);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadQrCamera(true);
-  }, [loadQrCamera]);
 
   // Derived session ID from parameter or scan result
   const extractSessionIdAndToken = (rawResult: string | null) => {
@@ -330,8 +313,12 @@ export default function Attend() {
       formData.append('photo_type', photoType);
       formData.append('photo', photoBlob, 'checkout.jpg');
 
+      const idempotencyKey = crypto.randomUUID();
       const res = await api.put(`/attendance/${myAttendance.id}/check-out`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          'X-Idempotency-Key': idempotencyKey,
+        },
       });
       toast.success(res.data?.message || 'Check-out berhasil!');
       navigate('/dashboard');
@@ -368,7 +355,7 @@ export default function Attend() {
     return false;
   };
 
-  const handlePosition = (pos: GeolocationPosition) => {
+  const handlePosition = useCallback((pos: GeolocationPosition) => {
     if (isSpoofedLocation(pos)) {
       setGpsError('Terdeteksi aplikasi Fake GPS atau anomali lokasi.');
       toast.error('Lokasi ditolak: Terdeteksi aplikasi Fake GPS.');
@@ -388,9 +375,9 @@ export default function Attend() {
 
     setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
     setGpsError(null);
-  };
+  }, []);
 
-  const requestLocationOnce = () => {
+  const requestLocationOnce = useCallback(() => {
     if (!navigator.geolocation) {
       setGpsError('Browser tidak mendukung Geolocation');
       toast.error('Browser Anda tidak mendukung Geolocation.');
@@ -410,7 +397,7 @@ export default function Attend() {
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
-  };
+  }, [handlePosition]);
 
   const hasIpRestriction = Boolean(sessionDetails?.location?.ip_restriction_enabled);
 
@@ -434,151 +421,9 @@ export default function Attend() {
     return () => {
       navigator.geolocation.clearWatch(watchId);
     };
-  }, []);
-
-  const releaseQrScanner = useCallback(async () => {
-    const instance = scannerRef.current;
-    if (instance) {
-      try {
-        if (instance.isScanning) {
-          await instance.stop();
-        }
-        instance.clear();
-      } catch {
-        void 0;
-      }
-      scannerRef.current = null;
-    }
-    await waitForCameraRelease();
-  }, []);
-
-  useEffect(() => {
-    if (!scanning || scanResult || !camerasReady) return;
-
-    const bootGen = ++qrBootGenRef.current;
-    let cancelled = false;
-    qrDecodedSuccessRef.current = false;
-
-    const clearQrTimeout = () => {
-      if (qrDecodeTimeoutRef.current !== null) {
-        window.clearTimeout(qrDecodeTimeoutRef.current);
-        qrDecodeTimeoutRef.current = null;
-      }
-    };
-
-    const bootScanner = async () => {
-      setQrError(null);
-      await waitForCameraRelease(350);
-      if (cancelled || bootGen !== qrBootGenRef.current || scannerRef.current) return;
-
-      const cameraConfig: string | MediaTrackConstraints = qrCameraIdRef.current
-        ? qrCameraIdRef.current
-        : { facingMode: qrFacingMode };
-
-      const qr = new Html5Qrcode('qr-reader', {
-        formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
-        verbose: false,
-      });
-
-      try {
-        await qr.start(
-          cameraConfig,
-          {
-            fps: 10,
-            qrbox: { width: 250, height: 250 },
-            aspectRatio: 1.0,
-            disableFlip: qrFacingMode === 'user',
-          },
-          async (decodedText) => {
-            if (cancelled || bootGen !== qrBootGenRef.current) return;
-            qrDecodedSuccessRef.current = true;
-            clearQrTimeout();
-            await releaseQrScanner();
-            setScanResult(decodedText);
-            setScanning(false);
-          },
-          () => {
-            // Abaikan kegagalan scan berulang sampai QR terbaca
-          }
-        );
-        if (cancelled || bootGen !== qrBootGenRef.current) {
-          try {
-            if (qr.isScanning) await qr.stop();
-            qr.clear();
-          } catch {
-            void 0;
-          }
-          return;
-        }
-        scannerRef.current = qr;
-
-        qrDecodeTimeoutRef.current = window.setTimeout(() => {
-          if (cancelled || bootGen !== qrBootGenRef.current) return;
-          if (qrDecodedSuccessRef.current) return;
-          const msg =
-            'Tidak dapat membaca kode. Pastikan QR berada di tengah layar dan cahaya cukup.';
-          setQrError({ code: 'SCAN_TIMEOUT' });
-          toast.error(msg);
-          void (async () => {
-            try {
-              if (qr.isScanning) await qr.stop();
-              qr.clear();
-            } catch {
-              void 0;
-            }
-            if (scannerRef.current === qr) {
-              scannerRef.current = null;
-            }
-          })();
-        }, 15000);
-      } catch (err) {
-        clearQrTimeout();
-        const msg = 'Kamera tidak diizinkan. Buka pengaturan browser.';
-        setQrError({ code: 'PERMISSION' });
-        toast.error(msg);
-        try {
-          qr.clear();
-        } catch {
-          void 0;
-        }
-      }
-    };
-
-    void bootScanner();
-
-    return () => {
-      cancelled = true;
-      clearQrTimeout();
-      qrBootGenRef.current += 1;
-      const instance = scannerRef.current;
-      scannerRef.current = null;
-      if (instance) {
-        void (async () => {
-          try {
-            if (instance.isScanning) await instance.stop();
-            instance.clear();
-          } catch {
-            void 0;
-          }
-          await waitForCameraRelease(200);
-        })();
-      }
-    };
-  }, [scanning, scanResult, camerasReady, qrFacingMode, qrBootNonce, releaseQrScanner]);
-
-  const switchQrCamera = async () => {
-    const nextMode = qrFacingMode === 'environment' ? 'user' : 'environment';
-    await releaseQrScanner();
-    setQrFacingMode(nextMode);
-    await loadQrCamera(nextMode === 'environment');
-    setScanResult(null);
-    setQrError(null);
-    setScanning(true);
-    setQrBootNonce((n) => n + 1);
-  };
+  }, [handlePosition, requestLocationOnce]);
 
   const stopCamera = () => {
-    // Release any pending stream that hasn't been assigned yet
     if (pendingStreamRef.current) {
       releaseMediaStream(pendingStreamRef.current);
       pendingStreamRef.current = null;
@@ -590,9 +435,6 @@ export default function Attend() {
     setIsCameraActive(false);
   };
 
-  // When isCameraActive flips to true, assign the pending stream to the <video>
-  // after the DOM has painted (requestAnimationFrame). This avoids the mobile
-  // Android Chrome bug where play() on a display:none element skips decoder init.
   useEffect(() => {
     if (isCameraActive && pendingStreamRef.current && videoRef.current) {
       const stream = pendingStreamRef.current;
@@ -606,38 +448,13 @@ export default function Attend() {
     }
   }, [isCameraActive]);
 
-  // Cleanup saat unmount: lepas video camera DAN QR scanner
-  // Tanpa ini, Html5Qrcode tetap memegang hardware kamera setelah navigasi,
-  // sehingga halaman lain (misal Excuses) mendapat error "camera already in use".
   useEffect(() => {
     return () => {
-      // 1. Lepas video camera
       stopCamera();
-
-      // 2. Lepas QR scanner — Html5Qrcode punya MediaStream tersendiri
-      //    yang TIDAK dibersihkan oleh stopCamera().
-      //    Kita bungkus proses async ini dalam Promise dan mendaftarkannya
-      //    secara global agar halaman lain (Excuses) bisa menunggunya
-      //    sebelum membuka kamera baru.
-      const instance = scannerRef.current;
-      scannerRef.current = null;
-
       const teardown = (async () => {
-        if (instance) {
-          try {
-            if (instance.isScanning) await instance.stop();
-            instance.clear();
-          } catch {
-            void 0;
-          }
-        }
-        // Force-stop any remaining tracks after the library finishes
         await releaseActiveVideoTracks();
-        // Extra settle time so hardware is truly released
         await new Promise<void>((r) => setTimeout(r, 300));
       })();
-
-      // Register so acquireCameraStream() can await this before opening
       registerPendingCameraRelease(teardown);
     };
   }, []);
@@ -648,11 +465,7 @@ export default function Attend() {
       setCameraPermissionError(null);
       try {
         stopCamera();
-        if (scannerRef.current) {
-          await releaseQrScanner();
-        } else {
-          await waitForCameraRelease(400);
-        }
+        await waitForCameraRelease(400);
 
         let lastErr: unknown;
         for (let attempt = 0; attempt < 4; attempt++) {
@@ -664,9 +477,6 @@ export default function Attend() {
               facingMode: mode,
               preferRear: mode === 'environment',
             });
-            // Store stream in ref — the useEffect watching isCameraActive will
-            // assign it to the <video> after React re-renders and the element
-            // is visible (no longer display:none).
             pendingStreamRef.current = stream;
             setIsCameraActive(true);
             return;
@@ -682,7 +492,7 @@ export default function Attend() {
         setCameraStarting(false);
       }
     },
-    [facingMode, releaseQrScanner]
+    [facingMode]
   );
 
   const switchCamera = () => {
@@ -883,8 +693,12 @@ export default function Attend() {
         formData.append('photo', photoBlob, 'attendance.jpg');
       }
 
+      const idempotencyKey = crypto.randomUUID();
       const res = await api.post('/attendance/check-in', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          'X-Idempotency-Key': idempotencyKey,
+        },
       });
 
       toast.success(res.data.message || 'Check-in berhasil!');
@@ -1087,10 +901,11 @@ export default function Attend() {
                       autoPlay
                       playsInline
                       muted
+                      aria-hidden="true"
                       className="size-full object-cover"
                     />
                   )}
-                  <canvas ref={canvasRef} className="hidden" />
+                  <canvas ref={canvasRef} className="hidden" aria-hidden="true" />
                 </div>
                 <div className="flex flex-col gap-3">
                   {!photoPreview && !isCameraActive ? (
@@ -1118,27 +933,17 @@ export default function Attend() {
                       Ambil Ulang Foto
                     </Button>
                   ) : null}
-                  <Button
+                  <SubmitButton
                     type="button"
                     size="lg"
                     className="w-full py-6 text-lg font-bold"
                     onClick={() => void handleCheckOut()}
-                    disabled={
-                      checkoutSubmitting ||
-                      isOffline ||
-                      !photoBlob ||
-                      !location ||
-                      !isLocationValid()
-                    }
-                    aria-busy={checkoutSubmitting}
-                  >
-                    {checkoutSubmitting ? (
-                      <Loader2 className="mr-2 size-5 animate-spin" aria-hidden="true" />
-                    ) : (
-                      <LogOut size={20} className="mr-2" aria-hidden="true" />
-                    )}
-                    {checkoutSubmitting ? 'Memproses…' : 'Kirim Check-out'}
-                  </Button>
+                    disabled={isOffline || !photoBlob || !location || !isLocationValid()}
+                    isLoading={checkoutSubmitting}
+                    label="Kirim Check-out"
+                    loadingLabel="Memproses…"
+                    icon={<LogOut size={20} aria-hidden="true" />}
+                  />
                   <Button
                     type="button"
                     variant="outline"
@@ -1174,6 +979,61 @@ export default function Attend() {
         </div>
 
         <AttendPrivacyBanner />
+
+        {showResumeCard && (
+          <Card className="mb-6 border-blue-200 bg-blue-50/70 dark:bg-blue-950/40">
+            <CardHeader>
+              <CardTitle className="text-blue-900 dark:text-blue-200">Check-in Tersimpan</CardTitle>
+              <CardDescription>
+                Anda memiliki check-in yang belum selesai. Lanjutkan?
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                {draftSessionId && (
+                  <span>
+                    Sesi: <code className="font-mono font-semibold">{draftSessionId}</code>
+                    <br />
+                  </span>
+                )}
+                {wizardStep !== null && (
+                  <span>
+                    Langkah:{' '}
+                    {wizardStep === 0 ? 'Scan QR' : wizardStep === 1 ? 'Foto Bukti' : 'Kirim Data'}
+                  </span>
+                )}
+              </p>
+            </CardContent>
+            <CardFooter className="flex gap-3">
+              <Button
+                type="button"
+                onClick={() => {
+                  if (draftSessionId) {
+                    setScanResult(draftSessionId);
+                    setScanning(false);
+                  }
+                  setShowResumeCard(false);
+                  toast.success('Melanjutkan check-in...');
+                }}
+                className="flex-1"
+              >
+                Ya
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  clearWizardDraft();
+                  setShowResumeCard(false);
+                  toast.info('Draft check-in dibatalkan.');
+                }}
+                className="flex-1"
+              >
+                Batalkan
+              </Button>
+            </CardFooter>
+          </Card>
+        )}
 
         <div className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-card">
           {isOffline && (
@@ -1324,101 +1184,40 @@ export default function Attend() {
 
           <div className="flex flex-1 flex-col gap-8 p-5 sm:p-8">
             {location && sessionDetails?.location && (
-              <div className="z-0 h-52 w-full overflow-hidden rounded-xl border border-border shadow-inner border-border">
-                <MapContainer
-                  center={[location.lat, location.lng]}
-                  zoom={16}
-                  style={{ height: '100%', width: '100%' }}
-                  scrollWheelZoom={false}
-                >
-                  <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                  <MapUpdater center={[location.lat, location.lng]} />
-
-                  <Marker position={[location.lat, location.lng]}>
-                    <Popup>Lokasi Anda Saat Ini</Popup>
-                  </Marker>
-
-                  {sessionDetails?.location && (
-                    <Circle
-                      center={[sessionDetails.location.latitude, sessionDetails.location.longitude]}
-                      radius={sessionDetails.location.radius}
-                      pathOptions={{
-                        color: isLocationValid() ? 'green' : 'red',
-                        fillColor: isLocationValid() ? 'green' : 'red',
-                        fillOpacity: 0.2,
-                      }}
-                    >
-                      <Popup>Area Absensi ({sessionDetails.location.radius}m)</Popup>
-                    </Circle>
-                  )}
-                </MapContainer>
-              </div>
+              <Suspense
+                fallback={<div className="h-52 w-full animate-pulse rounded-xl bg-muted" />}
+              >
+                <AttendLocationMap
+                  location={location}
+                  sessionLocation={sessionDetails.location}
+                  isLocationValid={isLocationValid()}
+                />
+              </Suspense>
             )}
 
             <div className="flex flex-1 flex-col items-center justify-center">
               {scanning ? (
-                <div className="attend-qr-root w-full max-w-md">
-                  <div className="relative overflow-hidden rounded-2xl border-4 border-border bg-slate-900 shadow-2xl border-border">
-                    <div className="pointer-events-none absolute inset-0 z-10 m-8 rounded-xl border-[3px] border-dashed border-indigo-500/50" />
-                    <div id="qr-reader" className="min-h-[300px] w-full bg-black" />
-                  </div>
-                  <div className="mt-8 space-y-4 text-center">
-                    {qrError ? (
-                      <div
-                        className="rounded-xl border border-red-200 bg-red-50 p-4 text-left text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300"
-                        role="alert"
-                        aria-live="assertive"
-                      >
-                        <p className="font-semibold">
-                          {qrError.code === 'PERMISSION' && 'Kamera tidak diizinkan'}
-                          {qrError.code === 'SCAN_TIMEOUT' && 'Tidak dapat membaca kode QR'}
-                          {qrError.code === 'BAD_SIG' && 'Kode QR tidak valid'}
-                          {qrError.code === 'NOT_ENROLLED' && 'Tidak terdaftar di sesi ini'}
-                        </p>
-                        <p className="mt-1">
-                          {qrError.code === 'PERMISSION' &&
-                            'Kamera tidak diizinkan. Buka pengaturan browser.'}
-                          {qrError.code === 'SCAN_TIMEOUT' &&
-                            'Tidak dapat membaca kode. Pastikan QR berada di tengah layar dan cahaya cukup.'}
-                          {qrError.code === 'BAD_SIG' &&
-                            'Kode QR tidak valid atau sudah digunakan.'}
-                          {qrError.code === 'NOT_ENROLLED' &&
-                            `Anda tidak terdaftar di sesi ini (Kode: ${qrError.detail ?? '-'}). Pindai kode sesi aktif Anda.`}
-                        </p>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="mt-3 min-h-11"
-                          onClick={() => {
-                            void releaseQrScanner().then(() => {
-                              setQrError(null);
-                              setScanning(true);
-                              setQrBootNonce((n) => n + 1);
-                            });
-                          }}
-                        >
-                          Coba Lagi
-                        </Button>
-                      </div>
-                    ) : (
-                      <p className="text-sm font-medium text-muted-foreground">
-                        Arahkan kamera ke QR Code yang ditampilkan oleh Dosen.
-                      </p>
-                    )}
-                    <div className="flex justify-center">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => void switchQrCamera()}
-                        className="min-h-11 gap-2"
-                      >
-                        <RefreshCw size={16} aria-hidden="true" />
-                        Kamera QR {qrFacingMode === 'environment' ? 'Belakang' : 'Depan'}
-                      </Button>
+                <Suspense
+                  fallback={
+                    <div className="flex w-full max-w-md flex-col items-center gap-4">
+                      <div className="min-h-[300px] w-full animate-pulse rounded-2xl bg-slate-900" />
+                      <p className="text-sm text-muted-foreground">Menyiapkan pemindai QR…</p>
                     </div>
-                  </div>
-                </div>
+                  }
+                >
+                  <AttendQrScanner
+                    scanning={scanning}
+                    setScanning={setScanning}
+                    externalResult={scanResult}
+                    resetNonce={qrResetNonce}
+                    qrErrorOverride={qrError}
+                    onQrErrorChange={setQrError}
+                    onScanSuccess={(decodedText) => {
+                      setScanResult(decodedText);
+                      setScanning(false);
+                    }}
+                  />
+                </Suspense>
               ) : !photoBlob ? (
                 <div className="flex w-full max-w-md animate-in flex-col items-center gap-6 duration-300 zoom-in">
                   <h2 className="text-center text-xl font-bold text-foreground">
@@ -1431,6 +1230,7 @@ export default function Attend() {
                       autoPlay
                       playsInline
                       muted
+                      aria-hidden="true"
                       className={`w-full h-full object-cover absolute inset-0 z-10 ${isCameraActive ? 'block' : 'hidden'} ${facingMode === 'user' ? 'scale-x-[-1]' : ''} pointer-events-none`}
                     ></video>
 
@@ -1453,7 +1253,7 @@ export default function Attend() {
                         </p>
                       </div>
                     )}
-                    <canvas ref={canvasRef} className="hidden"></canvas>
+                    <canvas ref={canvasRef} className="hidden" aria-hidden="true"></canvas>
                   </div>
 
                   <div className="relative z-10 flex w-full flex-col justify-center gap-3 sm:flex-row">
@@ -1499,7 +1299,7 @@ export default function Attend() {
                   <div className="aspect-video w-full overflow-hidden rounded-2xl border border-border shadow-md border-border">
                     <img
                       src={photoPreview!}
-                      alt="Bukti Kehadiran"
+                      alt="Pratinjau foto check-in Anda"
                       className="w-full h-full object-cover"
                     />
                   </div>
@@ -1513,24 +1313,15 @@ export default function Attend() {
                   </div>
 
                   <div className="w-full space-y-4">
-                    <Button
+                    <SubmitButton
                       size="lg"
                       onClick={handleCheckIn}
-                      disabled={
-                        loading || !location || !!gpsError || storagePermanentlyFailedRef.current
-                      }
+                      disabled={!location || !!gpsError || storagePermanentlyFailedRef.current}
+                      isLoading={loading}
+                      label="Kirim Data Absensi"
+                      loadingLabel="Mengirim absensi…"
                       className="w-full py-6 text-lg font-bold shadow-lg shadow-indigo-200 dark:shadow-indigo-900/20"
-                      aria-busy={loading}
-                    >
-                      {loading ? (
-                        <>
-                          <Loader2 className="mr-2 size-5 animate-spin" aria-hidden="true" />
-                          Mengirim absensi…
-                        </>
-                      ) : (
-                        'Kirim Data Absensi'
-                      )}
-                    </Button>
+                    />
                     <div className="grid grid-cols-2 gap-3">
                       <Button
                         variant="outline"
@@ -1553,10 +1344,9 @@ export default function Attend() {
                             setScanning(false);
                           } else {
                             setScanResult(null);
-                            void releaseQrScanner().then(() => {
-                              setScanning(true);
-                              setQrBootNonce((n) => n + 1);
-                            });
+                            setQrError(null);
+                            setScanning(true);
+                            setQrResetNonce((n) => n + 1);
                           }
                         }}
                         disabled={loading}

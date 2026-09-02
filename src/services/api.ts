@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useAuthStore } from '../stores/authStore';
 import { useAppStatusStore } from '../stores/appStatusStore';
 import { getDeviceFingerprint } from '../lib/storage/deviceFingerprint';
+import { saveTarget } from '../lib/auth/postLoginTarget';
 
 const apiBaseUrl = (import.meta as any)?.env?.VITE_API_BASE_URL || '/api';
 
@@ -87,6 +88,7 @@ export const verifySession = async () => {
     processQueue(refreshError);
     const refreshStatus = (refreshError as { response?: { status?: number } })?.response?.status;
     if (shouldLogoutFromRefresh(refreshStatus)) {
+      saveTarget(window.location.pathname + window.location.search + window.location.hash);
       useAuthStore.getState().logout();
       if (window.location.pathname !== '/login') {
         window.location.href = '/login';

@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from 'react';
+﻿﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import PublicCoverImage from '@/components/PublicCoverImage';
 import { useReducedMotion } from '@/lib/a11y/useReducedMotion';
@@ -33,7 +33,7 @@ export function DivisionRail({
     offsets.current = groupRefs.current.map((el) => el?.offsetLeft ?? 0);
   };
 
-  const updateActive = () => {
+  const updateActive = useCallback(() => {
     const el = scrollerRef.current;
     if (!el) return;
     const left = el.scrollLeft;
@@ -50,7 +50,7 @@ export function DivisionRail({
     }
     const next = getDivisionDisplayTitle(ordered[best]?.title ?? '');
     if (next && next !== activeTitle) setActiveTitle(next);
-  };
+  }, [ordered, activeTitle, scrollerRef, offsets]);
 
   useEffect(() => {
     setActiveTitle(getDivisionDisplayTitle(ordered[0]?.title ?? ''));
@@ -64,7 +64,7 @@ export function DivisionRail({
     };
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
-  }, [ordered.length]);
+  }, [ordered, updateActive]);
 
   const onScroll = () => {
     if (rafScroll.current) return;

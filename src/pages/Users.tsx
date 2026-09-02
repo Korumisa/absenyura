@@ -19,13 +19,15 @@ import {
 import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
 import { CardSkeletonList } from '@/components/admin/CardSkeleton';
 import { Skeleton } from '@/components/ui/skeleton';
-import { userRoleLabel } from '@/lib/utils/sessionStatusLabel';
+import { userRoleLabel } from '@/lib/utils/statusLabel';
 import { toastErrorMessage } from '@/lib/utils/toastMessage';
-import * as ExcelJS from 'exceljs';
 import { toast } from 'sonner';
+import { useMutationToast } from '@/hooks/useMutationToast';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { SubmitButton } from '@/components/ui/submit-button';
 import { Label } from '@/components/ui/label';
+import { FormField } from '@/components/ui/form-field';
 import { Badge } from '@/components/ui/badge';
 import {
   Select,
@@ -141,12 +143,47 @@ export default function Users() {
     status: statusFilter,
   });
 
-  const swr = useSWR(`/users?${queryParams.toString()}`, fetcher, { revalidateOnFocus: false });
+  const swr = useSWR<{
+    data?: User[];
+    meta?: PaginationMeta | null;
+    success?: boolean;
+    message?: string;
+  }>(`/users?${queryParams.toString()}`, fetcher, { revalidateOnFocus: false });
   const { isPending: loading, isError, showSlowLoadingHint, retry } = useSwrPageState(swr);
   const { data, mutate, isValidating } = swr;
 
   const users: User[] = Array.isArray(data?.data) ? data.data : [];
   const meta: PaginationMeta | null = data?.meta || null;
+
+  const doSaveUser = useMutationToast(
+    async () => {
+      const payload = {
+        ...formData,
+        class_ids: formData.role === 'USER' ? classIds : [],
+      };
+      if (editingUser) {
+        const res = await api.put(`/users/${editingUser.id}`, payload);
+        return res.data;
+      }
+      const res = await api.post('/users', payload);
+      return res.data;
+    },
+    {
+      successMsg: (resData: any) => {
+        if (editingUser) {
+          const added = resData?.data?.enrolled_added ?? 0;
+          return added > 0
+            ? `Pengguna diperbarui dan ditambahkan ke ${added} kelas`
+            : 'Pengguna berhasil diperbarui';
+        }
+        const enrolled = resData?.data?.enrolled_classes ?? 0;
+        return enrolled > 0
+          ? `Pengguna ditambahkan dan didaftarkan ke ${enrolled} kelas`
+          : 'Pengguna berhasil ditambahkan';
+      },
+      errorMsg: (err) => toastErrorMessage(err, 'Terjadi kesalahan'),
+    }
+  );
 
   const handleOpenModal = async (user: User | null = null) => {
     setClassIds([]);
@@ -195,33 +232,13 @@ export default function Users() {
     if (saving) return;
     setSaving(true);
     try {
-      const payload = {
-        ...formData,
-        class_ids: formData.role === 'USER' ? classIds : [],
-      };
-      if (editingUser) {
-        const res = await api.put(`/users/${editingUser.id}`, payload);
-        const added = res.data?.data?.enrolled_added ?? 0;
-        if (added > 0) {
-          toast.success(`Pengguna diperbarui dan ditambahkan ke ${added} kelas`);
-        } else {
-          toast.success('Pengguna berhasil diperbarui');
-        }
-      } else {
-        const res = await api.post('/users', payload);
-        const enrolled = res.data?.data?.enrolled_classes ?? 0;
-        if (enrolled > 0) {
-          toast.success(`Pengguna ditambahkan dan didaftarkan ke ${enrolled} kelas`);
-        } else {
-          toast.success('Pengguna berhasil ditambahkan');
-        }
+      const result = await doSaveUser();
+      if (result !== undefined) {
+        setIsModalOpen(false);
+        setClassIds([]);
+        setEnrolledClasses([]);
+        mutate();
       }
-      setIsModalOpen(false);
-      setClassIds([]);
-      setEnrolledClasses([]);
-      mutate();
-    } catch (error: unknown) {
-      toast.error(toastErrorMessage(error, 'Terjadi kesalahan'));
     } finally {
       setSaving(false);
     }
@@ -272,6 +289,7 @@ export default function Users() {
   const filteredUsers = users;
 
   const handleDownloadTemplate = async () => {
+    const { default: ExcelJS } = await import('exceljs');
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Data Mahasiswa');
     const importYear = new Date().getFullYear();
@@ -678,186 +696,198 @@ export default function Users() {
 
             <form onSubmit={handleSubmit} className="max-h-[70vh] overflow-y-auto p-6">
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>
-                    Nama Lengkap <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    type="text"
-                    required
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>
-                    Email <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>
-                    Kata Sandi{' '}
-                    {editingUser ? (
-                      <span className="text-xs font-normal text-slate-400">
-                        (Kosongkan jika tidak diubah)
-                      </span>
-                    ) : (
-                      <span className="text-red-500">*</span>
-                    )}
-                  </Label>
-                  <div className="relative">
+                <FormField id="user-name" label="Nama Lengkap" required>
+                  {(fieldProps) => (
                     <Input
-                      type={showPassword ? 'text' : 'password'}
-                      value={formData.password}
-                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      required={!editingUser}
-                      className="pr-12"
-                    />
-                    <button
-                      type="button"
-                      aria-label={showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex size-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-slate-50 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      onClick={() => setShowPassword((v) => !v)}
-                    >
-                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>
-                    Peran (Role) <span className="text-red-500">*</span>
-                  </Label>
-                  <Select
-                    value={formData.role}
-                    onValueChange={(val) =>
-                      setFormData({ ...formData, role: val, semester: val === 'USER' ? 1 : 0 })
-                    }
-                    disabled={currentUser?.role !== 'SUPER_ADMIN'}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih Peran" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="USER">User / Mahasiswa</SelectItem>
-                      <SelectItem value="ADMIN">Admin / Dosen</SelectItem>
-                      {currentUser?.role === 'SUPER_ADMIN' ? (
-                        <SelectItem value="CONTENT_ADMIN">Admin Konten</SelectItem>
-                      ) : null}
-                      {currentUser?.role === 'SUPER_ADMIN' ? (
-                        <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
-                      ) : null}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>
-                    NIM / NIP <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    type="text"
-                    required
-                    value={formData.nim_nip}
-                    onChange={(e) => setFormData({ ...formData, nim_nip: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>
-                    Departemen / Prodi <span className="text-red-500">*</span>
-                  </Label>
-                  <Select
-                    value={formData.department}
-                    onValueChange={(val) => setFormData({ ...formData, department: val })}
-                    disabled={facultiesData.length === 0}
-                    onOpenChange={(open) => {
-                      if (!open) setDepartmentQuery('');
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue
-                        placeholder={facultiesData.length ? 'Pilih Prodi' : 'Belum ada Prodi'}
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {totalDepartments > 10 ? (
-                        <div className="sticky top-0 z-10 border-b border-border bg-popover p-2">
-                          <Input
-                            value={departmentQuery}
-                            onChange={(e) => setDepartmentQuery(e.target.value)}
-                            placeholder="Cari prodi…"
-                            className="h-9"
-                          />
-                        </div>
-                      ) : null}
-                      {filteredFacultiesData.length === 0 && departmentQuery.trim() ? (
-                        <div className="px-3 py-4 text-sm text-muted-foreground">
-                          Tidak ada hasil
-                        </div>
-                      ) : null}
-                      {filteredFacultiesData.map((f) => {
-                        if (!f) return null;
-                        return (
-                          <SelectGroup key={f.name}>
-                            <SelectLabel>{f.name}</SelectLabel>
-                            {f.departments?.map((d) => {
-                              const deptName =
-                                typeof d === 'object' && d !== null
-                                  ? (d as any).name || (d as any).id
-                                  : d;
-                              return (
-                                <SelectItem key={deptName} value={deptName}>
-                                  {deptName}
-                                </SelectItem>
-                              );
-                            })}
-                          </SelectGroup>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
-                  {facultiesData.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">
-                      Data prodi belum tersedia. Tambahkan dulu di{' '}
-                      <Link to="/master-data" className="font-medium text-brand hover:underline">
-                        Master Data
-                      </Link>
-                      .
-                    </p>
-                  ) : null}
-                </div>
-                {formData.role === 'USER' ? (
-                  <div className="space-y-2">
-                    <Label>
-                      Semester <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      type="number"
+                      {...fieldProps}
+                      type="text"
                       required
-                      min={1}
-                      max={14}
-                      value={formData.semester}
-                      onChange={(e) =>
-                        setFormData({ ...formData, semester: parseInt(e.target.value) || 1 })
-                      }
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     />
-                  </div>
+                  )}
+                </FormField>
+                <FormField id="user-email" label="Email" required>
+                  {(fieldProps) => (
+                    <Input
+                      {...fieldProps}
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      required
+                    />
+                  )}
+                </FormField>
+                <FormField
+                  id="user-password"
+                  label={
+                    <>
+                      Kata Sandi{' '}
+                      {editingUser ? (
+                        <span className="text-xs font-normal text-slate-400">
+                          (Kosongkan jika tidak diubah)
+                        </span>
+                      ) : null}
+                    </>
+                  }
+                  required={!editingUser}
+                >
+                  {(fieldProps) => (
+                    <div className="relative">
+                      <Input
+                        {...fieldProps}
+                        type={showPassword ? 'text' : 'password'}
+                        value={formData.password}
+                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        required={!editingUser}
+                        className="pr-12"
+                      />
+                      <button
+                        type="button"
+                        aria-label={
+                          showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'
+                        }
+                        className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex size-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-slate-50 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        onClick={() => setShowPassword((v) => !v)}
+                      >
+                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  )}
+                </FormField>
+                <FormField id="user-role" label="Peran (Role)" required>
+                  {(fieldProps) => (
+                    <Select
+                      value={formData.role}
+                      onValueChange={(val) =>
+                        setFormData({ ...formData, role: val, semester: val === 'USER' ? 1 : 0 })
+                      }
+                      disabled={currentUser?.role !== 'SUPER_ADMIN'}
+                    >
+                      <SelectTrigger id={fieldProps.id}>
+                        <SelectValue placeholder="Pilih Peran" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="USER">User / Mahasiswa</SelectItem>
+                        <SelectItem value="ADMIN">Admin / Dosen</SelectItem>
+                        {currentUser?.role === 'SUPER_ADMIN' ? (
+                          <SelectItem value="CONTENT_ADMIN">Admin Konten</SelectItem>
+                        ) : null}
+                        {currentUser?.role === 'SUPER_ADMIN' ? (
+                          <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
+                        ) : null}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </FormField>
+                <FormField id="user-nim-nip" label="NIM / NIP" required>
+                  {(fieldProps) => (
+                    <Input
+                      {...fieldProps}
+                      type="text"
+                      required
+                      value={formData.nim_nip}
+                      onChange={(e) => setFormData({ ...formData, nim_nip: e.target.value })}
+                    />
+                  )}
+                </FormField>
+                <FormField
+                  id="user-department"
+                  label="Departemen / Prodi"
+                  required
+                  description={
+                    facultiesData.length === 0 ? (
+                      <>
+                        Data prodi belum tersedia. Tambahkan dulu di{' '}
+                        <Link to="/master-data" className="font-medium text-brand hover:underline">
+                          Master Data
+                        </Link>
+                        .
+                      </>
+                    ) : undefined
+                  }
+                >
+                  {(fieldProps) => (
+                    <Select
+                      value={formData.department}
+                      onValueChange={(val) => setFormData({ ...formData, department: val })}
+                      disabled={facultiesData.length === 0}
+                      onOpenChange={(open) => {
+                        if (!open) setDepartmentQuery('');
+                      }}
+                    >
+                      <SelectTrigger id={fieldProps.id}>
+                        <SelectValue
+                          placeholder={facultiesData.length ? 'Pilih Prodi' : 'Belum ada Prodi'}
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {totalDepartments > 10 ? (
+                          <div className="sticky top-0 z-10 border-b border-border bg-popover p-2">
+                            <Input
+                              value={departmentQuery}
+                              onChange={(e) => setDepartmentQuery(e.target.value)}
+                              placeholder="Cari prodi…"
+                              className="h-9"
+                            />
+                          </div>
+                        ) : null}
+                        {filteredFacultiesData.length === 0 && departmentQuery.trim() ? (
+                          <div className="px-3 py-4 text-sm text-muted-foreground">
+                            Tidak ada hasil
+                          </div>
+                        ) : null}
+                        {filteredFacultiesData.map((f) => {
+                          if (!f) return null;
+                          return (
+                            <SelectGroup key={f.name}>
+                              <SelectLabel>{f.name}</SelectLabel>
+                              {f.departments?.map((d) => {
+                                const deptName =
+                                  typeof d === 'object' && d !== null
+                                    ? (d as any).name || (d as any).id
+                                    : d;
+                                return (
+                                  <SelectItem key={deptName} value={deptName}>
+                                    {deptName}
+                                  </SelectItem>
+                                );
+                              })}
+                            </SelectGroup>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </FormField>
+                {formData.role === 'USER' ? (
+                  <FormField id="user-semester" label="Semester" required>
+                    {(fieldProps) => (
+                      <Input
+                        {...fieldProps}
+                        type="number"
+                        required
+                        min={1}
+                        max={14}
+                        value={formData.semester}
+                        onChange={(e) =>
+                          setFormData({ ...formData, semester: parseInt(e.target.value) || 1 })
+                        }
+                      />
+                    )}
+                  </FormField>
                 ) : null}
-                <div className="space-y-2">
-                  <Label>
-                    No. HP <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    type="tel"
-                    required
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  />
-                </div>
+                <FormField id="user-phone" label="No. HP" required>
+                  {(fieldProps) => (
+                    <Input
+                      {...fieldProps}
+                      type="tel"
+                      required
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    />
+                  )}
+                </FormField>
                 {editingUser ? (
                   <div className="flex items-center gap-3 pt-6">
                     <Checkbox
@@ -910,9 +940,13 @@ export default function Users() {
                 >
                   Batal
                 </Button>
-                <Button type="submit" disabled={saving} aria-busy={saving}>
-                  {saving ? 'Menyimpan…' : editingUser ? 'Simpan' : 'Tambah'}
-                </Button>
+                <SubmitButton
+                  type="submit"
+                  disabled={saving}
+                  isLoading={saving}
+                  label={editingUser ? 'Simpan' : 'Tambah'}
+                  loadingLabel="Menyimpan…"
+                />
               </DialogFooter>
             </form>
           </DialogContent>
@@ -960,19 +994,15 @@ export default function Users() {
                   >
                     Batal
                   </Button>
-                  <Button
+                  <SubmitButton
                     type="submit"
                     disabled={importing || !importFile}
                     className="bg-emerald-600 hover:bg-emerald-700"
-                  >
-                    {importing ? (
-                      'Memproses...'
-                    ) : (
-                      <>
-                        <Upload size={18} className="mr-2" /> Import Data
-                      </>
-                    )}
-                  </Button>
+                    isLoading={importing}
+                    label="Import Data"
+                    loadingLabel="Memproses..."
+                    icon={<Upload size={18} />}
+                  />
                 </DialogFooter>
               </form>
             </div>

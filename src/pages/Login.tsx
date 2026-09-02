@@ -23,7 +23,7 @@ import type { PublicProfile } from '@/types/publicSite';
 import { getErrorMessage } from '@/lib/http/errorMessage';
 import { getDeviceFingerprint } from '@/lib/storage/deviceFingerprint';
 import { BrandLogoImage } from '@/components/public/BrandLogoImage';
-import { getPostLoginTarget } from '@/lib/auth/postLoginTarget';
+import { getPostLoginTarget, getTarget, clearTarget } from '@/lib/auth/postLoginTarget';
 
 export default function Login() {
   const [nim, setNim] = useState('');
@@ -65,7 +65,12 @@ export default function Login() {
       setAuth(user);
       toast.success('Berhasil masuk!');
 
-      const target = getPostLoginTarget(location.state?.from, user);
+      let target = getTarget();
+      if (target) {
+        clearTarget();
+      } else {
+        target = getPostLoginTarget(location.state?.from, user);
+      }
       navigate(target, { replace: true });
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status;

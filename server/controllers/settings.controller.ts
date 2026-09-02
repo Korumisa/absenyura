@@ -1,10 +1,11 @@
 import { Request, Response } from 'express';
+import type { AuthRequest } from '../types/index.js';
 import bcrypt from 'bcryptjs';
 import prisma from '../utils/prisma.js';
 
-export const getProfile = async (req: Request, res: Response): Promise<void> => {
+export const getProfile = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const user_id = (req as any).user.id;
+    const user_id = req.user!.id;
     const user = await prisma.user.findUnique({
       where: { id: user_id },
       select: { id: true, name: true, email: true, phone: true, role: true },
@@ -20,9 +21,9 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
   }
 };
 
-export const updateProfile = async (req: Request, res: Response): Promise<void> => {
+export const updateProfile = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const user_id = (req as any).user.id;
+    const user_id = req.user!.id;
     const ip_address = req.ip;
     const { name, phone, email, current_password, new_password } = req.body;
 
@@ -112,9 +113,9 @@ export const getDepartments = async (req: Request, res: Response): Promise<void>
   }
 };
 
-export const updateDepartments = async (req: Request, res: Response): Promise<void> => {
+export const updateDepartments = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const user = (req as any).user;
+    const user = req.user!;
     if (user.role !== 'SUPER_ADMIN') {
       res.status(403).json({ success: false, error: 'Forbidden' });
       return;
@@ -174,9 +175,9 @@ export const getSubjects = async (req: Request, res: Response): Promise<void> =>
   }
 };
 
-export const updateSubjects = async (req: Request, res: Response): Promise<void> => {
+export const updateSubjects = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const user = (req as any).user;
+    const user = req.user!;
     if (user.role !== 'SUPER_ADMIN') {
       res.status(403).json({ success: false, error: 'Forbidden' });
       return;

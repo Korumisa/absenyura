@@ -109,8 +109,8 @@ export default function Layout() {
   return (
     <div className="admin-theme flex h-dvh overflow-hidden bg-sidebar font-sans">
       <a
-        href="#app-main-scroll"
-        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-card focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-brand focus:shadow-lg"
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 rounded-lg bg-brand px-4 py-2 z-50"
       >
         Lewati ke konten utama
       </a>
@@ -266,7 +266,7 @@ export default function Layout() {
         </header>
 
         <main
-          id="app-main-scroll"
+          id="main-content"
           className="min-h-0 flex-1 overflow-y-auto bg-sidebar pb-6 [padding-bottom:max(1.5rem,env(safe-area-inset-bottom))]"
         >
           <AdminRouteTransition>

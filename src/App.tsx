@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useRef } from 'react';
+import { Suspense, useEffect } from 'react';
 import { lazyWithRetry } from '@/lib/perf/lazyWithRetry';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster, toast } from 'sonner';
@@ -7,6 +7,7 @@ import Layout from '@/components/Layout';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { useAuthStore } from '@/stores/authStore';
 import { useAutoLogout } from '@/hooks/useAutoLogout';
+import { useSessionVerifier } from '@/hooks/useSessionVerifier';
 import ScrollToTop from '@/components/ScrollToTop';
 import PageSkeleton from '@/components/PageSkeleton';
 
@@ -14,7 +15,7 @@ import { ThemeProvider } from '@/providers/theme-provider';
 import { getOfflineAttendances, deleteOfflineAttendance, getOfflinePhoto } from '@/lib/storage/idb';
 import { getDeviceFingerprint } from '@/lib/storage/deviceFingerprint';
 import { dispatchAppOnline, ONLINE_USER_MESSAGE } from '@/lib/perf/networkEvents';
-import api, { verifySession } from '@/services/api';
+import api from '@/services/api';
 import { useAppStatusStore } from '@/stores/appStatusStore';
 import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 
@@ -61,6 +62,8 @@ const InformasiLomba = lazyWithRetry(() => import('@/pages/public/InformasiLomba
 const Kegiatan = lazyWithRetry(() => import('@/pages/public/Kegiatan'));
 const Galeri = lazyWithRetry(() => import('@/pages/public/Galeri'));
 const OpenRecruitment = lazyWithRetry(() => import('@/pages/public/OpenRecruitment'));
+const NotFound = lazyWithRetry(() => import('@/pages/NotFound'));
+const Forbidden = lazyWithRetry(() => import('@/pages/Forbidden'));
 
 /**
  * Suspense hanya menunggu unduhan chunk JS (code-split).
@@ -76,96 +79,14 @@ export default function App() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const user = useAuthStore((state) => state.user);
   const hasHydrated = useAuthStore((state) => state.hasHydrated);
-  const sessionStatus = useAuthStore((state) => state.sessionStatus);
-  const startSessionVerification = useAuthStore((state) => state.startSessionVerification);
-  const completeSessionVerification = useAuthStore((state) => state.completeSessionVerification);
-  const logout = useAuthStore((state) => state.logout);
   const isMaintenance = useAppStatusStore((s) => s.isMaintenance);
   const maintenanceReason = useAppStatusStore((s) => s.reason);
   const clearNetworkIssues = useAppStatusStore((s) => s.clearNetworkIssues);
   const setMaintenance = useAppStatusStore((s) => s.setMaintenance);
   const setOffline = useAppStatusStore((s) => s.setOffline);
-  const authBootstrapStartedRef = useRef(false);
 
   useAutoLogout();
-
-  useEffect(() => {
-    let cancelled = false;
-    let retryTimer: ReturnType<typeof setTimeout> | undefined;
-
-    if (!hasHydrated) {
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    if (!isAuthenticated || !user) {
-      authBootstrapStartedRef.current = false;
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    if (sessionStatus === 'verified') {
-      authBootstrapStartedRef.current = true;
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    if (sessionStatus === 'verifying' && authBootstrapStartedRef.current) {
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    authBootstrapStartedRef.current = true;
-    startSessionVerification();
-
-    const bootstrapSession = async (attempt = 0) => {
-      try {
-        await verifySession();
-        if (!cancelled) {
-          completeSessionVerification();
-        }
-      } catch (error: unknown) {
-        const status = (error as { response?: { status?: number } })?.response?.status;
-
-        if (!cancelled && status === 429) {
-          const delayMs = Math.min(30_000, 2000 * (attempt + 1));
-          retryTimer = setTimeout(() => {
-            if (!cancelled) void bootstrapSession(attempt + 1);
-          }, delayMs);
-          return;
-        }
-
-        if (!cancelled && (status === 401 || status === 403)) {
-          authBootstrapStartedRef.current = false;
-          logout();
-          return;
-        }
-
-        if (!cancelled) {
-          completeSessionVerification();
-        }
-      }
-    };
-
-    void bootstrapSession();
-
-    return () => {
-      cancelled = true;
-      if (retryTimer) clearTimeout(retryTimer);
-    };
-  }, [
-    hasHydrated,
-    isAuthenticated,
-    user,
-    sessionStatus,
-    startSessionVerification,
-    completeSessionVerification,
-    logout,
-  ]);
+  const { sessionStatus } = useSessionVerifier();
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -735,7 +656,22 @@ export default function App() {
                   />
                 </Route>
               </Route>
-              <Route path="*" element={<Navigate to="/" replace />} />
+              <Route
+                path="/forbidden"
+                element={
+                  <PageSuspense>
+                    <Forbidden />
+                  </PageSuspense>
+                }
+              />
+              <Route
+                path="*"
+                element={
+                  <PageSuspense>
+                    <NotFound />
+                  </PageSuspense>
+                }
+              />
             </Routes>
           </Router>
         )}

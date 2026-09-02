@@ -1,18 +1,24 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import { toast } from 'sonner';
-import api, { verifySession } from '@/services/api';
+import api from '@/services/api';
+import { useSessionVerifier } from './useSessionVerifier';
+import { saveTarget } from '@/lib/auth/postLoginTarget';
 
 const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 const PROACTIVE_REFRESH_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
 
 export function useAutoLogout() {
   const { isAuthenticated, logout } = useAuthStore();
+  const { verifyNow } = useSessionVerifier();
   const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
   const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const verifyNowRef = useRef(verifyNow);
 
-  // Use useCallback so the function always sees the latest isAuthenticated
-  // and doesn't suffer from stale closures when called by event listeners.
+  useEffect(() => {
+    verifyNowRef.current = verifyNow;
+  }, [verifyNow]);
+
   const resetInactivityTimer = useCallback(() => {
     if (inactivityTimerRef.current) {
       clearTimeout(inactivityTimerRef.current);
@@ -26,6 +32,7 @@ export function useAutoLogout() {
         } catch (e) {
           // ignore
         }
+        saveTarget(window.location.pathname + window.location.search + window.location.hash);
         logout();
         toast.info('Anda telah logout otomatis karena tidak ada aktivitas selama 30 menit.');
         if (window.location.pathname !== '/login') {
@@ -39,18 +46,16 @@ export function useAutoLogout() {
     const refresh = async () => {
       if (!isAuthenticated) return;
       try {
-        await verifySession();
+        await verifyNowRef.current();
       } catch (e) {
         // Ignore refresh errors - the response interceptor will handle it if needed
       }
     };
 
-    // Initial refresh if authenticated
     if (isAuthenticated) {
       void refresh();
     }
 
-    // Set up interval
     if (refreshTimerRef.current) {
       clearInterval(refreshTimerRef.current);
       refreshTimerRef.current = null;

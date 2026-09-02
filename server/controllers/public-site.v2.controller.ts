@@ -1,12 +1,11 @@
 import { Request, Response } from 'express';
+import type { AuthRequest } from '../types/index.js';
 import prisma from '../utils/prisma.js';
 import { upload, validateUploadedFileContent } from '../utils/upload.js';
 import { v2 as cloudinary } from 'cloudinary';
 import { sendInternalServerError } from '../utils/errorResponse.js';
 import { sanitizeWebUrl } from '../utils/sanitizeUrl.js';
 import fs from 'fs';
-
-type PublicRoleRequest = Request & { user?: { id: string; role: string } };
 
 function toInt(value: unknown, fallback: number) {
   const n =
@@ -125,7 +124,7 @@ export const getPublicProfile = async (req: Request, res: Response): Promise<voi
   }
 };
 
-export const upsertAdminProfile = async (req: PublicRoleRequest, res: Response): Promise<void> => {
+export const upsertAdminProfile = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const data = req.body?.data;
     if (!data || typeof data !== 'object') {
@@ -243,10 +242,7 @@ export const getAdminStructure = async (req: Request, res: Response): Promise<vo
   }
 };
 
-export const replaceAdminStructure = async (
-  req: PublicRoleRequest,
-  res: Response
-): Promise<void> => {
+export const replaceAdminStructure = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { cabinetName, cabinetPeriod, data } = req.body;
     if (!Array.isArray(data) || !cabinetName || !cabinetPeriod) {
@@ -332,7 +328,7 @@ export const replaceAdminStructure = async (
   }
 };
 
-export const setActiveCabinet = async (req: PublicRoleRequest, res: Response): Promise<void> => {
+export const setActiveCabinet = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     await prisma.$transaction(async (tx) => {
@@ -387,7 +383,7 @@ export const listAdminPrograms = async (req: Request, res: Response): Promise<vo
   }
 };
 
-export const createAdminProgram = async (req: PublicRoleRequest, res: Response): Promise<void> => {
+export const createAdminProgram = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const payload = req.body ?? {};
     const title = String(payload.title ?? '').trim();
@@ -410,7 +406,7 @@ export const createAdminProgram = async (req: PublicRoleRequest, res: Response):
   }
 };
 
-export const updateAdminProgram = async (req: PublicRoleRequest, res: Response): Promise<void> => {
+export const updateAdminProgram = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const payload = req.body ?? {};
@@ -447,7 +443,7 @@ export const updateAdminProgram = async (req: PublicRoleRequest, res: Response):
   }
 };
 
-export const deleteAdminProgram = async (req: PublicRoleRequest, res: Response): Promise<void> => {
+export const deleteAdminProgram = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     await prisma.publicProgram.delete({ where: { id } });
@@ -478,7 +474,7 @@ export const listAdminCategories = async (req: Request, res: Response): Promise<
   }
 };
 
-export const createAdminCategory = async (req: PublicRoleRequest, res: Response): Promise<void> => {
+export const createAdminCategory = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const name = String(req.body?.name ?? '').trim();
     if (!name) {
@@ -496,7 +492,7 @@ export const createAdminCategory = async (req: PublicRoleRequest, res: Response)
   }
 };
 
-export const updateAdminCategory = async (req: PublicRoleRequest, res: Response): Promise<void> => {
+export const updateAdminCategory = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const existing = await prisma.publicCategory.findUnique({ where: { id } });
@@ -523,7 +519,7 @@ export const updateAdminCategory = async (req: PublicRoleRequest, res: Response)
   }
 };
 
-export const deleteAdminCategory = async (req: PublicRoleRequest, res: Response): Promise<void> => {
+export const deleteAdminCategory = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     await prisma.publicCategory.delete({ where: { id } });
@@ -605,7 +601,7 @@ export const listAdminPosts = async (req: Request, res: Response): Promise<void>
   }
 };
 
-export const createAdminPost = async (req: PublicRoleRequest, res: Response): Promise<void> => {
+export const createAdminPost = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const payload = req.body ?? {};
     const title = String(payload.title ?? '').trim();
@@ -644,7 +640,7 @@ export const createAdminPost = async (req: PublicRoleRequest, res: Response): Pr
   }
 };
 
-export const updateAdminPost = async (req: PublicRoleRequest, res: Response): Promise<void> => {
+export const updateAdminPost = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const payload = req.body ?? {};
@@ -708,7 +704,7 @@ export const updateAdminPost = async (req: PublicRoleRequest, res: Response): Pr
   }
 };
 
-export const deleteAdminPost = async (req: PublicRoleRequest, res: Response): Promise<void> => {
+export const deleteAdminPost = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     await prisma.publicPost.delete({ where: { id } });
@@ -746,7 +742,7 @@ export const listAdminGalleries = async (req: Request, res: Response): Promise<v
   }
 };
 
-export const createAdminGallery = async (req: PublicRoleRequest, res: Response): Promise<void> => {
+export const createAdminGallery = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const payload = req.body ?? {};
     const title = String(payload.title ?? '').trim();
@@ -779,7 +775,7 @@ export const createAdminGallery = async (req: PublicRoleRequest, res: Response):
   }
 };
 
-export const updateAdminGallery = async (req: PublicRoleRequest, res: Response): Promise<void> => {
+export const updateAdminGallery = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const existing = await prisma.publicGalleryAlbum.findUnique({
@@ -830,7 +826,7 @@ export const updateAdminGallery = async (req: PublicRoleRequest, res: Response):
   }
 };
 
-export const deleteAdminGallery = async (req: PublicRoleRequest, res: Response): Promise<void> => {
+export const deleteAdminGallery = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     await prisma.publicGalleryAlbum.delete({ where: { id } });
@@ -890,10 +886,7 @@ function validateRecruitmentPublishFields(payload: {
   return null;
 }
 
-export const createAdminRecruitment = async (
-  req: PublicRoleRequest,
-  res: Response
-): Promise<void> => {
+export const createAdminRecruitment = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const payload = req.body ?? {};
     const title = String(payload.title ?? '').trim();
@@ -948,10 +941,7 @@ export const createAdminRecruitment = async (
   }
 };
 
-export const updateAdminRecruitment = async (
-  req: PublicRoleRequest,
-  res: Response
-): Promise<void> => {
+export const updateAdminRecruitment = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const existing = await prisma.publicRecruitment.findUnique({
@@ -1036,10 +1026,7 @@ export const updateAdminRecruitment = async (
   }
 };
 
-export const deleteAdminRecruitment = async (
-  req: PublicRoleRequest,
-  res: Response
-): Promise<void> => {
+export const deleteAdminRecruitment = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     await prisma.publicRecruitment.delete({ where: { id } });
@@ -1050,7 +1037,7 @@ export const deleteAdminRecruitment = async (
   }
 };
 
-export const uploadPublicAsset = async (req: PublicRoleRequest, res: Response): Promise<void> => {
+export const uploadPublicAsset = async (req: AuthRequest, res: Response): Promise<void> => {
   upload.single('file')(req as any, res as any, async (err: any) => {
     if (err) {
       if (err?.code === 'LIMIT_FILE_SIZE') {

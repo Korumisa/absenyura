@@ -95,6 +95,7 @@ export default function OpenRecruitment() {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Cari open recruitment..."
+                aria-label="Cari open recruitment"
                 className="h-11 w-full rounded-xl border border-black/10 bg-white pl-11 pr-4 text-sm text-slate-700 outline-none focus:border-[var(--public-primary)]/50 focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/35"
               />
             </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useSWR from 'swr';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
@@ -13,8 +13,10 @@ import { Plus, Search, BookOpen, Pencil, Trash2 } from 'lucide-react';
 import ClassCard from '@/components/classes/ClassCard';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { SubmitButton } from '@/components/ui/submit-button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { FormField } from '@/components/ui/form-field';
 import {
   Select,
   SelectContent,
@@ -25,6 +27,7 @@ import {
 import { ConfirmModal } from '@/components/ConfirmModal';
 import ActionLoadingOverlay from '@/components/ActionLoadingOverlay';
 import { toastErrorMessage } from '@/lib/utils/toastMessage';
+import { useMutationToast } from '@/hooks/useMutationToast';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
@@ -91,7 +94,25 @@ export default function Classes() {
   } = useSwrPageState(swr);
   const hasSearch = Boolean(searchTerm.trim());
 
-  const fetchLecturers = async () => {
+  const doSaveClass = useMutationToast(
+    async () => {
+      if (editingClass) {
+        return api.put(`/classes/${editingClass.id}`, formData);
+      }
+      return api.post('/classes', formData);
+    },
+    {
+      successMsg: editingClass ? 'Kelas berhasil diperbarui' : 'Kelas berhasil ditambahkan',
+      errorMsg: (err) => toastErrorMessage(err, 'Terjadi kesalahan'),
+    }
+  );
+
+  const doDeleteClass = useMutationToast(() => api.delete(`/classes/${classToDelete}`), {
+    successMsg: 'Kelas berhasil dihapus',
+    errorMsg: () => 'Gagal menghapus kelas',
+  });
+
+  const fetchLecturers = useCallback(async () => {
     if (currentUser?.role === 'SUPER_ADMIN') {
       try {
         const res = await api.get('/classes/enrollment-options');
@@ -100,7 +121,7 @@ export default function Classes() {
         console.error('Failed to fetch lecturers');
       }
     }
-  };
+  }, [currentUser]);
 
   const fetchSubjects = async () => {
     try {
@@ -116,7 +137,7 @@ export default function Classes() {
   useEffect(() => {
     fetchLecturers();
     fetchSubjects();
-  }, [currentUser]);
+  }, [fetchLecturers]);
 
   const handleOpenModal = (cls: ClassItem | null = null) => {
     if (cls) {
@@ -150,18 +171,12 @@ export default function Classes() {
     }
     setSaving(true);
     try {
-      if (editingClass) {
-        await api.put(`/classes/${editingClass.id}`, formData);
-        toast.success('Kelas berhasil diperbarui');
-      } else {
-        await api.post('/classes', formData);
-        toast.success('Kelas berhasil ditambahkan');
+      const result = await doSaveClass();
+      if (result !== undefined) {
+        setIsSaveConfirmOpen(false);
+        setIsModalOpen(false);
+        mutate();
       }
-      setIsSaveConfirmOpen(false);
-      setIsModalOpen(false);
-      mutate();
-    } catch (error: unknown) {
-      toast.error(toastErrorMessage(error, 'Terjadi kesalahan'));
     } finally {
       setSaving(false);
     }
@@ -176,13 +191,12 @@ export default function Classes() {
     if (!classToDelete || deleting) return;
     setDeleting(true);
     try {
-      await api.delete(`/classes/${classToDelete}`);
-      toast.success('Kelas berhasil dihapus');
-      setIsDeleteModalOpen(false);
-      setClassToDelete(null);
-      mutate();
-    } catch (error) {
-      toast.error('Gagal menghapus kelas');
+      const result = await doDeleteClass();
+      if (result !== undefined) {
+        setIsDeleteModalOpen(false);
+        setClassToDelete(null);
+        mutate();
+      }
     } finally {
       setDeleting(false);
     }
@@ -454,112 +468,116 @@ export default function Classes() {
             </div>
 
             <form onSubmit={handleSubmit} className="max-h-[70vh] space-y-4 overflow-y-auto p-6">
-              <div className="space-y-2">
-                <Label>
-                  Pilih Mata Kuliah <span className="text-red-500">*</span>
-                </Label>
-                {subjectsData.length > 0 ? (
+              <FormField id="class-course" label="Pilih Mata Kuliah" required>
+                {(fieldProps) =>
+                  subjectsData.length > 0 ? (
+                    <Select
+                      required
+                      value={formData.course_code}
+                      onValueChange={(val) => {
+                        const selectedSubject = subjectsData.find((s) => s.code === val);
+                        if (selectedSubject) {
+                          setFormData({
+                            ...formData,
+                            course_code: selectedSubject.code,
+                            name: selectedSubject.name,
+                          });
+                        }
+                      }}
+                    >
+                      <SelectTrigger id={fieldProps.id}>
+                        <SelectValue placeholder="Pilih Mata Kuliah" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {subjectsData.map((s) => (
+                          <SelectItem key={s.code} value={s.code}>
+                            {s.code} - {s.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <div className="text-sm text-amber-600 bg-amber-50 p-2 rounded border border-amber-200">
+                      Anda belum menambahkan Mata Kuliah di menu Fakultas & Prodi. Silakan tambahkan
+                      terlebih dahulu.
+                    </div>
+                  )
+                }
+              </FormField>
+              <FormField
+                id="class-name"
+                label="Nama Kelas Spesifik"
+                required
+                description="Bisa diisi nama mata kuliah beserta grup/kelasnya (misal: Algoritma Kelas B)."
+              >
+                {(fieldProps) => (
+                  <Input
+                    {...fieldProps}
+                    type="text"
+                    required
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="Contoh: Pemrograman Web (A)"
+                  />
+                )}
+              </FormField>
+              <FormField
+                id="class-semester"
+                label="Semester"
+                required
+                description="Digunakan sebagai label “Sem X” di semua pilihan kelas."
+              >
+                {(fieldProps) => (
+                  <Input
+                    {...fieldProps}
+                    type="number"
+                    min={1}
+                    max={14}
+                    required
+                    value={formData.semester}
+                    onChange={(e) =>
+                      setFormData((p) => ({
+                        ...p,
+                        semester: Math.max(
+                          1,
+                          Math.min(14, Number.parseInt(e.target.value || '1', 10) || 1)
+                        ),
+                      }))
+                    }
+                  />
+                )}
+              </FormField>
+              <FormField id="class-description" label="Deskripsi (Opsional)">
+                {(fieldProps) => (
+                  <Input
+                    {...fieldProps}
+                    type="text"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  />
+                )}
+              </FormField>
+              <FormField id="class-lecturer" label="Dosen Pengampu" required>
+                {(fieldProps) => (
                   <Select
                     required
-                    value={formData.course_code}
-                    onValueChange={(val) => {
-                      const selectedSubject = subjectsData.find((s) => s.code === val);
-                      if (selectedSubject) {
-                        setFormData({
-                          ...formData,
-                          course_code: selectedSubject.code,
-                          name: selectedSubject.name,
-                        });
-                      }
-                    }}
+                    value={formData.lecturer_id}
+                    onValueChange={(val) => setFormData({ ...formData, lecturer_id: val })}
+                    disabled={currentUser?.role !== 'SUPER_ADMIN'}
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih Mata Kuliah" />
+                    <SelectTrigger id={fieldProps.id}>
+                      <SelectValue placeholder="Pilih Dosen" />
                     </SelectTrigger>
                     <SelectContent>
-                      {subjectsData.map((s) => (
-                        <SelectItem key={s.code} value={s.code}>
-                          {s.code} - {s.name}
+                      {lecturers.map((l) => (
+                        <SelectItem key={l.id} value={l.id}>
+                          {l.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                ) : (
-                  <div className="text-sm text-amber-600 bg-amber-50 p-2 rounded border border-amber-200">
-                    Anda belum menambahkan Mata Kuliah di menu Fakultas & Prodi. Silakan tambahkan
-                    terlebih dahulu.
-                  </div>
                 )}
-              </div>
-              <div className="space-y-2">
-                <Label>
-                  Nama Kelas Spesifik <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  type="text"
-                  required
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Contoh: Pemrograman Web (A)"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Bisa diisi nama mata kuliah beserta grup/kelasnya (misal: Algoritma Kelas B).
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label>
-                  Semester <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  type="number"
-                  min={1}
-                  max={14}
-                  required
-                  value={formData.semester}
-                  onChange={(e) =>
-                    setFormData((p) => ({
-                      ...p,
-                      semester: Math.max(
-                        1,
-                        Math.min(14, Number.parseInt(e.target.value || '1', 10) || 1)
-                      ),
-                    }))
-                  }
-                />
-                <p className="text-xs text-muted-foreground">
-                  Digunakan sebagai label “Sem X” di semua pilihan kelas.
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label>Deskripsi (Opsional)</Label>
-                <Input
-                  type="text"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>
-                  Dosen Pengampu <span className="text-red-500">*</span>
-                </Label>
-                <Select
-                  required
-                  value={formData.lecturer_id}
-                  onValueChange={(val) => setFormData({ ...formData, lecturer_id: val })}
-                  disabled={currentUser?.role !== 'SUPER_ADMIN'}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Pilih Dosen" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {lecturers.map((l) => (
-                      <SelectItem key={l.id} value={l.id}>
-                        {l.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              </FormField>
 
               <DialogFooter className="mt-6">
                 <Button
@@ -570,14 +588,14 @@ export default function Classes() {
                 >
                   Batal
                 </Button>
-                <Button
+                <SubmitButton
                   type="button"
                   onClick={() => setIsSaveConfirmOpen(true)}
                   disabled={saving}
-                  aria-busy={saving}
-                >
-                  {saving ? 'Menyimpan…' : 'Simpan'}
-                </Button>
+                  isLoading={saving}
+                  label="Simpan"
+                  loadingLabel="Menyimpan…"
+                />
               </DialogFooter>
             </form>
           </DialogContent>

@@ -169,7 +169,7 @@ export default function PublicHome() {
   
   const [selectedCabinetId, setSelectedCabinetId] = useState<string | null>(null);
   const structureData = structureState.data;
-  const allCabinets = structureData?.allCabinets ?? [];
+  const allCabinets = useMemo(() => structureData?.allCabinets ?? [], [structureData]);
   const activeCabinet = structureData?.cabinet;
   
   const selectedCabinet = useMemo(() => {
@@ -179,7 +179,7 @@ export default function PublicHome() {
     return activeCabinet;
   }, [allCabinets, selectedCabinetId, activeCabinet]);
   
-  const structure = selectedCabinet?.groups ?? [];
+  const structure = useMemo(() => selectedCabinet?.groups ?? [], [selectedCabinet]);
   const isLoadingStructure = structureState.isPending;
   const latest = latestState.data;
   const isLoadingLatest = latestState.isPending;

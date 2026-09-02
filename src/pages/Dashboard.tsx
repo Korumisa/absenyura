@@ -34,7 +34,7 @@ import {
 } from '@/components/admin/DashboardSkeleton';
 import { Badge } from '@/components/ui/badge';
 import { formatClassLabel } from '@/lib/utils/classLabel';
-import { sessionStatusLabel } from '@/lib/utils/sessionStatusLabel';
+import { sessionStatusLabel } from '@/lib/utils/statusLabel';
 import { AttendOnboardingBanner } from '@/components/attend/AttendOnboardingBanner';
 
 import {

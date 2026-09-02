@@ -2,9 +2,7 @@ import React, { useMemo, useRef, useState } from 'react';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
 import { Link, useLocation } from 'react-router-dom';
 import { ChevronDown, Menu, X } from 'lucide-react';
-import useSWR from 'swr';
-import api from '@/services/api';
-import type { PublicProfile } from '@/types/publicSite';
+import { usePublicSiteData } from '@/components/PublicSiteDataContext';
 import { useReducedMotion } from '@/lib/a11y/useReducedMotion';
 import { BrandLogoImage } from '@/components/public/BrandLogoImage';
 import { DEFAULT_BRAND_LOGO_PNG } from '@/lib/media/staticBrandAssets';
@@ -54,21 +52,13 @@ const MOBILE_NAV: NavItem[] = [
 ];
 
 function BrandMark() {
-  const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
-  const { data: profile } = useSWR<PublicProfile | null>('/public-site/profile', fetcher, {
-    revalidateOnFocus: false,
-  });
+  const { profile } = usePublicSiteData();
   const src = profile?.logo_light_url || profile?.logo_dark_url || DEFAULT_BRAND_LOGO_PNG;
   return <BrandLogoImage src={src} alt="Logo organisasi" className="size-10" priority />;
 }
 
 export default function PublicNavbar() {
-  const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
-  const { data: profile, isLoading: isLoadingProfile } = useSWR<PublicProfile | null>(
-    '/public-site/profile',
-    fetcher,
-    { revalidateOnFocus: false }
-  );
+  const { profile } = usePublicSiteData();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const location = useLocation();
@@ -106,7 +96,7 @@ export default function PublicNavbar() {
         <Link to="/" className="flex min-h-11 min-w-11 items-center gap-3">
           <BrandMark />
           <div className="hidden flex-col leading-tight md:flex">
-            {isLoadingProfile ? (
+            {!profile ? (
               <div className="space-y-2" aria-busy="true" aria-label="Memuat profil organisasi">
                 <Skeleton className="h-4 w-44" />
                 <Skeleton className="h-3 w-28" />

@@ -404,3 +404,14 @@ model PublicRecruitmentContact {
   sort_order     Int      @default(0)
   created_at     DateTime @default(now())
 }
+
+model IdempotencyKey {
+  key             String   @id @unique
+  consumed_at     DateTime
+  user_id         String
+  endpoint        String
+  response_status Int?
+  response_body   String?  @db.Text
+
+  @@index([user_id, consumed_at])
+}

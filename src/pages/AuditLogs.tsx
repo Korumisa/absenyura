@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import api from '@/services/api';
 import { Search, Activity, Calendar, Shield, Database, Trash2, LogIn, User } from 'lucide-react';
 import { format } from 'date-fns';
@@ -38,7 +38,7 @@ export default function AuditLogs() {
   const [page, setPage] = useState(1);
   const [meta, setMeta] = useState<PaginationMeta | null>(null);
 
-  const loadLogs = async () => {
+  const loadLogs = useCallback(async () => {
     setLoading(true);
     setFetchError(null);
     try {
@@ -53,11 +53,11 @@ export default function AuditLogs() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, debouncedSearch]);
 
   useEffect(() => {
     loadLogs();
-  }, [page, debouncedSearch]);
+  }, [loadLogs]);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchTerm), 300);

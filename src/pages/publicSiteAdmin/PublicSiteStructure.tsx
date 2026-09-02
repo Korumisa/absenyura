@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import api from '@/services/api';
 import { toast } from 'sonner';
@@ -44,7 +44,7 @@ export default function PublicSiteStructure() {
     setGroups(updater);
   };
 
-  const currentYear = new Date().getFullYear();
+  const currentYear = useMemo(() => new Date().getFullYear(), []);
 
   useEffect(() => {
     if (dirtyRef.current) return;
@@ -76,7 +76,7 @@ export default function PublicSiteStructure() {
       setCabinetPeriod(`${currentYear}/${currentYear + 1}`);
       setGroups([]);
     }
-  }, [adminData, viewingCabinetId]);
+  }, [adminData, viewingCabinetId, currentYear]);
 
   const [saving, setSaving] = useState(false);
   const [uploadingKey, setUploadingKey] = useState<string | null>(null);

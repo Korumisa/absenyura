@@ -49,3 +49,69 @@ export function sessionClassNames(session: SessionClassLabelSource | null | unde
   if (session?.class) return formatClassLabel(session.class);
   return 'Semua Mahasiswa';
 }
+
+const SESSION_STATUS_LABELS: Record<string, string> = {
+  ACTIVE: 'Aktif',
+  UPCOMING: 'Akan datang',
+  CLOSED: 'Selesai',
+};
+
+const ATTENDANCE_STATUS_LABELS: Record<string, string> = {
+  PRESENT: 'Hadir',
+  LATE: 'Terlambat',
+  ABSENT: 'Alfa',
+  SICK: 'Sakit',
+  EXCUSED: 'Izin',
+  EXCUSED_APPROVED: 'Izin disetujui',
+};
+
+const USER_ROLE_LABELS: Record<string, string> = {
+  USER: 'Mahasiswa',
+  ADMIN: 'Admin',
+  SUPER_ADMIN: 'Super Admin',
+  CONTENT_ADMIN: 'Admin Konten',
+};
+
+const EXCUSE_STATUS_LABELS: Record<string, string> = {
+  PENDING: 'Menunggu',
+  APPROVED: 'Disetujui',
+  REJECTED: 'Ditolak',
+};
+
+export type LabelDomain = 'session-status' | 'attendance-status' | 'user-role' | 'excuse-status';
+
+export type AttendanceBadgeVariant = 'success' | 'warning' | 'destructive' | 'secondary';
+
+/**
+ * Sumber kebenaran tunggal label Bahasa Indonesia.
+ *
+ * Fallback yang konsisten: jika label tidak ada di lookup, kembalikan raw value
+ * (jika tidak string kosong) — atau `-` sebagai last resort.
+ */
+export function formatLabel(domain: LabelDomain, rawValue: string | null | undefined): string {
+  if (rawValue == null) return '-';
+  const value = String(rawValue).trim();
+  if (value === '') return '-';
+
+  switch (domain) {
+    case 'session-status':
+      return SESSION_STATUS_LABELS[value] ?? value;
+    case 'attendance-status':
+      return ATTENDANCE_STATUS_LABELS[value] ?? value;
+    case 'user-role':
+      return USER_ROLE_LABELS[value] ?? value;
+    case 'excuse-status':
+      return EXCUSE_STATUS_LABELS[value] ?? value;
+    default:
+      return value;
+  }
+}
+
+export function attendanceBadgeVariant(status: string): AttendanceBadgeVariant {
+  if (status === 'PRESENT') return 'success';
+  if (status === 'LATE') return 'warning';
+  if (status === 'ABSENT') return 'destructive';
+  return 'secondary';
+}
+
+export { SESSION_STATUS_LABELS, ATTENDANCE_STATUS_LABELS, USER_ROLE_LABELS, EXCUSE_STATUS_LABELS };

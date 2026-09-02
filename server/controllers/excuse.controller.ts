@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import type { AuthRequest } from '../types/index.js';
 import prisma from '../utils/prisma.js';
 import crypto from 'crypto';
 import fs from 'fs';
@@ -13,7 +14,7 @@ import {
   isTimingSafeMatch,
   signExcuseProof,
 } from '../utils/excuseProof.js';
-import { isMissingSemesterColumn } from '../utils/prismaErrors.js';
+import { queryWithSemesterFallback } from '../utils/prismaErrors.js';
 
 // Configure Cloudinary if ENV vars exist
 if (process.env.CLOUDINARY_URL) {
@@ -23,9 +24,9 @@ if (process.env.CLOUDINARY_URL) {
 const VALID_EXCUSE_REASONS = new Set(['SICK', 'EXCUSED']);
 const VALID_REVIEW_STATUSES = new Set(['APPROVED', 'REJECTED']);
 
-export const getExcuseChallenge = async (req: Request, res: Response): Promise<void> => {
+export const getExcuseChallenge = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const user_id = (req as any).user?.id;
+    const user_id = req.user?.id;
     const sessionId = String(req.query.session_id || '').trim();
     const photoSize = parseFiniteNumber(req.query.photo_size);
     const photoType = String(req.query.photo_type || '')
@@ -155,125 +156,128 @@ async function verifyExcuseProof(input: {
   return { ok: true };
 }
 
-export const getExcuses = async (req: Request, res: Response): Promise<void> => {
+export const getExcuses = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const user = (req as any).user;
+    const user = req.user!;
     let excuses;
 
     if (user.role === 'USER') {
-      try {
-        excuses = await prisma.excuseRequest.findMany({
-          where: { user_id: user.id },
-          include: {
-            session: {
-              select: {
-                title: true,
-                session_start: true,
-                class: { select: { name: true, semester: true } },
-                session_classes: {
-                  select: { class: { select: { id: true, name: true, semester: true } } },
+      // TODO: remove fallback once all envs confirm semester column exists (2026-02 migration applied)
+      excuses = await queryWithSemesterFallback(
+        () =>
+          prisma.excuseRequest.findMany({
+            where: { user_id: user.id },
+            include: {
+              session: {
+                select: {
+                  title: true,
+                  session_start: true,
+                  class: { select: { name: true, semester: true } },
+                  session_classes: {
+                    select: { class: { select: { id: true, name: true, semester: true } } },
+                  },
                 },
               },
+              reviewer: { select: { name: true } },
             },
-            reviewer: { select: { name: true } },
-          },
-          orderBy: { created_at: 'desc' },
-        });
-      } catch (err: any) {
-        if (!isMissingSemesterColumn(err)) throw err;
-        excuses = await prisma.excuseRequest.findMany({
-          where: { user_id: user.id },
-          include: {
-            session: {
-              select: {
-                title: true,
-                session_start: true,
-                class: { select: { name: true } },
-                session_classes: { select: { class: { select: { id: true, name: true } } } },
+            orderBy: { created_at: 'desc' },
+          }),
+        () =>
+          prisma.excuseRequest.findMany({
+            where: { user_id: user.id },
+            include: {
+              session: {
+                select: {
+                  title: true,
+                  session_start: true,
+                  class: { select: { name: true } },
+                  session_classes: { select: { class: { select: { id: true, name: true } } } },
+                },
               },
+              reviewer: { select: { name: true } },
             },
-            reviewer: { select: { name: true } },
-          },
-          orderBy: { created_at: 'desc' },
-        });
-      }
+            orderBy: { created_at: 'desc' },
+          })
+      );
     } else if (user.role === 'ADMIN') {
-      try {
-        excuses = await prisma.excuseRequest.findMany({
-          where: { session: { created_by_id: user.id } },
-          include: {
-            user: { select: { name: true, nim_nip: true } },
-            session: {
-              select: {
-                title: true,
-                session_start: true,
-                class: { select: { name: true, semester: true } },
-                session_classes: {
-                  select: { class: { select: { id: true, name: true, semester: true } } },
+      // TODO: remove fallback once all envs confirm semester column exists (2026-02 migration applied)
+      excuses = await queryWithSemesterFallback(
+        () =>
+          prisma.excuseRequest.findMany({
+            where: { session: { created_by_id: user.id } },
+            include: {
+              user: { select: { name: true, nim_nip: true } },
+              session: {
+                select: {
+                  title: true,
+                  session_start: true,
+                  class: { select: { name: true, semester: true } },
+                  session_classes: {
+                    select: { class: { select: { id: true, name: true, semester: true } } },
+                  },
                 },
               },
+              reviewer: { select: { name: true } },
             },
-            reviewer: { select: { name: true } },
-          },
-          orderBy: { created_at: 'desc' },
-        });
-      } catch (err: any) {
-        if (!isMissingSemesterColumn(err)) throw err;
-        excuses = await prisma.excuseRequest.findMany({
-          where: { session: { created_by_id: user.id } },
-          include: {
-            user: { select: { name: true, nim_nip: true } },
-            session: {
-              select: {
-                title: true,
-                session_start: true,
-                class: { select: { name: true } },
-                session_classes: { select: { class: { select: { id: true, name: true } } } },
+            orderBy: { created_at: 'desc' },
+          }),
+        () =>
+          prisma.excuseRequest.findMany({
+            where: { session: { created_by_id: user.id } },
+            include: {
+              user: { select: { name: true, nim_nip: true } },
+              session: {
+                select: {
+                  title: true,
+                  session_start: true,
+                  class: { select: { name: true } },
+                  session_classes: { select: { class: { select: { id: true, name: true } } } },
+                },
               },
+              reviewer: { select: { name: true } },
             },
-            reviewer: { select: { name: true } },
-          },
-          orderBy: { created_at: 'desc' },
-        });
-      }
+            orderBy: { created_at: 'desc' },
+          })
+      );
     } else {
       // Super Admin
-      try {
-        excuses = await prisma.excuseRequest.findMany({
-          include: {
-            user: { select: { name: true, nim_nip: true } },
-            session: {
-              select: {
-                title: true,
-                session_start: true,
-                class: { select: { name: true, semester: true } },
-                session_classes: {
-                  select: { class: { select: { id: true, name: true, semester: true } } },
+      // TODO: remove fallback once all envs confirm semester column exists (2026-02 migration applied)
+      excuses = await queryWithSemesterFallback(
+        () =>
+          prisma.excuseRequest.findMany({
+            include: {
+              user: { select: { name: true, nim_nip: true } },
+              session: {
+                select: {
+                  title: true,
+                  session_start: true,
+                  class: { select: { name: true, semester: true } },
+                  session_classes: {
+                    select: { class: { select: { id: true, name: true, semester: true } } },
+                  },
                 },
               },
+              reviewer: { select: { name: true } },
             },
-            reviewer: { select: { name: true } },
-          },
-          orderBy: { created_at: 'desc' },
-        });
-      } catch (err: any) {
-        if (!isMissingSemesterColumn(err)) throw err;
-        excuses = await prisma.excuseRequest.findMany({
-          include: {
-            user: { select: { name: true, nim_nip: true } },
-            session: {
-              select: {
-                title: true,
-                session_start: true,
-                class: { select: { name: true } },
-                session_classes: { select: { class: { select: { id: true, name: true } } } },
+            orderBy: { created_at: 'desc' },
+          }),
+        () =>
+          prisma.excuseRequest.findMany({
+            include: {
+              user: { select: { name: true, nim_nip: true } },
+              session: {
+                select: {
+                  title: true,
+                  session_start: true,
+                  class: { select: { name: true } },
+                  session_classes: { select: { class: { select: { id: true, name: true } } } },
+                },
               },
+              reviewer: { select: { name: true } },
             },
-            reviewer: { select: { name: true } },
-          },
-          orderBy: { created_at: 'desc' },
-        });
-      }
+            orderBy: { created_at: 'desc' },
+          })
+      );
     }
 
     res.status(200).json({ success: true, data: excuses });
@@ -283,10 +287,10 @@ export const getExcuses = async (req: Request, res: Response): Promise<void> => 
   }
 };
 
-export const createExcuse = async (req: Request, res: Response): Promise<void> => {
+export const createExcuse = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { session_id, reason, description } = req.body;
-    const user_id = (req as any).user.id;
+    const user_id = req.user!.id;
     const file = req.file;
     const nonce = String(req.body?.nonce || '').trim();
     const signature = String(req.body?.signature || '').trim();
@@ -418,28 +422,53 @@ export const createExcuse = async (req: Request, res: Response): Promise<void> =
 
     let newExcuse: any;
     try {
-      newExcuse = await prisma.excuseRequest.create({
-        data: {
-          user_id,
-          session_id,
-          reason,
-          description,
-          proof_url,
-        },
-        include: {
-          session: {
-            select: {
-              title: true,
-              session_start: true,
-              class: { select: { name: true, semester: true } },
-              session_classes: {
-                select: { class: { select: { id: true, name: true, semester: true } } },
-              },
-              created_by_id: true,
+      // TODO: remove fallback once all envs confirm semester column exists (2026-02 migration applied)
+      newExcuse = await queryWithSemesterFallback(
+        () =>
+          prisma.excuseRequest.create({
+            data: {
+              user_id,
+              session_id,
+              reason,
+              description,
+              proof_url,
             },
-          },
-        },
-      });
+            include: {
+              session: {
+                select: {
+                  title: true,
+                  session_start: true,
+                  class: { select: { name: true, semester: true } },
+                  session_classes: {
+                    select: { class: { select: { id: true, name: true, semester: true } } },
+                  },
+                  created_by_id: true,
+                },
+              },
+            },
+          }),
+        () =>
+          prisma.excuseRequest.create({
+            data: {
+              user_id,
+              session_id,
+              reason,
+              description,
+              proof_url,
+            },
+            include: {
+              session: {
+                select: {
+                  title: true,
+                  session_start: true,
+                  class: { select: { name: true } },
+                  session_classes: { select: { class: { select: { id: true, name: true } } } },
+                  created_by_id: true,
+                },
+              },
+            },
+          })
+      );
     } catch (err: any) {
       if (err?.code === 'P2002') {
         res
@@ -447,27 +476,7 @@ export const createExcuse = async (req: Request, res: Response): Promise<void> =
           .json({ success: false, error: 'Anda sudah mengajukan izin untuk sesi ini' });
         return;
       }
-      if (!isMissingSemesterColumn(err)) throw err;
-      newExcuse = await prisma.excuseRequest.create({
-        data: {
-          user_id,
-          session_id,
-          reason,
-          description,
-          proof_url,
-        },
-        include: {
-          session: {
-            select: {
-              title: true,
-              session_start: true,
-              class: { select: { name: true } },
-              session_classes: { select: { class: { select: { id: true, name: true } } } },
-              created_by_id: true,
-            },
-          },
-        },
-      });
+      throw err;
     }
 
     // Notify creator
@@ -497,11 +506,11 @@ export const createExcuse = async (req: Request, res: Response): Promise<void> =
   }
 };
 
-export const reviewExcuse = async (req: Request, res: Response): Promise<void> => {
+export const reviewExcuse = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const { status } = req.body; // APPROVED or REJECTED
-    const user = (req as any).user;
+    const user = req.user!;
     const user_id = user.id;
 
     if (!VALID_REVIEW_STATUSES.has(String(status))) {

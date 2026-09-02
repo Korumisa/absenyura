@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import type { AuthRequest } from '../types/index.js';
 import prisma from '../utils/prisma.js';
 import { sendForbidden } from '../utils/errorResponse.js';
 
@@ -21,12 +22,12 @@ export const getLocations = async (req: Request, res: Response): Promise<void> =
   }
 };
 
-export const createLocation = async (req: Request, res: Response): Promise<void> => {
+export const createLocation = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { name, address, latitude, longitude, radius, wifi_bssid } = req.body;
 
     // Auth middleware ensures req.user exists
-    const user_id = (req as any).user.id;
+    const user_id = req.user!.id;
     const ip_address = req.ip;
 
     const location = await prisma.$transaction(async (tx) => {
@@ -70,11 +71,11 @@ export const createLocation = async (req: Request, res: Response): Promise<void>
   }
 };
 
-export const updateLocation = async (req: Request, res: Response): Promise<void> => {
+export const updateLocation = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const { name, address, latitude, longitude, radius, wifi_bssid } = req.body;
-    const user = (req as any).user;
+    const user = req.user!;
     if (user?.role === 'ADMIN') {
       const existing = await prisma.location.findUnique({
         where: { id },
@@ -137,10 +138,10 @@ export const updateLocation = async (req: Request, res: Response): Promise<void>
   }
 };
 
-export const deleteLocation = async (req: Request, res: Response): Promise<void> => {
+export const deleteLocation = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const user = (req as any).user;
+    const user = req.user!;
     if (user?.role === 'ADMIN') {
       const existing = await prisma.location.findUnique({
         where: { id },

@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import type { AuthRequest } from '../types/index.js';
 import bcrypt from 'bcryptjs';
 import prisma from '../utils/prisma.js';
 import { enrollStudentInClasses, parseClassIds } from '../utils/enrollment.js';
@@ -184,10 +185,10 @@ async function adminCanViewStudent(actorId: string, studentId: string): Promise<
   return Boolean(hit);
 }
 
-export const getUserById = async (req: Request, res: Response): Promise<void> => {
+export const getUserById = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const actor = (req as any).user;
+    const actor = req.user!;
 
     const user = await prisma.user.findUnique({
       where: { id },
@@ -231,10 +232,10 @@ export const getUserById = async (req: Request, res: Response): Promise<void> =>
   }
 };
 
-export const getUserEnrollments = async (req: Request, res: Response): Promise<void> => {
+export const getUserEnrollments = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const actor = (req as any).user;
+    const actor = req.user!;
     const user = await prisma.user.findUnique({
       where: { id },
       select: { id: true, role: true },
@@ -284,7 +285,7 @@ export const getUserEnrollments = async (req: Request, res: Response): Promise<v
   }
 };
 
-export const createUser = async (req: Request, res: Response): Promise<void> => {
+export const createUser = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { name, email, password, role, nim_nip, department, phone, semester, class_ids } =
       req.body;
@@ -392,7 +393,7 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
 
     await prisma.auditLog.create({
       data: {
-        actor_id: (req as any).user.id,
+        actor_id: req.user!.id,
         action: 'CREATE_USER',
         target_table: 'User',
         target_id: user.id,
@@ -427,10 +428,10 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
   }
 };
 
-export const updateUser = async (req: Request, res: Response): Promise<void> => {
+export const updateUser = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const actor = (req as any).user;
+    const actor = req.user!;
     let {
       name,
       email,
@@ -564,7 +565,7 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
 
     await prisma.auditLog.create({
       data: {
-        actor_id: (req as any).user.id,
+        actor_id: req.user!.id,
         action: 'UPDATE_USER',
         target_table: 'User',
         target_id: user.id,
@@ -600,7 +601,7 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
   }
 };
 
-export const deleteUser = async (req: Request, res: Response): Promise<void> => {
+export const deleteUser = async (req: AuthRequest, res: Response): Promise<void> => {
   // Authorization enforced at route level — see server/routes/users.ts
   try {
     const { id } = req.params;
@@ -609,7 +610,7 @@ export const deleteUser = async (req: Request, res: Response): Promise<void> => 
 
     await prisma.auditLog.create({
       data: {
-        actor_id: (req as any).user.id,
+        actor_id: req.user!.id,
         action: 'DELETE_USER',
         target_table: 'User',
         target_id: id,
@@ -625,7 +626,7 @@ export const deleteUser = async (req: Request, res: Response): Promise<void> => 
   }
 };
 
-export const importUsers = async (req: Request, res: Response): Promise<void> => {
+export const importUsers = async (req: AuthRequest, res: Response): Promise<void> => {
   const filePath = req.file?.path;
   try {
     if (!req.file || !filePath) {
@@ -642,7 +643,7 @@ export const importUsers = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    const actor = (req as any).user;
+    const actor = req.user!;
     const parsedRows: ParsedImportUserRow[] = [];
     const seenEmails = new Set<string>();
     let duplicateRowCount = 0;
@@ -876,10 +877,10 @@ export const importUsers = async (req: Request, res: Response): Promise<void> =>
 };
 
 // Reset Device Fingerprint
-export const resetDeviceFingerprint = async (req: Request, res: Response): Promise<void> => {
+export const resetDeviceFingerprint = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const actor = (req as any).user;
+    const actor = req.user!;
 
     if (actor.role === 'ADMIN') {
       const target = await prisma.user.findUnique({ where: { id }, select: { role: true } });
