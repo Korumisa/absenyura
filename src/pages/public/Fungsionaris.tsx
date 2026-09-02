@@ -17,14 +17,27 @@ import { PublicEmptyState } from '@/components/public/PublicEmptyState';
 import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 
 export default function Fungsionaris() {
-  const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
-  const structureSwr = useSWR<PublicStructureGroup[]>('/public-site/structure', fetcher, { revalidateOnFocus: false });
-  const { data: groups = [], isInitialLoading: isLoading, isError, retry } = useSwrPageState(structureSwr);
-  const { data: profile } = useSWR<PublicProfile | null>('/public-site/profile', fetcher, { revalidateOnFocus: false });
+  const fetcher = (url: string) => api.get(url).then((r) => r.data);
+  const structureSwr = useSWR<{ data: PublicStructureGroup[], cabinet: any, allCabinets: any[] }>('/public-site/structure', fetcher, { revalidateOnFocus: false });
+  const { data: structureData, isInitialLoading: isLoading, isError, retry } = useSwrPageState(structureSwr);
+  const [selectedCabinetId, setSelectedCabinetId] = useState<string | null>(null);
+  
+  const allCabinets = structureData?.allCabinets ?? [];
+  const activeCabinet = structureData?.cabinet;
+  const selectedCabinet = useMemo(() => {
+    if (selectedCabinetId) {
+      return allCabinets.find(c => c.id === selectedCabinetId);
+    }
+    return activeCabinet;
+  }, [allCabinets, selectedCabinetId, activeCabinet]);
+  
+  const groups = selectedCabinet?.groups ?? [];
+  const cabinet = selectedCabinet ?? null;
+  const { data: profile } = useSWR<PublicProfile | null>('/public-site/profile', (url) => api.get(url).then(r => r.data.data), { revalidateOnFocus: false });
   const reducedMotion = useReducedMotion();
 
   const ordered = useMemo(
-    () => groups.slice().sort((a, b) => (Number(a.sort_order ?? 999) || 999) - (Number(b.sort_order ?? 999) || 999)),
+    () => groups.slice().sort((a: any, b: any) => (Number(a.sort_order ?? 999) || 999) - (Number(b.sort_order ?? 999) || 999)),
     [groups],
   );
 
@@ -38,13 +51,13 @@ export default function Fungsionaris() {
     return t.includes('dosen') || t.includes('pembimbing') || t.includes('pembina');
   };
 
-  const advisorGroups = useMemo(() => ordered.filter((g) => isAdvisorByTitle(g.title)), [ordered]);
+  const advisorGroups = useMemo(() => ordered.filter((g: any) => isAdvisorByTitle(g.title)), [ordered]);
   const coreGroups = useMemo(
-    () => ordered.filter((g) => !advisorGroups.some((x) => x.id === g.id) && (Boolean(g.is_core) || isCoreByTitle(g.title))),
+    () => ordered.filter((g: any) => !advisorGroups.some((x: any) => x.id === g.id) && (Boolean(g.is_core) || isCoreByTitle(g.title))),
     [ordered, advisorGroups],
   );
   const bidangGroups = useMemo(
-    () => ordered.filter((g) => !advisorGroups.some((x) => x.id === g.id) && !coreGroups.some((x) => x.id === g.id)),
+    () => ordered.filter((g: any) => !advisorGroups.some((x: any) => x.id === g.id) && !coreGroups.some((x: any) => x.id === g.id)),
     [ordered, advisorGroups, coreGroups],
   );
 
@@ -53,15 +66,16 @@ export default function Fungsionaris() {
     if (!activeId && bidangGroups.length) setActiveId(bidangGroups[0].id);
   }, [activeId, bidangGroups]);
 
-  const activeGroup = bidangGroups.find((g) => g.id === activeId) ?? null;
-  const kabinetName = profile?.kabinet_name ?? '';
-  const subtitleBits = [kabinetName].map((x) => String(x || '').trim()).filter(Boolean);
+  const activeGroup = bidangGroups.find((g: any) => g.id === activeId) ?? null;
+  const kabinetName = cabinet?.name ?? profile?.kabinet_name ?? '';
+  const kabinetPeriod = cabinet?.period ?? profile?.kabinet_period ?? '';
+  const subtitleBits = [kabinetName, kabinetPeriod].map((x) => String(x || '').trim()).filter(Boolean);
 
   const sortedMembers = (members: any[]) =>
-    (members ?? []).slice().sort((a, b) => (Number(a.sort_order ?? 999) || 999) - (Number(b.sort_order ?? 999) || 999));
+    (members ?? []).slice().sort((a: any, b: any) => (Number(a.sort_order ?? 999) || 999) - (Number(b.sort_order ?? 999) || 999));
 
-  const corePeople = useMemo(() => sortedMembers(coreGroups.flatMap((g) => g.members ?? [])), [coreGroups]);
-  const advisorPeople = useMemo(() => sortedMembers(advisorGroups.flatMap((g) => g.members ?? [])), [advisorGroups]);
+  const corePeople = useMemo(() => sortedMembers(coreGroups.flatMap((g: any) => g.members ?? [])), [coreGroups]);
+  const advisorPeople = useMemo(() => sortedMembers(advisorGroups.flatMap((g: any) => g.members ?? [])), [advisorGroups]);
   const pickLeader = (people: PublicStructureGroup['members']) => {
     const spotlight = people.find((p) => Boolean(p.is_spotlight));
     if (spotlight) return spotlight;
@@ -110,6 +124,36 @@ export default function Fungsionaris() {
           compact
         />
       </PublicEnter>
+
+      {/* Cabinet Switcher */}
+      {allCabinets.length > 1 && (
+        <PublicEnter>
+          <div className="mx-auto -mt-4 max-w-7xl px-4 py-4 sm:px-6">
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              {allCabinets.map((cab: any) => {
+                const isSelected = cabinet?.id === cab.id;
+                return (
+                  <button
+                    key={cab.id}
+                    type="button"
+                    onClick={() => setSelectedCabinetId(isSelected ? null : cab.id)}
+                    className={
+                      (isSelected
+                        ? "bg-[var(--public-primary)] text-white shadow-[0_10px_22px_rgba(37,99,235,0.35)]"
+                        : "bg-white text-slate-900 border border-black/10 hover:border-[var(--public-primary)]/40"
+                      ) + " inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-xs font-semibold uppercase tracking-wide transition"
+                    }
+                  >
+                    {cab.name}
+                    <span className="text-[10px] opacity-75">{cab.period}</span>
+                    {cab.is_active && !isSelected && <span className="ml-1 h-2 w-2 rounded-full bg-green-500" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </PublicEnter>
+      )}
 
       <PublicReveal className="mx-auto -mt-6 max-w-7xl px-4 pb-24 sm:px-6">
         {isLoading ? (
@@ -214,7 +258,7 @@ export default function Fungsionaris() {
             {bidangGroups.length ? (
               <div className="mt-8">
                 <div className="mx-auto flex w-full max-w-5xl items-center gap-2 overflow-x-auto pb-2 scrollbar-hide sm:flex-wrap sm:justify-center sm:overflow-visible">
-                  {bidangGroups.map((g) => {
+                  {bidangGroups.map((g: any) => {
                     const active = g.id === activeId;
                     return (
                       <button

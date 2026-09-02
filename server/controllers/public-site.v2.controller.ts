@@ -194,11 +194,24 @@ export const upsertAdminProfile = async (req: PublicRoleRequest, res: Response):
 
 export const getPublicStructure = async (req: Request, res: Response): Promise<void> => {
   try {
-    const groups = await prisma.publicStructureGroup.findMany({
-      orderBy: [{ sort_order: 'asc' }, { created_at: 'asc' }],
-      include: { members: { orderBy: [{ sort_order: 'asc' }, { created_at: 'asc' }] } },
+    const allCabinets = await prisma.publicStructureCabinet.findMany({
+      orderBy: [{ is_active: 'desc' }, { sort_order: 'asc' }, { created_at: 'desc' }],
+      include: {
+        groups: {
+          orderBy: [{ sort_order: 'asc' }],
+          include: { members: { orderBy: [{ sort_order: 'asc' }, { created_at: 'asc' }] } },
+        },
+      },
     });
-    res.status(200).json({ success: true, data: groups });
+
+    const activeCabinet = allCabinets.find((c) => c.is_active) || allCabinets[0] || null;
+
+    res.status(200).json({
+      success: true,
+      data: activeCabinet ? activeCabinet.groups : [],
+      cabinet: activeCabinet,
+      allCabinets,
+    });
   } catch (error) {
     console.error('Error fetching public structure:', error);
     sendInternalServerError(res, error);
@@ -207,11 +220,23 @@ export const getPublicStructure = async (req: Request, res: Response): Promise<v
 
 export const getAdminStructure = async (req: Request, res: Response): Promise<void> => {
   try {
-    const groups = await prisma.publicStructureGroup.findMany({
-      orderBy: [{ sort_order: 'asc' }, { created_at: 'asc' }],
-      include: { members: { orderBy: [{ sort_order: 'asc' }, { created_at: 'asc' }] } },
+    const cabinets = await prisma.publicStructureCabinet.findMany({
+      orderBy: [{ sort_order: 'asc' }, { created_at: 'desc' }],
+      include: {
+        groups: {
+          orderBy: [{ sort_order: 'asc' }],
+          include: { members: { orderBy: [{ sort_order: 'asc' }, { created_at: 'asc' }] } },
+        },
+      },
     });
-    res.status(200).json({ success: true, data: groups });
+
+    const activeCabinet = cabinets.find((c: any) => c.is_active) || cabinets[0] || null;
+    const activeGroups = activeCabinet ? activeCabinet.groups : [];
+
+    res.status(200).json({
+      success: true,
+      data: { cabinets, activeCabinetId: activeCabinet?.id || null, activeGroups },
+    });
   } catch (error) {
     console.error('Error fetching admin structure:', error);
     sendInternalServerError(res, error);
@@ -223,23 +248,44 @@ export const replaceAdminStructure = async (
   res: Response
 ): Promise<void> => {
   try {
-    const data = req.body?.data;
-    if (!Array.isArray(data)) {
-      res.status(400).json({ success: false, error: 'Data tidak valid' });
+    const { cabinetName, cabinetPeriod, data } = req.body;
+    if (!Array.isArray(data) || !cabinetName || !cabinetPeriod) {
+      res
+        .status(400)
+        .json({ success: false, error: 'Data, nama kabinet, dan periode tidak valid' });
       return;
     }
 
     await prisma.$transaction(async (tx) => {
-      await tx.publicStructureMember.deleteMany({});
-      await tx.publicStructureGroup.deleteMany({});
+      // First deactivate all other cabinets
+      await tx.publicStructureCabinet.updateMany({
+        where: { is_active: true },
+        data: { is_active: false },
+      });
 
+      // Create new cabinet
+      const cabinet = await tx.publicStructureCabinet.create({
+        data: {
+          name: String(cabinetName).trim(),
+          period: String(cabinetPeriod).trim(),
+          is_active: true,
+          sort_order: 0,
+        },
+      });
+
+      // Create groups and members
       for (let gi = 0; gi < data.length; gi += 1) {
         const g = data[gi] ?? {};
         const title = String(g.title ?? '').trim();
         if (!title) continue;
         const is_core = Boolean((g as any).isCore ?? (g as any).is_core ?? false);
         const group = await tx.publicStructureGroup.create({
-          data: { title, sort_order: toInt(g.sortOrder, gi), is_core } as any,
+          data: {
+            cabinet_id: cabinet.id,
+            title,
+            sort_order: toInt(g.sortOrder, gi),
+            is_core,
+          } as any,
         });
         const people = Array.isArray(g.people) ? g.people : [];
         let usedSpotlight = false;
@@ -274,7 +320,7 @@ export const replaceAdminStructure = async (
         action: 'REPLACE_PUBLIC_STRUCTURE',
         target_table: 'PublicStructure',
         target_id: 'ALL',
-        new_value: JSON.stringify(data),
+        new_value: JSON.stringify({ cabinetName, cabinetPeriod, data }),
         ip_address: req.ip,
       },
     });
@@ -282,6 +328,38 @@ export const replaceAdminStructure = async (
     res.status(200).json({ success: true, message: 'Struktur organisasi berhasil disimpan' });
   } catch (error) {
     console.error('Error replacing structure:', error);
+    sendInternalServerError(res, error);
+  }
+};
+
+export const setActiveCabinet = async (req: PublicRoleRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    await prisma.$transaction(async (tx) => {
+      await tx.publicStructureCabinet.updateMany({
+        where: { is_active: true },
+        data: { is_active: false },
+      });
+      await tx.publicStructureCabinet.update({
+        where: { id },
+        data: { is_active: true },
+      });
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        actor_id: req.user?.id ?? null,
+        action: 'SET_ACTIVE_CABINET',
+        target_table: 'PublicStructureCabinet',
+        target_id: id,
+        new_value: JSON.stringify({ is_active: true }),
+        ip_address: req.ip,
+      },
+    });
+
+    res.status(200).json({ success: true, message: 'Kabinet aktif diubah' });
+  } catch (error) {
+    console.error('Error setting active cabinet:', error);
     sendInternalServerError(res, error);
   }
 };

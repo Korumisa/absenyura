@@ -328,6 +328,18 @@ export const checkIn = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    const syncSource = String(req.header?.('X-Sync-Source') || '').toLowerCase();
+    if (
+      syncSource === 'offline-queue' &&
+      session.require_photo_proof === true &&
+      (!req.file || !req.file.path)
+    ) {
+      res
+        .status(400)
+        .json({ success: false, error: 'Bukti foto tidak ada. Harap lakukan check-in ulang.' });
+      return;
+    }
+
     if (session.status !== 'ACTIVE') {
       res
         .status(400)

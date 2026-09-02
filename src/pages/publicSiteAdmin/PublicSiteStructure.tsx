@@ -20,15 +20,18 @@ import { Layers } from 'lucide-react';
 export default function PublicSiteStructure() {
   const formId = React.useId();
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
-  const { data: structure = [], mutate } = useSWR<PublicStructureGroup[]>(
-    '/public-site/admin/structure',
-    fetcher,
-    { revalidateOnFocus: false }
-  );
+  const { data: adminData, mutate } = useSWR<{
+    cabinets: any[];
+    activeCabinetId: string;
+    activeGroups: PublicStructureGroup[];
+  }>('/public-site/admin/structure', fetcher, { revalidateOnFocus: false });
 
   type MemberDraft = { name: string; role: string; photoUrl: string; isSpotlight: boolean };
   type GroupDraft = { title: string; isCore: boolean; people: MemberDraft[] };
   const [groups, setGroups] = useState<GroupDraft[]>([]);
+  const [cabinetName, setCabinetName] = useState('');
+  const [cabinetPeriod, setCabinetPeriod] = useState('');
+  const [viewingCabinetId, setViewingCabinetId] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
   const dirtyRef = useRef(false);
   const markDirty = () => {
@@ -41,20 +44,39 @@ export default function PublicSiteStructure() {
     setGroups(updater);
   };
 
+  const currentYear = new Date().getFullYear();
+
   useEffect(() => {
     if (dirtyRef.current) return;
-    const mapped: GroupDraft[] = (structure ?? []).map((g) => ({
-      title: g.title ?? '',
-      isCore: Boolean(g.is_core ?? false),
-      people: (g.members ?? []).map((m) => ({
-        name: m.name ?? '',
-        role: m.role ?? '',
-        photoUrl: m.photo_url ?? '',
-        isSpotlight: Boolean(m.is_spotlight ?? false),
-      })),
-    }));
-    setGroups(mapped);
-  }, [structure]);
+    if (!adminData) return;
+
+    const cabinets = adminData.cabinets || [];
+    const activeCabinet = cabinets.find((c: any) => c.is_active) || cabinets[0] || null;
+    const currentViewCabinet = viewingCabinetId
+      ? cabinets.find((c: any) => c.id === viewingCabinetId)
+      : activeCabinet;
+
+    if (currentViewCabinet) {
+      const mapped: GroupDraft[] = (currentViewCabinet.groups ?? []).map((g: any) => ({
+        title: g.title ?? '',
+        isCore: Boolean(g.is_core ?? false),
+        people: (g.members ?? []).map((m: any) => ({
+          name: m.name ?? '',
+          role: m.role ?? '',
+          photoUrl: m.photo_url ?? '',
+          isSpotlight: Boolean(m.is_spotlight ?? false),
+        })),
+      }));
+      setGroups(mapped);
+      setCabinetName(currentViewCabinet.name);
+      setCabinetPeriod(currentViewCabinet.period);
+    } else {
+      // Default for new cabinet
+      setCabinetName('');
+      setCabinetPeriod(`${currentYear}/${currentYear + 1}`);
+      setGroups([]);
+    }
+  }, [adminData, viewingCabinetId]);
 
   const [saving, setSaving] = useState(false);
   const [uploadingKey, setUploadingKey] = useState<string | null>(null);
@@ -119,8 +141,9 @@ export default function PublicSiteStructure() {
           sortOrder: pi,
         })),
       }));
-      await api.put('/public-site/admin/structure', { data: payload });
+      await api.put('/public-site/admin/structure', { cabinetName, cabinetPeriod, data: payload });
       toast.success('Struktur organisasi tersimpan');
+      setViewingCabinetId(null); // Reset to new active cabinet after saving
       dirtyRef.current = false;
       setDirty(false);
       mutate();
@@ -131,20 +154,41 @@ export default function PublicSiteStructure() {
     }
   };
 
+  const handleSetActive = async (id: string) => {
+    try {
+      await api.put(`/public-site/admin/structure/active/${id}`);
+      toast.success('Kabinet aktif diubah');
+      mutate();
+    } catch (e: any) {
+      toast.error(getErrorMessage(e, 'Gagal mengubah kabinet aktif'));
+    }
+  };
+
   const handleReset = () => {
-    const mapped: GroupDraft[] = (structure ?? []).map((g) => ({
-      title: g.title ?? '',
-      isCore: Boolean(g.is_core ?? false),
-      people: (g.members ?? []).map((m) => ({
-        name: m.name ?? '',
-        role: m.role ?? '',
-        photoUrl: m.photo_url ?? '',
-        isSpotlight: Boolean(m.is_spotlight ?? false),
-      })),
-    }));
+    if (!adminData) return;
+    const cabinets = adminData.cabinets || [];
+    const activeCabinet = cabinets.find((c: any) => c.is_active) || cabinets[0] || null;
+    const currentViewCabinet = viewingCabinetId
+      ? cabinets.find((c: any) => c.id === viewingCabinetId)
+      : activeCabinet;
+
+    if (currentViewCabinet) {
+      const mapped: GroupDraft[] = (currentViewCabinet.groups ?? []).map((g: any) => ({
+        title: g.title ?? '',
+        isCore: Boolean(g.is_core ?? false),
+        people: (g.members ?? []).map((m: any) => ({
+          name: m.name ?? '',
+          role: m.role ?? '',
+          photoUrl: m.photo_url ?? '',
+          isSpotlight: Boolean(m.is_spotlight ?? false),
+        })),
+      }));
+      setGroups(mapped);
+      setCabinetName(currentViewCabinet.name);
+      setCabinetPeriod(currentViewCabinet.period);
+    }
     dirtyRef.current = false;
     setDirty(false);
-    setGroups(mapped);
   };
 
   return (
@@ -192,6 +236,71 @@ export default function PublicSiteStructure() {
             </Button>
           }
         >
+          {/* Cabinet Info */}
+          <div className="mb-6 flex flex-col gap-3">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor={`${formId}-cabinet-name`}>Nama Kabinet</Label>
+              <Input
+                id={`${formId}-cabinet-name`}
+                value={cabinetName}
+                onChange={(e) => {
+                  markDirty();
+                  setCabinetName(e.target.value);
+                }}
+                placeholder="Contoh: Kabinet Harmoni"
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor={`${formId}-cabinet-period`}>Periode</Label>
+              <Input
+                id={`${formId}-cabinet-period`}
+                value={cabinetPeriod}
+                onChange={(e) => {
+                  markDirty();
+                  setCabinetPeriod(e.target.value);
+                }}
+                placeholder={`Contoh: ${currentYear}/${currentYear + 1}`}
+              />
+            </div>
+          </div>
+
+          {/* Cabinet Selection */}
+          {adminData?.cabinets && adminData.cabinets.length > 0 && (
+            <div className="mb-6 border-b border-border pb-6">
+              <Label className="mb-2 block">Lihat Kabinet Sebelumnya</Label>
+              <div className="flex flex-wrap gap-2">
+                {adminData.cabinets.map((cabinet: any) => (
+                  <div key={cabinet.id} className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant={
+                        viewingCabinetId === cabinet.id || (!viewingCabinetId && cabinet.is_active)
+                          ? 'default'
+                          : 'outline'
+                      }
+                      size="sm"
+                      onClick={() =>
+                        setViewingCabinetId(viewingCabinetId === cabinet.id ? null : cabinet.id)
+                      }
+                    >
+                      {cabinet.name} ({cabinet.period}){cabinet.is_active && ' (Aktif)'}
+                    </Button>
+                    {!cabinet.is_active && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleSetActive(cabinet.id)}
+                      >
+                        Jadikan Aktif
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {groups.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-border bg-muted/30 p-6 text-sm text-muted-foreground">
               Belum ada struktur. Klik “Tambah Grup” untuk mulai.

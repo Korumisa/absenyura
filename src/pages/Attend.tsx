@@ -25,7 +25,11 @@ import {
 import { getErrorMessage } from '@/lib/http/errorMessage';
 import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import { saveOfflineAttendance, saveOfflinePhoto } from '@/lib/storage/idb';
+import {
+  saveOfflineAttendance,
+  saveOfflinePhoto,
+  deleteOfflineAttendance,
+} from '@/lib/storage/idb';
 import { AttendPrivacyBanner } from '@/components/attend/AttendPrivacyBanner';
 import { track } from '@vercel/analytics';
 import { getDeviceFingerprint } from '@/lib/storage/deviceFingerprint';
@@ -41,6 +45,14 @@ import {
 import ActionLoadingOverlay from '@/components/ActionLoadingOverlay';
 
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 
 import { fixLeafletDefaultIcons } from '@/lib/media/leafletIcon';
 
@@ -106,12 +118,17 @@ export default function Attend() {
   const scannerRef = React.useRef<Html5Qrcode | null>(null);
   const qrCameraIdRef = React.useRef<string | null>(null);
   const qrBootGenRef = React.useRef(0);
-  const [qrScannerError, setQrScannerError] = useState<string | null>(null);
+  type QrErrorType = 'PERMISSION' | 'SCAN_TIMEOUT' | 'BAD_SIG' | 'NOT_ENROLLED';
+  const [qrError, setQrError] = useState<{ code: QrErrorType; detail?: string } | null>(null);
+  const qrDecodeTimeoutRef = React.useRef<number | null>(null);
+  const qrDecodedSuccessRef = React.useRef(false);
   const [camerasReady, setCamerasReady] = useState(false);
   const [qrBootNonce, setQrBootNonce] = useState(0);
   const isSubmittingRef = React.useRef(false);
   const [qrFacingMode, setQrFacingMode] = useState<'user' | 'environment'>('environment');
   const [submitError, setSubmitError] = useState<{ message: string; hint?: string } | null>(null);
+  const [storageSaveFailed, setStorageSaveFailed] = useState(false);
+  const storagePermanentlyFailedRef = React.useRef(false);
 
   const loadQrCamera = useCallback(async (preferRear: boolean) => {
     try {
@@ -123,6 +140,9 @@ export default function Attend() {
       qrCameraIdRef.current = preferredId;
     } catch {
       qrCameraIdRef.current = null;
+      const msg = 'Kamera tidak diizinkan. Buka pengaturan browser.';
+      setQrError({ code: 'PERMISSION' });
+      toast.error(msg);
     } finally {
       setCamerasReady(true);
     }
@@ -437,9 +457,17 @@ export default function Attend() {
 
     const bootGen = ++qrBootGenRef.current;
     let cancelled = false;
+    qrDecodedSuccessRef.current = false;
+
+    const clearQrTimeout = () => {
+      if (qrDecodeTimeoutRef.current !== null) {
+        window.clearTimeout(qrDecodeTimeoutRef.current);
+        qrDecodeTimeoutRef.current = null;
+      }
+    };
 
     const bootScanner = async () => {
-      setQrScannerError(null);
+      setQrError(null);
       await waitForCameraRelease(350);
       if (cancelled || bootGen !== qrBootGenRef.current || scannerRef.current) return;
 
@@ -463,6 +491,8 @@ export default function Attend() {
           },
           async (decodedText) => {
             if (cancelled || bootGen !== qrBootGenRef.current) return;
+            qrDecodedSuccessRef.current = true;
+            clearQrTimeout();
             await releaseQrScanner();
             setScanResult(decodedText);
             setScanning(false);
@@ -481,9 +511,30 @@ export default function Attend() {
           return;
         }
         scannerRef.current = qr;
+
+        qrDecodeTimeoutRef.current = window.setTimeout(() => {
+          if (cancelled || bootGen !== qrBootGenRef.current) return;
+          if (qrDecodedSuccessRef.current) return;
+          const msg =
+            'Tidak dapat membaca kode. Pastikan QR berada di tengah layar dan cahaya cukup.';
+          setQrError({ code: 'SCAN_TIMEOUT' });
+          toast.error(msg);
+          void (async () => {
+            try {
+              if (qr.isScanning) await qr.stop();
+              qr.clear();
+            } catch {
+              void 0;
+            }
+            if (scannerRef.current === qr) {
+              scannerRef.current = null;
+            }
+          })();
+        }, 15000);
       } catch (err) {
-        const msg = humanizeCameraError(err);
-        setQrScannerError(msg);
+        clearQrTimeout();
+        const msg = 'Kamera tidak diizinkan. Buka pengaturan browser.';
+        setQrError({ code: 'PERMISSION' });
         toast.error(msg);
         try {
           qr.clear();
@@ -497,6 +548,7 @@ export default function Attend() {
 
     return () => {
       cancelled = true;
+      clearQrTimeout();
       qrBootGenRef.current += 1;
       const instance = scannerRef.current;
       scannerRef.current = null;
@@ -520,7 +572,7 @@ export default function Attend() {
     setQrFacingMode(nextMode);
     await loadQrCamera(nextMode === 'environment');
     setScanResult(null);
-    setQrScannerError(null);
+    setQrError(null);
     setScanning(true);
     setQrBootNonce((n) => n + 1);
   };
@@ -751,20 +803,42 @@ export default function Attend() {
       const deviceFingerprint = await getDeviceFingerprint();
 
       if (isOffline) {
-        const offlineId = await saveOfflineAttendance({
-          session_id: sessionId,
-          token: qrToken && qrToken !== NO_QR_TOKEN ? qrToken : undefined,
-          lat: location.lat,
-          lng: location.lng,
-          accuracy: gpsAccuracy,
-          deviceInfo: deviceFingerprint,
-        });
-        if (photoBlob) {
-          try {
+        if (storagePermanentlyFailedRef.current) {
+          toast.error('Penyimpanan foto gagal.');
+          setStorageSaveFailed(true);
+          return;
+        }
+        let offlineId: number | null = null;
+        try {
+          offlineId = await saveOfflineAttendance({
+            session_id: sessionId,
+            token: qrToken && qrToken !== NO_QR_TOKEN ? qrToken : undefined,
+            lat: location.lat,
+            lng: location.lng,
+            accuracy: gpsAccuracy,
+            deviceInfo: deviceFingerprint,
+          });
+          if (photoBlob) {
             await saveOfflinePhoto(offlineId, photoBlob);
-          } catch (photoErr) {
-            console.error('Failed to save offline photo', photoErr);
+          } else {
+            throw new Error('Foto bukti tidak tersedia untuk simpan offline.');
           }
+        } catch (storageErr) {
+          console.error('Offline storage failed', storageErr);
+          if (offlineId !== null) {
+            try {
+              await deleteOfflineAttendance(offlineId);
+            } catch (cleanupErr) {
+              console.error(
+                'Failed to rollback queued attendance after photo save failure',
+                cleanupErr
+              );
+            }
+          }
+          storagePermanentlyFailedRef.current = true;
+          setStorageSaveFailed(true);
+          toast.error('Penyimpanan foto gagal.');
+          return;
         }
         toast.success('Tersimpan offline. Akan terkirim otomatis saat internet kembali.');
         navigate('/dashboard');
@@ -819,25 +893,44 @@ export default function Attend() {
     } catch (error: unknown) {
       const apiMsg = getErrorMessage(error, 'Absensi gagal dikirim');
       const lower = apiMsg.toLowerCase();
-      const isQrError =
-        lower.includes('qr') || lower.includes('token') || lower.includes('kadaluarsa');
-      // [UX] #1 — jangan reset seluruh alur; pertahankan QR & foto kecuali error QR
-      if (isQrError) {
+      const isBadSigQrError =
+        lower.includes('qr') ||
+        lower.includes('token') ||
+        lower.includes('kadaluwarsa') ||
+        lower.includes('signature') ||
+        lower.includes('nonce') ||
+        lower.includes('tidak valid') ||
+        lower.includes('security proof');
+      const isNotEnrolled = lower.includes('terdaftar di kelas');
+
+      if (isNotEnrolled) {
+        const code = derivedSessionId || '-';
+        const notEnrolledMsg = `Anda tidak terdaftar di sesi ini (Kode: ${code}). Pindai kode sesi aktif Anda.`;
         setScanResult(null);
         setScanning(true);
         setPhotoBlob(null);
         setPhotoPreview(null);
+        setQrError({ code: 'NOT_ENROLLED', detail: code });
+        toast.error(notEnrolledMsg);
+      } else if (isBadSigQrError) {
+        const badSigMsg = 'Kode QR tidak valid atau sudah digunakan.';
+        setScanResult(null);
+        setScanning(true);
+        setPhotoBlob(null);
+        setPhotoPreview(null);
+        setQrError({ code: 'BAD_SIG' });
         setSubmitError({
-          message: apiMsg,
+          message: badSigMsg,
           hint: 'Scan ulang QR Code dari layar dosen, lalu lanjutkan langkah berikutnya.',
         });
+        toast.error(badSigMsg);
       } else {
         setSubmitError({
           message: apiMsg,
           hint: 'Periksa koneksi internet atau lokasi GPS, lalu tekan "Coba kirim lagi" tanpa mengulang dari awal.',
         });
+        toast.error(apiMsg);
       }
-      toast.error(apiMsg);
     } finally {
       setLoading(false);
       isSubmittingRef.current = false;
@@ -1270,13 +1363,28 @@ export default function Attend() {
                     <div id="qr-reader" className="min-h-[300px] w-full bg-black" />
                   </div>
                   <div className="mt-8 space-y-4 text-center">
-                    {qrScannerError ? (
+                    {qrError ? (
                       <div
                         className="rounded-xl border border-red-200 bg-red-50 p-4 text-left text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300"
                         role="alert"
+                        aria-live="assertive"
                       >
-                        <p className="font-semibold">Kamera QR tidak dapat dibuka</p>
-                        <p className="mt-1">{qrScannerError}</p>
+                        <p className="font-semibold">
+                          {qrError.code === 'PERMISSION' && 'Kamera tidak diizinkan'}
+                          {qrError.code === 'SCAN_TIMEOUT' && 'Tidak dapat membaca kode QR'}
+                          {qrError.code === 'BAD_SIG' && 'Kode QR tidak valid'}
+                          {qrError.code === 'NOT_ENROLLED' && 'Tidak terdaftar di sesi ini'}
+                        </p>
+                        <p className="mt-1">
+                          {qrError.code === 'PERMISSION' &&
+                            'Kamera tidak diizinkan. Buka pengaturan browser.'}
+                          {qrError.code === 'SCAN_TIMEOUT' &&
+                            'Tidak dapat membaca kode. Pastikan QR berada di tengah layar dan cahaya cukup.'}
+                          {qrError.code === 'BAD_SIG' &&
+                            'Kode QR tidak valid atau sudah digunakan.'}
+                          {qrError.code === 'NOT_ENROLLED' &&
+                            `Anda tidak terdaftar di sesi ini (Kode: ${qrError.detail ?? '-'}). Pindai kode sesi aktif Anda.`}
+                        </p>
                         <Button
                           type="button"
                           variant="outline"
@@ -1284,13 +1392,13 @@ export default function Attend() {
                           className="mt-3 min-h-11"
                           onClick={() => {
                             void releaseQrScanner().then(() => {
-                              setQrScannerError(null);
+                              setQrError(null);
                               setScanning(true);
                               setQrBootNonce((n) => n + 1);
                             });
                           }}
                         >
-                          Coba lagi
+                          Coba Lagi
                         </Button>
                       </div>
                     ) : (
@@ -1408,7 +1516,9 @@ export default function Attend() {
                     <Button
                       size="lg"
                       onClick={handleCheckIn}
-                      disabled={loading || !location || !!gpsError}
+                      disabled={
+                        loading || !location || !!gpsError || storagePermanentlyFailedRef.current
+                      }
                       className="w-full py-6 text-lg font-bold shadow-lg shadow-indigo-200 dark:shadow-indigo-900/20"
                       aria-busy={loading}
                     >
@@ -1462,6 +1572,31 @@ export default function Attend() {
           </div>
         </div>
       </div>
+      <Dialog open={storageSaveFailed}>
+        <DialogContent
+          onEscapeKeyDown={(e) => e.preventDefault()}
+          onPointerDownOutside={(e) => e.preventDefault()}
+        >
+          <DialogHeader>
+            <DialogTitle className="text-red-700 dark:text-red-400">Penyimpanan Gagal</DialogTitle>
+            <DialogDescription className="pt-2">
+              Penyimpanan foto gagal (ruang penyimpanan penuh?). Harap bersihkan cache browser atau
+              gunakan perangkat lain.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              onClick={() => {
+                navigate('/dashboard');
+              }}
+              className="min-h-11"
+            >
+              Kembali ke Dashboard
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

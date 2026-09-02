@@ -246,7 +246,10 @@ export default function App() {
 
             try {
               await api.post('/attendance/check-in', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' },
+                headers: {
+                  'Content-Type': 'multipart/form-data',
+                  'X-Sync-Source': 'offline-queue',
+                },
               });
               if (item.id) await deleteOfflineAttendance(item.id);
             } catch (err: any) {

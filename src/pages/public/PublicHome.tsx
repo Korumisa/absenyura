@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import PublicLayout from '@/components/PublicLayout';
 import { ArrowRight, Lightbulb, PenLine, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -166,7 +166,20 @@ export default function PublicHome() {
   const isLoadingPrograms = programsState.isPending;
   const isProgramsError = programsState.isError;
   const retryPrograms = programsState.retry;
-  const structure = useMemo(() => structureState.data ?? [], [structureState.data]);
+  
+  const [selectedCabinetId, setSelectedCabinetId] = useState<string | null>(null);
+  const structureData = structureState.data;
+  const allCabinets = structureData?.allCabinets ?? [];
+  const activeCabinet = structureData?.cabinet;
+  
+  const selectedCabinet = useMemo(() => {
+    if (selectedCabinetId) {
+      return allCabinets.find(c => c.id === selectedCabinetId);
+    }
+    return activeCabinet;
+  }, [allCabinets, selectedCabinetId, activeCabinet]);
+  
+  const structure = selectedCabinet?.groups ?? [];
   const isLoadingStructure = structureState.isPending;
   const latest = latestState.data;
   const isLoadingLatest = latestState.isPending;
@@ -179,8 +192,8 @@ export default function PublicHome() {
 
   const orgName = profile?.org_name ?? '';
   const campusName = profile?.campus_name ?? '';
-  const kabinetName = profile?.kabinet_name ?? '';
-  const kabinetPeriod = profile?.kabinet_period ?? '';
+  const kabinetName = selectedCabinet?.name ?? profile?.kabinet_name ?? '';
+  const kabinetPeriod = selectedCabinet?.period ?? profile?.kabinet_period ?? '';
   const heroSubtitle = profile?.hero_subtitle ?? '';
   const youtubeEmbedUrl = profile?.youtube_embed_url ?? '';
   const videoSrc = normalizeYoutubeEmbedUrl(youtubeEmbedUrl);
@@ -209,18 +222,18 @@ export default function PublicHome() {
 
   const coreMembers = useMemo(() => {
     const coreGroups = structure.filter(
-      (g) => Boolean(g.is_core) || isCoreStructureGroup(g.title),
+      (g: any) => Boolean(g.is_core) || isCoreStructureGroup(g.title),
     );
-    return coreGroups.flatMap((g) => g.members ?? []);
+    return coreGroups.flatMap((g: any) => g.members ?? []);
   }, [structure]);
 
   const ketua = useMemo(() => {
-    const k = coreMembers.find((m) => String(m.role ?? '').toLowerCase().includes('ketua') && !String(m.role ?? '').toLowerCase().includes('wakil'));
-    return k ?? coreMembers.find((m) => String(m.role ?? '').toLowerCase().includes('ketua')) ?? null;
+    const k = coreMembers.find((m: any) => String(m.role ?? '').toLowerCase().includes('ketua') && !String(m.role ?? '').toLowerCase().includes('wakil'));
+    return k ?? coreMembers.find((m: any) => String(m.role ?? '').toLowerCase().includes('ketua')) ?? null;
   }, [coreMembers]);
 
   const wakil = useMemo(() => {
-    return coreMembers.find((m) => String(m.role ?? '').toLowerCase().includes('wakil')) ?? null;
+    return coreMembers.find((m: any) => String(m.role ?? '').toLowerCase().includes('wakil')) ?? null;
   }, [coreMembers]);
 
   if (isProfileError && !profile) {
@@ -340,6 +353,36 @@ export default function PublicHome() {
               </div>
             </PublicEnter>
           </section>
+
+          {/* Cabinet Switcher */}
+          {allCabinets.length > 1 && (
+            <section className="relative bg-slate-50/70 py-6">
+              <div className="mx-auto max-w-7xl px-4 sm:px-6">
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  {allCabinets.map((cabinet: any) => {
+                    const isSelected = selectedCabinet?.id === cabinet.id;
+                    return (
+                      <button
+                        key={cabinet.id}
+                        type="button"
+                        onClick={() => setSelectedCabinetId(isSelected ? null : cabinet.id)}
+                        className={
+                          (isSelected
+                            ? "bg-[var(--public-primary)] text-white shadow-[0_10px_22px_rgba(37,99,235,0.35)]"
+                            : "bg-white text-slate-900 border border-black/10 hover:border-[var(--public-primary)]/40"
+                          ) + " inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-xs font-semibold uppercase tracking-wide transition"
+                        }
+                      >
+                        {cabinet.name}
+                        <span className="text-[10px] opacity-75">{cabinet.period}</span>
+                        {cabinet.is_active && !isSelected && <span className="ml-1 h-2 w-2 rounded-full bg-green-500" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </section>
+          )}
 
           {showAboutVideoSection ? (
           <section className="relative overflow-hidden bg-white">
@@ -710,21 +753,21 @@ export default function PublicHome() {
           </div>
 
           {isLoadingStructure ? (
-            <div className="mt-12 h-40" />
+            <div className="mt-12 h-40" aria-busy="true" />
           ) : (
             (() => {
               const ordered = structure
                 .slice()
-                .sort((a, b) => (Number(a.sort_order ?? 999) || 999) - (Number(b.sort_order ?? 999) || 999));
+                .sort((a: any, b: any) => (Number(a.sort_order ?? 999) || 999) - (Number(b.sort_order ?? 999) || 999));
               const core = ordered.filter(
-                (g) => Boolean((g as { is_core?: boolean }).is_core) || isCoreStructureGroup(g.title) || (Number(g.sort_order ?? 999) || 999) === 0,
+                (g: any) => Boolean((g as { is_core?: boolean }).is_core) || isCoreStructureGroup(g.title) || (Number(g.sort_order ?? 999) || 999) === 0,
               );
-              const coreIds = new Set(core.map((g) => g.id));
-              const support = ordered.filter((g) => !coreIds.has(g.id));
+              const coreIds = new Set(core.map((g: any) => g.id));
+              const support = ordered.filter((g: any) => !coreIds.has(g.id));
               return (
                 <div className="mt-12 space-y-12">
                   {core.length ? <DivisionRail label="Divisi Inti" groups={core} /> : null}
-
+                  
                   {support.length ? <DivisionRail label="Divisi Pendukung" groups={support} /> : null}
                 </div>
               );

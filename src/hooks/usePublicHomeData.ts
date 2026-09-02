@@ -11,12 +11,14 @@ import type {
 import type { PublicPostItemsResponse } from '@/types/api';
 import { usePublicSectionSwr } from '@/hooks/usePublicSectionSwr';
 
-const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
+const fetcher = (url: string) => api.get(url).then((r) => r.data);
 const postsFetcher = (url: string) => api.get(url).then((r) => r.data.data);
 
 /** Data fetching beranda publik — profil + section below-fold */
 export function usePublicHomeData() {
-  const profile = usePublicSectionSwr<PublicProfile | null>('/public-site/profile', fetcher);
+  const profile = usePublicSectionSwr<PublicProfile | null>('/public-site/profile', (url) =>
+    api.get(url).then((r) => r.data.data)
+  );
 
   const [loadBelowFold, setLoadBelowFold] = useState(false);
   useEffect(() => {
@@ -34,12 +36,13 @@ export function usePublicHomeData() {
 
   const programs = usePublicSectionSwr<PublicProgram[]>(
     belowFoldKey ? '/public-site/programs' : null,
-    fetcher
+    (url) => api.get(url).then((r) => r.data.data)
   );
-  const structure = usePublicSectionSwr<PublicStructureGroup[]>(
-    belowFoldKey ? '/public-site/structure' : null,
-    fetcher
-  );
+  const structure = usePublicSectionSwr<{
+    data: PublicStructureGroup[];
+    cabinet: any;
+    allCabinets: any[];
+  }>(belowFoldKey ? '/public-site/structure' : null, fetcher);
   const latest = usePublicSectionSwr<PublicPostItemsResponse>(
     belowFoldKey ? '/public-site/posts?type=BERITA&page=1&pageSize=3' : null,
     postsFetcher

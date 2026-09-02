@@ -95,6 +95,7 @@ export const sessionCheckInSelect = {
   check_in_close_at: true,
   late_threshold_minutes: true,
   require_checkout: true,
+  require_photo_proof: true,
   session_classes: { select: { class_id: true } },
   location: { select: locationCheckInSelect },
 } as const;

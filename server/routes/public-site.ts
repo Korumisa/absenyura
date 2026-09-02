@@ -13,6 +13,7 @@ import {
   upsertAdminProfile,
   getAdminStructure,
   replaceAdminStructure,
+  setActiveCabinet,
   listAdminPrograms,
   createAdminProgram,
   updateAdminProgram,
@@ -56,6 +57,7 @@ router.get('/admin/profile', getPublicProfile);
 router.put('/admin/profile', upsertAdminProfile);
 router.get('/admin/structure', getAdminStructure);
 router.put('/admin/structure', replaceAdminStructure);
+router.put('/admin/structure/active/:id', setActiveCabinet);
 
 router.get('/admin/programs', listAdminPrograms);
 router.post('/admin/programs', createAdminProgram);
@@ -85,4 +87,3 @@ router.put('/admin/recruitments/:id', updateAdminRecruitment);
 router.delete('/admin/recruitments/:id', deleteAdminRecruitment);
 
 export default router;
-
