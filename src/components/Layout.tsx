@@ -30,6 +30,7 @@ import { ThemeToggle } from './ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { AdminRouteTransition } from '@/components/admin/AdminRouteTransition';
 import PageSkeleton from '@/components/PageSkeleton';
+import { InnerRouteErrorBoundary } from '@/components/ErrorBoundary';
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -270,7 +271,9 @@ export default function Layout() {
           className="min-h-0 flex-1 overflow-y-auto bg-sidebar pb-6 [padding-bottom:max(1.5rem,env(safe-area-inset-bottom))]"
         >
           <AdminRouteTransition>
-            <Outlet />
+            <InnerRouteErrorBoundary>
+              <Outlet />
+            </InnerRouteErrorBoundary>
           </AdminRouteTransition>
         </main>
       </div>

@@ -1,9 +1,13 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
+
+export type BreadcrumbItem = { label: string; href?: string; current?: boolean };
 
 export default function AdminPageShell({
   title,
   description,
   breadcrumb,
+  breadcrumbItems,
   actions,
   icon,
   variant = 'plain',
@@ -13,6 +17,7 @@ export default function AdminPageShell({
   title: string;
   description?: React.ReactNode;
   breadcrumb?: React.ReactNode;
+  breadcrumbItems?: BreadcrumbItem[];
   actions?: React.ReactNode;
   icon?: React.ReactNode;
   variant?: 'hero' | 'plain';
@@ -29,7 +34,29 @@ export default function AdminPageShell({
             </div>
           ) : null}
           <div className="space-y-1">
-            {breadcrumb ? <div className="pt-0.5">{breadcrumb}</div> : null}
+            {breadcrumbItems ? (
+              <div className="pt-0.5 flex flex-wrap items-center gap-1.5 text-sm">
+                {breadcrumbItems.map((item, idx) => (
+                  <React.Fragment key={item.label + idx}>
+                    {idx > 0 && <span className="text-muted-foreground/50">/</span>}
+                    {item.current ? (
+                      <span className="font-semibold text-foreground">{item.label}</span>
+                    ) : item.href ? (
+                      <Link
+                        to={item.href}
+                        className="text-muted-foreground hover:text-foreground hover:underline underline-offset-2 transition-colors"
+                      >
+                        {item.label}
+                      </Link>
+                    ) : (
+                      <span className="text-muted-foreground">{item.label}</span>
+                    )}
+                  </React.Fragment>
+                ))}
+              </div>
+            ) : breadcrumb ? (
+              <div className="pt-0.5">{breadcrumb}</div>
+            ) : null}
             <h1 className="text-2xl font-bold text-foreground">{title}</h1>
             {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
           </div>
@@ -51,7 +78,29 @@ export default function AdminPageShell({
               </div>
             ) : null}
             <div className="min-w-0">
-              {breadcrumb ? <div className="pb-1">{breadcrumb}</div> : null}
+              {breadcrumbItems ? (
+                <div className="pb-1 flex flex-wrap items-center gap-1.5 text-sm">
+                  {breadcrumbItems.map((item, idx) => (
+                    <React.Fragment key={item.label + idx}>
+                      {idx > 0 && <span className="text-muted-foreground/50">/</span>}
+                      {item.current ? (
+                        <span className="font-semibold text-foreground">{item.label}</span>
+                      ) : item.href ? (
+                        <Link
+                          to={item.href}
+                          className="text-muted-foreground hover:text-foreground hover:underline underline-offset-2 transition-colors"
+                        >
+                          {item.label}
+                        </Link>
+                      ) : (
+                        <span className="text-muted-foreground">{item.label}</span>
+                      )}
+                    </React.Fragment>
+                  ))}
+                </div>
+              ) : breadcrumb ? (
+                <div className="pb-1">{breadcrumb}</div>
+              ) : null}
               <h1 className="text-2xl font-bold tracking-tight text-foreground">{title}</h1>
               {description ? (
                 <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{description}</p>
@@ -75,7 +124,29 @@ export default function AdminPageShell({
               </div>
             ) : null}
             <div className="min-w-0">
-              {breadcrumb ? <div className="pb-1">{breadcrumb}</div> : null}
+              {breadcrumbItems ? (
+                <div className="pb-1 flex flex-wrap items-center gap-1.5 text-sm">
+                  {breadcrumbItems.map((item, idx) => (
+                    <React.Fragment key={item.label + idx}>
+                      {idx > 0 && <span className="text-muted-foreground/50">/</span>}
+                      {item.current ? (
+                        <span className="font-semibold text-foreground">{item.label}</span>
+                      ) : item.href ? (
+                        <Link
+                          to={item.href}
+                          className="text-muted-foreground hover:text-foreground hover:underline underline-offset-2 transition-colors"
+                        >
+                          {item.label}
+                        </Link>
+                      ) : (
+                        <span className="text-muted-foreground">{item.label}</span>
+                      )}
+                    </React.Fragment>
+                  ))}
+                </div>
+              ) : breadcrumb ? (
+                <div className="pb-1">{breadcrumb}</div>
+              ) : null}
               <h1 className="text-2xl font-bold text-foreground">{title}</h1>
               {description ? (
                 <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{description}</p>

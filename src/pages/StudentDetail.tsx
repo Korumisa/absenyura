@@ -9,7 +9,7 @@ import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { useFacultyDirectory } from '@/hooks/useFacultyDirectory';
 import AdminPageShell from '@/components/AdminPageShell';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
-import { AdminBreadcrumbs } from '@/components/admin/AdminBreadcrumbs';
+
 import ActionLoadingOverlay from '@/components/ActionLoadingOverlay';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import { Button } from '@/components/ui/button';
@@ -44,7 +44,8 @@ type ProfileForm = {
 };
 
 export default function StudentDetail() {
-  const { studentId = '' } = useParams<{ studentId: string }>();
+  const params = useParams<{ id?: string; studentId?: string }>();
+  const studentId = params.studentId || params.id || '';
   const navigate = useNavigate();
   const location = useLocation();
   const { user: currentUser } = useAuthStore();
@@ -82,6 +83,12 @@ export default function StudentDetail() {
   const [isResetDeviceOpen, setIsResetDeviceOpen] = useState(false);
 
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
+  const userDetailFetcher = (url: string) => api.get(url).then((res) => res.data.data);
+  const { data: userDetail } = useSWR<{ name: string; id?: string }>(
+    studentId ? `/users/${studentId}` : null,
+    userDetailFetcher,
+    { revalidateOnFocus: false }
+  );
 
   const profileSwr = useSWR<AppUser>(studentId ? `/users/${studentId}` : null, fetcher, {
     revalidateOnFocus: false,
@@ -226,17 +233,11 @@ export default function StudentDetail() {
       <AdminPageShell
         title="Biodata Mahasiswa"
         description="Perbarui data akun mahasiswa langsung dari halaman ini."
-        breadcrumb={
-          <AdminBreadcrumbs
-            items={[
-              { label: 'Kelas', href: '/classes' },
-              ...(classIdFromState
-                ? [{ label: 'Detail Kelas', href: `/classes/${classIdFromState}` }]
-                : []),
-              { label: profile?.name ?? 'Biodata Mahasiswa' },
-            ]}
-          />
-        }
+        breadcrumbItems={[
+          { label: 'Dashboard', href: '/dashboard' },
+          { label: 'Pengguna', href: '/users' },
+          { label: userDetail?.name || 'Memuat...', current: true },
+        ]}
         variant="plain"
         icon={<User className="size-5" />}
         actions={

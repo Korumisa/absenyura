@@ -602,3 +602,85 @@ export const reviewExcuse = async (req: AuthRequest, res: Response): Promise<voi
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 };
+
+export const getMyExcuses = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const user = req.user!;
+    const excuses = await queryWithSemesterFallback(
+      () =>
+        prisma.excuseRequest.findMany({
+          where: { user_id: user.id },
+          include: {
+            session: {
+              select: {
+                title: true,
+                session_start: true,
+                class: { select: { name: true, semester: true } },
+                session_classes: {
+                  select: { class: { select: { id: true, name: true, semester: true } } },
+                },
+              },
+            },
+            reviewer: { select: { name: true } },
+          },
+          orderBy: { created_at: 'desc' },
+        }),
+      () =>
+        prisma.excuseRequest.findMany({
+          where: { user_id: user.id },
+          include: {
+            session: {
+              select: {
+                title: true,
+                session_start: true,
+                class: { select: { name: true } },
+                session_classes: { select: { class: { select: { id: true, name: true } } } },
+              },
+            },
+            reviewer: { select: { name: true } },
+          },
+          orderBy: { created_at: 'desc' },
+        })
+    );
+    res.status(200).json({ success: true, data: excuses });
+  } catch (error) {
+    console.error('Error fetching my excuses:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+};
+
+export const deleteExcuse = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const user = req.user!;
+
+    const excuse = await prisma.excuseRequest.findUnique({ where: { id } });
+    if (!excuse) {
+      res.status(404).json({ success: false, error: 'Pengajuan tidak ditemukan' });
+      return;
+    }
+
+    if (excuse.user_id !== user.id) {
+      sendForbidden(res, {
+        error_code: 'NOT_EXCUSE_CREATOR',
+        message: 'Anda tidak dapat membatalkan pengajuan orang lain.',
+      });
+      return;
+    }
+
+    if (excuse.status !== 'PENDING') {
+      res.status(403).json({
+        success: false,
+        error_code: 'EXCUSE_NOT_PENDING',
+        error: 'Hanya pengajuan PENDING yang dapat dibatalkan.',
+      });
+      return;
+    }
+
+    await prisma.excuseRequest.delete({ where: { id } });
+    res.status(200).json({ success: true, message: 'Pengajuan dibatalkan.' });
+  } catch (error) {
+    console.error('Error deleting excuse:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+};

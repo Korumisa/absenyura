@@ -95,65 +95,68 @@ export const getDashboardStats = async (req: AuthRequest, res: Response): Promis
         },
       });
     } else {
-      // Admin / Super Admin stats
-      const totalUsers = await prisma.user.count({
-        where:
-          user.role === 'ADMIN'
-            ? {
-                role: 'USER',
-                enrollments: {
-                  some: {
-                    class: { lecturer_id: user.id },
-                  },
-                },
-              }
-            : { role: 'USER' },
-      });
-      const totalSessions = await prisma.session.count(
-        user.role === 'ADMIN' ? { where: adminSessionScopeWhere(user.id) } : undefined
-      );
+      const userId = user.id as string;
+      const isAdmin = user.role === 'ADMIN';
 
-      // Get attendance count for today
       const { startUtc: todayStartUtc, endUtc: todayEndUtc } = getWibRangeUtc({
         rangeDays: 1,
         now: new Date(),
       });
-      const todayGrouped = await prisma.attendance.groupBy({
-        by: ['status'],
-        where: {
-          check_in_time: { gte: todayStartUtc, lt: todayEndUtc },
-          session: user.role === 'ADMIN' ? adminSessionScopeWhere(user.id) : undefined,
-        },
-        _count: { _all: true },
-      });
+      const { startUtc, endUtc } = getWibRangeUtc({ rangeDays, now: new Date() });
+
+      const lecturerClassRowsPromise = isAdmin
+        ? prisma.class.findMany({ where: { lecturer_id: userId }, select: { id: true } })
+        : Promise.resolve([] as { id: string }[]);
+
+      const [totalUsers, totalSessions, todayGrouped, recentSessions, lecturerClassRows] =
+        await Promise.all([
+          prisma.user.count({
+            where: isAdmin
+              ? { role: 'USER', enrollments: { some: { class: { lecturer_id: userId } } } }
+              : { role: 'USER' },
+          }),
+          prisma.session.count(isAdmin ? { where: adminSessionScopeWhere(userId) } : undefined),
+          prisma.attendance.groupBy({
+            by: ['status'],
+            where: {
+              check_in_time: { gte: todayStartUtc, lt: todayEndUtc },
+              session: isAdmin ? adminSessionScopeWhere(userId) : undefined,
+            },
+            _count: { _all: true },
+          }),
+          prisma.session.findMany({
+            where: isAdmin ? adminSessionScopeWhere(userId) : undefined,
+            orderBy: { created_at: 'desc' },
+            take: 5,
+            select: {
+              ...sessionApiSelect,
+              _count: { select: { attendances: true } },
+              location: { select: { name: true } },
+              class: { select: { id: true, name: true } },
+              session_classes: { select: { class: { select: { id: true, name: true } } } },
+            },
+          }),
+          lecturerClassRowsPromise,
+        ]);
+
+      const lecturerClassIds = (lecturerClassRows ?? []).map((x) => x.id);
 
       const todayCounts = todayGrouped.reduce<Record<string, number>>((acc, row) => {
         acc[row.status] = row._count._all;
         return acc;
       }, {});
-
       const present = todayCounts.PRESENT ?? 0;
       const late = todayCounts.LATE ?? 0;
 
-      // Recent sessions
-      const recentSessions = await prisma.session.findMany({
-        where: user.role === 'ADMIN' ? adminSessionScopeWhere(user.id) : undefined,
-        orderBy: { created_at: 'desc' },
-        take: 5,
-        select: {
-          ...sessionApiSelect,
-          _count: { select: { attendances: true } },
-          location: { select: { name: true } },
-          class: { select: { id: true, name: true } },
-          session_classes: {
-            select: {
-              class: { select: { id: true, name: true } },
-            },
-          },
-        },
-      });
-
-      const { startUtc, endUtc } = getWibRangeUtc({ rangeDays: rangeDays, now: new Date() });
+      const emptyClause = Prisma.sql`FALSE`;
+      const classIdInClause =
+        lecturerClassIds.length === 0
+          ? emptyClause
+          : Prisma.sql`s.class_id IN (${Prisma.join(lecturerClassIds)})`;
+      const sessionClassInClause =
+        lecturerClassIds.length === 0
+          ? emptyClause
+          : Prisma.sql`sc.class_id IN (${Prisma.join(lecturerClassIds)})`;
 
       const rows = await prisma.$queryRaw<ChartRow[]>(Prisma.sql`
         SELECT
@@ -165,18 +168,17 @@ export const getDashboardStats = async (req: AuthRequest, res: Response): Promis
           sum(CASE WHEN a.status = 'SICK' THEN 1 ELSE 0 END)::int AS sick,
           sum(CASE WHEN a.status = 'EXCUSED' THEN 1 ELSE 0 END)::int AS excused
         FROM "Attendance" a
-        ${user.role === 'ADMIN' ? Prisma.sql`JOIN "Session" s ON s.id = a.session_id` : Prisma.empty}
+        ${isAdmin ? Prisma.sql`JOIN "Session" s ON s.id = a.session_id` : Prisma.empty}
         WHERE a.check_in_time >= ${startUtc}
           AND a.check_in_time < ${endUtc}
           ${
-            user.role === 'ADMIN'
+            isAdmin
               ? Prisma.sql`AND (
-                  EXISTS (SELECT 1 FROM "Class" c WHERE c.id = s.class_id AND c.lecturer_id = ${user.id})
-                  OR EXISTS (
-                    SELECT 1
+                  ${classIdInClause}
+                  OR s.id IN (
+                    SELECT sc.session_id
                     FROM "SessionClass" sc
-                    JOIN "Class" c2 ON c2.id = sc.class_id
-                    WHERE sc.session_id = s.id AND c2.lecturer_id = ${user.id}
+                    WHERE ${sessionClassInClause}
                   )
                 )`
               : Prisma.empty

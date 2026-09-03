@@ -16,6 +16,7 @@ import {
   assertAdminSessionScope,
 } from '../utils/sessionAccess.js';
 import { sendForbidden } from '../utils/errorResponse.js';
+import { sendValidationError } from '../utils/sendValidationError.js';
 import { isMissingSemesterColumn, queryWithSemesterFallback } from '../utils/prismaErrors.js';
 
 const VALID_QR_MODES = new Set(['NONE', 'STATIC', 'DYNAMIC']);
@@ -208,26 +209,38 @@ export const createSession = async (req: AuthRequest, res: Response): Promise<vo
     }
 
     if (!title || !String(title).trim()) {
-      sendSessionTimeError(res, {
-        field: 'title',
-        message: 'Judul sesi wajib diisi.',
+      sendValidationError(res, {
+        fieldErrors: { title: 'Judul sesi wajib diisi.' },
         error_code: 'MISSING_TITLE',
+        message: 'Judul sesi wajib diisi.',
       });
       return;
     }
     if (!location_id) {
-      sendSessionTimeError(res, {
-        field: 'location_id',
-        message: 'Lokasi sesi wajib dipilih.',
+      sendValidationError(res, {
+        fieldErrors: { location_id: 'Lokasi sesi wajib dipilih.' },
         error_code: 'MISSING_LOCATION',
+        message: 'Lokasi sesi wajib dipilih.',
       });
       return;
     }
     if (!isValidQrMode(qr_mode)) {
-      sendSessionTimeError(res, {
-        field: 'qr_mode',
-        message: 'Mode QR tidak valid.',
+      sendValidationError(res, {
+        fieldErrors: { qr_mode: 'Mode QR tidak valid.' },
         error_code: 'INVALID_QR_MODE',
+        message: 'Mode QR tidak valid.',
+      });
+      return;
+    }
+    // === P2-4 XOR integrity: multi-class tidak boleh punya class_id tunggal
+    if (uniqueClassIds.length >= 2 && class_id) {
+      sendValidationError(res, {
+        fieldErrors: {
+          class_ids:
+            'Jika memilih lebih dari 1 kelas, sesi tidak boleh punya class_id langsung tunggal.',
+        },
+        error_code: 'MULTI_CLASS_CONFLICT',
+        message: 'Multi-class conflict: class_id hanya boleh diisi jika tepat 0 atau 1 kelas.',
       });
       return;
     }
@@ -380,6 +393,18 @@ export const updateSession = async (req: AuthRequest, res: Response): Promise<vo
         field: 'status',
         message: 'Status sesi tidak valid.',
         error_code: 'INVALID_SESSION_STATUS',
+      });
+      return;
+    }
+    // === P2-4 XOR integrity: multi-class tidak boleh punya class_id tunggal
+    if (uniqueClassIds.length >= 2 && class_id) {
+      sendValidationError(res, {
+        fieldErrors: {
+          class_ids:
+            'Jika memilih lebih dari 1 kelas, sesi tidak boleh punya class_id langsung tunggal.',
+        },
+        error_code: 'MULTI_CLASS_CONFLICT',
+        message: 'Multi-class conflict: class_id hanya boleh diisi jika tepat 0 atau 1 kelas.',
       });
       return;
     }

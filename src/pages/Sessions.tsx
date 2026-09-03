@@ -325,6 +325,8 @@ export default function Sessions() {
       errors.late_threshold_minutes
     ) {
       setWizardStep(3);
+    } else if (errors.class_ids) {
+      setWizardStep(4);
     }
   };
 
@@ -1297,6 +1299,9 @@ export default function Sessions() {
                           </>
                         )}
                       </FormField>
+                      {formErrors.class_ids ? (
+                        <p className="pt-1 text-sm text-destructive">{formErrors.class_ids}</p>
+                      ) : null}
                     </div>
                   )}
                 </AdminContentTransition>

@@ -17,21 +17,16 @@ export const runCronJob = async () => {
 
   try {
     const resolveExpectedUserIds = async (session: any) => {
-      if (session.class_id) {
-        const enrollments = await prisma.classEnrollment.findMany({
-          where: { class_id: session.class_id },
-          select: { student_id: true },
-        });
-        return enrollments.map((e) => e.student_id);
-      }
+      const fromLegacyClassId: string[] = session.class_id ? [String(session.class_id)] : [];
       const linked = await prisma.sessionClass.findMany({
         where: { session_id: session.id },
         select: { class_id: true },
       });
-      const classIds = linked.map((x) => x.class_id);
-      if (classIds.length > 0) {
+      const fromPivot = linked.flatMap((x) => (x.class_id ? [String(x.class_id)] : []));
+      const mergedClassIds = Array.from(new Set([...fromLegacyClassId, ...fromPivot]));
+      if (mergedClassIds.length > 0) {
         const enrollments = await prisma.classEnrollment.findMany({
-          where: { class_id: { in: classIds } },
+          where: { class_id: { in: mergedClassIds } },
           select: { student_id: true },
         });
         return Array.from(new Set(enrollments.map((e) => e.student_id)));
@@ -185,7 +180,12 @@ export const runCronJob = async () => {
           where: { session_id: session.id },
           select: { class_id: true },
         });
-        const classIds = session.class_id ? [session.class_id] : linked.map((x) => x.class_id);
+        const classIds = Array.from(
+          new Set([
+            ...(session.class_id ? [session.class_id] : []),
+            ...linked.flatMap((x) => (x.class_id ? [x.class_id] : [])),
+          ])
+        );
 
         if (classIds.length > 0 && absentUserIds.length > 0) {
           const notificationsToCreate: any[] = [];
@@ -227,9 +227,14 @@ export const runCronJob = async () => {
 
           const attendanceCounts: Record<string, Record<string, number>> = {};
           for (const att of userClassAttendances) {
-            const attClassIds = att.session.class_id
-              ? [att.session.class_id]
-              : att.session.session_classes.map((x: any) => x.class_id);
+            const attClassIds = Array.from(
+              new Set([
+                ...(att.session.class_id ? [att.session.class_id] : []),
+                ...(att.session.session_classes ?? []).flatMap((x: any) =>
+                  x?.class_id ? [x.class_id] : []
+                ),
+              ])
+            );
             for (const cId of attClassIds) {
               if (classIds.includes(cId)) {
                 if (!attendanceCounts[att.user_id]) attendanceCounts[att.user_id] = {};

@@ -114,25 +114,28 @@ export default function Reports() {
 
   const [page, setPage] = useState(1);
 
-  const queryParams = new URLSearchParams({
-    page: page.toString(),
-    limit: '50',
-  });
-  if (sessionId && sessionId !== 'ALL') {
-    queryParams.append('sessionId', sessionId);
-  }
-  if (startDate) {
-    queryParams.append('startDate', startDate);
-  }
-  if (endDate) {
-    queryParams.append('endDate', endDate);
-  }
-  if (statusFilter !== 'ALL') {
-    queryParams.append('status', statusFilter);
-  }
-  if (searchTerm.trim()) {
-    queryParams.append('search', searchTerm.trim());
-  }
+  const queryParams = useMemo(() => {
+    const qp = new URLSearchParams({
+      page: page.toString(),
+      limit: '50',
+    });
+    if (sessionId && sessionId !== 'ALL') {
+      qp.append('sessionId', sessionId);
+    }
+    if (startDate) {
+      qp.append('startDate', startDate);
+    }
+    if (endDate) {
+      qp.append('endDate', endDate);
+    }
+    if (statusFilter !== 'ALL') {
+      qp.append('status', statusFilter);
+    }
+    if (searchTerm.trim()) {
+      qp.append('search', searchTerm.trim());
+    }
+    return qp;
+  }, [page, statusFilter, searchTerm, sessionId, startDate, endDate]);
 
   const swr = useSWR(`/reports?${queryParams.toString()}`, fetcher, { revalidateOnFocus: false });
   const { isPending: loading, isError, showSlowLoadingHint, retry } = useSwrPageState(swr);
@@ -155,25 +158,7 @@ export default function Reports() {
     setPage(1);
   }, [startDate, endDate, sessionId, statusFilter, searchTerm]);
 
-  const filteredReports = useMemo(() => {
-    const reports: Report[] = Array.isArray(data?.data)
-      ? (data.data.filter(Boolean) as Report[])
-      : [];
-    const q = String(searchTerm ?? '').toLowerCase();
-    return reports
-      .filter((r): r is Report => Boolean(r && (r as any).id))
-      .filter((r) => {
-        const matchStatus = statusFilter === 'ALL' || r.status === statusFilter;
-        const userName = String((r as any).user_name ?? '');
-        const sessionTitle = String((r as any).session_title ?? '');
-        const nim = String((r as any).nim_nip ?? '');
-        const matchSearch =
-          userName.toLowerCase().includes(q) ||
-          sessionTitle.toLowerCase().includes(q) ||
-          nim.toLowerCase().includes(q);
-        return matchStatus && matchSearch;
-      });
-  }, [data, statusFilter, searchTerm]);
+  const filteredReports: Report[] = (data?.data ?? []) as Report[];
 
   const hasFilters =
     Boolean(searchTerm.trim()) ||

@@ -95,6 +95,7 @@ model Session {
   title       String
   description String?
 
+  /// TODO: drop class_id column after full pivot adoption (2026-Q4 migration id session-remove-class-id)
   class_id String?
   class    Class?  @relation(fields: [class_id], references: [id], onDelete: Cascade)
 

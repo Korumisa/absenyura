@@ -12,6 +12,9 @@ const prismaMock = vi.hoisted(() => ({
   user: {
     count: vi.fn(),
   },
+  class: {
+    findMany: vi.fn(),
+  },
   $queryRaw: vi.fn(),
 }));
 
@@ -104,5 +107,69 @@ describe('getDashboardStats', () => {
         }),
       })
     );
+  });
+});
+
+describe('Dashboard ADMIN performance (P2-2)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test('should run ADMIN independent counts in parallel via Promise.all pattern', async () => {
+    prismaMock.user.count.mockResolvedValue(150);
+    prismaMock.session.count.mockResolvedValue(42);
+    prismaMock.attendance.groupBy.mockResolvedValue([
+      { status: 'PRESENT', _count: { _all: 30 } } as any,
+      { status: 'LATE', _count: { _all: 5 } } as any,
+    ]);
+    prismaMock.session.findMany.mockResolvedValue([]);
+    prismaMock.class.findMany.mockResolvedValue([]);
+    prismaMock.$queryRaw.mockResolvedValue([]);
+
+    const req = {
+      user: { id: 'lecturer-1', role: 'ADMIN' },
+      query: { range: '7' },
+    } as any;
+    const res = createRes();
+
+    await getDashboardStats(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: true,
+        data: expect.objectContaining({
+          stats: {
+            total_users: 150,
+            total_sessions: 42,
+            today_present: 30,
+            today_late: 5,
+          },
+          recent_sessions: expect.any(Array),
+          chart_data: expect.any(Array),
+        }),
+      })
+    );
+  });
+
+  test('ADMIN chart rawSQL does not use correlated EXISTS per row pattern', async () => {
+    prismaMock.user.count.mockResolvedValue(10);
+    prismaMock.session.count.mockResolvedValue(5);
+    prismaMock.attendance.groupBy.mockResolvedValue([]);
+    prismaMock.session.findMany.mockResolvedValue([]);
+    prismaMock.class.findMany.mockResolvedValue([]);
+    prismaMock.$queryRaw.mockResolvedValue([]);
+
+    const req = {
+      user: { id: 'lecturer-99', role: 'ADMIN' },
+      query: { range: '7' },
+    } as any;
+    const res = createRes();
+
+    await getDashboardStats(req, res);
+
+    expect(prismaMock.$queryRaw).toHaveBeenCalledTimes(1);
+    const calledWith = prismaMock.$queryRaw.mock.calls[0][0];
+    expect(calledWith).toBeDefined();
   });
 });

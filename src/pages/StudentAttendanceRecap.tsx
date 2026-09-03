@@ -4,7 +4,7 @@ import useSWR from 'swr';
 import { FileText, Search, UserCircle2 } from 'lucide-react';
 import api from '@/services/api';
 import AdminPageShell from '@/components/AdminPageShell';
-import { AdminBreadcrumbs } from '@/components/admin/AdminBreadcrumbs';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -66,7 +66,8 @@ const safeFormat = (value: unknown, fmt: string) => {
 };
 
 export default function StudentAttendanceRecap() {
-  const { studentId = '' } = useParams<{ studentId: string }>();
+  const params = useParams<{ id?: string; studentId?: string }>();
+  const studentId = params.studentId || params.id || '';
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -85,6 +86,12 @@ export default function StudentAttendanceRecap() {
   useEffect(() => {
     setPage(1);
   }, [startDate, endDate, classIdFromState, pageSize]);
+
+  const { data: userDetail } = useSWR<{ name: string }>(
+    studentId ? `/users/${studentId}` : null,
+    profileFetcher,
+    { revalidateOnFocus: false }
+  );
 
   const profileSwr = useSWR<User>(studentId ? `/users/${studentId}` : null, profileFetcher, {
     revalidateOnFocus: false,
@@ -178,18 +185,12 @@ export default function StudentAttendanceRecap() {
       description="Lihat ringkasan dan detail absensi mahasiswa sesuai scope akses Anda."
       variant="plain"
       icon={<FileText className="size-5" />}
-      breadcrumb={
-        <AdminBreadcrumbs
-          items={[
-            { label: 'Kelas', href: '/classes' },
-            ...(classIdFromState
-              ? [{ label: 'Detail Kelas', href: `/classes/${classIdFromState}` }]
-              : []),
-            { label: 'Mahasiswa', href: backToStudent || `/students/${studentId}` },
-            { label: 'Rekap Kehadiran' },
-          ]}
-        />
-      }
+      breadcrumbItems={[
+        { label: 'Dashboard', href: '/dashboard' },
+        { label: 'Pengguna', href: '/users' },
+        { label: userDetail?.name || 'Memuat...', href: `/users/${studentId}` },
+        { label: 'Rekap Kehadiran', current: true },
+      ]}
     >
       {isError ? (
         <ErrorWithRetry title="Gagal memuat rekap" error={swr.error} onRetry={retry} />

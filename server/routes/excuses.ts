@@ -4,6 +4,8 @@ import {
   createExcuse,
   reviewExcuse,
   getExcuseChallenge,
+  getMyExcuses,
+  deleteExcuse,
 } from '../controllers/excuse.controller.js';
 import { authenticate, authorize } from '../middlewares/auth.middleware.js';
 import { idempotency } from '../middlewares/idempotency.js';
@@ -15,8 +17,15 @@ const router = Router();
 
 router.use(authenticate);
 
+router.get('/me', getMyExcuses);
 router.get('/', getExcuses);
 router.get('/challenge', authorize(['USER']), getExcuseChallenge);
+router.delete(
+  '/:id',
+  authorize(['USER', 'ADMIN', 'SUPER_ADMIN']),
+  validateParams(ExcuseParams),
+  deleteExcuse
+);
 router.post(
   '/',
   authorize(['USER']),

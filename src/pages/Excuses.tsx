@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import api from '@/services/api';
 import useSWR from 'swr';
 import { useAuthStore } from '@/stores/authStore';
@@ -496,9 +497,16 @@ export default function Excuses() {
       <AdminPageShell
         title="Pengajuan Izin & Sakit"
         description={
-          currentUser?.role === 'USER'
-            ? 'Ajukan izin atau sakit untuk sesi yang Anda lewatkan.'
-            : 'Tinjau dan setujui pengajuan mahasiswa.'
+          currentUser?.role === 'USER' ? (
+            <>
+              Ajukan izin atau sakit untuk sesi yang Anda lewatkan.{' '}
+              <Link to="/excuses/me" className="text-brand hover:underline underline-offset-2">
+                Lihat semua pengajuan saya →
+              </Link>
+            </>
+          ) : (
+            'Kelola dan review pengajuan izin mahasiswa.'
+          )
         }
         variant="plain"
         icon={<FileText className="size-5" />}
