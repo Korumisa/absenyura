@@ -27,6 +27,7 @@ import { CmsPublishTabs } from '@/components/ui/CmsPublishTabs';
 import { CmsEditorLayout } from '@/components/cms/CmsEditorLayout';
 import { CmsListToolbar } from '@/components/cms/CmsListToolbar';
 import { AdminContentTransition } from '@/components/admin/AdminContentTransition';
+import { useFormDirtyGuard } from '@/hooks/useFormDirtyGuard';
 
 type PageTab = 'form' | 'list';
 const PAGE_TABS: readonly CmsTabItem<PageTab>[] = [
@@ -56,7 +57,28 @@ export default function PublicSitePrograms() {
   }>({});
   const [dateStart, setDateStart] = useState('');
   const [dateEnd, setDateEnd] = useState('');
-  const resetForm = () => setForm({});
+  const [dirty, setDirty] = useState(false);
+  const { confirmIfDirty } = useFormDirtyGuard(dirty);
+
+  const setFormDirty = useMemo(
+    () => (updater: React.SetStateAction<typeof form>) => {
+      setDirty(true);
+      setForm(updater);
+    },
+    []
+  );
+  const setDateStartDirty = (v: string) => {
+    setDirty(true);
+    setDateStart(v);
+  };
+  const setDateEndDirty = (v: string) => {
+    setDirty(true);
+    setDateEnd(v);
+  };
+  const resetForm = () => {
+    setForm({});
+    setDirty(false);
+  };
   const resetDatesFromRange = (range: string) => {
     const raw = String(range ?? '').trim();
     if (!raw) {
@@ -152,7 +174,10 @@ export default function PublicSitePrograms() {
       <CmsTabNav<PageTab>
         tabs={PAGE_TABS}
         value={pageTab}
-        onChange={setPageTab}
+        onChange={async (next) => {
+          const ok = await confirmIfDirty();
+          if (ok) setPageTab(next);
+        }}
         ariaLabel="Mode program kerja"
       />
 
@@ -181,7 +206,7 @@ export default function PublicSitePrograms() {
                   <Label>Judul</Label>
                   <Input
                     value={form.title ?? ''}
-                    onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
+                    onChange={(e) => setFormDirty((p) => ({ ...p, title: e.target.value }))}
                   />
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -198,7 +223,7 @@ export default function PublicSitePrograms() {
                     <Input
                       type="date"
                       value={dateEnd}
-                      onChange={(e) => setDateEnd(e.target.value)}
+                      onChange={(e) => setDateEndDirty(e.target.value)}
                     />
                   </div>
                 </div>
@@ -206,7 +231,7 @@ export default function PublicSitePrograms() {
                   <Label>Divisi</Label>
                   <Input
                     value={form.division ?? ''}
-                    onChange={(e) => setForm((p) => ({ ...p, division: e.target.value }))}
+                    onChange={(e) => setFormDirty((p) => ({ ...p, division: e.target.value }))}
                     placeholder="Divisi yang bertanggung jawab"
                   />
                 </div>
@@ -214,7 +239,7 @@ export default function PublicSitePrograms() {
                   <Label>Sumber Dana</Label>
                   <Input
                     value={form.fundingSource ?? ''}
-                    onChange={(e) => setForm((p) => ({ ...p, fundingSource: e.target.value }))}
+                    onChange={(e) => setFormDirty((p) => ({ ...p, fundingSource: e.target.value }))}
                     placeholder="Sumber dana program"
                   />
                 </div>
@@ -222,7 +247,7 @@ export default function PublicSitePrograms() {
                   <Label>Lokasi</Label>
                   <Input
                     value={form.location ?? ''}
-                    onChange={(e) => setForm((p) => ({ ...p, location: e.target.value }))}
+                    onChange={(e) => setFormDirty((p) => ({ ...p, location: e.target.value }))}
                     placeholder="Lokasi program"
                   />
                 </div>
@@ -230,7 +255,7 @@ export default function PublicSitePrograms() {
                   <Label>Target</Label>
                   <Input
                     value={form.target ?? ''}
-                    onChange={(e) => setForm((p) => ({ ...p, target: e.target.value }))}
+                    onChange={(e) => setFormDirty((p) => ({ ...p, target: e.target.value }))}
                     placeholder="Target program"
                   />
                 </div>
@@ -238,7 +263,7 @@ export default function PublicSitePrograms() {
                   <Label>Status publikasi</Label>
                   <CmsPublishTabs
                     published={form.isPublished ?? false}
-                    onChange={(v) => setForm((p) => ({ ...p, isPublished: v }))}
+                    onChange={(v) => setFormDirty((p) => ({ ...p, isPublished: v }))}
                   />
                 </div>
                 <div className="space-y-2">
@@ -246,7 +271,7 @@ export default function PublicSitePrograms() {
                   <Textarea
                     rows={5}
                     value={form.rationale ?? form.description ?? ''}
-                    onChange={(e) => setForm((p) => ({ ...p, rationale: e.target.value }))}
+                    onChange={(e) => setFormDirty((p) => ({ ...p, rationale: e.target.value }))}
                   />
                 </div>
                 <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
@@ -254,7 +279,10 @@ export default function PublicSitePrograms() {
                     type="button"
                     variant="outline"
                     className="min-h-11"
-                    onClick={() => setPageTab('list')}
+                    onClick={async () => {
+                      const ok = await confirmIfDirty();
+                      if (ok) setPageTab('list');
+                    }}
                   >
                     Kembali ke daftar
                   </Button>
@@ -277,7 +305,9 @@ export default function PublicSitePrograms() {
             <CmsListToolbar
               count={programs.length}
               countLabel="program"
-              onCreate={() => {
+              onCreate={async () => {
+                const ok = await confirmIfDirty();
+                if (!ok) return;
                 resetForm();
                 setDateStart('');
                 setDateEnd('');
@@ -298,7 +328,9 @@ export default function PublicSitePrograms() {
                       size="sm"
                       className="min-h-11 flex-1"
                       type="button"
-                      onClick={() => {
+                      onClick={async () => {
+                        const ok = await confirmIfDirty();
+                        if (!ok) return;
                         setForm({
                           id: p.id,
                           title: p.title,
@@ -311,6 +343,7 @@ export default function PublicSitePrograms() {
                           rationale: p.rationale ?? p.description ?? '',
                         });
                         resetDatesFromRange(p.date_range ?? '');
+                        setDirty(false);
                         setPageTab('form');
                       }}
                     >
@@ -362,7 +395,9 @@ export default function PublicSitePrograms() {
                             size="sm"
                             className="min-h-9"
                             type="button"
-                            onClick={() => {
+                            onClick={async () => {
+                              const ok = await confirmIfDirty();
+                              if (!ok) return;
                               setForm({
                                 id: p.id,
                                 title: p.title,
@@ -375,6 +410,7 @@ export default function PublicSitePrograms() {
                                 rationale: p.rationale ?? p.description ?? '',
                               });
                               resetDatesFromRange(p.date_range ?? '');
+                              setDirty(false);
                               setPageTab('form');
                             }}
                           >

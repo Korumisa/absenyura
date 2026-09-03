@@ -28,6 +28,7 @@ import { CmsPublishTabs } from '@/components/ui/CmsPublishTabs';
 import { CmsEditorLayout } from '@/components/cms/CmsEditorLayout';
 import { CmsListToolbar } from '@/components/cms/CmsListToolbar';
 import { AdminContentTransition } from '@/components/admin/AdminContentTransition';
+import { useFormDirtyGuard } from '@/hooks/useFormDirtyGuard';
 
 type PageTab = 'form' | 'list';
 type FormTab = 'info' | 'team';
@@ -65,11 +66,31 @@ export default function PublicSiteRecruitments() {
     committee?: CommitteeDraft[];
     contacts?: ContactDraft[];
   }>({ committee: [], contacts: [] });
-  const resetForm = () => setForm({ committee: [], contacts: [] });
   const [dateStart, setDateStart] = useState('');
   const [dateEnd, setDateEnd] = useState('');
   const [uploadingPoster, setUploadingPoster] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const { confirmIfDirty } = useFormDirtyGuard(dirty);
 
+  const setFormDirty = useMemo(
+    () => (updater: React.SetStateAction<typeof form>) => {
+      setDirty(true);
+      setForm(updater);
+    },
+    []
+  );
+  const setDateStartDirty = (v: string) => {
+    setDirty(true);
+    setDateStart(v);
+  };
+  const setDateEndDirty = (v: string) => {
+    setDirty(true);
+    setDateEnd(v);
+  };
+  const resetForm = () => {
+    setForm({ committee: [], contacts: [] });
+    setDirty(false);
+  };
   const resetDatesFromRange = (range: string) => {
     const raw = String(range ?? '').trim();
     if (!raw) {
@@ -205,6 +226,7 @@ export default function PublicSiteRecruitments() {
       contacts: (r.contacts ?? []).map((x) => ({ name: x.name, contact: x.contact })),
     });
     resetDatesFromRange(r.date_range ?? '');
+    setDirty(false);
     setFormTab('info');
     setPageTab('form');
   };
@@ -219,7 +241,10 @@ export default function PublicSiteRecruitments() {
       <CmsTabNav<PageTab>
         tabs={PAGE_TABS}
         value={pageTab}
-        onChange={setPageTab}
+        onChange={async (next) => {
+          const ok = await confirmIfDirty();
+          if (ok) setPageTab(next);
+        }}
         ariaLabel="Mode recruitment"
       />
 
@@ -247,7 +272,10 @@ export default function PublicSiteRecruitments() {
                 <CmsTabNav<FormTab>
                   tabs={FORM_TABS}
                   value={formTab}
-                  onChange={setFormTab}
+                  onChange={async (next) => {
+                    const ok = await confirmIfDirty();
+                    if (ok) setFormTab(next);
+                  }}
                   ariaLabel="Bagian form recruitment"
                 />
 
@@ -257,7 +285,7 @@ export default function PublicSiteRecruitments() {
                     <Input
                       id="recruitment-title"
                       value={form.title ?? ''}
-                      onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
+                      onChange={(e) => setFormDirty((p) => ({ ...p, title: e.target.value }))}
                     />
                   </div>
                   <div className="space-y-2">
@@ -266,7 +294,7 @@ export default function PublicSiteRecruitments() {
                       id="recruitment-date-start"
                       type="date"
                       value={dateStart}
-                      onChange={(e) => setDateStart(e.target.value)}
+                      onChange={(e) => setDateStartDirty(e.target.value)}
                     />
                   </div>
                   <div className="space-y-2">
@@ -275,7 +303,7 @@ export default function PublicSiteRecruitments() {
                       id="recruitment-date-end"
                       type="date"
                       value={dateEnd}
-                      onChange={(e) => setDateEnd(e.target.value)}
+                      onChange={(e) => setDateEndDirty(e.target.value)}
                     />
                   </div>
                   <div className="space-y-2">
@@ -283,14 +311,14 @@ export default function PublicSiteRecruitments() {
                     <Input
                       id="recruitment-form-url"
                       value={form.formUrl ?? ''}
-                      onChange={(e) => setForm((p) => ({ ...p, formUrl: e.target.value }))}
+                      onChange={(e) => setFormDirty((p) => ({ ...p, formUrl: e.target.value }))}
                     />
                   </div>
                   <div className="space-y-2 md:col-span-2">
                     <Label>Status publikasi</Label>
                     <CmsPublishTabs
                       published={form.isPublished ?? false}
-                      onChange={(v) => setForm((p) => ({ ...p, isPublished: v }))}
+                      onChange={(v) => setFormDirty((p) => ({ ...p, isPublished: v }))}
                     />
                   </div>
                   <div className="space-y-2 md:col-span-2">
@@ -298,7 +326,7 @@ export default function PublicSiteRecruitments() {
                     <Textarea
                       id="recruitment-description"
                       value={form.description ?? ''}
-                      onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
+                      onChange={(e) => setFormDirty((p) => ({ ...p, description: e.target.value }))}
                     />
                   </div>
                   <div className="space-y-2 md:col-span-2">
@@ -317,7 +345,7 @@ export default function PublicSiteRecruitments() {
                             setUploadingPoster(true);
                             try {
                               const url = await uploadImage(file);
-                              setForm((p) => ({ ...p, posterImageUrl: url }));
+                              setFormDirty((p) => ({ ...p, posterImageUrl: url }));
                               toast.success('Upload poster berhasil');
                             } catch (err: any) {
                               toast.error(getErrorMessage(err, 'Gagal upload poster'));
@@ -347,7 +375,7 @@ export default function PublicSiteRecruitments() {
                               type="button"
                               variant="ghost"
                               className="min-h-11"
-                              onClick={() => setForm((p) => ({ ...p, posterImageUrl: '' }))}
+                              onClick={() => setFormDirty((p) => ({ ...p, posterImageUrl: '' }))}
                               disabled={uploadingPoster}
                             >
                               Hapus
@@ -376,7 +404,7 @@ export default function PublicSiteRecruitments() {
                             id="recruitment-poster-url"
                             value={form.posterImageUrl ?? ''}
                             onChange={(e) =>
-                              setForm((p) => ({ ...p, posterImageUrl: e.target.value }))
+                              setFormDirty((p) => ({ ...p, posterImageUrl: e.target.value }))
                             }
                             placeholder="https://..."
                           />
@@ -410,7 +438,7 @@ export default function PublicSiteRecruitments() {
                         variant="outline"
                         className="min-h-11"
                         onClick={() =>
-                          setForm((p) => ({
+                          setFormDirty((p) => ({
                             ...p,
                             committee: [...(p.committee ?? []), { name: '', role: '' }],
                           }))
@@ -430,7 +458,7 @@ export default function PublicSiteRecruitments() {
                             <Input
                               value={c.name}
                               onChange={(e) =>
-                                setForm((p) => ({
+                                setFormDirty((p) => ({
                                   ...p,
                                   committee: (p.committee ?? []).map((x, i) =>
                                     i === idx ? { ...x, name: e.target.value } : x
@@ -443,7 +471,7 @@ export default function PublicSiteRecruitments() {
                               <Input
                                 value={c.role}
                                 onChange={(e) =>
-                                  setForm((p) => ({
+                                  setFormDirty((p) => ({
                                     ...p,
                                     committee: (p.committee ?? []).map((x, i) =>
                                       i === idx ? { ...x, role: e.target.value } : x
@@ -457,7 +485,7 @@ export default function PublicSiteRecruitments() {
                                 variant="outline"
                                 className="min-h-11 shrink-0"
                                 onClick={() =>
-                                  setForm((p) => ({
+                                  setFormDirty((p) => ({
                                     ...p,
                                     committee: (p.committee ?? []).filter((_, i) => i !== idx),
                                   }))
@@ -480,7 +508,7 @@ export default function PublicSiteRecruitments() {
                         variant="outline"
                         className="min-h-11"
                         onClick={() =>
-                          setForm((p) => ({
+                          setFormDirty((p) => ({
                             ...p,
                             contacts: [...(p.contacts ?? []), { name: '', contact: '' }],
                           }))
@@ -500,7 +528,7 @@ export default function PublicSiteRecruitments() {
                             <Input
                               value={c.name}
                               onChange={(e) =>
-                                setForm((p) => ({
+                                setFormDirty((p) => ({
                                   ...p,
                                   contacts: (p.contacts ?? []).map((x, i) =>
                                     i === idx ? { ...x, name: e.target.value } : x
@@ -513,7 +541,7 @@ export default function PublicSiteRecruitments() {
                               <Input
                                 value={c.contact}
                                 onChange={(e) =>
-                                  setForm((p) => ({
+                                  setFormDirty((p) => ({
                                     ...p,
                                     contacts: (p.contacts ?? []).map((x, i) =>
                                       i === idx ? { ...x, contact: e.target.value } : x
@@ -527,7 +555,7 @@ export default function PublicSiteRecruitments() {
                                 variant="outline"
                                 className="min-h-11 shrink-0"
                                 onClick={() =>
-                                  setForm((p) => ({
+                                  setFormDirty((p) => ({
                                     ...p,
                                     contacts: (p.contacts ?? []).filter((_, i) => i !== idx),
                                   }))
@@ -548,7 +576,10 @@ export default function PublicSiteRecruitments() {
                     type="button"
                     variant="outline"
                     className="min-h-11"
-                    onClick={() => setPageTab('list')}
+                    onClick={async () => {
+                      const ok = await confirmIfDirty();
+                      if (ok) setPageTab('list');
+                    }}
                   >
                     Kembali ke daftar
                   </Button>
@@ -574,7 +605,9 @@ export default function PublicSiteRecruitments() {
             <CmsListToolbar
               count={recruitments.length}
               countLabel="recruitment"
-              onCreate={() => {
+              onCreate={async () => {
+                const ok = await confirmIfDirty();
+                if (!ok) return;
                 resetForm();
                 setDateStart('');
                 setDateEnd('');
@@ -601,7 +634,10 @@ export default function PublicSiteRecruitments() {
                       size="sm"
                       className="min-h-11 flex-1"
                       type="button"
-                      onClick={() => loadForEdit(r)}
+                      onClick={async () => {
+                        const ok = await confirmIfDirty();
+                        if (ok) loadForEdit(r);
+                      }}
                     >
                       Edit
                     </Button>
@@ -650,7 +686,10 @@ export default function PublicSiteRecruitments() {
                           variant="outline"
                           size="sm"
                           type="button"
-                          onClick={() => loadForEdit(r)}
+                          onClick={async () => {
+                            const ok = await confirmIfDirty();
+                            if (ok) loadForEdit(r);
+                          }}
                         >
                           Edit
                         </Button>

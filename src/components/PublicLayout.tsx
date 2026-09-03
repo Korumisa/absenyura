@@ -36,12 +36,14 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
     const existing = document.querySelector('link[data-public-hero-preload]');
     if (existing?.getAttribute('href') === href) return;
     existing?.remove();
+    if (document.head.querySelector(`link[rel="preload"][href="${CSS.escape(href)}"]`)) return;
     const link = document.createElement('link');
     link.rel = 'preload';
     link.as = 'image';
     link.href = href;
+    link.crossOrigin = 'anonymous';
+    link.referrerPolicy = 'no-referrer';
     link.setAttribute('data-public-hero-preload', '1');
-    if (isCloudinaryUrl(href)) link.crossOrigin = 'anonymous';
     document.head.appendChild(link);
     return () => {
       link.remove();

@@ -213,7 +213,13 @@ export const getPublicStructure = async (req: Request, res: Response): Promise<v
     });
   } catch (error) {
     console.error('Error fetching public structure:', error);
-    sendInternalServerError(res, error);
+    res.status(500).json({
+      success: false,
+      data: [],
+      cabinet: null,
+      allCabinets: [],
+      error: 'Internal server error',
+    });
   }
 };
 

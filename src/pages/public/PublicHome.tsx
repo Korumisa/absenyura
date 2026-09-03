@@ -162,7 +162,7 @@ export default function PublicHome() {
   const retryProfile = profileState.retry;
   const showProfileSlowHint = profileState.showSlowLoadingHint;
 
-  const programs = programsState.data ?? [];
+  const programs = Array.isArray(programsState.data) ? programsState.data : [];
   const isLoadingPrograms = programsState.isPending;
   const isProgramsError = programsState.isError;
   const retryPrograms = programsState.retry;
@@ -183,9 +183,9 @@ export default function PublicHome() {
   const isLoadingStructure = structureState.isPending;
   const latest = latestState.data;
   const isLoadingLatest = latestState.isPending;
-  const recruitments = recruitmentsState.data ?? [];
+  const recruitments = Array.isArray(recruitmentsState.data) ? recruitmentsState.data : [];
   const isLoadingRecruitments = recruitmentsState.isPending;
-  const galleries = galleriesState.data ?? [];
+  const galleries = Array.isArray(galleriesState.data) ? galleriesState.data : [];
   const isLoadingGalleries = galleriesState.isPending;
   const lombaPaged = lombaState.data;
   const isLoadingLomba = lombaState.isPending;

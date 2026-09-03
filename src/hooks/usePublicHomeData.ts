@@ -11,13 +11,30 @@ import type {
 import type { PublicPostItemsResponse } from '@/types/api';
 import { usePublicSectionSwr } from '@/hooks/usePublicSectionSwr';
 
-const fetcher = (url: string) => api.get(url).then((r) => r.data);
-const postsFetcher = (url: string) => api.get(url).then((r) => r.data.data);
+const fetcher = (url: string) =>
+  api.get(url).then((r) => {
+    if (r.data && typeof r.data === 'object' && r.data.success === false) {
+      throw new Error(r.data.error || 'Request failed');
+    }
+    return r.data;
+  });
+const postsFetcher = (url: string) =>
+  api.get(url).then((r) => {
+    if (r.data && typeof r.data === 'object' && r.data.success === false) {
+      throw new Error(r.data.error || 'Request failed');
+    }
+    return r.data.data;
+  });
 
 /** Data fetching beranda publik — profil + section below-fold */
 export function usePublicHomeData() {
   const profile = usePublicSectionSwr<PublicProfile | null>('/public-site/profile', (url) =>
-    api.get(url).then((r) => r.data.data)
+    api.get(url).then((r) => {
+      if (r.data && typeof r.data === 'object' && r.data.success === false) {
+        throw new Error(r.data.error || 'Request failed');
+      }
+      return r.data.data;
+    })
   );
 
   const [loadBelowFold, setLoadBelowFold] = useState(false);
@@ -36,7 +53,13 @@ export function usePublicHomeData() {
 
   const programs = usePublicSectionSwr<PublicProgram[]>(
     belowFoldKey ? '/public-site/programs' : null,
-    (url) => api.get(url).then((r) => r.data.data)
+    (url) =>
+      api.get(url).then((r) => {
+        if (r.data && typeof r.data === 'object' && r.data.success === false) {
+          throw new Error(r.data.error || 'Request failed');
+        }
+        return r.data.data;
+      })
   );
   const structure = usePublicSectionSwr<{
     data: PublicStructureGroup[];

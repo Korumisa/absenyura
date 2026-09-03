@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import {
@@ -31,6 +31,7 @@ import { Button } from '@/components/ui/button';
 import { AdminRouteTransition } from '@/components/admin/AdminRouteTransition';
 import PageSkeleton from '@/components/PageSkeleton';
 import { InnerRouteErrorBoundary } from '@/components/ErrorBoundary';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -38,6 +39,14 @@ export default function Layout() {
   const { user, isAuthenticated, hasHydrated, sessionStatus } = useAuthStore();
   const location = useLocation();
   const shouldShowSkeleton = !hasHydrated || (isAuthenticated && sessionStatus !== 'verified');
+
+  const sidebarRef = useRef<HTMLDivElement>(null);
+  const hamburgerRef = useRef<HTMLButtonElement>(null);
+  const closeSidebar = () => setSidebarOpen(false);
+  useDialogA11y(sidebarOpen, closeSidebar, {
+    containerRef: sidebarRef,
+    triggerRef: hamburgerRef,
+  });
 
   const navItems = [
     {
@@ -120,11 +129,15 @@ export default function Layout() {
           type="button"
           aria-label="Tutup sidebar"
           className="fixed inset-0 z-20 bg-black/50 transition-opacity lg:hidden"
-          onClick={() => setSidebarOpen(false)}
+          onClick={closeSidebar}
         />
       )}
 
       <div
+        ref={sidebarRef}
+        role="dialog"
+        aria-modal={sidebarOpen ? true : undefined}
+        aria-label="Sidebar navigasi"
         className={`fixed inset-y-0 left-0 z-30 w-64 transform border-r border-sidebar-border bg-card transition-transform duration-300 ease-in-out lg:translate-x-0 ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
@@ -142,7 +155,7 @@ export default function Layout() {
             variant="ghost"
             size="icon"
             className="text-muted-foreground lg:hidden"
-            onClick={() => setSidebarOpen(false)}
+            onClick={closeSidebar}
             aria-label="Tutup sidebar"
           >
             <X size={24} />
@@ -243,6 +256,7 @@ export default function Layout() {
             <Button
               variant="ghost"
               size="icon"
+              ref={hamburgerRef}
               className="mr-2 lg:hidden"
               onClick={() => setSidebarOpen(true)}
               aria-label="Buka sidebar"

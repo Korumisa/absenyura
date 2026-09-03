@@ -22,6 +22,7 @@ import { CmsTabNav, type CmsTabItem } from '@/components/ui/CmsTabNav';
 import { CmsEditorLayout } from '@/components/cms/CmsEditorLayout';
 import { AdminContentTransition } from '@/components/admin/AdminContentTransition';
 import { useMutationToast } from '@/hooks/useMutationToast';
+import { useFormDirtyGuard } from '@/hooks/useFormDirtyGuard';
 
 type ProfileTab = 'identity' | 'home' | 'visimisi' | 'contact';
 
@@ -120,6 +121,8 @@ export default function PublicSiteProfile() {
     setDirty(true);
     setDraft(updater);
   };
+
+  const { confirmIfDirty } = useFormDirtyGuard(dirty);
 
   useEffect(() => {
     if (!profile) return;
@@ -336,7 +339,10 @@ export default function PublicSiteProfile() {
             <CmsTabNav<ProfileTab>
               tabs={PROFILE_TABS}
               value={profileTab}
-              onChange={setProfileTab}
+              onChange={async (next) => {
+                const ok = await confirmIfDirty();
+                if (ok) setProfileTab(next);
+              }}
               ariaLabel="Bagian profil"
             />
 

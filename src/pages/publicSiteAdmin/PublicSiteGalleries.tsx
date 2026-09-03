@@ -28,6 +28,7 @@ import { CmsPublishTabs } from '@/components/ui/CmsPublishTabs';
 import { CmsEditorLayout } from '@/components/cms/CmsEditorLayout';
 import { CmsListToolbar } from '@/components/cms/CmsListToolbar';
 import { AdminContentTransition } from '@/components/admin/AdminContentTransition';
+import { useFormDirtyGuard } from '@/hooks/useFormDirtyGuard';
 
 type PageTab = 'form' | 'list';
 const PAGE_TABS: readonly CmsTabItem<PageTab>[] = [
@@ -53,7 +54,20 @@ export default function PublicSiteGalleries() {
     isPublished?: boolean;
     items?: ItemDraft[];
   }>({ items: [] });
-  const resetForm = () => setForm({ items: [] });
+  const [dirty, setDirty] = useState(false);
+  const { confirmIfDirty } = useFormDirtyGuard(dirty);
+
+  const setFormDirty = useMemo(
+    () => (updater: React.SetStateAction<typeof form>) => {
+      setDirty(true);
+      setFormDirty(updater);
+    },
+    []
+  );
+  const resetForm = () => {
+    setForm({ items: [] });
+    setDirty(false);
+  };
 
   const uploadImage = async (file: File) => {
     const prepared = await prepareImageForUpload(file, {
@@ -78,7 +92,7 @@ export default function PublicSiteGalleries() {
     try {
       const uploaded: string[] = [];
       for (const f of list) uploaded.push(await uploadImage(f));
-      setForm((p) => ({
+      setFormDirty((p) => ({
         ...p,
         items: [...(p.items ?? []), ...uploaded.map((url) => ({ imageUrl: url, caption: '' }))],
       }));
@@ -155,7 +169,10 @@ export default function PublicSiteGalleries() {
       <CmsTabNav<PageTab>
         tabs={PAGE_TABS}
         value={pageTab}
-        onChange={setPageTab}
+        onChange={async (next) => {
+          const ok = await confirmIfDirty();
+          if (ok) setPageTab(next);
+        }}
         ariaLabel="Mode galeri"
       />
 
@@ -181,14 +198,14 @@ export default function PublicSiteGalleries() {
                   <Input
                     id={`${formId}-album-title`}
                     value={form.title ?? ''}
-                    onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
+                    onChange={(e) => setFormDirty((p) => ({ ...p, title: e.target.value }))}
                   />
                 </div>
                 <div className="space-y-2 md:col-span-2">
                   <Label>Status publikasi</Label>
                   <CmsPublishTabs
                     published={form.isPublished ?? false}
-                    onChange={(v) => setForm((p) => ({ ...p, isPublished: v }))}
+                    onChange={(v) => setFormDirty((p) => ({ ...p, isPublished: v }))}
                   />
                 </div>
                 <div className="space-y-2 md:col-span-2">
@@ -196,7 +213,7 @@ export default function PublicSiteGalleries() {
                   <Textarea
                     id={`${formId}-album-description`}
                     value={form.description ?? ''}
-                    onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
+                    onChange={(e) => setFormDirty((p) => ({ ...p, description: e.target.value }))}
                   />
                 </div>
                 <div className="space-y-3 md:col-span-2">
@@ -207,7 +224,7 @@ export default function PublicSiteGalleries() {
                       variant="outline"
                       className="min-h-11"
                       onClick={() =>
-                        setForm((p) => ({
+                        setFormDirty((p) => ({
                           ...p,
                           items: [...(p.items ?? []), { imageUrl: '', caption: '' }],
                         }))
@@ -285,7 +302,7 @@ export default function PublicSiteGalleries() {
                                 id={`${formId}-item-url-${idx}`}
                                 value={it.imageUrl}
                                 onChange={(e) =>
-                                  setForm((p) => ({
+                                  setFormDirty((p) => ({
                                     ...p,
                                     items: (p.items ?? []).map((x, i) =>
                                       i === idx ? { ...x, imageUrl: e.target.value } : x
@@ -302,7 +319,7 @@ export default function PublicSiteGalleries() {
                               id={`${formId}-item-caption-${idx}`}
                               value={it.caption}
                               onChange={(e) =>
-                                setForm((p) => ({
+                                setFormDirty((p) => ({
                                   ...p,
                                   items: (p.items ?? []).map((x, i) =>
                                     i === idx ? { ...x, caption: e.target.value } : x
@@ -316,7 +333,7 @@ export default function PublicSiteGalleries() {
                               variant="outline"
                               className="min-h-11 w-full"
                               onClick={() =>
-                                setForm((p) => ({
+                                setFormDirty((p) => ({
                                   ...p,
                                   items: (p.items ?? []).filter((_, i) => i !== idx),
                                 }))
@@ -358,7 +375,9 @@ export default function PublicSiteGalleries() {
             <CmsListToolbar
               count={galleries.length}
               countLabel="album"
-              onCreate={() => {
+              onCreate={async () => {
+                const ok = await confirmIfDirty();
+                if (!ok) return;
                 resetForm();
                 setPageTab('form');
               }}
@@ -380,7 +399,9 @@ export default function PublicSiteGalleries() {
                       size="sm"
                       className="min-h-11 flex-1"
                       type="button"
-                      onClick={() => {
+                      onClick={async () => {
+                        const ok = await confirmIfDirty();
+                        if (!ok) return;
                         setForm({
                           id: g.id,
                           title: g.title,
@@ -391,6 +412,7 @@ export default function PublicSiteGalleries() {
                             caption: it.caption ?? '',
                           })),
                         });
+                        setDirty(false);
                         setPageTab('form');
                       }}
                     >
@@ -441,7 +463,9 @@ export default function PublicSiteGalleries() {
                           variant="outline"
                           size="sm"
                           type="button"
-                          onClick={() => {
+                          onClick={async () => {
+                            const ok = await confirmIfDirty();
+                            if (!ok) return;
                             setForm({
                               id: g.id,
                               title: g.title,
@@ -452,6 +476,7 @@ export default function PublicSiteGalleries() {
                                 caption: it.caption ?? '',
                               })),
                             });
+                            setDirty(false);
                             setPageTab('form');
                           }}
                         >

@@ -16,30 +16,99 @@ export const runCronJob = async () => {
   lastRunTime = nowTime;
 
   try {
-    const resolveExpectedUserIds = async (session: any) => {
-      const fromLegacyClassId: string[] = session.class_id ? [String(session.class_id)] : [];
-      const linked = await prisma.sessionClass.findMany({
-        where: { session_id: session.id },
-        select: { class_id: true },
+    const resolveExpectedUserIdsBATCH = async (
+      sessions: any[]
+    ): Promise<Map<string, { expectedUserIds: string[]; linkedClassIds: string[] }>> => {
+      const result = new Map<string, { expectedUserIds: string[]; linkedClassIds: string[] }>();
+      if (sessions.length === 0) return result;
+
+      const sessionIds = sessions.map((s) => s.id);
+
+      // 1 BATCH pivot query (all sessions) — replaces N per-session sessionClass queries
+      const pivotRows = await prisma.sessionClass.findMany({
+        where: { session_id: { in: sessionIds } },
+        select: { session_id: true, class_id: true },
       });
-      const fromPivot = linked.flatMap((x) => (x.class_id ? [String(x.class_id)] : []));
-      const mergedClassIds = Array.from(new Set([...fromLegacyClassId, ...fromPivot]));
-      if (mergedClassIds.length > 0) {
-        const enrollments = await prisma.classEnrollment.findMany({
-          where: { class_id: { in: mergedClassIds } },
-          select: { student_id: true },
-        });
-        return Array.from(new Set(enrollments.map((e) => e.student_id)));
+
+      const pivotBySession = new Map<string, string[]>();
+      for (const row of pivotRows) {
+        if (!row.class_id) continue;
+        const cid = String(row.class_id);
+        const arr = pivotBySession.get(row.session_id);
+        if (arr) arr.push(cid);
+        else pivotBySession.set(row.session_id, [cid]);
       }
-      // WARNING: Falling back to ALL active users because session has no class linked
-      console.warn(
-        `[Cron] resolveExpectedUserIds: Session id=${session.id} (title="${session.title}") has no linked classes. Falling back to ALL active USER role users.`
-      );
-      const activeUsers = await prisma.user.findMany({
-        where: { role: 'USER', is_active: true },
-        select: { id: true },
-      });
-      return activeUsers.map((u) => u.id);
+
+      // Per-session linkedClassIds (legacy + pivot) + collect all classes for BATCH enrollment
+      const sessionsWithNoClasses: any[] = [];
+      const allClassIdsSet = new Set<string>();
+
+      for (const session of sessions) {
+        const fromLegacy: string[] = session.class_id ? [String(session.class_id)] : [];
+        const fromPivot: string[] = pivotBySession.get(session.id) ?? [];
+        const mergedClassIds = Array.from(new Set([...fromLegacy, ...fromPivot]));
+
+        result.set(session.id, { expectedUserIds: [], linkedClassIds: mergedClassIds });
+
+        if (mergedClassIds.length === 0) {
+          sessionsWithNoClasses.push(session);
+        } else {
+          mergedClassIds.forEach((cid) => allClassIdsSet.add(cid));
+        }
+      }
+
+      // 1 BATCH enrollment query (all classes across all sessions) — replaces N per-session queries
+      if (allClassIdsSet.size > 0) {
+        const allClassIds = Array.from(allClassIdsSet);
+        const enrollmentRows = await prisma.classEnrollment.findMany({
+          where: { class_id: { in: allClassIds } },
+          select: { class_id: true, student_id: true },
+        });
+
+        const enrollmentByClass = new Map<string, Set<string>>();
+        for (const row of enrollmentRows) {
+          if (!row.class_id || !row.student_id) continue;
+          const cid = String(row.class_id);
+          const sid = String(row.student_id);
+          let set = enrollmentByClass.get(cid);
+          if (!set) {
+            set = new Set();
+            enrollmentByClass.set(cid, set);
+          }
+          set.add(sid);
+        }
+
+        for (const session of sessions) {
+          const entry = result.get(session.id)!;
+          if (entry.linkedClassIds.length === 0) continue;
+          const combined = new Set<string>();
+          for (const cid of entry.linkedClassIds) {
+            const set = enrollmentByClass.get(cid);
+            if (set) set.forEach((sid) => combined.add(sid));
+          }
+          entry.expectedUserIds = Array.from(combined);
+        }
+      }
+
+      // Shared fallback for sessions with no linked classes (1 query shared across all such sessions)
+      if (sessionsWithNoClasses.length > 0) {
+        console.warn(
+          `[Cron] resolveExpectedUserIdsBATCH: ${sessionsWithNoClasses.length} sessions have no linked classes. Falling back to ALL active USER role users. Session ids: ${sessionsWithNoClasses
+            .map((s) => s.id)
+            .join(', ')}`
+        );
+        const activeUsers = await prisma.user.findMany({
+          where: { role: 'USER', is_active: true },
+          select: { id: true },
+        });
+        const fallbackIds = activeUsers.map((u) => u.id);
+        for (const session of sessionsWithNoClasses) {
+          const entry = result.get(session.id)!;
+          entry.expectedUserIds = fallbackIds;
+        }
+      }
+
+      return result;
     };
 
     const now = new Date();
@@ -70,6 +139,8 @@ export const runCronJob = async () => {
         data: { status: 'ACTIVE' },
       });
 
+      const activateMap = await resolveExpectedUserIdsBATCH(sessionsToActivate);
+
       // Notify creator that session is active
       for (const session of sessionsToActivate) {
         // Create notification for creator
@@ -83,7 +154,7 @@ export const runCronJob = async () => {
         });
 
         // Notify students
-        const expectedUserIds: string[] = await resolveExpectedUserIds(session);
+        const expectedUserIds: string[] = activateMap.get(session.id)!.expectedUserIds;
 
         if (expectedUserIds.length > 0) {
           await prisma.notification.createMany({
@@ -124,10 +195,33 @@ export const runCronJob = async () => {
         data: { status: 'CLOSED' },
       });
 
+      const closeMap = await resolveExpectedUserIdsBATCH(sessionsToClose);
+
+      const pendingExcuseBySession = new Map<string, Set<string>>();
+      {
+        const sessionIds = sessionsToClose.map((s) => s.id);
+        const excusedRows = await prisma.excuseRequest.findMany({
+          where: {
+            session_id: { in: sessionIds },
+            status: { in: ['PENDING', 'APPROVED', 'SICK', 'EXCUSED'] },
+          },
+          select: { session_id: true, user_id: true },
+        });
+        for (const row of excusedRows) {
+          let set = pendingExcuseBySession.get(row.session_id);
+          if (!set) {
+            set = new Set();
+            pendingExcuseBySession.set(row.session_id, set);
+          }
+          set.add(row.user_id);
+        }
+      }
+
       // Auto-Absent Job
       for (const session of sessionsToClose) {
-        // Determine which users are supposed to attend
-        const expectedUserIds: string[] = await resolveExpectedUserIds(session);
+        // Determine which users are supposed to attend (from BATCH resolve map)
+        const sessionBatchEntry = closeMap.get(session.id)!;
+        const expectedUserIds: string[] = sessionBatchEntry.expectedUserIds;
 
         // Get all present users for this session
         const presentAttendances = await prisma.attendance.findMany({
@@ -136,8 +230,12 @@ export const runCronJob = async () => {
         });
         const presentUserIds = presentAttendances.map((a) => a.user_id);
 
-        // Find users who didn't check in
-        const absentUserIds = expectedUserIds.filter((id) => !presentUserIds.includes(id));
+        const excludedExcuseUserIds = pendingExcuseBySession.get(session.id) ?? new Set<string>();
+
+        // Find users who didn't check in — exclude those with pending/approved excuses
+        const absentUserIds = expectedUserIds.filter(
+          (id) => !presentUserIds.includes(id) && !excludedExcuseUserIds.has(id)
+        );
 
         // Create ABSENT records
         if (absentUserIds.length > 0) {
@@ -175,17 +273,9 @@ export const runCronJob = async () => {
           });
         }
 
-        // Check Early Warning System (EWS) for < 75% attendance for absent users (Optimized N+1)
-        const linked = await prisma.sessionClass.findMany({
-          where: { session_id: session.id },
-          select: { class_id: true },
-        });
-        const classIds = Array.from(
-          new Set([
-            ...(session.class_id ? [session.class_id] : []),
-            ...linked.flatMap((x) => (x.class_id ? [x.class_id] : [])),
-          ])
-        );
+        // Check Early Warning System (EWS) for < 75% attendance for absent users
+        // Reuse BATCH-resolved linkedClassIds — saves N additional sessionClass queries per close loop
+        const classIds = sessionBatchEntry.linkedClassIds;
 
         if (classIds.length > 0 && absentUserIds.length > 0) {
           const notificationsToCreate: any[] = [];
@@ -227,11 +317,12 @@ export const runCronJob = async () => {
 
           const attendanceCounts: Record<string, Record<string, number>> = {};
           for (const att of userClassAttendances) {
-            const attClassIds = Array.from(
-              new Set([
-                ...(att.session.class_id ? [att.session.class_id] : []),
-                ...(att.session.session_classes ?? []).flatMap((x: any) =>
-                  x?.class_id ? [x.class_id] : []
+            // Normalize to strings — matches BATCH-resolved string classIds in closeMap
+            const attClassIds: string[] = Array.from(
+              new Set<string>([
+                ...(att.session.class_id ? [String(att.session.class_id)] : []),
+                ...(att.session.session_classes ?? []).flatMap<string>((x: any) =>
+                  x?.class_id ? [String(x.class_id)] : []
                 ),
               ])
             );
@@ -244,11 +335,12 @@ export const runCronJob = async () => {
           }
 
           for (const enr of enrollments) {
-            const total = totalSessionsMap[enr.class_id] || 0;
+            const enrClassId = String(enr.class_id);
+            const total = totalSessionsMap[enrClassId] || 0;
             if (total > 0) {
               const attended =
                 (attendanceCounts[enr.student_id] &&
-                  attendanceCounts[enr.student_id][enr.class_id]) ||
+                  attendanceCounts[enr.student_id][enrClassId]) ||
                 0;
               const percentage = (attended / total) * 100;
               if (percentage < 75) {

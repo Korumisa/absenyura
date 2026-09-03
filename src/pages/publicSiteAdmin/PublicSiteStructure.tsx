@@ -16,6 +16,7 @@ import { AdminCardActions } from '@/components/admin/AdminCardActions';
 import PublicSiteStructurePreview from '@/components/publicSiteAdmin/PublicSiteStructurePreview';
 import { CmsEditorLayout } from '@/components/cms/CmsEditorLayout';
 import { Layers } from 'lucide-react';
+import { useFormDirtyGuard } from '@/hooks/useFormDirtyGuard';
 
 export default function PublicSiteStructure() {
   const formId = React.useId();
@@ -43,6 +44,8 @@ export default function PublicSiteStructure() {
     markDirty();
     setGroups(updater);
   };
+
+  const { confirmIfDirty } = useFormDirtyGuard(dirty);
 
   const currentYear = useMemo(() => new Date().getFullYear(), []);
 
@@ -279,9 +282,14 @@ export default function PublicSiteStructure() {
                           : 'outline'
                       }
                       size="sm"
-                      onClick={() =>
-                        setViewingCabinetId(viewingCabinetId === cabinet.id ? null : cabinet.id)
-                      }
+                      onClick={async () => {
+                        const next = viewingCabinetId === cabinet.id ? null : cabinet.id;
+                        if (next !== viewingCabinetId) {
+                          const ok = await confirmIfDirty();
+                          if (!ok) return;
+                        }
+                        setViewingCabinetId(viewingCabinetId === cabinet.id ? null : cabinet.id);
+                      }}
                     >
                       {cabinet.name} ({cabinet.period}){cabinet.is_active && ' (Aktif)'}
                     </Button>

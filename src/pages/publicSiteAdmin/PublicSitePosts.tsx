@@ -40,6 +40,7 @@ import { CmsListToolbar } from '@/components/cms/CmsListToolbar';
 import { AdminContentTransition } from '@/components/admin/AdminContentTransition';
 import { slugify } from '@/lib/utils/slugify';
 import { useMutationToast } from '@/hooks/useMutationToast';
+import { useFormDirtyGuard } from '@/hooks/useFormDirtyGuard';
 
 const POST_TYPE_TABS: readonly CmsTabItem<PublicPostType>[] = [
   { id: 'BERITA', label: 'Berita' },
@@ -90,14 +91,48 @@ export default function PublicSitePosts() {
   }>({ type: 'BERITA' });
   const [postSlugEdited, setPostSlugEdited] = useState(false);
   const [submittingPost, setSubmittingPost] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const { confirmIfDirty } = useFormDirtyGuard(dirty);
+
+  const setCategoryFormDirty = useCallback(
+    (updater: React.SetStateAction<{ id?: string; name?: string; slug?: string }>) => {
+      setDirty(true);
+      setCategoryFormDirty(updater);
+    },
+    []
+  );
+  const setPostFormDirty = useCallback(
+    (
+      updater: React.SetStateAction<{
+        id?: string;
+        type?: PublicPostType;
+        title?: string;
+        slug?: string;
+        dateLabel?: string;
+        status?: string;
+        formUrl?: string;
+        excerpt?: string;
+        content?: string;
+        coverImageUrl?: string;
+        categoryId?: string;
+        isPublished?: boolean;
+      }>
+    ) => {
+      setDirty(true);
+      setPostFormDirty(updater);
+    },
+    []
+  );
 
   const resetCategoryForm = useCallback(() => {
     setCategoryForm({});
     setCategorySlugEdited(false);
+    setDirty(false);
   }, []);
   const resetPostForm = useCallback(() => {
     setPostForm({ type: postType });
     setPostSlugEdited(false);
+    setDirty(false);
   }, [postType]);
 
   useEffect(() => {
@@ -295,14 +330,20 @@ export default function PublicSitePosts() {
       <CmsTabNav<PublicPostType>
         tabs={POST_TYPE_TABS}
         value={postType}
-        onChange={setPostType}
+        onChange={async (next) => {
+          const ok = await confirmIfDirty();
+          if (ok) setPostType(next);
+        }}
         ariaLabel="Jenis konten publik"
       />
 
       <CmsTabNav<ContentTab>
         tabs={CONTENT_TABS}
         value={contentTab}
-        onChange={setContentTab}
+        onChange={async (next) => {
+          const ok = await confirmIfDirty();
+          if (ok) setContentTab(next);
+        }}
         ariaLabel="Mode konten"
       />
 
@@ -333,7 +374,7 @@ export default function PublicSitePosts() {
                         value={categoryForm.name ?? ''}
                         onChange={(e) => {
                           const name = e.target.value;
-                          setCategoryForm((p) => {
+                          setCategoryFormDirty((p) => {
                             const newSlug = !categorySlugEdited ? slugify(name) : p.slug;
                             return { ...p, name, slug: newSlug };
                           });
@@ -354,7 +395,7 @@ export default function PublicSitePosts() {
                         value={categoryForm.slug ?? ''}
                         onChange={(e) => {
                           setCategorySlugEdited(true);
-                          setCategoryForm((p) => ({ ...p, slug: e.target.value }));
+                          setCategoryFormDirty((p) => ({ ...p, slug: e.target.value }));
                         }}
                         aria-describedby={ariaDescribedBy}
                         aria-invalid={ariaInvalid}
@@ -436,7 +477,7 @@ export default function PublicSitePosts() {
                       value={postForm.title ?? ''}
                       onChange={(e) => {
                         const title = e.target.value;
-                        setPostForm((p) => {
+                        setPostFormDirty((p) => {
                           const newSlug = !postSlugEdited ? slugify(title) : p.slug;
                           return { ...p, title, slug: newSlug };
                         });
@@ -454,7 +495,7 @@ export default function PublicSitePosts() {
                         value={postForm.slug ?? ''}
                         onChange={(e) => {
                           setPostSlugEdited(true);
-                          setPostForm((p) => ({ ...p, slug: e.target.value }));
+                          setPostFormDirty((p) => ({ ...p, slug: e.target.value }));
                         }}
                         aria-describedby={ariaDescribedBy}
                         aria-invalid={ariaInvalid}
@@ -466,7 +507,9 @@ export default function PublicSitePosts() {
                       <Input
                         id={id}
                         value={postForm.dateLabel ?? ''}
-                        onChange={(e) => setPostForm((p) => ({ ...p, dateLabel: e.target.value }))}
+                        onChange={(e) =>
+                          setPostFormDirty((p) => ({ ...p, dateLabel: e.target.value }))
+                        }
                         placeholder="7 Mei 2026"
                         aria-describedby={ariaDescribedBy}
                         aria-invalid={ariaInvalid}
@@ -480,7 +523,7 @@ export default function PublicSitePosts() {
                       <Select
                         value={postForm.categoryId ?? '__none__'}
                         onValueChange={(v) =>
-                          setPostForm((p) => ({
+                          setPostFormDirty((p) => ({
                             ...p,
                             categoryId: v === '__none__' ? undefined : v,
                           }))
@@ -512,7 +555,7 @@ export default function PublicSitePosts() {
                     <Input
                       id={id}
                       value={postForm.status ?? ''}
-                      onChange={(e) => setPostForm((p) => ({ ...p, status: e.target.value }))}
+                      onChange={(e) => setPostFormDirty((p) => ({ ...p, status: e.target.value }))}
                       placeholder="Buka / Tutup"
                       aria-describedby={ariaDescribedBy}
                       aria-invalid={ariaInvalid}
@@ -525,7 +568,9 @@ export default function PublicSitePosts() {
                       <Input
                         id={id}
                         value={postForm.formUrl ?? ''}
-                        onChange={(e) => setPostForm((p) => ({ ...p, formUrl: e.target.value }))}
+                        onChange={(e) =>
+                          setPostFormDirty((p) => ({ ...p, formUrl: e.target.value }))
+                        }
                         placeholder="https://..."
                         aria-describedby={ariaDescribedBy}
                         aria-invalid={ariaInvalid}
@@ -537,7 +582,7 @@ export default function PublicSitePosts() {
                   {({ 'aria-describedby': ariaDescribedBy, 'aria-invalid': ariaInvalid }) => (
                     <CmsPublishTabs
                       published={postForm.isPublished ?? false}
-                      onChange={(v) => setPostForm((p) => ({ ...p, isPublished: v }))}
+                      onChange={(v) => setPostFormDirty((p) => ({ ...p, isPublished: v }))}
                       aria-describedby={ariaDescribedBy}
                       aria-invalid={ariaInvalid}
                     />
@@ -549,7 +594,7 @@ export default function PublicSitePosts() {
                       id={id}
                       rows={3}
                       value={postForm.excerpt ?? ''}
-                      onChange={(e) => setPostForm((p) => ({ ...p, excerpt: e.target.value }))}
+                      onChange={(e) => setPostFormDirty((p) => ({ ...p, excerpt: e.target.value }))}
                       aria-describedby={ariaDescribedBy}
                       aria-invalid={ariaInvalid}
                     />
@@ -561,7 +606,7 @@ export default function PublicSitePosts() {
                       id={id}
                       rows={8}
                       value={postForm.content ?? ''}
-                      onChange={(e) => setPostForm((p) => ({ ...p, content: e.target.value }))}
+                      onChange={(e) => setPostFormDirty((p) => ({ ...p, content: e.target.value }))}
                       aria-describedby={ariaDescribedBy}
                       aria-invalid={ariaInvalid}
                     />
@@ -573,7 +618,7 @@ export default function PublicSitePosts() {
                       id={id}
                       value={postForm.coverImageUrl ?? ''}
                       onChange={(e) =>
-                        setPostForm((p) => ({ ...p, coverImageUrl: e.target.value }))
+                        setPostFormDirty((p) => ({ ...p, coverImageUrl: e.target.value }))
                       }
                       aria-describedby={ariaDescribedBy}
                       aria-invalid={ariaInvalid}
@@ -591,7 +636,7 @@ export default function PublicSitePosts() {
                         if (!file) return;
                         try {
                           const url = await uploadImage(file);
-                          setPostForm((p) => ({ ...p, coverImageUrl: url }));
+                          setPostFormDirty((p) => ({ ...p, coverImageUrl: url }));
                           toast.success('Upload berhasil');
                         } catch (err: any) {
                           toast.error(getErrorMessage(err, 'Gagal upload'));
@@ -644,7 +689,9 @@ export default function PublicSitePosts() {
             <CmsListToolbar
               count={posts.length}
               countLabel={typeLabel.toLowerCase()}
-              onCreate={() => {
+              onCreate={async () => {
+                const ok = await confirmIfDirty();
+                if (!ok) return;
                 resetPostForm();
                 setContentTab('edit');
               }}
