@@ -119,9 +119,7 @@ export default function PublicSiteRecruitments() {
     });
     const formData = new FormData();
     formData.append('file', prepared);
-    const res = await api.post('/public-site/admin/upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    const res = await api.post('/public-site/admin/upload', formData);
     return res.data.data.url as string;
   };
 
@@ -622,7 +620,7 @@ export default function PublicSiteRecruitments() {
                 </li>
               ) : null}
               {recruitments.map((r) => (
-                <li key={r.id} className="rounded-2xl border border-border p-4 border-border">
+                <li key={r.id} className="rounded-2xl border border-border p-4">
                   <p className="font-bold text-foreground">{r.title}</p>
                   <p className="text-sm text-muted-foreground">{r.date_range ?? '—'}</p>
                   <Badge className="mt-2" variant={r.is_published ? 'success' : 'secondary'}>
