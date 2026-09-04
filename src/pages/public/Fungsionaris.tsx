@@ -171,19 +171,26 @@ export default function Fungsionaris() {
       {allCabinets.length > 1 && (
         <PublicEnter>
           <div className="mx-auto -mt-4 max-w-7xl px-4 py-4 sm:px-6">
-            <div className="flex flex-wrap items-center justify-center gap-2">
+            <div
+              role="tablist"
+              className="flex flex-wrap items-center justify-center gap-2"
+              aria-label="Pilih periode kabinet"
+            >
               {allCabinets.map((cab: any) => {
                 const isSelected = cabinet?.id === cab.id;
                 return (
                   <button
                     key={cab.id}
                     type="button"
+                    role="tab"
+                    aria-selected={isSelected}
+                    aria-pressed={isSelected}
                     onClick={() => setSelectedCabinetId(isSelected ? null : cab.id)}
                     className={
                       (isSelected
                         ? "bg-[var(--public-primary)] text-white shadow-[0_10px_22px_rgba(37,99,235,0.35)]"
                         : "bg-white text-slate-900 border border-black/10 hover:border-[var(--public-primary)]/40"
-                      ) + " inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-xs font-semibold uppercase tracking-wide transition"
+                      ) + " inline-flex min-h-10 items-center gap-2 rounded-xl px-5 py-2.5 text-xs font-semibold uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500 dark:focus-visible:ring-indigo-400"
                     }
                   >
                     {cab.name}

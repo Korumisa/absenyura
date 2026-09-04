@@ -119,7 +119,7 @@ export const getReports = async (req: AuthRequest, res: Response): Promise<void>
     } else {
       total = await prisma.attendance.count({ where: whereClause });
     }
-    // TODO: remove fallback once all envs confirm semester column exists (2026-02 migration applied)
+    // TODO(#post-audit-p3): remove fallback once all envs confirm semester column exists (2026-02 migration applied)
     attendances = await queryWithSemesterFallback(
       () =>
         prisma.attendance.findMany({
@@ -250,7 +250,7 @@ export const getReports = async (req: AuthRequest, res: Response): Promise<void>
       );
 
       if (classIds.length && userIds.length) {
-        // TODO: remove fallback once all envs confirm semester column exists (2026-02 migration applied)
+        // TODO(#post-audit-p3): remove fallback once all envs confirm semester column exists (2026-02 migration applied)
         const enrollments = await queryWithSemesterFallback(
           () =>
             prisma.classEnrollment.findMany({

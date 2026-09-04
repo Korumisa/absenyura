@@ -169,7 +169,6 @@ export default function App() {
             try {
               await api.post('/attendance/check-in', formData, {
                 headers: {
-                  'Content-Type': 'multipart/form-data',
                   'X-Sync-Source': 'offline-queue',
                 },
               });
@@ -287,6 +286,33 @@ export default function App() {
     <ThemeProvider defaultTheme="light" storageKey="absensyura-theme">
       <ErrorBoundary>
         <Toaster
+          aria-label="Notifikasi berhasil"
+          position="top-right"
+          richColors
+          toastOptions={{
+            duration: 4000,
+            className: 'sonner-toast-success',
+            classNames: { error: 'sonner-error', success: 'sonner-success' },
+          }}
+          closeButton
+          {...({ filter: (t: any) => t.type === 'success' } as any)}
+        />
+        <Toaster
+          aria-live="assertive"
+          aria-label="Notifikasi kesalahan penting"
+          position="top-right"
+          richColors
+          toastOptions={{
+            duration: 4000,
+            className: 'sonner-toast-error',
+            classNames: { error: 'sonner-error', success: 'sonner-success' },
+          }}
+          closeButton
+          {...({ filter: (t: any) => t.type === 'error' } as any)}
+        />
+        <Toaster
+          aria-live="polite"
+          aria-label="Notifikasi lainnya"
           position="top-right"
           richColors
           toastOptions={{
@@ -294,6 +320,12 @@ export default function App() {
             classNames: { error: 'sonner-error', success: 'sonner-success' },
           }}
           closeButton
+          {...({
+            filter: (t: any) => {
+              const ty = t.type;
+              return ty !== 'success' && ty !== 'error';
+            },
+          } as any)}
         />
         <PublicLoadingOverlay
           show={isMaintenance}

@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import api from '@/services/api';
 import useSWR from 'swr';
-import { useAuthStore } from '@/stores/authStore';
 import { FileText, Clock, CheckCircle2, XCircle, Plus } from 'lucide-react';
 import { format } from 'date-fns';
 import { id as localeId } from 'date-fns/locale';
@@ -157,7 +156,7 @@ export default function ExcuseMyList() {
           <ul className="space-y-3 p-5 md:hidden" aria-label="Daftar pengajuan saya">
             {loading ? (
               Array.from({ length: 3 }).map((_, i) => (
-                <li key={i} className="rounded-2xl border border-border p-4 border-border">
+                <li key={i} className="rounded-2xl border border-border p-4">
                   <Skeleton className="mb-2 h-5 w-40" />
                   <Skeleton className="h-4 w-32" />
                   <Skeleton className="mt-3 h-9 w-full" />
@@ -180,10 +179,7 @@ export default function ExcuseMyList() {
               paginatedExcuses.map((excuse) => {
                 const proofHref = resolveProofUrl(excuse.proof_url);
                 return (
-                  <li
-                    key={excuse.id}
-                    className="rounded-2xl border border-border p-4 border-border"
-                  >
+                  <li key={excuse.id} className="rounded-2xl border border-border p-4">
                     <p className="text-sm font-medium text-brand">{excuse.session?.title}</p>
                     <p className="mt-1 text-xs text-muted-foreground">
                       {format(

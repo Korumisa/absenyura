@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo } from 'react';
 import PublicLayout from '@/components/PublicLayout';
 import PublicEnter from '@/components/PublicEnter';
 import PublicReveal from '@/components/PublicReveal';
@@ -11,6 +11,8 @@ import { mockPrograms } from '@/lib/utils/mockLandingData';
 import { PublicPageError } from '@/components/public/PublicPageError';
 import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 import { publicSiteFetcher, safeArray } from '@/lib/utils/publicSiteFetcher';
+
+const SCROLL_RESTORE_KEY = 'proker-detail-scroll-y';
 
 function parseProgramDescriptionFallback(description: string | null) {
   const raw = String(description ?? '').trim();
@@ -47,8 +49,6 @@ function parseProgramDescriptionFallback(description: string | null) {
     const value = m[2].trim();
     const field = known.get(key);
     if (field) {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const _assign = { [field]: value };
       if (field === 'division') division = value;
       if (field === 'fundingSource') fundingSource = value;
       if (field === 'location') location = value;
@@ -78,6 +78,26 @@ export default function ProgramKerjaDetail() {
   const location = program?.location ?? parsedFallback.location;
   const target = program?.target ?? parsedFallback.target;
   const rationale = program?.rationale ?? parsedFallback.body;
+
+  useLayoutEffect(() => {
+    const saved = Number(sessionStorage.getItem(SCROLL_RESTORE_KEY) || 0);
+    if (saved > 0) {
+      window.scrollTo({ top: saved, behavior: 'instant' as ScrollBehavior });
+      sessionStorage.removeItem(SCROLL_RESTORE_KEY);
+    } else {
+      window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+    }
+  }, [id]);
+
+  useEffect(() => {
+    const save = () => sessionStorage.setItem(SCROLL_RESTORE_KEY, String(window.scrollY));
+    window.addEventListener('beforeunload', save);
+    return () => {
+      save();
+      window.removeEventListener('beforeunload', save);
+    };
+  }, []);
+
   if (isError) {
     return <PublicPageError title="Gagal memuat program" error={swr.error} onRetry={retry} />;
   }

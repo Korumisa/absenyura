@@ -1,4 +1,4 @@
-﻿import { Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 /** [IA] R1 — daftar sebagai mode utama + CTA buat baru */
@@ -14,7 +14,7 @@ export function CmsListToolbar({
   countLabel?: string;
 }) {
   return (
-    <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4 border-border">
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
       <p className="text-sm text-muted-foreground">
         {count !== undefined ? (
           <>

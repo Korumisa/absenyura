@@ -316,7 +316,7 @@ export default function PublicSitePrograms() {
             />
             <ul className="space-y-4 md:hidden" aria-label="Daftar program">
               {programs.map((p) => (
-                <li key={p.id} className="rounded-2xl border border-border p-4 border-border">
+                <li key={p.id} className="rounded-2xl border border-border p-4">
                   <p className="font-bold text-foreground">{p.title}</p>
                   <p className="text-sm text-muted-foreground">{p.date_range ?? '—'}</p>
                   <Badge className="mt-2" variant={p.is_published ? 'success' : 'secondary'}>

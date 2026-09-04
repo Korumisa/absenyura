@@ -115,9 +115,10 @@ export default function ClassStudents() {
     resetDeps: [searchTerm],
   });
 
+  const enrolledIdSet = useMemo(() => new Set(students.map((e) => e.id)), [students]);
   const notEnrolled = useMemo(
-    () => availableStudents.filter((s) => !students.some((e) => e.id === s.id)),
-    [availableStudents, students]
+    () => availableStudents.filter((s) => !enrolledIdSet.has(s.id)),
+    [availableStudents, enrolledIdSet]
   );
 
   const selectedStudentName =
@@ -395,7 +396,7 @@ export default function ClassStudents() {
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="size-9"
+                                  className="h-11 w-11 min-h-11"
                                   title="Biodata mahasiswa"
                                   onClick={() => openStudentDetail(student.id)}
                                 >
@@ -407,7 +408,7 @@ export default function ClassStudents() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  className="text-destructive hover:text-destructive"
+                                  className="min-h-11 text-destructive hover:text-destructive"
                                   onClick={() => {
                                     setStudentToRemove({ id: student.id, name: student.name });
                                     setIsRemoveConfirmOpen(true);

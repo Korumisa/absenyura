@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '@/services/api';
 import useSWR from 'swr';
@@ -13,7 +13,6 @@ import { sessionStatusLabel } from '@/lib/utils/statusLabel';
 import { Button } from '@/components/ui/button';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { FormField } from '@/components/ui/form-field';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -148,7 +147,10 @@ export default function Sessions() {
   })();
 
   const fetcher = (url: string) => api.get(url).then((res) => res.data.data);
-  const swr = useSWR<Session[]>('/sessions', fetcher, { revalidateOnFocus: false });
+  const swr = useSWR<Session[]>('/sessions', fetcher, {
+    revalidateOnFocus: false,
+    dedupingInterval: 60_000,
+  });
   const {
     data: sessions = [],
     isPending,
@@ -437,6 +439,13 @@ export default function Sessions() {
     }
   };
 
+  const selectedClassIdSet = useMemo(() => new Set(formData.class_ids), [formData.class_ids]);
+  const classByIdMap = useMemo(() => {
+    const m = new Map<string, { id: string; name: string; semester: number }>();
+    for (const c of classes) m.set(c.id, c);
+    return m;
+  }, [classes]);
+
   const filteredSessions = sessions.filter((s) => {
     const matchSearch = s.title.toLowerCase().includes(searchTerm.toLowerCase());
     const matchLocation = filterLocation === 'ALL' || s.location?.id === filterLocation;
@@ -446,11 +455,12 @@ export default function Sessions() {
     }) as string[];
     const legacyClassId = s.class_id ?? null;
     const isAllStudents = !legacyClassId && linkedIds.length === 0;
+    const linkedIdSet = new Set(linkedIds);
     const matchClass =
       filterClass === 'ALL' ||
       (filterClass === 'ALL_STUDENTS'
         ? isAllStudents
-        : legacyClassId === filterClass || linkedIds.includes(filterClass));
+        : legacyClassId === filterClass || linkedIdSet.has(filterClass));
 
     let matchDate = true;
     if (filterDate) {
@@ -517,6 +527,7 @@ export default function Sessions() {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-9 w-full"
+                  aria-label="Cari sesi absensi"
                 />
               </div>
               <div className="relative w-full">
@@ -526,11 +537,12 @@ export default function Sessions() {
                   value={filterDate}
                   onChange={(e) => setFilterDate(e.target.value)}
                   className="w-full pl-9 block appearance-none [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer bg-transparent"
+                  aria-label="Filter tanggal sesi"
                 />
               </div>
               <div className="w-full">
                 <Select value={filterLocation} onValueChange={setFilterLocation}>
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger className="w-full" aria-label="Filter lokasi sesi">
                     <SelectValue placeholder="Semua Lokasi" />
                   </SelectTrigger>
                   <SelectContent>
@@ -893,7 +905,7 @@ export default function Sessions() {
           onOpenChange={setIsModalOpen}
         >
           <DialogContent className="max-w-4xl p-0">
-            <div className="border-b border-border px-6 py-4 border-border">
+            <div className="border-b border-border px-6 py-4">
               <div className="flex items-start justify-between gap-3">
                 <DialogHeader>
                   <DialogTitle className="text-xl font-bold text-foreground">
@@ -1245,7 +1257,7 @@ export default function Sessions() {
                                     c.name.toLowerCase().includes(classSearch.trim().toLowerCase())
                                   )
                                   .map((c) => {
-                                    const selected = formData.class_ids.includes(c.id);
+                                    const selected = selectedClassIdSet.has(c.id);
                                     return (
                                       <Button
                                         key={c.id}
@@ -1297,7 +1309,7 @@ export default function Sessions() {
                                 ) : (
                                   formData.class_ids
                                     .flatMap((id) => {
-                                      const result = classes.find((c) => c.id === id);
+                                      const result = classByIdMap.get(id);
                                       return result ? [result] : [];
                                     })
                                     .map((c: any) => (

@@ -1,4 +1,4 @@
-﻿import { Check } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils/utils';
 
 /** [IA] Stepper — label langkah + penjelasan singkat fungsi langkah aktif */
@@ -16,10 +16,7 @@ export function WizardStepIndicator({
 }) {
   const hint = hints?.[currentStep - 1];
   return (
-    <nav
-      aria-label="Progres langkah"
-      className={cn('border-b border-border pb-4 border-border', className)}
-    >
+    <nav aria-label="Progres langkah" className={cn('border-b border-border pb-4', className)}>
       <ol className="flex flex-wrap items-center gap-2 sm:gap-0">
         {labels.map((label, i) => {
           const step = i + 1;

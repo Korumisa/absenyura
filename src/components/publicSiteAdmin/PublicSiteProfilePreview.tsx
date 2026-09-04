@@ -27,7 +27,7 @@ export default function PublicSiteProfilePreview({ draft }: { draft: DraftPrevie
       className="sticky top-4 overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-card"
       aria-label="Pratinjau tampilan website"
     >
-      <div className="border-b border-border px-4 py-3 border-border">
+      <div className="border-b border-border px-4 py-3">
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Pratinjau beranda
         </p>
@@ -74,7 +74,7 @@ export default function PublicSiteProfilePreview({ draft }: { draft: DraftPrevie
         ) : null}
 
         <div className="mt-4 grid gap-2 sm:grid-cols-2">
-          <div className="rounded-xl border border-border p-3 border-border">
+          <div className="rounded-xl border border-border p-3">
             <p className="text-xs font-bold text-[var(--public-primary)]">
               {draft.homeCardLeftTitle || 'Kartu kiri'}
             </p>
@@ -82,7 +82,7 @@ export default function PublicSiteProfilePreview({ draft }: { draft: DraftPrevie
               {draft.homeCardLeftBody || '…'}
             </p>
           </div>
-          <div className="rounded-xl border border-border p-3 border-border">
+          <div className="rounded-xl border border-border p-3">
             <p className="text-xs font-bold text-[var(--public-primary)]">
               {draft.homeCardRightTitle || 'Kartu kanan'}
             </p>

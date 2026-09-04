@@ -1,17 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import api from '@/services/api';
 import useSWR from 'swr';
-import {
-  Calendar,
-  CheckCircle2,
-  Clock,
-  XCircle,
-  MapPin,
-  Smartphone,
-  Camera,
-  History as HistoryIcon,
-  FileText,
-} from 'lucide-react';
+import { Calendar, Clock, MapPin, Smartphone, Camera, History as HistoryIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -34,7 +24,7 @@ import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
 import { SlowLoadingHint } from '@/components/admin/SlowLoadingHint';
 import { TablePagination } from '@/components/ui/TablePagination';
-import { attendanceBadgeVariant, attendanceStatusLabel } from '@/lib/utils/statusLabel';
+import { AttendanceStatusBadge } from '@/components/AttendanceStatusBadge';
 
 const fetcher = (url: string) => api.get(url).then((res) => res.data);
 
@@ -46,9 +36,15 @@ export default function HistoryPage() {
     setPage(1);
   }, [filter]);
 
-  const queryParams = new URLSearchParams({ page: String(page), limit: '20' });
-  if (filter !== 'ALL') queryParams.set('status', filter);
-  const swr = useSWR(`/reports?${queryParams.toString()}`, fetcher, { revalidateOnFocus: false });
+  const searchKey = useMemo(() => {
+    const qp = new URLSearchParams({ page: String(page), limit: '20' });
+    if (filter !== 'ALL') qp.set('status', filter);
+    return qp.toString();
+  }, [page, filter]);
+  const swr = useSWR(`/reports?${searchKey}`, fetcher, {
+    revalidateOnFocus: false,
+    dedupingInterval: 60_000,
+  });
   const { isPending, isError, retry, showSlowLoadingHint } = useSwrPageState(swr);
   const history: AttendanceHistory[] = Array.isArray(swr.data?.data) ? swr.data.data : [];
   const meta: PaginationMeta | null = swr.data?.meta ?? null;
@@ -190,18 +186,7 @@ export default function HistoryPage() {
                   ) : null}
                 </div>
                 <div className="mt-3 flex justify-end">
-                  <Badge
-                    variant={attendanceBadgeVariant(item.status)}
-                    className="gap-1.5 px-3 py-1"
-                  >
-                    {item.status === 'PRESENT' && <CheckCircle2 className="size-3.5" />}
-                    {item.status === 'LATE' && <Clock className="size-3.5" />}
-                    {(item.status === 'SICK' || item.status === 'EXCUSED') && (
-                      <FileText className="size-3.5" />
-                    )}
-                    {item.status === 'ABSENT' && <XCircle className="size-3.5" />}
-                    {attendanceStatusLabel(item.status)}
-                  </Badge>
+                  <AttendanceStatusBadge compact status={item.status} />
                 </div>
               </li>
             ))}
@@ -278,18 +263,7 @@ export default function HistoryPage() {
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Badge
-                          variant={attendanceBadgeVariant(item.status)}
-                          className="gap-1.5 px-3 py-1"
-                        >
-                          {item.status === 'PRESENT' && <CheckCircle2 className="size-3.5" />}
-                          {item.status === 'LATE' && <Clock className="size-3.5" />}
-                          {(item.status === 'SICK' || item.status === 'EXCUSED') && (
-                            <FileText className="size-3.5" />
-                          )}
-                          {item.status === 'ABSENT' && <XCircle className="size-3.5" />}
-                          {attendanceStatusLabel(item.status)}
-                        </Badge>
+                        <AttendanceStatusBadge status={item.status} />
                       </TableCell>
                     </TableRow>
                   ))}

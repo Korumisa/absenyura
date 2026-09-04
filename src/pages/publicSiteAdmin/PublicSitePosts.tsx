@@ -5,7 +5,6 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { FormField } from '@/components/ui/form-field';
 import { ConfirmModal } from '@/components/ConfirmModal';
@@ -167,9 +166,7 @@ export default function PublicSitePosts() {
     });
     const form = new FormData();
     form.append('file', prepared);
-    const res = await api.post('/public-site/admin/upload', form, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    const res = await api.post('/public-site/admin/upload', form);
     return res.data.data.url as string;
   };
 
@@ -459,7 +456,7 @@ export default function PublicSitePosts() {
                     {categories.map((c) => (
                       <li
                         key={c.id}
-                        className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border px-3 py-2 border-border"
+                        className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border px-3 py-2"
                       >
                         <span>
                           <span className="font-medium text-foreground">{c.name}</span>
@@ -759,7 +756,7 @@ export default function PublicSitePosts() {
                 </li>
               ) : null}
               {posts.map((p) => (
-                <li key={p.id} className="rounded-2xl border border-border p-4 border-border">
+                <li key={p.id} className="rounded-2xl border border-border p-4">
                   <p className="font-bold text-foreground">{p.title}</p>
                   <p className="text-sm text-muted-foreground">{p.category?.name ?? p.type}</p>
                   <Badge className="mt-2" variant={p.is_published ? 'success' : 'secondary'}>

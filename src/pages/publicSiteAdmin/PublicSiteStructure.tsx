@@ -100,9 +100,7 @@ export default function PublicSiteStructure() {
     });
     const form = new FormData();
     form.append('file', prepared);
-    const res = await api.post('/public-site/admin/upload', form, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    const res = await api.post('/public-site/admin/upload', form);
     return res.data.data.url as string;
   };
 

@@ -32,7 +32,7 @@ export default function PublicSiteGalleryPreview({
           <p className="line-clamp-2 text-xs text-muted-foreground">{description}</p>
         ) : null}
         {photos.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border p-6 text-center text-xs text-muted-foreground border-border">
+          <div className="rounded-xl border border-dashed border-border p-6 text-center text-xs text-muted-foreground">
             Belum ada foto
           </div>
         ) : (

@@ -1,25 +1,28 @@
 import multer from 'multer';
+import type { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
 import sharp from 'sharp';
-import { fileTypeFromFile, fileTypeFromBuffer } from 'file-type';
-import { Request, Response, NextFunction } from 'express';
+import { fileTypeFromBuffer } from 'file-type';
 
 const tempDir = os.tmpdir();
 
+ 
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
+  destination: (req: any, file: Express.Multer.File, cb: any) => {
     cb(null, tempDir);
   },
-  filename: (req, file, cb) => {
+  filename: (req: any, file: Express.Multer.File, cb: any) => {
     const ext = path.extname(file.originalname) || '';
     cb(null, `${file.fieldname}-${crypto.randomBytes(16).toString('hex')}${ext}`);
   },
 });
 
-const fileFilter = (req: any, file: any, cb: any) => {
+type FileFilterCallback = (error: Error | null, acceptFile?: boolean) => void;
+
+const fileFilter = (_req: Request, file: Express.Multer.File, cb: FileFilterCallback) => {
   if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('application/pdf')) {
     cb(null, true);
   } else {
@@ -35,7 +38,7 @@ export const upload = multer({
   },
 });
 
-const imageOnlyFilter = (_req: any, file: any, cb: any) => {
+const imageOnlyFilter = (_req: Request, file: Express.Multer.File, cb: FileFilterCallback) => {
   if (file.mimetype.startsWith('image/')) {
     cb(null, true);
   } else {
@@ -51,7 +54,7 @@ export const uploadImageOnly = multer({
   },
 });
 
-const excelFilter = (_req: any, file: any, cb: any) => {
+const excelFilter = (_req: Request, file: Express.Multer.File, cb: FileFilterCallback) => {
   const ok = new Set([
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     'application/vnd.ms-excel',

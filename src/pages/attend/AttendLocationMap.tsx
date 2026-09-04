@@ -31,7 +31,7 @@ export default function AttendLocationMap({
   if (!location) return null;
 
   return (
-    <div className="z-0 h-52 w-full overflow-hidden rounded-xl border border-border shadow-inner border-border">
+    <div className="z-0 h-52 w-full overflow-hidden rounded-xl border border-border shadow-inner">
       <MapContainer
         center={[location.lat, location.lng]}
         zoom={16}

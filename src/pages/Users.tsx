@@ -8,7 +8,6 @@ import {
   Search,
   Edit2,
   Trash2,
-  X,
   Download,
   Upload,
   Smartphone,
@@ -68,7 +67,6 @@ import type { PaginationMeta } from '@/types/common';
 import { ClassMultiSelect, type ClassOption } from '@/components/ClassMultiSelect';
 import { formatClassLabel } from '@/lib/utils/classLabel';
 import { LastSavedIndicator } from '@/components/admin/LastSavedIndicator';
-import { cn } from '@/lib/utils/utils';
 
 export default function Users() {
   const { user: currentUser } = useAuthStore();
@@ -139,20 +137,24 @@ export default function Users() {
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [formBaseline, setFormBaseline] = useState<string>('');
 
-  const queryParams = new URLSearchParams({
-    page: page.toString(),
-    limit: '20',
-    search: debouncedSearch.trim(),
-    role: roleFilter,
-    status: statusFilter,
-  });
+  const searchKey = useMemo(
+    () =>
+      new URLSearchParams({
+        page: page.toString(),
+        limit: '20',
+        search: debouncedSearch.trim(),
+        role: roleFilter,
+        status: statusFilter,
+      }).toString(),
+    [page, debouncedSearch, roleFilter, statusFilter]
+  );
 
   const swr = useSWR<{
     data?: User[];
     meta?: PaginationMeta | null;
     success?: boolean;
     message?: string;
-  }>(`/users?${queryParams.toString()}`, fetcher, { revalidateOnFocus: false });
+  }>(`/users?${searchKey}`, fetcher, { revalidateOnFocus: false, dedupingInterval: 60_000 });
   const { isPending: loading, isError, showSlowLoadingHint, retry } = useSwrPageState(swr);
   const { data, mutate, isValidating } = swr;
 
@@ -361,9 +363,7 @@ export default function Users() {
     formData.append('file', importFile);
 
     try {
-      const res = await api.post('/users/import', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      const res = await api.post('/users/import', formData);
       const importedAt = res.data?.data?.enrollment_date
         ? new Date(res.data.data.enrollment_date).toLocaleDateString('id-ID', {
             day: 'numeric',
@@ -461,12 +461,13 @@ export default function Users() {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
+                  aria-label="Cari pengguna"
                 />
               </div>
 
               <div className="flex gap-3 w-full md:w-auto">
                 <Select value={roleFilter} onValueChange={setRoleFilter}>
-                  <SelectTrigger className="w-full md:w-[160px]">
+                  <SelectTrigger className="w-full md:w-[160px]" aria-label="Filter peran pengguna">
                     <SelectValue placeholder="Filter Peran" />
                   </SelectTrigger>
                   <SelectContent>
@@ -479,7 +480,10 @@ export default function Users() {
                 </Select>
 
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-full md:w-[150px]">
+                  <SelectTrigger
+                    className="w-full md:w-[150px]"
+                    aria-label="Filter status pengguna"
+                  >
                     <SelectValue placeholder="Filter Status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -697,7 +701,7 @@ export default function Users() {
 
         <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
           <DialogContent className="max-w-2xl p-0">
-            <div className="border-b border-border px-6 py-4 border-border">
+            <div className="border-b border-border px-6 py-4">
               <div className="flex items-start justify-between gap-3">
                 <DialogHeader>
                   <DialogTitle className="text-xl font-bold text-foreground">

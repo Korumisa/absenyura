@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import type { AuthRequest } from '../types/index.js';
 import prisma from '../utils/prisma.js';
 import { sessionCheckInSelect } from '../utils/sessionQuerySelect.js';
@@ -543,7 +543,7 @@ export const checkIn = async (req: AuthRequest, res: Response): Promise<void> =>
 
     logCheckinStep('db_insert', session_id, checkinStart, { attendanceId: attendance.id });
 
-    // TODO: ganti dengan Supabase Realtime jika butuh push live feed ke dosen di masa depan.
+    // TODO(#post-audit-p3): ganti dengan Supabase Realtime jika butuh push live feed ke dosen di masa depan.
     // QRDisplay memakai polling GET /sessions/:id/attendances setiap 5 detik.
 
     if (req.file && req.file.path) {

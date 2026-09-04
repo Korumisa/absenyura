@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useLayoutEffect } from 'react';
 import PublicLayout from '@/components/PublicLayout';
 import type { PublicPost, PublicProfile } from '@/types/publicSite';
 import { Link, useParams } from 'react-router-dom';
@@ -11,6 +11,8 @@ import { mockAllPosts, mockProfile } from '@/lib/utils/mockLandingData';
 import { PublicPageError } from '@/components/public/PublicPageError';
 import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 import { publicSiteFetcher } from '@/lib/utils/publicSiteFetcher';
+
+const SCROLL_RESTORE_KEY = 'berita-detail-scroll-y';
 
 export default function BeritaDetail() {
   const { slug } = useParams();
@@ -26,6 +28,25 @@ export default function BeritaDetail() {
     mockStatic: slug ? mockAllPosts.find((p) => p.slug === slug) ?? null : null,
   });
   const orgName = profile?.org_name ?? '';
+
+  useLayoutEffect(() => {
+    const saved = Number(sessionStorage.getItem(SCROLL_RESTORE_KEY) || 0);
+    if (saved > 0) {
+      window.scrollTo({ top: saved, behavior: 'instant' as ScrollBehavior });
+      sessionStorage.removeItem(SCROLL_RESTORE_KEY);
+    } else {
+      window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+    }
+  }, [slug]);
+
+  useEffect(() => {
+    const save = () => sessionStorage.setItem(SCROLL_RESTORE_KEY, String(window.scrollY));
+    window.addEventListener('beforeunload', save);
+    return () => {
+      save();
+      window.removeEventListener('beforeunload', save);
+    };
+  }, []);
 
   if (isError) {
     return <PublicPageError title="Gagal memuat berita" error={swr.error} onRetry={retry} />;
@@ -75,7 +96,10 @@ export default function BeritaDetail() {
             </header>
 
             <div className="mt-8 overflow-hidden rounded-2xl border border-black/10 bg-white">
-              <div className="aspect-[16/10] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))]">
+              <div
+                className="aspect-[16/10] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))]"
+                style={{ aspectRatio: '16 / 10' }}
+              >
                 <PublicCoverImage url={post.cover_image_url} alt={post.title} imgClassName="object-cover" />
               </div>
             </div>

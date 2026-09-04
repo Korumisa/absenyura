@@ -16,7 +16,6 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { FormField } from '@/components/ui/form-field';
 import {
   Select,
@@ -86,7 +85,10 @@ export default function Classes() {
   const [formBaseline, setFormBaseline] = useState<string>('');
 
   const fetcher = (url: string) => api.get(url).then((res) => res.data.data);
-  const swr = useSWR<ClassItem[]>('/classes', fetcher, { revalidateOnFocus: false });
+  const swr = useSWR<ClassItem[]>('/classes', fetcher, {
+    revalidateOnFocus: false,
+    dedupingInterval: 60_000,
+  });
   const {
     data: classes = [],
     isPending: loading,
@@ -469,7 +471,7 @@ export default function Classes() {
         {/* Modal Form */}
         <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
           <DialogContent className="max-w-lg p-0">
-            <div className="border-b border-border px-6 py-4 border-border">
+            <div className="border-b border-border px-6 py-4">
               <div className="flex items-start justify-between gap-3">
                 <DialogHeader>
                   <DialogTitle className="text-xl font-bold text-foreground">

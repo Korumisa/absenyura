@@ -399,6 +399,7 @@ export const runPhotoCleanupJob = async () => {
   });
 
   let deletedCount = 0;
+  const idsCleared: string[] = [];
   for (const att of oldAttendances) {
     if (!att.photo_url) continue;
     let deleteSuccess = false;
@@ -406,20 +407,16 @@ export const runPhotoCleanupJob = async () => {
 
     if (photoUrl.includes('cloudinary') || photoUrl.includes('res.cloudinary.com')) {
       try {
-        // Extract public ID correctly: remove version prefix (like /v1234567/) if exists
-        // Example: https://res.cloudinary.com/.../v1234567/attendance/abc123.jpg → publicId = attendance/abc123
         const urlParts = photoUrl.split('/');
         let startIndex = 0;
-        // Find the part that starts with 'v' followed by digits (version)
         for (let i = 0; i < urlParts.length; i++) {
           if (/^v\d+$/.test(urlParts[i])) {
-            startIndex = i + 1; // public ID starts right after version part
+            startIndex = i + 1;
             break;
           }
         }
-        // Join from startIndex, then remove the file extension
         const publicIdWithExt = urlParts.slice(startIndex).join('/');
-        const publicId = publicIdWithExt.replace(/\.[^/.]+$/, ''); // remove file extension
+        const publicId = publicIdWithExt.replace(/\.[^/.]+$/, '');
 
         await cloudinary.uploader.destroy(publicId);
         deleteSuccess = true;
@@ -431,25 +428,27 @@ export const runPhotoCleanupJob = async () => {
         deleteSuccess = false;
       }
     } else {
-      // Local file handling
       const fileName = path.basename(photoUrl);
       const filePath = path.join(process.cwd(), 'uploads', 'attendance', fileName);
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
         deleteSuccess = true;
       } else {
-        // If local file doesn't exist, we can still mark it as deleted (orphaned)
         deleteSuccess = true;
       }
     }
 
     if (deleteSuccess) {
-      await prisma.attendance.update({
-        where: { id: att.id },
-        data: { photo_url: null },
-      });
+      idsCleared.push(att.id);
       deletedCount++;
     }
+  }
+
+  if (idsCleared.length > 0) {
+    await prisma.attendance.updateMany({
+      where: { id: { in: idsCleared } },
+      data: { photo_url: null },
+    });
   }
 
   if (deletedCount > 0) {
@@ -466,6 +465,9 @@ export const runSemesterUpdateJob = async () => {
     select: { id: true, enrollment_date: true, semester: true },
   });
 
+  const semesterOnlyIds: string[] = [];
+  const deactivateIds: string[] = [];
+  const semesterUpdates: Record<string, number> = {};
   let updatedCount = 0;
   const now = new Date();
 
@@ -475,18 +477,48 @@ export const runSemesterUpdateJob = async () => {
       (now.getFullYear() - enrollmentDate.getFullYear()) * 12 +
       (now.getMonth() - enrollmentDate.getMonth());
     const newSemester = Math.max(1, Math.min(14, Math.floor(monthsDiff / 6) + 1));
+    const currentSem = Number((user as any).semester ?? 0);
 
-    // Deactivate users at semester >=10: this is end of typical 4-year (8-semester) program + 2-semester buffer for extensions
-    if (newSemester !== (user as any).semester || newSemester >= 10) {
-      await prisma.user.update({
-        where: { id: user.id },
-        data:
-          newSemester >= 10
-            ? { semester: newSemester, is_active: false, refresh_token_hash: null }
-            : { semester: newSemester },
-      });
+    if (newSemester !== currentSem || newSemester >= 10) {
+      if (newSemester >= 10) {
+        deactivateIds.push(user.id);
+      } else {
+        semesterOnlyIds.push(user.id);
+      }
+      semesterUpdates[user.id] = newSemester;
       updatedCount++;
     }
+  }
+
+  if (semesterOnlyIds.length > 0) {
+    const semestersToApply = new Map<number, string[]>();
+    for (const id of semesterOnlyIds) {
+      const s = semesterUpdates[id];
+      const arr = semestersToApply.get(s);
+      if (arr) arr.push(id);
+      else semestersToApply.set(s, [id]);
+    }
+    for (const [sem, ids] of semestersToApply.entries()) {
+      await prisma.user.updateMany({ where: { id: { in: ids } }, data: { semester: sem } });
+    }
+  }
+
+  if (deactivateIds.length > 0) {
+    await prisma.$transaction(async (tx) => {
+      const semestersByUser = new Map<number, string[]>();
+      for (const id of deactivateIds) {
+        const s = semesterUpdates[id];
+        const arr = semestersByUser.get(s);
+        if (arr) arr.push(id);
+        else semestersByUser.set(s, [id]);
+      }
+      for (const [sem, ids] of semestersByUser.entries()) {
+        await tx.user.updateMany({
+          where: { id: { in: ids } },
+          data: { semester: sem, is_active: false, refresh_token_hash: null },
+        });
+      }
+    });
   }
 
   console.log(`[Cron] Semester update complete. Updated ${updatedCount} users.`);

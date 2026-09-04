@@ -15,10 +15,7 @@ export function CmsTabNav<T extends string>({
   ariaLabel?: string;
 }) {
   return (
-    <nav
-      aria-label={ariaLabel}
-      className="flex flex-wrap gap-2 border-b border-border pb-3 border-border"
-    >
+    <nav aria-label={ariaLabel} className="flex flex-wrap gap-2 border-b border-border pb-3">
       {tabs.map((tab) => (
         <button
           key={tab.id}

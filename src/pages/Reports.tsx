@@ -59,7 +59,8 @@ import { TablePagination } from '@/components/ui/TablePagination';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
 import { SlowLoadingHint } from '@/components/admin/SlowLoadingHint';
-import { attendanceBadgeVariant, attendanceStatusLabel } from '@/lib/utils/statusLabel';
+import { attendanceStatusLabel } from '@/lib/utils/statusLabel';
+import { AttendanceStatusBadge } from '@/components/AttendanceStatusBadge';
 import { toastErrorMessage } from '@/lib/utils/toastMessage';
 import { useMutationToast } from '@/hooks/useMutationToast';
 import { ConfirmModal } from '@/components/ConfirmModal';
@@ -137,7 +138,10 @@ export default function Reports() {
     return qp;
   }, [page, statusFilter, searchTerm, sessionId, startDate, endDate]);
 
-  const swr = useSWR(`/reports?${queryParams.toString()}`, fetcher, { revalidateOnFocus: false });
+  const swr = useSWR(`/reports?${queryParams.toString()}`, fetcher, {
+    revalidateOnFocus: false,
+    dedupingInterval: 60_000,
+  });
   const { isPending: loading, isError, showSlowLoadingHint, retry } = useSwrPageState(swr);
   const { data, mutate } = swr;
 
@@ -677,6 +681,7 @@ export default function Reports() {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-9"
+                  aria-label="Cari nama, NIM, atau sesi absensi"
                   aria-describedby="reports-search-hint"
                 />
               </div>
@@ -702,7 +707,7 @@ export default function Reports() {
                 />
               </div>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectTrigger className="w-full sm:w-[180px]" aria-label="Filter status kehadiran">
                   <SelectValue placeholder="Semua Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -715,7 +720,7 @@ export default function Reports() {
                 </SelectContent>
               </Select>
               <Select value={sessionId} onValueChange={setSessionId}>
-                <SelectTrigger className="w-full sm:w-[260px]">
+                <SelectTrigger className="w-full sm:w-[260px]" aria-label="Filter sesi absensi">
                   <SelectValue placeholder="Semua Sesi" />
                 </SelectTrigger>
                 <SelectContent>
@@ -769,18 +774,7 @@ export default function Reports() {
                       <p className="font-bold text-foreground">{report.user_name}</p>
                       <p className="text-sm text-muted-foreground">{report.nim_nip}</p>
                     </div>
-                    <Badge
-                      variant={attendanceBadgeVariant(report.status)}
-                      className="shrink-0 gap-1"
-                    >
-                      {report.status === 'PRESENT' && <CheckCircle2 className="size-3" />}
-                      {report.status === 'LATE' && <Clock className="size-3" />}
-                      {(report.status === 'SICK' || report.status === 'EXCUSED') && (
-                        <FileText className="size-3" />
-                      )}
-                      {report.status === 'ABSENT' && <XCircle className="size-3" />}
-                      {attendanceStatusLabel(report.status)}
-                    </Badge>
+                    <AttendanceStatusBadge status={report.status} />
                   </div>
                   <p className="text-xs font-medium text-muted-foreground">
                     Kelas: {reportClassLabel(report)}
@@ -903,7 +897,11 @@ export default function Reports() {
                     .filter((r): r is Report => Boolean(r && (r as any).id))
                     .map((report: any, idx: number) => (
                       <TableRow key={String(report?.id ?? idx)}>
-                        <TableCell>
+                        <TableCell
+                          scope="row"
+                          className="sticky left-0 z-10 bg-white dark:bg-slate-900 border-r border-r-slate-200 dark:border-r-slate-700/60"
+                        >
+                          <span className="sr-only">Header baris:</span>
                           <div className="font-medium text-foreground">
                             {String(report?.user_name ?? '-')}
                           </div>
@@ -930,17 +928,7 @@ export default function Reports() {
                           {safeFormat(report.check_in_time, 'HH:mm:ss')}
                         </TableCell>
                         <TableCell>
-                          <Badge variant={attendanceBadgeVariant(report.status)} className="gap-1">
-                            {report.status === 'PRESENT' && (
-                              <CheckCircle2 className="size-3 mr-1" />
-                            )}
-                            {report.status === 'LATE' && <Clock className="size-3 mr-1" />}
-                            {(report.status === 'SICK' || report.status === 'EXCUSED') && (
-                              <FileText className="size-3 mr-1" />
-                            )}
-                            {report.status === 'ABSENT' && <XCircle className="size-3 mr-1" />}
-                            {attendanceStatusLabel(report.status)}
-                          </Badge>
+                          <AttendanceStatusBadge status={report.status} />
                         </TableCell>
                         <TableCell>
                           {report.photo_url ? (
@@ -979,7 +967,7 @@ export default function Reports() {
                               variant="ghost"
                               size="icon"
                               onClick={() => report?.id && handleOpenOverride(report)}
-                              className="text-muted-foreground hover:text-brand hover:bg-indigo-50 dark:text-slate-400 dark:hover:bg-indigo-900/30"
+                              className="h-11 w-11 min-h-11 text-muted-foreground hover:text-brand hover:bg-indigo-50 dark:text-slate-400 dark:hover:bg-indigo-900/30"
                               title="Override Status"
                               aria-label={`Override status kehadiran ${report.user_name}`}
                             >
@@ -1004,7 +992,7 @@ export default function Reports() {
         onOpenChange={setIsOverrideModalOpen}
       >
         <DialogContent className="max-w-md p-0">
-          <div className="border-b border-border px-6 py-4 border-border">
+          <div className="border-b border-border px-6 py-4">
             <DialogHeader>
               <DialogTitle className="text-xl font-bold text-foreground">
                 Ubah Status Manual

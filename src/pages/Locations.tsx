@@ -1,6 +1,6 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import api from '@/services/api';
-import { Plus, Edit2, Trash2, Search, X, MapPin, LocateFixed } from 'lucide-react';
+import { Plus, Edit2, Trash2, Search, MapPin, LocateFixed } from 'lucide-react';
 import { toast } from 'sonner';
 import { MapResizeOnOpen } from '@/components/MapResizeOnOpen';
 import useSWR from 'swr';
@@ -14,7 +14,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { FormField } from '@/components/ui/form-field';
 import { Badge } from '@/components/ui/badge';
@@ -39,7 +38,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -50,7 +48,6 @@ import { useAuthStore } from '@/stores/authStore';
 import { toastErrorMessage } from '@/lib/utils/toastMessage';
 import { useMutationToast } from '@/hooks/useMutationToast';
 import { LastSavedIndicator } from '@/components/admin/LastSavedIndicator';
-import { cn } from '@/lib/utils/utils';
 
 const MapContainer = lazy(() => import('react-leaflet').then((m) => ({ default: m.MapContainer })));
 const TileLayer = lazy(() => import('react-leaflet').then((m) => ({ default: m.TileLayer })));
@@ -140,7 +137,10 @@ export default function Locations() {
   const searchTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
   const fetcher = (url: string) => api.get(url).then((res) => res.data.data);
-  const swr = useSWR<Location[]>('/locations', fetcher, { revalidateOnFocus: false });
+  const swr = useSWR<Location[]>('/locations', fetcher, {
+    revalidateOnFocus: false,
+    dedupingInterval: 60_000,
+  });
   const {
     data: locations = [],
     isPending: loading,
@@ -397,10 +397,14 @@ export default function Locations() {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-9"
+                  aria-label="Cari lokasi absensi"
                 />
               </div>
               <Select value={wifiFilter} onValueChange={setWifiFilter}>
-                <SelectTrigger className="w-full sm:w-[200px]">
+                <SelectTrigger
+                  className="w-full sm:w-[200px]"
+                  aria-label="Filter batasan WiFi lokasi"
+                >
                   <SelectValue placeholder="Semua Batasan WiFi" />
                 </SelectTrigger>
                 <SelectContent>
@@ -414,7 +418,7 @@ export default function Locations() {
             <ul className="space-y-3 p-5 md:hidden" aria-label="Daftar lokasi">
               {loading ? (
                 Array.from({ length: 3 }).map((_, i) => (
-                  <li key={i} className="rounded-2xl border border-border p-4 border-border">
+                  <li key={i} className="rounded-2xl border border-border p-4">
                     <Skeleton className="mb-2 h-5 w-40" />
                     <Skeleton className="h-4 w-full" />
                   </li>
@@ -601,7 +605,7 @@ export default function Locations() {
         {/* Modal Form */}
         <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
           <DialogContent className="max-w-4xl p-0">
-            <div className="border-b border-border px-6 py-4 border-border">
+            <div className="border-b border-border px-6 py-4">
               <div className="flex items-start justify-between gap-3">
                 <DialogHeader>
                   <DialogTitle className="text-xl font-bold text-foreground">
@@ -621,7 +625,7 @@ export default function Locations() {
               onSubmit={handleSubmit}
               className="flex flex-col overflow-hidden md:flex-row md:items-stretch"
             >
-              <div className="relative z-10 shrink-0 space-y-4 overflow-y-auto border-r border-border border-r border-border bg-card p-6 md:w-1/2 md:max-h-[min(72vh,680px)]">
+              <div className="relative z-10 shrink-0 space-y-4 overflow-y-auto border-r border-border bg-card p-6 md:w-1/2 md:max-h-[min(72vh,680px)]">
                 <FormField id="location-name" label="Nama Lokasi" required>
                   {({ id, 'aria-describedby': ariaDescribedBy, 'aria-invalid': ariaInvalid }) => (
                     <Input

@@ -11,7 +11,6 @@ import {
   XCircle,
   Clock,
   Download,
-  X,
   Loader2,
 } from 'lucide-react';
 import { format } from 'date-fns';
@@ -20,7 +19,6 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { FormField } from '@/components/ui/form-field';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -359,7 +357,6 @@ export default function Excuses() {
       const idempotencyKey = crypto.randomUUID();
       await api.post('/excuses', form, {
         headers: {
-          'Content-Type': 'multipart/form-data',
           'X-Idempotency-Key': idempotencyKey,
         },
       });
@@ -574,7 +571,7 @@ export default function Excuses() {
             <ul className="space-y-3 p-5 md:hidden" aria-label="Daftar pengajuan izin">
               {loading ? (
                 Array.from({ length: 3 }).map((_, i) => (
-                  <li key={i} className="rounded-2xl border border-border p-4 border-border">
+                  <li key={i} className="rounded-2xl border border-border p-4">
                     <Skeleton className="mb-2 h-5 w-40" />
                     <Skeleton className="h-4 w-32" />
                     <Skeleton className="mt-3 h-9 w-full" />
@@ -605,10 +602,7 @@ export default function Excuses() {
                     return excuse.session.class ? formatClassLabel(excuse.session.class) : 'Umum';
                   })();
                   return (
-                    <li
-                      key={excuse.id}
-                      className="rounded-2xl border border-border p-4 border-border"
-                    >
+                    <li key={excuse.id} className="rounded-2xl border border-border p-4">
                       {currentUser?.role !== 'USER' && (
                         <>
                           <p className="font-bold text-foreground">{excuse.user.name}</p>
@@ -899,7 +893,7 @@ export default function Excuses() {
           }}
         >
           <DialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto p-0">
-            <div className="border-b border-border px-6 py-5 border-border">
+            <div className="border-b border-border px-6 py-5">
               <DialogHeader>
                 <DialogTitle className="text-xl font-bold text-foreground">
                   Buat Pengajuan Izin Baru

@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import type { AuthRequest } from '../types/index.js';
 import prisma from '../utils/prisma.js';
 import crypto from 'crypto';
@@ -17,7 +17,7 @@ import {
 } from '../utils/sessionAccess.js';
 import { sendForbidden } from '../utils/errorResponse.js';
 import { sendValidationError } from '../utils/sendValidationError.js';
-import { isMissingSemesterColumn, queryWithSemesterFallback } from '../utils/prismaErrors.js';
+import { queryWithSemesterFallback } from '../utils/prismaErrors.js';
 
 const VALID_QR_MODES = new Set(['NONE', 'STATIC', 'DYNAMIC']);
 const VALID_SESSION_STATUSES = new Set(['UPCOMING', 'ACTIVE', 'CLOSED']);
@@ -60,7 +60,7 @@ export const getSessions = async (req: AuthRequest, res: Response): Promise<void
           },
         ],
       };
-      // TODO: remove fallback once all envs confirm semester column exists (2026-02 migration applied)
+      // TODO(#post-audit-p3): remove fallback once all envs confirm semester column exists (2026-02 migration applied)
       sessions = await queryWithSemesterFallback(
         () =>
           prisma.session.findMany({
@@ -77,7 +77,7 @@ export const getSessions = async (req: AuthRequest, res: Response): Promise<void
       );
     } else {
       const scopeWhere = user.role === 'ADMIN' ? adminSessionScopeWhere(user.id) : {};
-      // TODO: remove fallback once all envs confirm semester column exists (2026-02 migration applied)
+      // TODO(#post-audit-p3): remove fallback once all envs confirm semester column exists (2026-02 migration applied)
       sessions = await queryWithSemesterFallback(
         () =>
           prisma.session.findMany({
@@ -538,7 +538,7 @@ export const getSessionById = async (req: AuthRequest, res: Response): Promise<v
     const { id } = req.params;
     const user = req.user!;
     let session;
-    // TODO: remove fallback once all envs confirm semester column exists (2026-02 migration applied)
+    // TODO(#post-audit-p3): remove fallback once all envs confirm semester column exists (2026-02 migration applied)
     session = await queryWithSemesterFallback(
       () =>
         prisma.session.findUnique({
