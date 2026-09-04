@@ -1,7 +1,5 @@
 import React, { useMemo, useRef } from 'react';
 import PublicLayout from '@/components/PublicLayout';
-import useSWR from 'swr';
-import api from '@/services/api';
 import type { PublicProgram } from '@/types/publicSite';
 import { Skeleton } from '@/components/ui/skeleton';
 import PublicEnter from '@/components/PublicEnter';
@@ -10,10 +8,12 @@ import PublicPageHero from '@/components/PublicPageHero';
 import PublicProgramCard from '@/components/PublicProgramCard';
 import useHorizontalWheelScroll from '@/lib/a11y/useHorizontalWheelScroll';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
-import { useSwrPageState } from '@/hooks/useSwrPageState';
+import { useMockOrSwr } from '@/hooks/useMockOrSwr';
+import { mockPrograms } from '@/lib/utils/mockLandingData';
 import { PublicPageError } from '@/components/public/PublicPageError';
 import { PublicEmptyState } from '@/components/public/PublicEmptyState';
 import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
+import { publicSiteFetcher, safeArray } from '@/lib/utils/publicSiteFetcher';
 
 function extractDivisionFallback(program: PublicProgram) {
   const raw = String(program.description ?? '').trim();
@@ -30,10 +30,12 @@ function extractDivisionFallback(program: PublicProgram) {
 }
 
 export default function ProgramKerja() {
-  const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
-  const swr = useSWR<PublicProgram[]>('/public-site/programs', fetcher, { revalidateOnFocus: false });
-  const { data, isPending, isError, retry } = useSwrPageState(swr);
-  const items = useMemo(() => data ?? [], [data]);
+  const { swr, data, isPending, isError, retry } = useMockOrSwr<PublicProgram[]>({
+    swrKey: '/public-site/programs',
+    fetcher: publicSiteFetcher<PublicProgram[]>,
+    mockStatic: mockPrograms,
+  });
+  const items = safeArray<PublicProgram>(data);
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const groups = useMemo(() => {
     const orderedKeys: string[] = [];

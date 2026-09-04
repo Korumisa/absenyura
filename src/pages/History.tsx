@@ -32,6 +32,7 @@ import type { AttendanceHistory } from '@/types/report';
 import type { PaginationMeta } from '@/types/common';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
+import { SlowLoadingHint } from '@/components/admin/SlowLoadingHint';
 import { TablePagination } from '@/components/ui/TablePagination';
 import { attendanceBadgeVariant, attendanceStatusLabel } from '@/lib/utils/statusLabel';
 
@@ -48,7 +49,7 @@ export default function HistoryPage() {
   const queryParams = new URLSearchParams({ page: String(page), limit: '20' });
   if (filter !== 'ALL') queryParams.set('status', filter);
   const swr = useSWR(`/reports?${queryParams.toString()}`, fetcher, { revalidateOnFocus: false });
-  const { isPending, isError, retry } = useSwrPageState(swr);
+  const { isPending, isError, retry, showSlowLoadingHint } = useSwrPageState(swr);
   const history: AttendanceHistory[] = Array.isArray(swr.data?.data) ? swr.data.data : [];
   const meta: PaginationMeta | null = swr.data?.meta ?? null;
   const hasFilters = filter !== 'ALL';
@@ -89,6 +90,8 @@ export default function HistoryPage() {
           error={swr.error ?? 'Permintaan membutuhkan waktu lebih lama dari biasanya.'}
           onRetry={retry}
         />
+      ) : showSlowLoadingHint ? (
+        <SlowLoadingHint onRetry={retry} />
       ) : isPending ? (
         <>
           <div className="md:hidden">

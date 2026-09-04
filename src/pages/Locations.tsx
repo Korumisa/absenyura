@@ -49,6 +49,8 @@ import { fixLeafletDefaultIcons } from '@/lib/media/leafletIcon';
 import { useAuthStore } from '@/stores/authStore';
 import { toastErrorMessage } from '@/lib/utils/toastMessage';
 import { useMutationToast } from '@/hooks/useMutationToast';
+import { LastSavedIndicator } from '@/components/admin/LastSavedIndicator';
+import { cn } from '@/lib/utils/utils';
 
 const MapContainer = lazy(() => import('react-leaflet').then((m) => ({ default: m.MapContainer })));
 const TileLayer = lazy(() => import('react-leaflet').then((m) => ({ default: m.TileLayer })));
@@ -117,6 +119,8 @@ export default function Locations() {
 
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const [formBaseline, setFormBaseline] = useState<string>('');
 
   // Custom Map hook state to force re-render map center
   const [mapCenter, setMapCenter] = useState<[number, number]>([-8.11475, 115.08865]);
@@ -165,6 +169,7 @@ export default function Locations() {
     {
       successMsg: editingLocation ? 'Lokasi berhasil diperbarui' : 'Lokasi berhasil ditambahkan',
       errorMsg: (err) => toastErrorMessage(err, 'Terjadi kesalahan'),
+      onSuccess: () => setLastSavedAt(new Date()),
     }
   );
 
@@ -187,29 +192,34 @@ export default function Locations() {
         toast.error('Lokasi ini hanya bisa dikelola oleh pembuatnya (Super Admin).');
         return;
       }
-      setEditingLocation(location);
-      setMapCenter([location.latitude, location.longitude]);
-      setFormData({
+      const initial = {
         name: location.name,
         address: location.address || '',
         latitude: location.latitude,
         longitude: location.longitude,
         radius: location.radius,
         wifi_bssid: location.wifi_bssid.join(', '),
-      });
+      };
+      setEditingLocation(location);
+      setMapCenter([location.latitude, location.longitude]);
+      setFormData(initial);
+      setFormBaseline(JSON.stringify(initial));
     } else {
-      setEditingLocation(null);
-      // Center map to Undiksha coordinate by default
-      setMapCenter([-8.11475, 115.08865]);
-      setFormData({
+      const initial = {
         name: '',
         address: '',
         latitude: -8.11475,
         longitude: 115.08865,
         radius: 100,
         wifi_bssid: '',
-      });
+      };
+      setEditingLocation(null);
+      // Center map to Undiksha coordinate by default
+      setMapCenter([-8.11475, 115.08865]);
+      setFormData(initial);
+      setFormBaseline(JSON.stringify(initial));
     }
+    setLastSavedAt(null);
     setIsModalOpen(true);
   };
 
@@ -346,6 +356,8 @@ export default function Locations() {
     pageSize: 20,
     resetDeps: [searchTerm, wifiFilter],
   });
+
+  const formIsDirty = JSON.stringify(formData) !== formBaseline;
 
   const actionOverlayLabel = saving
     ? editingLocation
@@ -590,12 +602,19 @@ export default function Locations() {
         <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
           <DialogContent className="max-w-4xl p-0">
             <div className="border-b border-border px-6 py-4 border-border">
-              <DialogHeader>
-                <DialogTitle className="text-xl font-bold text-foreground">
-                  {editingLocation ? 'Edit Lokasi' : 'Tambah Lokasi Baru'}
-                </DialogTitle>
-                <DialogDescription className="sr-only">Form lokasi geofencing</DialogDescription>
-              </DialogHeader>
+              <div className="flex items-start justify-between gap-3">
+                <DialogHeader>
+                  <DialogTitle className="text-xl font-bold text-foreground">
+                    {editingLocation ? 'Edit Lokasi' : 'Tambah Lokasi Baru'}
+                  </DialogTitle>
+                  <DialogDescription className="sr-only">Form lokasi geofencing</DialogDescription>
+                </DialogHeader>
+                <LastSavedIndicator
+                  lastSavedAt={lastSavedAt}
+                  isDirty={formIsDirty}
+                  isSaving={saving}
+                />
+              </div>
             </div>
 
             <form
@@ -796,6 +815,11 @@ export default function Locations() {
                     isLoading={saving}
                     label="Simpan Lokasi"
                     loadingLabel="Menyimpan…"
+                    className={
+                      formIsDirty
+                        ? 'ring-2 ring-offset-2 ring-sky-500/70 focus-visible:outline-none dark:ring-offset-slate-900'
+                        : undefined
+                    }
                   />
                 </div>
               </div>

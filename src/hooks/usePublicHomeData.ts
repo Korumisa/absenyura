@@ -2,14 +2,23 @@ import { useEffect, useState } from 'react';
 import api from '@/services/api';
 import type {
   PublicGalleryAlbum,
-  PublicPost,
   PublicProfile,
   PublicProgram,
   PublicRecruitment,
   PublicStructureGroup,
 } from '@/types/publicSite';
 import type { PublicPostItemsResponse } from '@/types/api';
-import { usePublicSectionSwr } from '@/hooks/usePublicSectionSwr';
+import { useMockOrSwr } from '@/hooks/useMockOrSwr';
+import {
+  mockGalleries,
+  mockPostsBeritaLatestPage1,
+  mockPostsLombaPage1,
+  mockProfile,
+  mockPrograms,
+  mockRecruitments,
+  mockStructure,
+  USE_MOCK_LANDING,
+} from '@/lib/utils/mockLandingData';
 
 const fetcher = (url: string) =>
   api.get(url).then((r) => {
@@ -26,71 +35,113 @@ const postsFetcher = (url: string) =>
     return r.data.data;
   });
 
-/** Data fetching beranda publik — profil + section below-fold */
+type StructureResp = { data: PublicStructureGroup[]; cabinet: any; allCabinets: any[] };
+
+const extract = <T>(hook: {
+  data: T | undefined;
+  isPending: boolean;
+  error: unknown;
+  isError: boolean;
+  isInitialLoading: boolean;
+  isRefreshing: boolean;
+  isEmpty: boolean;
+  isSlowLoading: boolean;
+  showSlowLoadingHint: boolean;
+  mutate: any;
+  retry: () => void;
+  swr: any;
+}) => hook;
+
+/** Data fetching beranda publik — profil + section below-fold.
+ *  If VITE_USE_MOCK_LANDING truthy: returns static MOCK DATA, 0 real API calls.
+ */
 export function usePublicHomeData() {
-  const profile = usePublicSectionSwr<PublicProfile | null>('/public-site/profile', (url) =>
-    api.get(url).then((r) => {
-      if (r.data && typeof r.data === 'object' && r.data.success === false) {
-        throw new Error(r.data.error || 'Request failed');
-      }
-      return r.data.data;
-    })
-  );
-
   const [loadBelowFold, setLoadBelowFold] = useState(false);
-  useEffect(() => {
-    if (profile.isPending && !profile.data) return;
-    const run = () => setLoadBelowFold(true);
-    if ('requestIdleCallback' in window) {
-      const id = window.requestIdleCallback(run, { timeout: 1800 });
-      return () => window.cancelIdleCallback(id);
-    }
-    const t = setTimeout(run, 400);
-    return () => clearTimeout(t);
-  }, [profile.isPending, profile.data]);
 
-  const belowFoldKey = loadBelowFold ? true : null;
-
-  const programs = usePublicSectionSwr<PublicProgram[]>(
-    belowFoldKey ? '/public-site/programs' : null,
-    (url) =>
+  const profile = useMockOrSwr<PublicProfile | null>({
+    swrKey: '/public-site/profile',
+    fetcher: (url) =>
       api.get(url).then((r) => {
         if (r.data && typeof r.data === 'object' && r.data.success === false) {
           throw new Error(r.data.error || 'Request failed');
         }
         return r.data.data;
-      })
-  );
-  const structure = usePublicSectionSwr<{
-    data: PublicStructureGroup[];
-    cabinet: any;
-    allCabinets: any[];
-  }>(belowFoldKey ? '/public-site/structure' : null, fetcher);
-  const latest = usePublicSectionSwr<PublicPostItemsResponse>(
-    belowFoldKey ? '/public-site/posts?type=BERITA&page=1&pageSize=3' : null,
-    postsFetcher
-  );
-  const recruitments = usePublicSectionSwr<PublicRecruitment[]>(
-    belowFoldKey ? '/public-site/recruitments' : null,
-    fetcher
-  );
-  const galleries = usePublicSectionSwr<PublicGalleryAlbum[]>(
-    belowFoldKey ? '/public-site/galleries' : null,
-    fetcher
-  );
-  const lombaPaged = usePublicSectionSwr<PublicPostItemsResponse>(
-    belowFoldKey ? '/public-site/posts?type=LOMBA&page=1&pageSize=6' : null,
-    postsFetcher
-  );
+      }),
+    mockStatic: mockProfile,
+  });
+
+  useEffect(() => {
+    if (profile.isPending && !profile.data) return;
+    const run = () => setLoadBelowFold(true);
+    if ('requestIdleCallback' in window) {
+      const id = window.requestIdleCallback(run, { timeout: USE_MOCK_LANDING ? 300 : 1800 });
+      return () => window.cancelIdleCallback(id);
+    }
+    const t = setTimeout(run, USE_MOCK_LANDING ? 150 : 400);
+    return () => clearTimeout(t);
+  }, [profile.isPending, profile.data]);
+
+  const belowFoldKey = loadBelowFold;
+
+  const programs = useMockOrSwr<PublicProgram[]>({
+    swrKey: belowFoldKey ? '/public-site/programs' : null,
+    fetcher: (url) =>
+      api.get(url).then((r) => {
+        if (r.data && typeof r.data === 'object' && r.data.success === false) {
+          throw new Error(r.data.error || 'Request failed');
+        }
+        return r.data.data;
+      }),
+    mockStatic: () => (loadBelowFold ? mockPrograms : ([] as unknown as PublicProgram[])),
+  });
+
+  const structure = useMockOrSwr<StructureResp>({
+    swrKey: belowFoldKey ? '/public-site/structure' : null,
+    fetcher,
+    mockStatic: () =>
+      loadBelowFold
+        ? mockStructure
+        : ({ data: [], cabinet: null, allCabinets: [] } as unknown as StructureResp),
+  });
+
+  const latest = useMockOrSwr<PublicPostItemsResponse>({
+    swrKey: belowFoldKey ? '/public-site/posts?type=BERITA&page=1&pageSize=3' : null,
+    fetcher: postsFetcher,
+    mockStatic: () =>
+      loadBelowFold
+        ? mockPostsBeritaLatestPage1
+        : ({ items: [], total: 0, page: 1, pageSize: 3, totalPages: 1 } as PublicPostItemsResponse),
+  });
+
+  const recruitments = useMockOrSwr<PublicRecruitment[]>({
+    swrKey: belowFoldKey ? '/public-site/recruitments' : null,
+    fetcher,
+    mockStatic: () => (loadBelowFold ? mockRecruitments : ([] as unknown as PublicRecruitment[])),
+  });
+
+  const galleries = useMockOrSwr<PublicGalleryAlbum[]>({
+    swrKey: belowFoldKey ? '/public-site/galleries' : null,
+    fetcher,
+    mockStatic: () => (loadBelowFold ? mockGalleries : ([] as unknown as PublicGalleryAlbum[])),
+  });
+
+  const lombaPaged = useMockOrSwr<PublicPostItemsResponse>({
+    swrKey: belowFoldKey ? '/public-site/posts?type=LOMBA&page=1&pageSize=6' : null,
+    fetcher: postsFetcher,
+    mockStatic: () =>
+      loadBelowFold
+        ? mockPostsLombaPage1
+        : ({ items: [], total: 0, page: 1, pageSize: 6, totalPages: 1 } as PublicPostItemsResponse),
+  });
 
   return {
-    profile,
-    programs,
-    structure,
-    latest,
-    recruitments,
-    galleries,
-    lombaPaged,
+    profile: extract(profile),
+    programs: extract(programs),
+    structure: extract(structure),
+    latest: extract(latest),
+    recruitments: extract(recruitments),
+    galleries: extract(galleries),
+    lombaPaged: extract(lombaPaged),
     loadBelowFold,
   };
 }

@@ -2,23 +2,24 @@ import React, { useMemo, useRef, useState } from 'react';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
 import PublicLayout from '@/components/PublicLayout';
 import { Search } from 'lucide-react';
-import useSWR from 'swr';
-import api from '@/services/api';
 import type { PublicPost } from '@/types/publicSite';
+import type { PagedResponse } from '@/types/api';
 import { Skeleton } from '@/components/ui/skeleton';
 import PublicEnter from '@/components/PublicEnter';
 import PublicReveal from '@/components/PublicReveal';
 import PublicPageHero from '@/components/PublicPageHero';
 import PublicCoverImage from '@/components/PublicCoverImage';
 import useLockBodyScroll from '@/lib/a11y/useLockBodyScroll';
-import { useSwrPageState } from '@/hooks/useSwrPageState';
+import { useMockOrSwr } from '@/hooks/useMockOrSwr';
+import { mockLomba } from '@/lib/utils/mockLandingData';
+import { buildPagedResponse, safeItems } from '@/lib/utils/publicContent';
 import { PublicPageError } from '@/components/public/PublicPageError';
 import { PublicEmptyState } from '@/components/public/PublicEmptyState';
 import { ensureHttpsUrl } from '@/lib/http/ensureHttpsUrl';
 import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
+import { publicSiteFetcher } from '@/lib/utils/publicSiteFetcher';
 
 type Status = 'Buka' | 'Tutup';
-type Paged<T> = { items: T[]; total: number; page: number; pageSize: number; totalPages: number };
 
 function extractFirstUrl(text: string) {
   const m = text.match(/https?:\/\/[^\s)]+/i);
@@ -35,9 +36,11 @@ function getJoinUrl(p: PublicPost) {
 }
 
 export default function InformasiLomba() {
-  const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
-  const swr = useSWR<Paged<PublicPost>>('/public-site/posts?type=LOMBA&page=1&pageSize=24', fetcher, { revalidateOnFocus: false });
-  const { data: paged, isInitialLoading: isLoading, isError, retry } = useSwrPageState(swr);
+  const { swr, data: paged, isInitialLoading: isLoading, isError, retry } = useMockOrSwr<PagedResponse<PublicPost>>({
+    swrKey: '/public-site/posts?type=LOMBA&page=1&pageSize=24',
+    fetcher: publicSiteFetcher<PagedResponse<PublicPost>>,
+    mockStatic: () => buildPagedResponse(mockLomba, 1, 24),
+  });
 
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<'Semua' | Status>('Semua');
@@ -47,15 +50,15 @@ export default function InformasiLomba() {
 
   const items = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const lomba = paged?.items ?? [];
+    const lomba = safeItems<PublicPost>(paged);
     return lomba.filter((l) => {
       const okQuery = !q || l.title.toLowerCase().includes(q);
       const okFilter = filter === 'Semua' ? true : (l.status ?? 'Buka') === filter;
       return okQuery && okFilter;
     });
-  }, [paged?.items, query, filter]);
+  }, [paged, query, filter]);
 
-  const selected = useMemo(() => (paged?.items ?? []).find((l) => l.id === openId) ?? null, [paged?.items, openId]);
+  const selected = useMemo(() => safeItems<PublicPost>(paged).find((l) => l.id === openId) ?? null, [paged, openId]);
   useLockBodyScroll(Boolean(selected));
 
   if (isError) {

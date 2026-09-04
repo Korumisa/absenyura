@@ -310,6 +310,7 @@ export const checkIn = async (req: AuthRequest, res: Response): Promise<void> =>
           check_in_lng: { not: null },
         },
         orderBy: { check_in_time: 'desc' },
+        select: { check_in_lat: true, check_in_lng: true, check_in_time: true },
       }),
       prisma.user.findUnique({
         where: { id: user_id },
@@ -319,6 +320,7 @@ export const checkIn = async (req: AuthRequest, res: Response): Promise<void> =>
         where: {
           session_id_user_id: { session_id, user_id },
         },
+        select: { check_out_time: true },
       }),
     ]);
 

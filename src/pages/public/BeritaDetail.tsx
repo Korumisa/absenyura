@@ -1,27 +1,34 @@
 import React from 'react';
 import PublicLayout from '@/components/PublicLayout';
-import useSWR from 'swr';
-import api from '@/services/api';
 import type { PublicPost, PublicProfile } from '@/types/publicSite';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import PublicEnter from '@/components/PublicEnter';
 import PublicCoverImage from '@/components/PublicCoverImage';
-import { useSwrPageState } from '@/hooks/useSwrPageState';
+import { useMockOrSwr } from '@/hooks/useMockOrSwr';
+import { mockAllPosts, mockProfile } from '@/lib/utils/mockLandingData';
 import { PublicPageError } from '@/components/public/PublicPageError';
 import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
+import { publicSiteFetcher } from '@/lib/utils/publicSiteFetcher';
 
 export default function BeritaDetail() {
   const { slug } = useParams();
-  const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
-  const { data: profile } = useSWR<PublicProfile | null>('/public-site/profile', fetcher, { revalidateOnFocus: false });
-  const postSwr = useSWR<PublicPost>(slug ? `/public-site/posts/${slug}` : null, fetcher, { revalidateOnFocus: false });
-  const { data: post, isInitialLoading: isLoading, isError, retry } = useSwrPageState(postSwr);
+  const profileResult = useMockOrSwr<PublicProfile | null>({
+    swrKey: '/public-site/profile',
+    fetcher: publicSiteFetcher<PublicProfile | null>,
+    mockStatic: mockProfile,
+  });
+  const profile = profileResult.data ?? null;
+  const { swr, data: post, isInitialLoading: isLoading, isError, retry } = useMockOrSwr<PublicPost | null>({
+    swrKey: slug ? `/public-site/posts/${slug}` : null,
+    fetcher: publicSiteFetcher<PublicPost | null>,
+    mockStatic: slug ? mockAllPosts.find((p) => p.slug === slug) ?? null : null,
+  });
   const orgName = profile?.org_name ?? '';
 
   if (isError) {
-    return <PublicPageError title="Gagal memuat berita" error={postSwr.error} onRetry={retry} />;
+    return <PublicPageError title="Gagal memuat berita" error={swr.error} onRetry={retry} />;
   }
 
   return (

@@ -48,7 +48,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { formatClassLabel } from '@/lib/utils/classLabel';
+import { formatClassLabel, excuseBadgeVariant, excuseReasonLabel } from '@/lib/utils/classLabel';
 import AdminPageShell from '@/components/AdminPageShell';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
@@ -633,8 +633,8 @@ export default function Excuses() {
                         </p>
                       ) : null}
                       <div className="mt-2 flex items-center justify-between">
-                        <Badge variant={excuse.reason === 'SICK' ? 'destructive' : 'warning'}>
-                          {excuse.reason === 'SICK' ? 'Sakit' : 'Izin'}
+                        <Badge variant={excuseBadgeVariant(excuse.reason)}>
+                          {excuseReasonLabel(excuse.reason)}
                         </Badge>
                         <Badge
                           variant={
@@ -783,8 +783,8 @@ export default function Excuses() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={excuse.reason === 'SICK' ? 'destructive' : 'warning'}>
-                            {excuse.reason === 'SICK' ? 'Sakit' : 'Izin'}
+                          <Badge variant={excuseBadgeVariant(excuse.reason)}>
+                            {excuseReasonLabel(excuse.reason)}
                           </Badge>
                           <p
                             className="text-xs mt-1 max-w-xs truncate text-muted-foreground"

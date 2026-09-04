@@ -41,6 +41,8 @@ import { AdminContentTransition } from '@/components/admin/AdminContentTransitio
 import { slugify } from '@/lib/utils/slugify';
 import { useMutationToast } from '@/hooks/useMutationToast';
 import { useFormDirtyGuard } from '@/hooks/useFormDirtyGuard';
+import { LastSavedIndicator } from '@/components/admin/LastSavedIndicator';
+import { cn } from '@/lib/utils/utils';
 
 const POST_TYPE_TABS: readonly CmsTabItem<PublicPostType>[] = [
   { id: 'BERITA', label: 'Berita' },
@@ -93,6 +95,10 @@ export default function PublicSitePosts() {
   const [submittingPost, setSubmittingPost] = useState(false);
   const [dirty, setDirty] = useState(false);
   const { confirmIfDirty } = useFormDirtyGuard(dirty);
+  const [catLastSavedAt, setCatLastSavedAt] = useState<Date | null>(null);
+  const [postLastSavedAt, setPostLastSavedAt] = useState<Date | null>(null);
+  const [categoryBaseline, setCategoryBaseline] = useState<string>('');
+  const [postBaseline, setPostBaseline] = useState<string>('');
 
   const setCategoryFormDirty = useCallback(
     (updater: React.SetStateAction<{ id?: string; name?: string; slug?: string }>) => {
@@ -125,15 +131,24 @@ export default function PublicSitePosts() {
   );
 
   const resetCategoryForm = useCallback(() => {
-    setCategoryForm({});
+    const initial = {};
+    setCategoryForm(initial);
+    setCategoryBaseline(JSON.stringify(initial));
+    setCatLastSavedAt(null);
     setCategorySlugEdited(false);
     setDirty(false);
   }, []);
   const resetPostForm = useCallback(() => {
-    setPostForm({ type: postType });
+    const initial = { type: postType };
+    setPostForm(initial);
+    setPostBaseline(JSON.stringify(initial));
+    setPostLastSavedAt(null);
     setPostSlugEdited(false);
     setDirty(false);
   }, [postType]);
+
+  const categoryIsDirty = JSON.stringify(categoryForm) !== categoryBaseline;
+  const postIsDirty = JSON.stringify(postForm) !== postBaseline;
 
   useEffect(() => {
     resetPostForm();
@@ -179,6 +194,7 @@ export default function PublicSitePosts() {
     {
       successMsg: categoryForm.id ? 'Kategori diperbarui' : 'Kategori ditambahkan',
       errorMsg: (err) => getErrorMessage(err, 'Gagal menyimpan kategori'),
+      onSuccess: () => setCatLastSavedAt(new Date()),
     }
   );
 
@@ -206,6 +222,7 @@ export default function PublicSitePosts() {
     {
       successMsg: postForm.id ? 'Konten diperbarui' : 'Konten ditambahkan',
       errorMsg: (err) => getErrorMessage(err, 'Gagal menyimpan konten'),
+      onSuccess: () => setPostLastSavedAt(new Date()),
     }
   );
 
@@ -291,7 +308,7 @@ export default function PublicSitePosts() {
   };
 
   const loadPostForEdit = (p: PublicPost) => {
-    setPostForm({
+    const initial = {
       id: p.id,
       type: p.type,
       title: p.title,
@@ -304,7 +321,10 @@ export default function PublicSitePosts() {
       coverImageUrl: p.cover_image_url ?? '',
       categoryId: p.category_id ?? p.category?.id,
       isPublished: p.is_published,
-    });
+    };
+    setPostForm(initial);
+    setPostBaseline(JSON.stringify(initial));
+    setPostLastSavedAt(null);
     setPostSlugEdited(true);
     setContentTab('edit');
   };
@@ -402,24 +422,36 @@ export default function PublicSitePosts() {
                       />
                     )}
                   </FormField>
-                  <div className="flex flex-wrap gap-2">
-                    {categoryForm.id ? (
-                      <Button
-                        variant="outline"
-                        type="button"
-                        className="min-h-11"
-                        onClick={resetCategoryForm}
-                      >
-                        Batal
-                      </Button>
-                    ) : null}
-                    <SubmitButton
-                      type="submit"
-                      className="min-h-11"
-                      isLoading={submittingCat}
-                      disabled={submittingCat}
-                      label={categoryForm.id ? 'Simpan kategori' : 'Tambah kategori'}
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <LastSavedIndicator
+                      lastSavedAt={catLastSavedAt}
+                      isDirty={categoryIsDirty}
+                      isSaving={submittingCat}
                     />
+                    <div className="flex flex-wrap gap-2">
+                      {categoryForm.id ? (
+                        <Button
+                          variant="outline"
+                          type="button"
+                          className="min-h-11"
+                          onClick={resetCategoryForm}
+                        >
+                          Batal
+                        </Button>
+                      ) : null}
+                      <SubmitButton
+                        type="submit"
+                        className={cn(
+                          'min-h-11',
+                          categoryIsDirty
+                            ? 'ring-2 ring-offset-2 ring-sky-500/70 focus-visible:outline-none dark:ring-offset-slate-900'
+                            : undefined
+                        )}
+                        isLoading={submittingCat}
+                        disabled={submittingCat}
+                        label={categoryForm.id ? 'Simpan kategori' : 'Tambah kategori'}
+                      />
+                    </div>
                   </div>
                 </form>
                 {categories.length > 0 ? (
@@ -438,9 +470,12 @@ export default function PublicSitePosts() {
                             variant="ghost"
                             size="sm"
                             type="button"
-                            onClick={() =>
-                              setCategoryForm({ id: c.id, name: c.name, slug: c.slug })
-                            }
+                            onClick={() => {
+                              const initial = { id: c.id, name: c.name, slug: c.slug };
+                              setCategoryForm(initial);
+                              setCategoryBaseline(JSON.stringify(initial));
+                              setCatLastSavedAt(null);
+                            }}
                           >
                             Edit
                           </Button>
@@ -462,8 +497,24 @@ export default function PublicSitePosts() {
             ) : null}
 
             <AdminCard
-              title={postForm.id ? `Ubah ${typeLabel}` : `Tulis ${typeLabel}`}
-              description="Isi form lalu simpan. Pratinjau tampilan publik ada di samping."
+              title={
+                <div className="flex items-start justify-between gap-3 w-full">
+                  <div>
+                    <div className="text-base font-semibold text-foreground">
+                      {postForm.id ? `Ubah ${typeLabel}` : `Tulis ${typeLabel}`}
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      Isi form lalu simpan. Pratinjau tampilan publik ada di samping.
+                    </div>
+                  </div>
+                  <LastSavedIndicator
+                    lastSavedAt={postLastSavedAt}
+                    isDirty={postIsDirty}
+                    isSaving={submittingPost}
+                  />
+                </div>
+              }
+              description=""
             >
               <form onSubmit={upsertPost} className="space-y-4">
                 <div className="flex items-center gap-2">
@@ -670,7 +721,12 @@ export default function PublicSitePosts() {
                   ) : null}
                   <SubmitButton
                     type="submit"
-                    className="min-h-11"
+                    className={cn(
+                      'min-h-11',
+                      postIsDirty
+                        ? 'ring-2 ring-offset-2 ring-sky-500/70 focus-visible:outline-none dark:ring-offset-slate-900'
+                        : undefined
+                    )}
                     isLoading={submittingPost}
                     disabled={submittingPost}
                     label={postForm.id ? 'Simpan perubahan' : 'Terbitkan ke daftar'}

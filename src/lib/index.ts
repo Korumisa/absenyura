@@ -24,9 +24,27 @@ export { default as useLockBodyScroll } from './a11y/useLockBodyScroll';
 
 export * from './utils/attendanceChartTheme';
 export * from './utils/auditActionLabel';
-export * from './utils/classLabel';
+export {
+  formatClassLabel,
+  sessionClassNames,
+  formatLabel,
+  SESSION_STATUS_LABELS,
+  ATTENDANCE_STATUS_LABELS,
+  USER_ROLE_LABELS,
+  EXCUSE_STATUS_LABELS,
+  AttendanceBadgeVariant,
+  attendanceBadgeVariant,
+  attendanceStatusLabel,
+  ExcuseBadgeVariant,
+  excuseBadgeVariant,
+  excuseReasonLabel,
+  type ClassLabelSource,
+  type ClassDetailSource,
+  type SessionClassLabelSource,
+  type LabelDomain,
+} from './utils/classLabel';
 export * from './utils/publicContent';
 export * from './utils/reportLabel';
-export * from './utils/statusLabel';
+export { sessionStatusLabel, userRoleLabel, excuseStatusLabel } from './utils/statusLabel';
 export * from './utils/toastMessage';
 export * from './utils/utils';

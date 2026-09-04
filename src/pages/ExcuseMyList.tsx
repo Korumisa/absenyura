@@ -22,6 +22,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
 import { SlowLoadingHint } from '@/components/admin/SlowLoadingHint';
 import { excuseStatusLabel } from '@/lib/utils/statusLabel';
+import { excuseBadgeVariant, excuseReasonLabel } from '@/lib/utils/classLabel';
 import { toastErrorMessage } from '@/lib/utils/toastMessage';
 import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
@@ -75,12 +76,6 @@ export default function ExcuseMyList() {
     } catch (error: unknown) {
       toast.error(toastErrorMessage(error, 'Gagal membatalkan pengajuan'));
     }
-  };
-
-  const mapReason = (reason: string) => {
-    if (reason === 'SICK') return 'Sakit';
-    if (reason === 'EXCUSED') return 'Izin';
-    return reason.charAt(0).toUpperCase() + reason.slice(1).toLowerCase();
   };
 
   const filteredExcuses = excuses.filter((ex) => {
@@ -206,8 +201,8 @@ export default function ExcuseMyList() {
                       </p>
                     ) : null}
                     <div className="mt-2 flex flex-wrap items-center gap-2">
-                      <Badge variant={excuse.reason === 'SICK' ? 'destructive' : 'warning'}>
-                        {mapReason(excuse.reason)}
+                      <Badge variant={excuseBadgeVariant(excuse.reason)}>
+                        {excuseReasonLabel(excuse.reason)}
                       </Badge>
                       <Badge
                         variant={
@@ -302,8 +297,8 @@ export default function ExcuseMyList() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={excuse.reason === 'SICK' ? 'destructive' : 'warning'}>
-                          {mapReason(excuse.reason)}
+                        <Badge variant={excuseBadgeVariant(excuse.reason)}>
+                          {excuseReasonLabel(excuse.reason)}
                         </Badge>
                       </TableCell>
                       <TableCell>

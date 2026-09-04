@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import AdminPageShell from '@/components/AdminPageShell';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
+import { SlowLoadingHint } from '@/components/admin/SlowLoadingHint';
 import { AttendanceChartLegend } from '@/components/charts/AttendanceChartLegend';
 import { AttendanceChartLoadingOverlay } from '@/components/charts/AttendanceChartLoadingOverlay';
 import { AttendanceChartSkeleton } from '@/components/charts/AttendanceChartSkeleton';
@@ -118,8 +119,25 @@ export default function Dashboard() {
     keepPreviousData: true,
   });
   const { data, isValidating } = swr;
-  const page = useSwrPageState(swr);
+  const {
+    data: _unusedData,
+    isPending: pageIsPending,
+    isError: pageIsError,
+    error: pageError,
+    showSlowLoadingHint,
+    retry,
+    ...restPage
+  } = useSwrPageState(swr);
 
+  const page = {
+    ...restPage,
+    data,
+    isPending: pageIsPending,
+    isError: pageIsError,
+    error: pageError,
+    showSlowLoadingHint,
+    retry,
+  };
   const chartRefreshing = isValidating && data !== undefined;
 
   const activeSession = useMemo(() => {
@@ -140,7 +158,7 @@ export default function Dashboard() {
 
   return (
     <AdminPageShell title="Dashboard" icon={<BarChart3 className="size-5" />}>
-      {page.isPending && !page.data ? (
+      {page.isPending && !page.showSlowLoadingHint && !page.data ? (
         isUser ? (
           <DashboardUserSkeleton />
         ) : (
@@ -152,6 +170,8 @@ export default function Dashboard() {
           error={page.error}
           onRetry={() => page.retry()}
         />
+      ) : page.showSlowLoadingHint && !page.data ? (
+        <SlowLoadingHint onRetry={() => page.retry()} />
       ) : !page.data ? null : isUser ? (
         // ================= USER DASHBOARD (Modern & Clean) =================
         <div className="space-y-8">

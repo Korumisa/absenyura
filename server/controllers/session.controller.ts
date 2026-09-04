@@ -299,7 +299,10 @@ export const createSession = async (req: AuthRequest, res: Response): Promise<vo
       });
       expectedUserIds = enrollments.map((e) => e.student_id);
     } else {
-      const allUsers = await prisma.user.findMany({ where: { role: 'USER', is_active: true } });
+      const allUsers = await prisma.user.findMany({
+        where: { role: 'USER', is_active: true },
+        select: { id: true },
+      });
       expectedUserIds = allUsers.map((u) => u.id);
     }
 

@@ -1,5 +1,11 @@
 import type { PublicPost } from '@/types/publicSite';
 
-export interface PublicPostItemsResponse {
-  items: PublicPost[];
-}
+export type PagedResponse<T> = {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+};
+
+export type PublicPostItemsResponse = PagedResponse<PublicPost>;

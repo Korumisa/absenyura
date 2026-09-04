@@ -3,14 +3,14 @@ import PublicLayout from '@/components/PublicLayout';
 import PublicEnter from '@/components/PublicEnter';
 import PublicReveal from '@/components/PublicReveal';
 import PublicPageHero from '@/components/PublicPageHero';
-import useSWR from 'swr';
-import api from '@/services/api';
 import type { PublicProgram } from '@/types/publicSite';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
-import { useSwrPageState } from '@/hooks/useSwrPageState';
+import { useMockOrSwr } from '@/hooks/useMockOrSwr';
+import { mockPrograms } from '@/lib/utils/mockLandingData';
 import { PublicPageError } from '@/components/public/PublicPageError';
 import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
+import { publicSiteFetcher, safeArray } from '@/lib/utils/publicSiteFetcher';
 
 function parseProgramDescriptionFallback(description: string | null) {
   const raw = String(description ?? '').trim();
@@ -64,9 +64,12 @@ function parseProgramDescriptionFallback(description: string | null) {
 
 export default function ProgramKerjaDetail() {
   const { id } = useParams();
-  const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
-  const swr = useSWR<PublicProgram[]>('/public-site/programs', fetcher, { revalidateOnFocus: false });
-  const { data: items = [], isInitialLoading: isLoading, isError, retry } = useSwrPageState(swr);
+  const { swr, data, isInitialLoading: isLoading, isError, retry } = useMockOrSwr<PublicProgram[]>({
+    swrKey: '/public-site/programs',
+    fetcher: publicSiteFetcher<PublicProgram[]>,
+    mockStatic: mockPrograms,
+  });
+  const items = safeArray<PublicProgram>(data);
 
   const program = useMemo(() => items.find((p) => p.id === id) ?? null, [items, id]);
   const parsedFallback = useMemo(() => parseProgramDescriptionFallback(program?.description ?? null), [program?.description]);

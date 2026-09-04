@@ -9,6 +9,7 @@ import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { useFacultyDirectory } from '@/hooks/useFacultyDirectory';
 import AdminPageShell from '@/components/AdminPageShell';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
+import { SlowLoadingHint } from '@/components/admin/SlowLoadingHint';
 
 import ActionLoadingOverlay from '@/components/ActionLoadingOverlay';
 import { ConfirmModal } from '@/components/ConfirmModal';
@@ -100,6 +101,7 @@ export default function StudentDetail() {
     retry,
     error,
     mutate,
+    showSlowLoadingHint: profileSlowHint,
   } = useSwrPageState(profileSwr);
 
   const enrollSwr = useSWR<EnrollmentRow[]>(
@@ -107,7 +109,11 @@ export default function StudentDetail() {
     fetcher,
     { revalidateOnFocus: false }
   );
-  const { data: enrollments = [], isInitialLoading: loadingClasses } = useSwrPageState(enrollSwr);
+  const {
+    data: enrollments = [],
+    isInitialLoading: loadingClasses,
+    showSlowLoadingHint: enrollSlowHint,
+  } = useSwrPageState(enrollSwr);
 
   useEffect(() => {
     if (!profile) return;
@@ -211,6 +217,18 @@ export default function StudentDetail() {
           error={profileSwr.error}
           onRetry={retry}
         />
+        <Button variant="outline" className="mt-4" onClick={() => navigate(backTo)}>
+          <ArrowLeft className="mr-2 size-4" />
+          Kembali
+        </Button>
+      </AdminPageShell>
+    );
+  }
+
+  if (profileSlowHint && !profile) {
+    return (
+      <AdminPageShell title="Biodata Mahasiswa" variant="plain">
+        <SlowLoadingHint onRetry={retry} />
         <Button variant="outline" className="mt-4" onClick={() => navigate(backTo)}>
           <ArrowLeft className="mr-2 size-4" />
           Kembali
@@ -546,10 +564,17 @@ export default function StudentDetail() {
               <p className="mt-2 text-xs text-muted-foreground">
                 Untuk menambah atau mengeluarkan kelas, buka halaman Kelas Kuliah.
               </p>
-              {loadingClasses ? (
+              {loadingClasses && !enrollSlowHint ? (
                 <div className="mt-4 space-y-2">
                   <Skeleton className="h-10 w-full" />
                   <Skeleton className="h-10 w-full" />
+                </div>
+              ) : enrollSlowHint ? (
+                <div className="mt-4">
+                  <SlowLoadingHint
+                    title="Memuat daftar kelas lebih lama dari biasanya"
+                    onRetry={() => enrollSwr.mutate()}
+                  />
                 </div>
               ) : enrollments.length === 0 ? (
                 <p className="mt-4 text-sm text-muted-foreground">

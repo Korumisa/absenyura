@@ -78,9 +78,21 @@ const EXCUSE_STATUS_LABELS: Record<string, string> = {
   REJECTED: 'Ditolak',
 };
 
+export function attendanceStatusLabel(status: string | null | undefined): string {
+  const value = String(status ?? '').toUpperCase();
+  if (!value) return '-';
+  return ATTENDANCE_STATUS_LABELS[value] ?? status ?? '-';
+}
+
 export type LabelDomain = 'session-status' | 'attendance-status' | 'user-role' | 'excuse-status';
 
-export type AttendanceBadgeVariant = 'success' | 'warning' | 'destructive' | 'secondary';
+export type AttendanceBadgeVariant =
+  | 'success'
+  | 'warning'
+  | 'destructive'
+  | 'secondary'
+  | 'sick'
+  | 'excused';
 
 /**
  * Sumber kebenaran tunggal label Bahasa Indonesia.
@@ -111,7 +123,29 @@ export function attendanceBadgeVariant(status: string): AttendanceBadgeVariant {
   if (status === 'PRESENT') return 'success';
   if (status === 'LATE') return 'warning';
   if (status === 'ABSENT') return 'destructive';
+  if (status === 'SICK') return 'sick';
+  if (status === 'EXCUSED') return 'excused';
   return 'secondary';
+}
+
+export type ExcuseBadgeVariant =
+  | 'sick'
+  | 'excused'
+  | 'destructive'
+  | 'warning'
+  | 'secondary'
+  | 'success';
+
+export function excuseBadgeVariant(reason: string): ExcuseBadgeVariant {
+  if (reason === 'SICK') return 'sick';
+  if (reason === 'EXCUSED') return 'excused';
+  return 'secondary';
+}
+
+export function excuseReasonLabel(reason: string): string {
+  if (reason === 'SICK') return 'Sakit';
+  if (reason === 'EXCUSED') return 'Izin';
+  return reason || '-';
 }
 
 export { SESSION_STATUS_LABELS, ATTENDANCE_STATUS_LABELS, USER_ROLE_LABELS, EXCUSE_STATUS_LABELS };

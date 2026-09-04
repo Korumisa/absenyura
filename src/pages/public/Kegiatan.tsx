@@ -1,9 +1,8 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
 import PublicLayout from '@/components/PublicLayout';
-import useSWR from 'swr';
-import api from '@/services/api';
 import type { PublicPost, PublicPostType } from '@/types/publicSite';
+import type { PagedResponse } from '@/types/api';
 import { Link } from 'react-router-dom';
 import { X } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -14,10 +13,13 @@ import PublicCoverImage from '@/components/PublicCoverImage';
 import useLockBodyScroll from '@/lib/a11y/useLockBodyScroll';
 import { m } from 'framer-motion';
 import { useReducedMotion } from '@/lib/a11y/useReducedMotion';
-import { useSwrPageState } from '@/hooks/useSwrPageState';
+import { useMockOrSwr } from '@/hooks/useMockOrSwr';
+import { mockBerita, mockKegiatan, mockPengumuman } from '@/lib/utils/mockLandingData';
+import { buildPagedResponse, safeItems } from '@/lib/utils/publicContent';
 import { PublicPageError } from '@/components/public/PublicPageError';
 import { PublicEmptyState } from '@/components/public/PublicEmptyState';
 import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
+import { publicSiteFetcher } from '@/lib/utils/publicSiteFetcher';
 
 const TABS: Array<{ label: string; type?: PublicPostType }> = [
   { label: 'Semua (tanpa lomba)' },
@@ -26,10 +28,7 @@ const TABS: Array<{ label: string; type?: PublicPostType }> = [
   { label: 'Pengumuman', type: 'PENGUMUMAN' },
 ];
 
-type Paged<T> = { items: T[]; total: number; page: number; pageSize: number; totalPages: number };
-
 export default function Kegiatan() {
-  const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
   const [tab, setTab] = useState<string>('Semua (tanpa lomba)');
   const [openId, setOpenId] = useState<string | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
@@ -44,16 +43,32 @@ export default function Kegiatan() {
     return `/public-site/posts?${sp.toString()}`;
   }, [tab]);
 
-  const swr = useSWR<Paged<PublicPost>>(url, fetcher, { revalidateOnFocus: false });
-  const { data: paged, isInitialLoading: isLoading, isError, retry } = useSwrPageState(swr);
+  const { swr, data: paged, isInitialLoading: isLoading, isError, retry } = useMockOrSwr<PagedResponse<PublicPost>>({
+    swrKey: url,
+    fetcher: publicSiteFetcher<PagedResponse<PublicPost>>,
+    mockStatic: () => {
+      const selected = TABS.find((t) => t.label === tab);
+      let list: PublicPost[] = [];
+      if (!selected?.type) {
+        list = [...mockBerita, ...mockKegiatan, ...mockPengumuman];
+      } else if (selected.type === 'BERITA') {
+        list = mockBerita;
+      } else if (selected.type === 'KEGIATAN') {
+        list = mockKegiatan;
+      } else if (selected.type === 'PENGUMUMAN') {
+        list = mockPengumuman;
+      }
+      return buildPagedResponse(list, 1, 24);
+    },
+  });
   const items = useMemo(() => {
-    const list = paged?.items ?? [];
+    const list = safeItems<PublicPost>(paged);
     const selected = TABS.find((t) => t.label === tab);
     if (!selected?.type) return list.filter((e) => e.type !== 'LOMBA');
     return list;
-  }, [paged?.items, tab]);
+  }, [paged, tab]);
 
-  const selected = useMemo(() => (paged?.items ?? []).find((e) => e.id === openId) ?? null, [paged?.items, openId]);
+  const selected = useMemo(() => safeItems<PublicPost>(paged).find((e) => e.id === openId) ?? null, [paged, openId]);
   useLockBodyScroll(Boolean(selected));
   const reducedMotion = useReducedMotion();
 
