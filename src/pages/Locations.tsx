@@ -123,6 +123,12 @@ export default function Locations() {
   const [mapCenter, setMapCenter] = useState<[number, number]>([-8.11475, 115.08865]);
   const [isLocating, setIsLocating] = useState(false);
 
+  // Bumped every time the modal opens so MapContainer always gets a brand-new
+  // key. Prevents "Map container is already initialized" errors from Leaflet
+  // when the dialog is closed and reopened (for the same location, or for a
+  // new location) faster than the previous map instance can be torn down.
+  const [mapInstanceKey, setMapInstanceKey] = useState(0);
+
   // Form state
   const [formData, setFormData] = useState({
     name: '',
@@ -220,6 +226,7 @@ export default function Locations() {
       setFormBaseline(JSON.stringify(initial));
     }
     setLastSavedAt(null);
+    setMapInstanceKey((k) => k + 1);
     setIsModalOpen(true);
   };
 
@@ -756,7 +763,7 @@ export default function Locations() {
                       }
                     >
                       <MapContainer
-                        key={editingLocation?.id ?? 'new-location'}
+                        key={mapInstanceKey}
                         center={mapCenter}
                         zoom={16}
                         style={{ height: '100%', width: '100%', minHeight: 320 }}
