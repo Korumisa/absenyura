@@ -22,14 +22,14 @@ import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 import { publicSiteFetcher } from '@/lib/utils/publicSiteFetcher';
 
 const TABS: Array<{ label: string; type?: PublicPostType }> = [
-  { label: 'Semua (tanpa lomba)' },
+  { label: 'Semua' },
   { label: 'Kegiatan', type: 'KEGIATAN' },
   { label: 'Berita', type: 'BERITA' },
   { label: 'Pengumuman', type: 'PENGUMUMAN' },
 ];
 
 export default function Kegiatan() {
-  const [tab, setTab] = useState<string>('Semua (tanpa lomba)');
+  const [tab, setTab] = useState<string>('Semua');
   const [openId, setOpenId] = useState<string | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   useDialogA11y(Boolean(openId), () => setOpenId(null), { containerRef: modalRef });
@@ -64,7 +64,7 @@ export default function Kegiatan() {
   const items = useMemo(() => {
     const list = safeItems<PublicPost>(paged);
     const selected = TABS.find((t) => t.label === tab);
-    if (!selected?.type) return list.filter((e) => e.type !== 'LOMBA');
+    if (!selected?.type) return list;
     return list;
   }, [paged, tab]);
 
@@ -83,7 +83,7 @@ export default function Kegiatan() {
         <PublicPageHero
           top="Informasi"
           bottom="Terbaru"
-          subtitle="Kumpulan kegiatan, berita, dan pengumuman (tanpa lomba). Pilih tab untuk memfilter."
+          subtitle="Kumpulan kegiatan, berita, dan pengumuman terpublikasi. Pilih tab untuk memfilter."
         />
 
         <PublicReveal className="mx-auto max-w-7xl px-4 pb-16 sm:px-6">

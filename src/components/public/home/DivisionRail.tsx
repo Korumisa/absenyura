@@ -1,4 +1,4 @@
-﻿﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import PublicCoverImage from '@/components/PublicCoverImage';
 import { useReducedMotion } from '@/lib/a11y/useReducedMotion';
@@ -107,9 +107,9 @@ export function DivisionRail({
         </div>
       </div>
 
-      <div className="mt-8 relative -mr-4 pr-4 sm:-mr-6 sm:pr-6">
-        <div className="pointer-events-none absolute inset-y-0 left-0 w-12 bg-gradient-to-r from-slate-50/95 to-transparent" />
-        <div className="pointer-events-none absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-slate-50/95 to-transparent" />
+      <div className="mt-8 relative w-full overflow-x-clip">
+        <div className="pointer-events-none absolute inset-y-0 left-0 w-12 bg-gradient-to-r from-slate-50/95 to-transparent z-10" />
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-slate-50/95 to-transparent z-10" />
         <HorizontalSnapRail
           ariaLabel={label}
           setScroller={(el) => {
@@ -117,7 +117,7 @@ export function DivisionRail({
           }}
           onScroll={onScroll}
         >
-          <div className="flex w-max gap-8 px-2">
+          <div className="flex w-max gap-8 px-2 sm:px-6 lg:px-8">
             {ordered.map((group, gi) => {
               const members = (group.members ?? []).slice(0, 8);
               return (

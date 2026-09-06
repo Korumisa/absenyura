@@ -42,7 +42,7 @@ export function BrandLogoImage({ src, alt, className, priority = false }: BrandL
           height={40}
           decoding="async"
           loading={priority ? 'eager' : 'lazy'}
-          fetchPriority={priority ? 'high' : undefined}
+          {...({ fetchpriority: priority ? 'high' : undefined } as any)}
         />
       </picture>
     );
@@ -57,7 +57,7 @@ export function BrandLogoImage({ src, alt, className, priority = false }: BrandL
       height={40}
       decoding="async"
       loading={priority ? 'eager' : 'lazy'}
-      fetchPriority={priority ? 'high' : undefined}
+      {...({ fetchpriority: priority ? 'high' : undefined } as any)}
     />
   );
 }
