@@ -545,14 +545,42 @@ const programsBase: Omit<PublicProgram, 'created_at' | 'updated_at'>[] = [
   {
     id: 'mock-p9',
     title: 'Program Belajar Bersama (PBB) Semester Ganjil 2025/2026',
-    date_range: null,
-    description: null,
+    date_range: 'Sep 2025 – Des 2025',
+    description:
+      'Program belajar kelompok peer-assisted untuk mata kuliah inti semester 1–3. Setiap pekan 2x pertemuan dengan mentor dari tingkat atas. Output: ringkasan materi dan latihan soal untuk setiap sesi.',
     is_published: true,
     division: 'Divisi PSDM',
-    funding_source: null,
-    location: null,
-    target: null,
-    rationale: null,
+    funding_source: 'SPJ Kabinet',
+    location: 'Ruang Kelas FTIK Lt. 2 & Zoom Hybrid',
+    target: '180 mahasiswa aktif semester 1–3',
+    rationale:
+      'Meningkatkan tingkat kelulusan tepat waktu dan mengurangi angka dropout di mata kuliah inti.',
+  },
+  {
+    id: 'mock-p10',
+    title: 'Raker Awal Kabinet Sinergi Nirmala 2025/2026',
+    date_range: 'Agu 2025',
+    description:
+      'Rapat kerja kabinet tahunan untuk menyusun program kerja, SOP internal, dan IKU tiap divisi. Dihadiri seluruh pengurus inti dan kepala divisi selama 2 hari fullboard.',
+    is_published: true,
+    division: 'Seluruh Divisi',
+    funding_source: 'SPJ Kabinet Sinergi Nirmala',
+    location: 'Villa Puncak Bogor & Aula FTIK Hybrid',
+    target: '60 pengurus inti + kepala divisi',
+    rationale: 'Roadmap program kerja dan SOP internal menjadi acuan eksekusi sepanjang periode.',
+  },
+  {
+    id: 'mock-p11',
+    title: 'Open Recruitment Pengurus Inti & Staff Divisi Periode 2025/2026',
+    date_range: 'Agu – Sep 2025',
+    description:
+      'Perekrutan pengurus baru untuk periode ini. Seleksi administrasi → tes tulis → wawancara → FGD. Pengumuman hasil seleksi diumumkan melalui website dan grup resmi.',
+    is_published: true,
+    division: 'Divisi PSDM + Divisi Humas',
+    funding_source: 'SPJ Kabinet + Donatur Alumni',
+    location: 'Offline Gedung FTIK + Online Zoom',
+    target: '60 pengurus baru dari mahasiswa angkatan 2023–2024',
+    rationale: 'Regenerasi pengurus organisasi untuk menjaga keberlanjutan kinerja kabinet.',
   },
 ];
 
