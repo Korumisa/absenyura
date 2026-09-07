@@ -383,7 +383,7 @@ export default function App() {
                 path="/kegiatan"
                 element={
                   <PageSuspense>
-                    <Kegiatan />
+                    <Navigate to="/informasi" replace />
                   </PageSuspense>
                 }
               />
@@ -699,6 +699,14 @@ export default function App() {
                   />
                 </Route>
               </Route>
+              <Route
+                path="/403-forbidden"
+                element={
+                  <PageSuspense>
+                    <Navigate to="/forbidden" replace />
+                  </PageSuspense>
+                }
+              />
               <Route
                 path="/forbidden"
                 element={
