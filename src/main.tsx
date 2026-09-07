@@ -1,8 +1,38 @@
-import { StrictMode, lazy, Suspense, useEffect, useState } from 'react';
+import { StrictMode, lazy, Suspense, useEffect, useState, Component, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { LazyMotion, domAnimation } from 'framer-motion';
 import App from './App';
 import './index.css';
+
+// ── ErrorBoundary for DeferredMonitoring (ChunkLoadError guard) ───────────
+// SpeedInsights / Analytics are non-critical. If their chunk fails to load
+// (e.g. CDN cache stale after a deploy), we MUST NOT let that bubble up and
+// crash the ENTIRE app (white screen of death on root-level sibling).
+interface ChunkLoadErrorBoundaryProps {
+  children: ReactNode;
+  fallback?: ReactNode;
+}
+interface ChunkLoadErrorBoundaryState {
+  hasError: boolean;
+}
+class ChunkLoadErrorBoundary extends Component<
+  ChunkLoadErrorBoundaryProps,
+  ChunkLoadErrorBoundaryState
+> {
+  state: ChunkLoadErrorBoundaryState = { hasError: false };
+  static getDerivedStateFromError(_e: unknown): ChunkLoadErrorBoundaryState {
+    return { hasError: true };
+  }
+  componentDidCatch(error: unknown) {
+    const msg = String(error instanceof Error ? error.message : error ?? '');
+    // eslint-disable-next-line no-console
+    console.warn('[ChunkLoadErrorBoundary] suppressed non-critical chunk error:', msg);
+  }
+  render() {
+    if (this.state.hasError) return this.props.fallback ?? null;
+    return this.props.children;
+  }
+}
 
 const SpeedInsights = lazy(() =>
   import('@vercel/speed-insights/react').then((m) => ({ default: m.SpeedInsights }))
@@ -47,6 +77,8 @@ createRoot(document.getElementById('root')!).render(
     <LazyMotion features={domAnimation}>
       <App />
     </LazyMotion>
-    <DeferredMonitoring />
+    <ChunkLoadErrorBoundary>
+      <DeferredMonitoring />
+    </ChunkLoadErrorBoundary>
   </StrictMode>
 );
