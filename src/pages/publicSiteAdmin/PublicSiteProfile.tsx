@@ -16,7 +16,7 @@ import { ConfirmModal } from '@/components/ConfirmModal';
 import AdminPageShell from '@/components/AdminPageShell';
 import AdminCard from '@/components/AdminCard';
 import PublicSiteProfilePreview from '@/components/publicSiteAdmin/PublicSiteProfilePreview';
-import { AlertTriangle, Globe, Info } from 'lucide-react';
+import { AlertTriangle, Globe, Info, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils/utils';
 import { CmsTabNav, type CmsTabItem } from '@/components/ui/CmsTabNav';
 import { CmsEditorLayout } from '@/components/cms/CmsEditorLayout';
@@ -184,6 +184,10 @@ export default function PublicSiteProfile() {
   });
   const [isResetOpen, setIsResetOpen] = useState(false);
   const [profileTab, setProfileTab] = useState<ProfileTab>('identity');
+  const [infoWarnings, setInfoWarnings] = useState<SectionValidationError[]>([]);
+  const VALIDATION_ERROR_SEVERITY = ['error', 'warn'] as const;
+  type ValidationSeverity = (typeof VALIDATION_ERROR_SEVERITY)[number];
+  type ValidatedSection = SectionValidationError & { severity: ValidationSeverity };
 
   const uploadImage = async (file: File) => {
     const prepared = await prepareImageForUpload(file, {
@@ -256,10 +260,6 @@ export default function PublicSiteProfile() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      // ── STEP 1: SYNC client-side validation (NO FAKE setTimeout) ──
-      // Loop 6 CMS sections, untuk setiap section yang validate()=false
-      // kumpulkan error HINT yang SPESIFIK (bukan cuma nama section!)
-      // + mapping tab mana user harus buka untuk memperbaiki.
       const sectionResults = CMS_SECTIONS.map((section) => {
         const ok = section.validate(draft);
         return {
@@ -271,46 +271,46 @@ export default function PublicSiteProfile() {
         };
       });
 
-      const successes = sectionResults.filter((r) => r.ok);
-      const failures = sectionResults.filter((r) => !r.ok);
+      const blockingErrors = sectionResults.filter(
+        (r) => !r.ok && r.tab === profileTab
+      ) as unknown as ValidatedSection[];
+      blockingErrors.forEach((r) => (r.severity = 'error'));
 
-      if (failures.length > 0) {
-        // ── VALIDASI GAGAL: BERI PESAN YANG INFORMATIF SEKALI ──
-        // (1) Simpan error array agar banner inline muncul
-        setValidationErrors(failures as SectionValidationError[]);
-        // (2) Auto-jump user ke TAB PERTAMA yang ada error (tidak usah cari-cari)
-        const firstFailed = failures[0];
-        if (firstFailed) setProfileTab(firstFailed.tab as ProfileTab);
-        // (3) Toast ERROR structured: nama section + pesan hint field mana yang kurang
-        const failureList = failures
+      const nonBlockingWarnings = sectionResults.filter(
+        (r) => !r.ok && r.tab !== profileTab
+      ) as unknown as ValidatedSection[];
+      nonBlockingWarnings.forEach((r) => (r.severity = 'warn'));
+
+      const successes = sectionResults.filter((r) => r.ok);
+
+      if (blockingErrors.length > 0) {
+        setValidationErrors(blockingErrors as unknown as SectionValidationError[]);
+        setInfoWarnings(nonBlockingWarnings as unknown as SectionValidationError[]);
+        const blockingList = blockingErrors
           .map((f, idx) => `${idx + 1}. [${f.label}] ${f.hint}`)
           .join('\n');
-        const summary = `${successes.length} bagian siap, ${failures.length} bagian butuh perbaikan sebelum simpan:`;
-        // Pakai toast.error panjang (bisa multi-line untuk list)
-        toastError(null, `${summary}\n${failureList}`);
+        const summary = `${blockingErrors.length} bagian di tab "${
+          PROFILE_TABS.find((t) => t.id === profileTab)?.label ?? profileTab
+        }" wajib diisi sebelum simpan:`;
+        toastError(null, `${summary}\n${blockingList}`);
         return;
       }
 
-      // ── STEP 2: VALIDASI 100% LULUS → HANYA SEKARANG KIRIM KE SERVER ──
-      // (Dulu: ada bug return sebelum api.put, save never runs kalau 1 section invalid!)
       setValidationErrors([]);
+      setInfoWarnings(nonBlockingWarnings as unknown as SectionValidationError[]);
       await api.put('/public-site/admin/profile', { data: draft });
-      toastSuccess(`${CMS_SECTIONS.length} bagian profil berhasil tersimpan ke server.`);
+      const savedCount = successes.length + blockingErrors.length;
+      toastSuccess(
+        `${savedCount} bagian profil tersimpan. ${
+          nonBlockingWarnings.length
+            ? `${nonBlockingWarnings.length} tab lain masih kosong (bisa diisi nanti).`
+            : 'Semua bagian lengkap!'
+        }`
+      );
       setLastSavedAt(new Date());
-      // ⚠️ PALING PENTING: dirty=false HANYA SETELAH server confirm 200 OK
-      // Ini menghilangkan false-positive "Perubahan belum disimpan" dialog
-      // yang dulu muncul setiap user pindah section meskipun sudah tekan Simpan.
       setDirty(false);
       mutate();
     } catch (e: any) {
-      // ── STEP 3: ERROR HANDLING STRUCTURED untuk server / network / auth
-      // Gunakan getErrorMessage yang sudah punya pesan human-friendly:
-      // • ERR_NETWORK / ERR_CANCELED → gangguan koneksi
-      // • 401 Unauthorized → sesi masuk habis
-      // • 403 Forbidden → tidak punya akses (CONTENT_ADMIN)
-      // • 413 Payload Too Large → file foto/logo terlalu besar >5MB
-      // • 422 Unprocessable → validasi server (misal email format salah)
-      // • 500+ Internal Server Error → database / prisma gangguan
       const structuredMsg = getErrorMessage(
         e,
         'Gagal menyimpan data profil ke server. Silakan coba lagi.'
@@ -410,7 +410,7 @@ export default function PublicSiteProfile() {
               ariaLabel="Bagian profil"
             />
 
-            {/* ── Inline Validation Errors Banner (spesifik per-section hints) ─ */}
+            {/* ── Inline Validation Errors Banner (BLOCKING: tab aktif only) ─ */}
             {validationErrors.length > 0 ? (
               <div
                 role="alert"
@@ -423,12 +423,11 @@ export default function PublicSiteProfile() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <h3 className="text-base font-bold text-red-900 dark:text-red-100">
-                      Data belum lengkap — {validationErrors.length} bagian perlu diperbaiki sebelum
-                      simpan
+                      Data di tab ini belum lengkap — {validationErrors.length} bagian wajib diisi
+                      sebelum simpan
                     </h3>
                     <p className="mt-1 text-sm text-red-700/85 dark:text-red-200/85">
-                      Tekan tombol &quot;Langsung perbaiki&quot; di bawah untuk berpindah ke tab
-                      yang bersangkutan.
+                      Tab lain yang masih kosong tidak menghalangi simpan — bisa dikerjakan nanti.
                     </p>
                     <ul className="mt-4 space-y-3">
                       {validationErrors.map((err) => {
@@ -454,11 +453,11 @@ export default function PublicSiteProfile() {
                                 {err.hint}
                               </p>
                             </div>
-                            {tabInfo && (
+                            {tabInfo && profileTab !== err.tab && (
                               <button
                                 type="button"
                                 onClick={async () => {
-                                  const ok = profileTab === err.tab ? true : await confirmIfDirty();
+                                  const ok = await confirmIfDirty();
                                   if (ok) {
                                     setProfileTab(err.tab);
                                   }
@@ -466,6 +465,73 @@ export default function PublicSiteProfile() {
                                 className="inline-flex flex-none items-center gap-1.5 rounded-xl bg-red-600 px-3.5 py-2 text-xs font-semibold text-white shadow-[0_6px_14px_rgba(220,38,38,0.28)] transition hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2"
                               >
                                 Langsung perbaiki
+                                <span aria-hidden="true">→</span>
+                              </button>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            {/* ── Info Warnings Banner (NON-BLOCKING: tab lain yang kosong) ─ */}
+            {infoWarnings.length > 0 ? (
+              <div
+                role="note"
+                className="mt-4 rounded-2xl border-2 border-indigo-200 bg-gradient-to-br from-indigo-50 to-sky-50 p-5 shadow-sm dark:border-indigo-900/60 dark:from-indigo-950/40 dark:to-sky-950/30"
+              >
+                <div className="flex flex-wrap items-start gap-3">
+                  <div className="flex h-10 w-10 flex-none items-center justify-center rounded-xl bg-indigo-100 text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-300">
+                    <AlertCircle size={22} aria-hidden="true" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-base font-bold text-indigo-900 dark:text-indigo-100">
+                      {infoWarnings.length} bagian dari tab lain masih kosong — bisa disimpan dulu,
+                      diisi nanti
+                    </h3>
+                    <p className="mt-1 text-sm text-indigo-700/85 dark:text-indigo-200/85">
+                      Simpan progres tab ini terlebih dahulu. Tab di bawah bisa dikerjakan lain kali
+                      tanpa kehilangan perubahan.
+                    </p>
+                    <ul className="mt-4 space-y-3">
+                      {infoWarnings.map((warn) => {
+                        const tabInfo = PROFILE_TABS.find((t) => t.id === warn.tab);
+                        return (
+                          <li
+                            key={warn.id}
+                            className="flex flex-wrap items-start gap-3 rounded-xl border border-indigo-100 bg-white/60 p-3 backdrop-blur-sm dark:border-indigo-900/30 dark:bg-black/20"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="inline-flex items-center gap-1 rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-200">
+                                  <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
+                                  Bagian {warn.label} • opsional sekarang
+                                </span>
+                                {tabInfo ? (
+                                  <span className="text-xs font-medium text-indigo-600/75 dark:text-indigo-300/75">
+                                    (Tab: {tabInfo.label})
+                                  </span>
+                                ) : null}
+                              </div>
+                              <p className="mt-2 text-sm text-indigo-800/90 dark:text-indigo-100/90">
+                                {warn.hint}
+                              </p>
+                            </div>
+                            {tabInfo && profileTab !== warn.tab && (
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  const ok = await confirmIfDirty();
+                                  if (ok) {
+                                    setProfileTab(warn.tab);
+                                  }
+                                }}
+                                className="inline-flex flex-none items-center gap-1.5 rounded-xl bg-indigo-600 px-3.5 py-2 text-xs font-semibold text-white shadow-[0_6px_14px_rgba(79,70,229,0.28)] transition hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+                              >
+                                Lihat tab
                                 <span aria-hidden="true">→</span>
                               </button>
                             )}
