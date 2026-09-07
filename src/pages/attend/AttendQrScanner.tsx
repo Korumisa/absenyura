@@ -40,7 +40,13 @@ export default function AttendQrScanner({
   const qrDecodeTimeoutRef = useRef<number | null>(null);
   const qrDecodedSuccessRef = useRef(false);
   const qrReleasedRef = useRef(false);
-  const qrAbortErrorHandlerRef = useRef<((ev: ErrorEvent) => boolean) | null>(null);
+  // ── Global noise-catcher refs ─────────────────────────────────────────────
+  // html5-qrcode's RenderedCameraImpl aborts fire from inside a postMessage
+  // scheduler (async). addEventListener('error', capture) misses them — we
+  // must also install a legacy `window.onerror` setter and `unhandledrejection`.
+  const qrPrevOnErrorRef = useRef<OnErrorEventHandlerNonNull | null>(null);
+  const qrUnhandledHandlerRef = useRef<((ev: PromiseRejectionEvent) => void) | null>(null);
+  const qrCaptureErrorHandlerRef = useRef<((ev: ErrorEvent) => void) | null>(null);
 
   const [camerasReady, setCamerasReady] = useState(false);
   const [qrBootNonce, setQrBootNonce] = useState(0);
@@ -102,14 +108,29 @@ export default function AttendQrScanner({
       }
       scannerRef.current = null;
     }
-    // Uninstall transient global abort-error catcher (if any)
-    if (qrAbortErrorHandlerRef.current) {
+    // ── Uninstall 3-tier global noise catcher ────────────────────────────────
+    if (qrCaptureErrorHandlerRef.current) {
       window.removeEventListener(
         'error',
-        qrAbortErrorHandlerRef.current as any as EventListener,
+        qrCaptureErrorHandlerRef.current as unknown as EventListener,
         true
       );
-      qrAbortErrorHandlerRef.current = null;
+      qrCaptureErrorHandlerRef.current = null;
+    }
+    if (qrUnhandledHandlerRef.current) {
+      window.removeEventListener(
+        'unhandledrejection',
+        qrUnhandledHandlerRef.current as unknown as EventListener
+      );
+      qrUnhandledHandlerRef.current = null;
+    }
+    if (qrPrevOnErrorRef.current !== null) {
+      try {
+        window.onerror = qrPrevOnErrorRef.current;
+      } catch {
+        void 0;
+      }
+      qrPrevOnErrorRef.current = null;
     }
     stripHtml5QrDomSignatures('qr-reader');
     await waitForCameraRelease();
@@ -132,28 +153,74 @@ export default function AttendQrScanner({
     const bootScanner = async () => {
       setQrError(null);
       qrReleasedRef.current = false;
-      // Install a transient global error listener that SILENTLY swallows the
-      // very specific html5-qrcode "RenderedCameraImpl video surface onabort"
-      // noise triggered by mid-stream navigation / unmount. Nothing user-
-      // facing breaks when this fires — the scanner just restarts cleanly.
-      if (!qrAbortErrorHandlerRef.current) {
-        const h = (ev: ErrorEvent): boolean => {
-          const raw: string = String(
-            (ev && (ev.message || ((ev.error as any) && (ev.error as any).message))) || ''
-          );
-          if (
-            /onabort/i.test(raw) ||
-            /RenderedCameraImpl/i.test(raw) ||
-            /video surface/i.test(raw)
-          ) {
-            ev.preventDefault?.();
-            ev.stopPropagation?.();
-            return false;
+
+      // ── Install 3-tier global noise catcher (idempotent) ──────────────────
+      // html5-qrcode's internal RenderedCameraImpl fires `video.onabort` from
+      // inside a postMessage scheduler when the media stream is torn down
+      // mid-init by page navigation / React StrictMode double-cleanup. This
+      // throw path BYPASSES addEventListener('error', capture) in many
+      // engines — we also need the legacy `window.onerror` setter AND a
+      // Promise rejection handler. All three match the exact same noise
+      // signatures and swallow only those (everything else bubbles normally).
+      const isAbortNoise = (raw: string): boolean => {
+        const s = String(raw || '').toLowerCase();
+        return (
+          /onabort/.test(s) ||
+          /renderedcamera/i.test(raw) ||
+          /video surface/.test(raw) ||
+          s.includes('canceled') ||
+          s.includes('aborted')
+        );
+      };
+
+      if (!qrCaptureErrorHandlerRef.current) {
+        const h = (ev: ErrorEvent): void => {
+          const msg = String(ev.message || (ev.error && (ev.error as any).message) || '');
+          if (isAbortNoise(msg)) {
+            try {
+              ev.preventDefault();
+              ev.stopPropagation();
+              ev.stopImmediatePropagation?.();
+            } catch {
+              void 0;
+            }
           }
-          return true;
         };
-        qrAbortErrorHandlerRef.current = h;
-        window.addEventListener('error', h as any as EventListener, true);
+        qrCaptureErrorHandlerRef.current = h;
+        window.addEventListener('error', h as unknown as EventListener, true);
+      }
+
+      if (!qrUnhandledHandlerRef.current) {
+        const h = (ev: PromiseRejectionEvent): void => {
+          const reasonAny: any = ev.reason;
+          const msg = String(
+            (reasonAny && (reasonAny.message || reasonAny.error || reasonAny)) || ''
+          );
+          if (isAbortNoise(msg)) {
+            try {
+              ev.preventDefault();
+            } catch {
+              void 0;
+            }
+          }
+        };
+        qrUnhandledHandlerRef.current = h;
+        window.addEventListener('unhandledrejection', h as unknown as EventListener);
+      }
+
+      if (qrPrevOnErrorRef.current === null) {
+        const prev = window.onerror;
+        qrPrevOnErrorRef.current = prev as OnErrorEventHandlerNonNull | null;
+        window.onerror = function (this: any, msg, src, lineno, colno, err): boolean {
+          const combined = `${msg} ${err && (err as any).message ? (err as any).message : ''}`;
+          if (isAbortNoise(combined)) {
+            return true; // suppress browser default reporting
+          }
+          if (prev) {
+            return prev.call(this, msg, src, lineno, colno, err);
+          }
+          return false;
+        };
       }
 
       await waitForCameraRelease(350);
@@ -294,14 +361,29 @@ export default function AttendQrScanner({
             void 0;
           }
         }
-        // Always uninstall global abort-catcher on full unmount
-        if (qrAbortErrorHandlerRef.current) {
+        // ── Always uninstall 3-tier global abort-catcher on full unmount ──
+        if (qrCaptureErrorHandlerRef.current) {
           window.removeEventListener(
             'error',
-            qrAbortErrorHandlerRef.current as any as EventListener,
+            qrCaptureErrorHandlerRef.current as unknown as EventListener,
             true
           );
-          qrAbortErrorHandlerRef.current = null;
+          qrCaptureErrorHandlerRef.current = null;
+        }
+        if (qrUnhandledHandlerRef.current) {
+          window.removeEventListener(
+            'unhandledrejection',
+            qrUnhandledHandlerRef.current as unknown as EventListener
+          );
+          qrUnhandledHandlerRef.current = null;
+        }
+        if (qrPrevOnErrorRef.current !== null) {
+          try {
+            window.onerror = qrPrevOnErrorRef.current;
+          } catch {
+            void 0;
+          }
+          qrPrevOnErrorRef.current = null;
         }
         await releaseActiveVideoTracks();
         await new Promise<void>((r) => setTimeout(r, 300));
