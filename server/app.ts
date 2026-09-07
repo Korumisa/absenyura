@@ -74,7 +74,35 @@ if (process.env.NODE_ENV !== 'production') {
 app.use(requestTiming);
 
 app.disable('x-powered-by');
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      useDefaults: true,
+      directives: {
+        defaultSrc: ["'self'"],
+        baseUri: ["'self'"],
+        formAction: ["'self'"],
+        frameAncestors: ["'self'"],
+        objectSrc: ["'none'"],
+        scriptSrc: ["'self'", 'https:'],
+        scriptSrcAttr: ["'none'"],
+        styleSrc: ["'self'", 'https:', "'unsafe-inline'"],
+        imgSrc: ["'self'", 'https:', 'data:', 'blob:'],
+        fontSrc: ["'self'", 'https:', 'data:'],
+        connectSrc: ["'self'", 'https:', 'wss:'],
+        frameSrc: [
+          "'self'",
+          'https://www.youtube.com',
+          'https://www.youtube-nocookie.com',
+          'https://vercel.live',
+        ],
+        workerSrc: ["'self'", 'blob:'],
+        manifestSrc: ["'self'"],
+        upgradeInsecureRequests: [],
+      },
+    },
+  })
+);
 app.use(
   cors({
     origin: (origin, callback) => {
