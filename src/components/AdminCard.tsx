@@ -16,7 +16,7 @@ export default function AdminCard({
   className?: string;
 }) {
   return (
-    <Card className={cn(className)}>
+    <Card className={cn('card-hover-lift', className)}>
       {title || description || actions ? (
         <CardHeader className="flex flex-col gap-3 border-b border-border pb-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-1">

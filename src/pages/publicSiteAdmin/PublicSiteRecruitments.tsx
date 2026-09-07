@@ -225,8 +225,16 @@ export default function PublicSiteRecruitments() {
       formUrl: r.form_url ?? '',
       posterImageUrl: r.poster_image_url ?? '',
       isPublished: r.is_published,
-      committee: (r.committee ?? []).map((x) => ({ name: x.name, role: x.role, _uuid: crypto.randomUUID() })),
-      contacts: (r.contacts ?? []).map((x) => ({ name: x.name, contact: x.contact, _uuid: crypto.randomUUID() })),
+      committee: (r.committee ?? []).map((x) => ({
+        name: x.name,
+        role: x.role,
+        _uuid: crypto.randomUUID(),
+      })),
+      contacts: (r.contacts ?? []).map((x) => ({
+        name: x.name,
+        contact: x.contact,
+        _uuid: crypto.randomUUID(),
+      })),
     });
     resetDatesFromRange(r.date_range ?? '');
     setDirty(false);
@@ -272,11 +280,7 @@ export default function PublicSiteRecruitments() {
               description="Informasi umum dan data panitia."
             >
               <form onSubmit={upsert} className="space-y-5">
-                <LastSavedIndicator
-                  lastSavedAt={lastSavedAt}
-                  isDirty={dirty}
-                  isSaving={false}
-                />
+                <LastSavedIndicator lastSavedAt={lastSavedAt} isDirty={dirty} isSaving={false} />
                 <CmsTabNav<FormTab>
                   tabs={FORM_TABS}
                   value={formTab}
@@ -348,7 +352,8 @@ export default function PublicSiteRecruitments() {
                           className="hidden"
                           disabled={uploadingPoster}
                           onChange={async (e) => {
-                            const file = e.target.files?.[0];
+                            const inputEl = e.currentTarget;
+                            const file = inputEl.files?.[0];
                             if (!file) return;
                             setUploadingPoster(true);
                             try {
@@ -359,7 +364,7 @@ export default function PublicSiteRecruitments() {
                               toastError(err, 'Gagal upload poster');
                             } finally {
                               setUploadingPoster(false);
-                              e.currentTarget.value = '';
+                              inputEl.value = '';
                             }
                           }}
                         />
@@ -448,7 +453,10 @@ export default function PublicSiteRecruitments() {
                         onClick={() =>
                           setFormDirty((p) => ({
                             ...p,
-                            committee: [...(p.committee ?? []), { name: '', role: '', _uuid: crypto.randomUUID() }],
+                            committee: [
+                              ...(p.committee ?? []),
+                              { name: '', role: '', _uuid: crypto.randomUUID() },
+                            ],
                           }))
                         }
                       >
@@ -518,7 +526,10 @@ export default function PublicSiteRecruitments() {
                         onClick={() =>
                           setFormDirty((p) => ({
                             ...p,
-                            contacts: [...(p.contacts ?? []), { name: '', contact: '', _uuid: crypto.randomUUID() }],
+                            contacts: [
+                              ...(p.contacts ?? []),
+                              { name: '', contact: '', _uuid: crypto.randomUUID() },
+                            ],
                           }))
                         }
                       >

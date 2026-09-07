@@ -303,11 +303,24 @@ export default function Locations() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingLocation, setEditingLocation] = useState<Location | null>(null);
 
+  // Lazy-load Leaflet only when the user opens the form dialog, then apply
+  // the default icon fix. Guard with the SAME __attendLeafletIconsInstalled__
+  // window flag used by AttendLocationMap so StrictMode double-mount and
+  // HMR re-evaluation never re-patch L.Icon.Default.prototype more than once.
   useEffect(() => {
+    let cancelled = false;
     Promise.all([import('leaflet'), import('leaflet/dist/leaflet.css')]).then(() => {
-      fixLeafletDefaultIcons();
+      if (cancelled) return;
+      const w = window as any;
+      if (!w.__attendLeafletIconsInstalled__) {
+        w.__attendLeafletIconsInstalled__ = true;
+        fixLeafletDefaultIcons();
+      }
       setLeafletLoaded(true);
     });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Delete Confirmation Modal state
@@ -361,7 +374,6 @@ export default function Locations() {
   useEffect(() => {
     pruneLeafletPanel(mapPanelRef.current);
     // Depends on mapInstanceKey only — run once per remount cycle.
-     
   }, [mapInstanceKey]);
 
   // Form state
