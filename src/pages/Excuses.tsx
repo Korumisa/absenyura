@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import api from '@/services/api';
 import useSWR from 'swr';
@@ -61,6 +61,7 @@ import { TablePagination } from '@/components/ui/TablePagination';
 import { FileText as FileTextIcon } from 'lucide-react';
 import ActionLoadingOverlay from '@/components/ActionLoadingOverlay';
 import { ConfirmModal } from '@/components/ConfirmModal';
+import { useFormDirtyGuard } from '@/hooks/useFormDirtyGuard';
 import {
   acquireCameraStream,
   humanizeCameraError,
@@ -108,11 +109,49 @@ export default function Excuses() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const pendingStreamRef = useRef<MediaStream | null>(null);
+  const [dirty, setDirty] = useState(false);
+  const { confirmIfDirty } = useFormDirtyGuard(dirty);
+
+  const setFormDataDirty = useMemo(
+    () => (updater: React.SetStateAction<{ session_id: string; reason: string; description: string }>) => {
+      setDirty(true);
+      setFormData(updater);
+    },
+    []
+  );
+  const setPhotoBlobDirty = useMemo(
+    () => (updater: React.SetStateAction<Blob | null>) => {
+      setDirty(true);
+      setPhotoBlob(updater);
+    },
+    []
+  );
+  const setPhotoPreviewUrlDirty = useMemo(
+    () => (updater: React.SetStateAction<string | null>) => {
+      setDirty(true);
+      setPhotoPreviewUrl(updater);
+    },
+    []
+  );
+  const setIsCameraActiveDirty = useMemo(
+    () => (updater: React.SetStateAction<boolean>) => {
+      setDirty(true);
+      setIsCameraActive(updater);
+    },
+    []
+  );
+  const setFacingModeDirty = useMemo(
+    () => (updater: React.SetStateAction<'user' | 'environment'>) => {
+      setDirty(true);
+      setFacingMode(updater);
+    },
+    []
+  );
 
   const clearPhoto = () => {
-    setPhotoBlob(null);
+    setPhotoBlobDirty(null);
     if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
-    setPhotoPreviewUrl(null);
+    setPhotoPreviewUrlDirty(null);
     setCameraError(null);
   };
 
@@ -129,7 +168,7 @@ export default function Excuses() {
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
-    setIsCameraActive(false);
+    setIsCameraActiveDirty(false);
   };
 
   // Camera: dilepas HANYA saat unmount — jangan gabungkan dengan photoPreviewUrl
@@ -191,7 +230,7 @@ export default function Excuses() {
           // pick it up and assign it to the <video> after React re-renders
           // and the container's `hidden` class is removed.
           pendingStreamRef.current = stream;
-          setIsCameraActive(true);
+          setIsCameraActiveDirty(true);
           return;
         } catch (err) {
           lastErr = err;
@@ -208,7 +247,7 @@ export default function Excuses() {
 
   const switchCamera = () => {
     const next = facingMode === 'user' ? 'environment' : 'user';
-    setFacingMode(next);
+    setFacingModeDirty(next);
     if (isCameraActive) void startCamera(next);
   };
 
@@ -249,9 +288,9 @@ export default function Excuses() {
     canvas.toBlob(
       (blob) => {
         if (!blob) return;
-        setPhotoBlob(blob);
+        setPhotoBlobDirty(blob);
         if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
-        setPhotoPreviewUrl(URL.createObjectURL(blob));
+        setPhotoPreviewUrlDirty(URL.createObjectURL(blob));
         stopCamera();
       },
       'image/jpeg',
@@ -361,6 +400,7 @@ export default function Excuses() {
         },
       });
       toast.success('Pengajuan izin berhasil dikirim');
+      setDirty(false);
       setIsModalOpen(false);
       setFormData({ session_id: '', reason: 'SICK', description: '' });
       clearPhoto();
@@ -520,7 +560,15 @@ export default function Excuses() {
               </Button>
             ) : null}
             {currentUser?.role === 'USER' ? (
-              <Button onClick={() => setIsModalOpen(true)}>
+              <Button
+                onClick={async () => {
+                  if (isModalOpen && dirty) {
+                    const ok = await confirmIfDirty();
+                    if (!ok) return;
+                  }
+                  setIsModalOpen(true);
+                }}
+              >
                 <Plus className="mr-2 size-4" aria-hidden="true" />
                 Pengajuan baru
               </Button>
@@ -883,9 +931,11 @@ export default function Excuses() {
         {/* Modal Form */}
         <Dialog
           open={isModalOpen}
-          onOpenChange={(open) => {
+          onOpenChange={async (open) => {
             if (!open && submitting) return;
             if (!open) {
+              const ok = await confirmIfDirty();
+              if (!ok) return;
               stopCamera();
               clearPhoto();
             }
@@ -908,7 +958,7 @@ export default function Excuses() {
                   <Select
                     required
                     value={formData.session_id}
-                    onValueChange={(val) => setFormData({ ...formData, session_id: val })}
+                    onValueChange={(val) => setFormDataDirty({ ...formData, session_id: val })}
                   >
                     <SelectTrigger
                       id={id}
@@ -942,7 +992,7 @@ export default function Excuses() {
                   <Select
                     required
                     value={formData.reason}
-                    onValueChange={(val) => setFormData({ ...formData, reason: val })}
+                    onValueChange={(val) => setFormDataDirty({ ...formData, reason: val })}
                   >
                     <SelectTrigger
                       id={id}
@@ -966,7 +1016,7 @@ export default function Excuses() {
                     type="text"
                     required
                     value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    onChange={(e) => setFormDataDirty({ ...formData, description: e.target.value })}
                     placeholder="Mohon sebutkan alasan izin/sakit..."
                     aria-describedby={ariaDescribedBy}
                     aria-invalid={ariaInvalid}
@@ -1085,7 +1135,11 @@ export default function Excuses() {
                   variant="outline"
                   className="min-h-11"
                   disabled={submitting}
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={async () => {
+                    const ok = await confirmIfDirty();
+                    if (!ok) return;
+                    setIsModalOpen(false);
+                  }}
                 >
                   Batal
                 </Button>
