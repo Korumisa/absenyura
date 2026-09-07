@@ -439,23 +439,6 @@ export default function PublicHome() {
                     ) : null}
                   </div>
                 ) : null}
-
-                {kabinetName ? (
-                  <div className="mx-auto mt-4 max-w-3xl text-center">
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Kabinet aktif periode {kabinetPeriod}. Terdapat {structure.length} kelompok struktur dan {programs.length} program kerja tercatat.
-                    </p>
-                    <div className="mt-6 flex justify-center">
-                      <Link
-                        to="/struktur-organisasi"
-                        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[var(--public-primary)] px-6 py-3 text-sm font-semibold text-white shadow-[0_16px_32px_rgba(37,99,235,0.35)] transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/45"
-                      >
-                        Lihat Struktur Organisasi Lengkap
-                        <ArrowRight size={18} aria-hidden="true" />
-                      </Link>
-                    </div>
-                  </div>
-                ) : null}
               </div>
             </section>
           )}
