@@ -21,7 +21,7 @@ export default function PublicSiteProgramPreview({
 }) {
   return (
     <CmsPreviewAside title="Pratinjau program">
-      <div className="rounded-2xl border border-border p-4 border-border">
+      <div className="rounded-2xl border border-border p-4">
         <div className="flex items-start justify-between gap-2">
           <p className="text-base font-bold text-foreground">{title || 'Judul program'}</p>
           <span

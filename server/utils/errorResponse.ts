@@ -11,7 +11,7 @@ function safeText(input: unknown, maxLen = 360) {
   return text.length > maxLen ? `${text.slice(0, maxLen)}…` : text;
 }
 
-export function sendInternalServerError(res: Response, err: unknown) {
+export function sendInternalServerError(res: Response, err: unknown, fallbackData: any = []) {
   const expose = process.env.EXPOSE_ERROR_DETAILS === '1' || process.env.NODE_ENV !== 'production';
   const anyErr = err as any;
   const code = typeof anyErr?.code === 'string' ? anyErr.code : undefined;
@@ -21,6 +21,7 @@ export function sendInternalServerError(res: Response, err: unknown) {
   res.status(500).json({
     success: false,
     error: 'Internal server error',
+    data: fallbackData,
     ...(expose ? { details: { code, message, meta } } : {}),
   });
 }

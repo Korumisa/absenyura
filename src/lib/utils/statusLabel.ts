@@ -11,13 +11,14 @@
  *   import { attendanceBadgeVariant } from '@/lib/utils/classLabel';
  */
 import { formatLabel } from '@/lib/utils/classLabel';
+import { attendanceStatusLabel as classLabelAttendanceStatusLabel } from '@/lib/utils/classLabel';
 
 export function sessionStatusLabel(status: string): string {
   return formatLabel('session-status', status);
 }
 
 export function attendanceStatusLabel(status: string): string {
-  return formatLabel('attendance-status', status);
+  return classLabelAttendanceStatusLabel(status);
 }
 
 export function userRoleLabel(role: string): string {
@@ -28,8 +29,4 @@ export function excuseStatusLabel(status: string): string {
   return formatLabel('excuse-status', status);
 }
 
-/** @deprecated Import attendanceBadgeVariant directly from @/lib/utils/classLabel.
- *  Re-exported here only to prevent duplicate-export ambiguity in the lib barrel;
- *  the single source of truth lives in classLabel.ts.
- */
 export { attendanceBadgeVariant } from '@/lib/utils/classLabel';

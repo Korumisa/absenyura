@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import type { AuthRequest } from '../types/index.js';
 import prisma from '../utils/prisma.js';
 import crypto from 'crypto';
@@ -162,7 +162,7 @@ export const getExcuses = async (req: AuthRequest, res: Response): Promise<void>
     let excuses;
 
     if (user.role === 'USER') {
-      // TODO: remove fallback once all envs confirm semester column exists (2026-02 migration applied)
+      // TODO(#post-audit-p3): remove fallback once all envs confirm semester column exists (2026-02 migration applied)
       excuses = await queryWithSemesterFallback(
         () =>
           prisma.excuseRequest.findMany({
@@ -200,7 +200,7 @@ export const getExcuses = async (req: AuthRequest, res: Response): Promise<void>
           })
       );
     } else if (user.role === 'ADMIN') {
-      // TODO: remove fallback once all envs confirm semester column exists (2026-02 migration applied)
+      // TODO(#post-audit-p3): remove fallback once all envs confirm semester column exists (2026-02 migration applied)
       excuses = await queryWithSemesterFallback(
         () =>
           prisma.excuseRequest.findMany({
@@ -241,7 +241,7 @@ export const getExcuses = async (req: AuthRequest, res: Response): Promise<void>
       );
     } else {
       // Super Admin
-      // TODO: remove fallback once all envs confirm semester column exists (2026-02 migration applied)
+      // TODO(#post-audit-p3): remove fallback once all envs confirm semester column exists (2026-02 migration applied)
       excuses = await queryWithSemesterFallback(
         () =>
           prisma.excuseRequest.findMany({
@@ -422,7 +422,7 @@ export const createExcuse = async (req: AuthRequest, res: Response): Promise<voi
 
     let newExcuse: any;
     try {
-      // TODO: remove fallback once all envs confirm semester column exists (2026-02 migration applied)
+      // TODO(#post-audit-p3): remove fallback once all envs confirm semester column exists (2026-02 migration applied)
       newExcuse = await queryWithSemesterFallback(
         () =>
           prisma.excuseRequest.create({

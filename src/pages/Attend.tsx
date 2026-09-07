@@ -316,7 +316,6 @@ export default function Attend() {
       const idempotencyKey = crypto.randomUUID();
       const res = await api.put(`/attendance/${myAttendance.id}/check-out`, formData, {
         headers: {
-          'Content-Type': 'multipart/form-data',
           'X-Idempotency-Key': idempotencyKey,
         },
       });
@@ -696,7 +695,6 @@ export default function Attend() {
       const idempotencyKey = crypto.randomUUID();
       const res = await api.post('/attendance/check-in', formData, {
         headers: {
-          'Content-Type': 'multipart/form-data',
           'X-Idempotency-Key': idempotencyKey,
         },
       });
@@ -1224,7 +1222,7 @@ export default function Attend() {
                     Ambil Foto Bukti Kehadiran
                   </h2>
 
-                  <div className="relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-2xl border border-border bg-black shadow-inner border-border">
+                  <div className="relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-2xl border border-border bg-black shadow-inner">
                     <video
                       ref={videoRef}
                       autoPlay
@@ -1296,7 +1294,7 @@ export default function Attend() {
                 </div>
               ) : (
                 <div className="flex w-full max-w-md animate-in flex-col items-center gap-6 duration-300 zoom-in">
-                  <div className="aspect-video w-full overflow-hidden rounded-2xl border border-border shadow-md border-border">
+                  <div className="aspect-video w-full overflow-hidden rounded-2xl border border-border shadow-md">
                     <img
                       src={photoPreview!}
                       alt="Pratinjau foto check-in Anda"

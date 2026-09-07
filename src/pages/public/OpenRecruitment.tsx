@@ -1,8 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
 import PublicLayout from '@/components/PublicLayout';
-import useSWR from 'swr';
-import api from '@/services/api';
 import type { PublicRecruitment } from '@/types/publicSite';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Search, X } from 'lucide-react';
@@ -13,16 +11,22 @@ import PublicCoverImage from '@/components/PublicCoverImage';
 import useLockBodyScroll from '@/lib/a11y/useLockBodyScroll';
 import { useAuthStore } from '@/stores/authStore';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { useSwrPageState } from '@/hooks/useSwrPageState';
+import { useMockOrSwr } from '@/hooks/useMockOrSwr';
+import { mockRecruitments } from '@/lib/utils/mockLandingData';
+import { safeRelation } from '@/lib/utils/publicContent';
 import { PublicPageError } from '@/components/public/PublicPageError';
 import { PublicEmptyState } from '@/components/public/PublicEmptyState';
 import { ensureHttpsUrl } from '@/lib/http/ensureHttpsUrl';
 import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
+import { publicSiteFetcher, safeArray } from '@/lib/utils/publicSiteFetcher';
 
 export default function OpenRecruitment() {
-  const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
-  const swr = useSWR<PublicRecruitment[]>('/public-site/recruitments', fetcher, { revalidateOnFocus: false });
-  const { data: items = [], isInitialLoading: isLoading, isError, retry } = useSwrPageState(swr);
+  const { swr, data, isInitialLoading: isLoading, isError, retry } = useMockOrSwr<PublicRecruitment[]>({
+    swrKey: '/public-site/recruitments',
+    fetcher: publicSiteFetcher<PublicRecruitment[]>,
+    mockStatic: mockRecruitments,
+  });
+  const items = safeArray<PublicRecruitment>(data);
   const { isAuthenticated, user } = useAuthStore();
   const location = useLocation();
   const navigate = useNavigate();
@@ -212,14 +216,14 @@ export default function OpenRecruitment() {
                       <div className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-slate-700">{selected.description}</div>
                     </div>
                   ) : null}
-                  {selected.contacts?.length ? (
+                  {safeRelation(selected.contacts).length ? (
                     <div className="rounded-3xl border border-black/10 bg-white p-5 shadow-[0_18px_45px_-42px_rgba(15,23,42,0.25)]">
                       <div className="flex items-center justify-between gap-4">
                         <div className="text-sm font-extrabold tracking-tight text-slate-900">Contact Person</div>
-                        <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{selected.contacts.length} kontak</div>
+                        <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{safeRelation(selected.contacts).length} kontak</div>
                       </div>
                       <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                        {selected.contacts.map((c) => (
+                        {safeRelation(selected.contacts).map((c) => (
                           <a
                             key={c.id}
                             href={contactHref(c.contact)}
@@ -233,16 +237,20 @@ export default function OpenRecruitment() {
                         ))}
                       </div>
                     </div>
-                  ) : null}
+                  ) : (
+                    <div className="rounded-3xl border border-dashed border-black/15 bg-slate-50/80 p-5 text-sm text-muted-foreground">
+                      Belum ada narahubung. Informasi kontak akan segera diumumkan.
+                    </div>
+                  )}
 
-                  {selected.committee?.length ? (
+                  {safeRelation(selected.committee).length ? (
                     <div className="rounded-3xl border border-black/10 bg-white p-5 shadow-[0_18px_45px_-42px_rgba(15,23,42,0.25)]">
                       <div className="flex items-center justify-between gap-4">
                         <div className="text-sm font-extrabold tracking-tight text-slate-900">Panitia / Posisi</div>
-                        <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{selected.committee.length} orang</div>
+                        <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{safeRelation(selected.committee).length} orang</div>
                       </div>
                       <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                        {selected.committee.map((p) => (
+                        {safeRelation(selected.committee).map((p) => (
                           <div key={p.id} className="rounded-2xl border border-black/10 bg-white p-4">
                             <div className="text-sm font-semibold text-slate-900">{p.name}</div>
                             <div className="text-sm text-muted-foreground">{p.role}</div>
@@ -250,7 +258,11 @@ export default function OpenRecruitment() {
                         ))}
                       </div>
                     </div>
-                  ) : null}
+                  ) : (
+                    <div className="rounded-3xl border border-dashed border-black/15 bg-slate-50/80 p-5 text-sm text-muted-foreground">
+                      Belum ada struktur panitia. Akan diumumkan segera setelah tim selesai disusun.
+                    </div>
+                  )}
 
                   <div className="rounded-3xl border border-black/10 bg-white p-5 shadow-[0_18px_45px_-42px_rgba(15,23,42,0.25)]">
                     <div className="text-sm font-extrabold tracking-tight text-slate-900">Pendaftaran</div>

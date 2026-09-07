@@ -1,16 +1,18 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo } from 'react';
 import PublicLayout from '@/components/PublicLayout';
 import PublicEnter from '@/components/PublicEnter';
 import PublicReveal from '@/components/PublicReveal';
 import PublicPageHero from '@/components/PublicPageHero';
-import useSWR from 'swr';
-import api from '@/services/api';
 import type { PublicProgram } from '@/types/publicSite';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
-import { useSwrPageState } from '@/hooks/useSwrPageState';
+import { useMockOrSwr } from '@/hooks/useMockOrSwr';
+import { mockPrograms } from '@/lib/utils/mockLandingData';
 import { PublicPageError } from '@/components/public/PublicPageError';
 import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
+import { publicSiteFetcher, safeArray } from '@/lib/utils/publicSiteFetcher';
+
+const SCROLL_KEY_PREFIX = 'proker-detail-scroll-y';
 
 function parseProgramDescriptionFallback(description: string | null) {
   const raw = String(description ?? '').trim();
@@ -47,8 +49,6 @@ function parseProgramDescriptionFallback(description: string | null) {
     const value = m[2].trim();
     const field = known.get(key);
     if (field) {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const _assign = { [field]: value };
       if (field === 'division') division = value;
       if (field === 'fundingSource') fundingSource = value;
       if (field === 'location') location = value;
@@ -64,9 +64,13 @@ function parseProgramDescriptionFallback(description: string | null) {
 
 export default function ProgramKerjaDetail() {
   const { id } = useParams();
-  const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
-  const swr = useSWR<PublicProgram[]>('/public-site/programs', fetcher, { revalidateOnFocus: false });
-  const { data: items = [], isInitialLoading: isLoading, isError, retry } = useSwrPageState(swr);
+  const scrollKey = useMemo(() => `${SCROLL_KEY_PREFIX}:${id ?? ''}`, [id]);
+  const { swr, data, isInitialLoading: isLoading, isError, retry } = useMockOrSwr<PublicProgram[]>({
+    swrKey: '/public-site/programs',
+    fetcher: publicSiteFetcher<PublicProgram[]>,
+    mockStatic: mockPrograms,
+  });
+  const items = safeArray<PublicProgram>(data);
 
   const program = useMemo(() => items.find((p) => p.id === id) ?? null, [items, id]);
   const parsedFallback = useMemo(() => parseProgramDescriptionFallback(program?.description ?? null), [program?.description]);
@@ -75,6 +79,31 @@ export default function ProgramKerjaDetail() {
   const location = program?.location ?? parsedFallback.location;
   const target = program?.target ?? parsedFallback.target;
   const rationale = program?.rationale ?? parsedFallback.body;
+
+  useLayoutEffect(() => {
+    if (!id) {
+      window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+      return;
+    }
+    const saved = Number(sessionStorage.getItem(scrollKey) || 0);
+    if (saved > 0) {
+      window.scrollTo({ top: saved, behavior: 'instant' as ScrollBehavior });
+      sessionStorage.removeItem(scrollKey);
+    } else {
+      window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+    }
+  }, [id, scrollKey]);
+
+  useEffect(() => {
+    if (!id) return;
+    const save = () => sessionStorage.setItem(scrollKey, String(window.scrollY));
+    window.addEventListener('beforeunload', save);
+    return () => {
+      save();
+      window.removeEventListener('beforeunload', save);
+    };
+  }, [id, scrollKey]);
+
   if (isError) {
     return <PublicPageError title="Gagal memuat program" error={swr.error} onRetry={retry} />;
   }

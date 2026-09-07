@@ -22,7 +22,7 @@ function withDefaultSemester<T extends { semester?: number | null }>(
 }
 
 async function findClassById(id: string) {
-  // TODO: remove fallback once all envs confirm semester column exists (2026-02 migration applied)
+  // TODO(#post-audit-p3): remove fallback once all envs confirm semester column exists (2026-02 migration applied)
   const fallback = await queryWithSemesterFallback(
     () => prisma.class.findUnique({ where: { id }, include: classInclude }),
     () =>
@@ -83,7 +83,7 @@ export const getClasses = async (req: AuthRequest, res: Response): Promise<void>
     const commonOrder = { created_at: 'desc' } as const;
 
     if (user.role === 'USER') {
-      // TODO: remove fallback once all envs confirm semester column exists (2026-02 migration applied)
+      // TODO(#post-audit-p3): remove fallback once all envs confirm semester column exists (2026-02 migration applied)
       const rows = await queryWithSemesterFallback(
         () =>
           prisma.class.findMany({
@@ -100,7 +100,7 @@ export const getClasses = async (req: AuthRequest, res: Response): Promise<void>
       );
       classes = rows.map((r: any) => withDefaultSemester(r));
     } else if (user.role === 'ADMIN') {
-      // TODO: remove fallback once all envs confirm semester column exists (2026-02 migration applied)
+      // TODO(#post-audit-p3): remove fallback once all envs confirm semester column exists (2026-02 migration applied)
       const rows = await queryWithSemesterFallback(
         () =>
           prisma.class.findMany({
@@ -117,7 +117,7 @@ export const getClasses = async (req: AuthRequest, res: Response): Promise<void>
       );
       classes = rows.map((r: any) => withDefaultSemester(r));
     } else {
-      // TODO: remove fallback once all envs confirm semester column exists (2026-02 migration applied)
+      // TODO(#post-audit-p3): remove fallback once all envs confirm semester column exists (2026-02 migration applied)
       const rows = await queryWithSemesterFallback(
         () => prisma.class.findMany({ include: commonInclude, orderBy: commonOrder }),
         () => prisma.class.findMany({ select: commonFallbackSelect, orderBy: commonOrder })
@@ -139,7 +139,7 @@ export const createClass = async (req: AuthRequest, res: Response): Promise<void
     const sem = Math.max(1, Math.min(14, Number.parseInt(String(semester ?? '1'), 10) || 1));
     const resolvedLecturerId = user?.role === 'ADMIN' ? user.id : lecturer_id;
 
-    // TODO: remove fallback once all envs confirm semester column exists (2026-02 migration applied)
+    // TODO(#post-audit-p3): remove fallback once all envs confirm semester column exists (2026-02 migration applied)
     const created = await queryWithSemesterFallback(
       () =>
         prisma.class.create({
@@ -196,7 +196,7 @@ export const updateClass = async (req: AuthRequest, res: Response): Promise<void
     }
     const resolvedLecturerId = user.role === 'ADMIN' ? user.id : lecturer_id;
 
-    // TODO: remove fallback once all envs confirm semester column exists (2026-02 migration applied)
+    // TODO(#post-audit-p3): remove fallback once all envs confirm semester column exists (2026-02 migration applied)
     const updated = await queryWithSemesterFallback(
       () =>
         prisma.class.update({

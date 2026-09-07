@@ -24,7 +24,7 @@ import { ErrorWithRetry } from '@/components/ErrorWithRetry';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
 import type { Report } from '@/types/report';
 import type { PaginationMeta } from '@/types/common';
-import { attendanceBadgeVariant, attendanceStatusLabel } from '@/lib/utils/statusLabel';
+import { AttendanceStatusBadge } from '@/components/AttendanceStatusBadge';
 import { Card, CardContent } from '@/components/ui/card';
 import {
   Dialog,
@@ -112,6 +112,7 @@ export default function StudentAttendanceRecap() {
 
   const swr = useSWR(studentId ? `/reports?${queryParams.toString()}` : null, fetcher, {
     revalidateOnFocus: false,
+    dedupingInterval: 60_000,
     keepPreviousData: true,
   });
   const { data, isPending: loading, isError, retry } = useSwrPageState(swr);
@@ -372,9 +373,7 @@ export default function StudentAttendanceRecap() {
                               {r.class_name || '—'}
                             </TableCell>
                             <TableCell>
-                              <Badge variant={attendanceBadgeVariant(r.status)}>
-                                {attendanceStatusLabel(r.status)}
-                              </Badge>
+                              <AttendanceStatusBadge status={r.status} />
                             </TableCell>
                             <TableCell className="text-sm text-muted-foreground">
                               {safeFormat(r.check_in_time, 'dd MMM yyyy, HH:mm')}
@@ -425,6 +424,7 @@ export default function StudentAttendanceRecap() {
                         className="h-9 rounded-md border border-border bg-background px-2 text-sm"
                         value={pageSize}
                         onChange={(e) => setPageSize(e.target.value)}
+                        aria-label="Jumlah baris per halaman"
                       >
                         <option value="20">20</option>
                         <option value="50">50</option>

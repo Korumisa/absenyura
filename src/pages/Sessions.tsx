@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '@/services/api';
 import useSWR from 'swr';
@@ -13,7 +13,6 @@ import { sessionStatusLabel } from '@/lib/utils/statusLabel';
 import { Button } from '@/components/ui/button';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { FormField } from '@/components/ui/form-field';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -55,8 +54,11 @@ import { WizardStepIndicator } from '@/components/ui/WizardStepIndicator';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { useClientPagination } from '@/hooks/useClientPagination';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
+import { SlowLoadingHint } from '@/components/admin/SlowLoadingHint';
 import { TablePagination } from '@/components/ui/TablePagination';
 import { applyApiFieldErrors, firstFieldErrorMessage } from '@/lib/http/apiFieldErrors';
+import { LastSavedIndicator } from '@/components/admin/LastSavedIndicator';
+import { cn } from '@/lib/utils/utils';
 
 const WIZARD_LABELS = ['Info & Lokasi', 'Jadwal', 'Aturan Absen', 'Kelas'] as const;
 const WIZARD_HINTS = [
@@ -127,6 +129,8 @@ export default function Sessions() {
   });
   const [saving, setSaving] = useState(false);
   const [formErrors, setFormErrors] = useState<FormFieldErrors>({});
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const [formBaseline, setFormBaseline] = useState<string>('');
 
   // Delete Session Confirmation Modal
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -143,8 +147,18 @@ export default function Sessions() {
   })();
 
   const fetcher = (url: string) => api.get(url).then((res) => res.data.data);
-  const swr = useSWR<Session[]>('/sessions', fetcher, { revalidateOnFocus: false });
-  const { data: sessions = [], isPending, isError, retry, mutate } = useSwrPageState(swr);
+  const swr = useSWR<Session[]>('/sessions', fetcher, {
+    revalidateOnFocus: false,
+    dedupingInterval: 60_000,
+  });
+  const {
+    data: sessions = [],
+    isPending,
+    isError,
+    retry,
+    mutate,
+    showSlowLoadingHint,
+  } = useSwrPageState(swr);
 
   const doSaveSession = useMutationToast(
     async () => {
@@ -174,6 +188,7 @@ export default function Sessions() {
         }
         return toastErrorMessage(err, 'Gagal menyimpan sesi');
       },
+      onSuccess: () => setLastSavedAt(new Date()),
     }
   );
 
@@ -231,7 +246,7 @@ export default function Sessions() {
           })
         : [];
       const classIds = linkedIds.length ? linkedIds : session.class_id ? [session.class_id] : [];
-      setFormData({
+      const initial = {
         title: session.title,
         description: session.description || '',
         class_ids: classIds,
@@ -244,7 +259,9 @@ export default function Sessions() {
         late_threshold_minutes: session.late_threshold_minutes,
         require_checkout: session.require_checkout,
         status: session.status,
-      });
+      };
+      setFormData(initial);
+      setFormBaseline(JSON.stringify(initial));
     } else {
       setEditingSession(null);
 
@@ -256,7 +273,7 @@ export default function Sessions() {
       const later = new Date(now.getTime() + 2 * 60 * 60 * 1000); // +2 hours
       const laterStr = later.toISOString().slice(0, 16);
 
-      setFormData({
+      const initial = {
         title: '',
         description: '',
         location_id: locations.length > 0 ? locations[0].id : '',
@@ -269,8 +286,11 @@ export default function Sessions() {
         late_threshold_minutes: 15,
         require_checkout: false,
         status: 'UPCOMING',
-      });
+      };
+      setFormData(initial);
+      setFormBaseline(JSON.stringify(initial));
     }
+    setLastSavedAt(null);
     setWizardStep(1);
     setFormErrors({});
     setIsModalOpen(true);
@@ -419,6 +439,13 @@ export default function Sessions() {
     }
   };
 
+  const selectedClassIdSet = useMemo(() => new Set(formData.class_ids), [formData.class_ids]);
+  const classByIdMap = useMemo(() => {
+    const m = new Map<string, { id: string; name: string; semester: number }>();
+    for (const c of classes) m.set(c.id, c);
+    return m;
+  }, [classes]);
+
   const filteredSessions = sessions.filter((s) => {
     const matchSearch = s.title.toLowerCase().includes(searchTerm.toLowerCase());
     const matchLocation = filterLocation === 'ALL' || s.location?.id === filterLocation;
@@ -428,11 +455,12 @@ export default function Sessions() {
     }) as string[];
     const legacyClassId = s.class_id ?? null;
     const isAllStudents = !legacyClassId && linkedIds.length === 0;
+    const linkedIdSet = new Set(linkedIds);
     const matchClass =
       filterClass === 'ALL' ||
       (filterClass === 'ALL_STUDENTS'
         ? isAllStudents
-        : legacyClassId === filterClass || linkedIds.includes(filterClass));
+        : legacyClassId === filterClass || linkedIdSet.has(filterClass));
 
     let matchDate = true;
     if (filterDate) {
@@ -451,6 +479,8 @@ export default function Sessions() {
     pageSize: 20,
     resetDeps: [searchTerm, filterDate, filterLocation, filterClass],
   });
+
+  const formIsDirty = JSON.stringify(formData) !== formBaseline;
 
   const actionOverlayLabel = saving
     ? editingSession
@@ -484,6 +514,8 @@ export default function Sessions() {
             onRetry={retry}
             className="mb-6"
           />
+        ) : showSlowLoadingHint ? (
+          <SlowLoadingHint onRetry={retry} />
         ) : (
           <div className="mb-6 overflow-hidden rounded-xl border border-border bg-card shadow-card dark:shadow-none dark:ring-1 dark:ring-white/10">
             <div className="grid grid-cols-1 gap-5 border-b border-border p-5 sm:grid-cols-2 lg:grid-cols-4">
@@ -495,6 +527,7 @@ export default function Sessions() {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-9 w-full"
+                  aria-label="Cari sesi absensi"
                 />
               </div>
               <div className="relative w-full">
@@ -504,11 +537,12 @@ export default function Sessions() {
                   value={filterDate}
                   onChange={(e) => setFilterDate(e.target.value)}
                   className="w-full pl-9 block appearance-none [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer bg-transparent"
+                  aria-label="Filter tanggal sesi"
                 />
               </div>
               <div className="w-full">
                 <Select value={filterLocation} onValueChange={setFilterLocation}>
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger className="w-full" aria-label="Filter lokasi sesi">
                     <SelectValue placeholder="Semua Lokasi" />
                   </SelectTrigger>
                   <SelectContent>
@@ -871,13 +905,20 @@ export default function Sessions() {
           onOpenChange={setIsModalOpen}
         >
           <DialogContent className="max-w-4xl p-0">
-            <div className="border-b border-border px-6 py-4 border-border">
-              <DialogHeader>
-                <DialogTitle className="text-xl font-bold text-foreground">
-                  {editingSession ? 'Edit Sesi Kehadiran' : 'Buat Sesi Baru'}
-                </DialogTitle>
-                <DialogDescription className="sr-only">Form sesi kehadiran</DialogDescription>
-              </DialogHeader>
+            <div className="border-b border-border px-6 py-4">
+              <div className="flex items-start justify-between gap-3">
+                <DialogHeader>
+                  <DialogTitle className="text-xl font-bold text-foreground">
+                    {editingSession ? 'Edit Sesi Kehadiran' : 'Buat Sesi Baru'}
+                  </DialogTitle>
+                  <DialogDescription className="sr-only">Form sesi kehadiran</DialogDescription>
+                </DialogHeader>
+                <LastSavedIndicator
+                  lastSavedAt={lastSavedAt}
+                  isDirty={formIsDirty}
+                  isSaving={saving}
+                />
+              </div>
             </div>
 
             <form
@@ -1119,7 +1160,7 @@ export default function Sessions() {
                                 clearFieldError('late_threshold_minutes');
                                 setFormData({
                                   ...formData,
-                                  late_threshold_minutes: parseInt(e.target.value),
+                                  late_threshold_minutes: parseInt(e.target.value, 10) || 0,
                                 });
                               }}
                             />
@@ -1216,7 +1257,7 @@ export default function Sessions() {
                                     c.name.toLowerCase().includes(classSearch.trim().toLowerCase())
                                   )
                                   .map((c) => {
-                                    const selected = formData.class_ids.includes(c.id);
+                                    const selected = selectedClassIdSet.has(c.id);
                                     return (
                                       <Button
                                         key={c.id}
@@ -1268,7 +1309,7 @@ export default function Sessions() {
                                 ) : (
                                   formData.class_ids
                                     .flatMap((id) => {
-                                      const result = classes.find((c) => c.id === id);
+                                      const result = classByIdMap.get(id);
                                       return result ? [result] : [];
                                     })
                                     .map((c: any) => (
@@ -1340,7 +1381,12 @@ export default function Sessions() {
                   <SubmitButton
                     type="button"
                     disabled={saving}
-                    className="min-h-11"
+                    className={cn(
+                      'min-h-11',
+                      formIsDirty
+                        ? 'ring-2 ring-offset-2 ring-sky-500/70 focus-visible:outline-none dark:ring-offset-slate-900'
+                        : undefined
+                    )}
                     onClick={openSaveConfirm}
                     isLoading={saving}
                     label={editingSession ? 'Simpan Perubahan' : 'Buat Sesi'}

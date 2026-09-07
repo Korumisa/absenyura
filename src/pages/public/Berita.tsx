@@ -1,8 +1,7 @@
 import React, { useMemo } from 'react';
 import PublicLayout from '@/components/PublicLayout';
-import useSWR from 'swr';
-import api from '@/services/api';
 import type { PublicCategory, PublicPost } from '@/types/publicSite';
+import type { PagedResponse } from '@/types/api';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -10,22 +9,38 @@ import PublicEnter from '@/components/PublicEnter';
 import PublicReveal from '@/components/PublicReveal';
 import PublicPageHero from '@/components/PublicPageHero';
 import PublicCoverImage from '@/components/PublicCoverImage';
-import { useSwrPageState } from '@/hooks/useSwrPageState';
+import { useMockOrSwr } from '@/hooks/useMockOrSwr';
+import {
+  mockBerita,
+} from '@/lib/utils/mockLandingData';
+import { buildPagedResponse, safeItems } from '@/lib/utils/publicContent';
 import { PublicPageError } from '@/components/public/PublicPageError';
 import { PublicEmptyState } from '@/components/public/PublicEmptyState';
 import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
+import { publicSiteFetcher, safeArray } from '@/lib/utils/publicSiteFetcher';
 
-type Paged<T> = { items: T[]; total: number; page: number; pageSize: number; totalPages: number };
+const MOCK_CATEGORIES: PublicCategory[] = [
+  { id: 'cat-berita-utama', name: 'Berita Utama', slug: 'berita-utama', created_at: '', updated_at: '' },
+  { id: 'cat-prestasi', name: 'Prestasi', slug: 'prestasi', created_at: '', updated_at: '' },
+  { id: 'cat-kampus', name: 'Kampus', slug: 'kampus', created_at: '', updated_at: '' },
+  { id: 'cat-kegiatan', name: 'Kegiatan Internal', slug: 'kegiatan-internal', created_at: '', updated_at: '' },
+  { id: 'cat-pengumuman', name: 'Pengumuman', slug: 'pengumuman', created_at: '', updated_at: '' },
+  { id: 'cat-lomba', name: 'Lomba', slug: 'lomba', created_at: '', updated_at: '' },
+];
 
 export default function Berita() {
-  const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
   const [params, setParams] = useSearchParams();
 
   const page = Math.max(1, parseInt(params.get('page') || '1', 10) || 1);
   const q = params.get('q') || '';
   const categorySlug = params.get('kategori') || '';
 
-  const { data: categories = [], isLoading: isLoadingCategories } = useSWR<PublicCategory[]>('/public-site/categories', fetcher, { revalidateOnFocus: false });
+  const { data: rawCategories, isInitialLoading: isLoadingCategories } = useMockOrSwr<PublicCategory[]>({
+    swrKey: '/public-site/categories',
+    fetcher: publicSiteFetcher<PublicCategory[]>,
+    mockStatic: MOCK_CATEGORIES,
+  });
+  const categories = safeArray<PublicCategory>(rawCategories);
 
   const queryUrl = useMemo(() => {
     const sp = new URLSearchParams();
@@ -37,9 +52,26 @@ export default function Berita() {
     return `/public-site/posts?${sp.toString()}`;
   }, [page, q, categorySlug]);
 
-  const postsSwr = useSWR<Paged<PublicPost>>(queryUrl, fetcher, { revalidateOnFocus: false });
-  const { data: paged, isInitialLoading: isLoading, isError, retry } = useSwrPageState(postsSwr);
-  const items = paged?.items ?? [];
+  const { swr, data: paged, isInitialLoading: isLoading, isError, retry } = useMockOrSwr<PagedResponse<PublicPost>>({
+    swrKey: queryUrl,
+    fetcher: publicSiteFetcher<PagedResponse<PublicPost>>,
+    mockStatic: () => {
+      let filtered = mockBerita.slice();
+      if (q.trim()) {
+        const needle = q.trim().toLowerCase();
+        filtered = filtered.filter(
+          (p) =>
+            String(p.title || '').toLowerCase().includes(needle) ||
+            String(p.excerpt || '').toLowerCase().includes(needle)
+        );
+      }
+      if (categorySlug) {
+        filtered = filtered.filter((p) => p.category?.slug === categorySlug || p.category_id === categorySlug);
+      }
+      return buildPagedResponse(filtered, page, 6);
+    },
+  });
+  const items = safeItems<PublicPost>(paged);
 
   const setCategory = (slug: string) => {
     const next = new URLSearchParams(params);
@@ -74,7 +106,7 @@ export default function Berita() {
   }, [paged]);
 
   if (isError) {
-    return <PublicPageError title="Gagal memuat berita" error={postsSwr.error} onRetry={retry} />;
+    return <PublicPageError title="Gagal memuat berita" error={swr.error} onRetry={retry} />;
   }
 
   return (

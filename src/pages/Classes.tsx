@@ -5,6 +5,7 @@ import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { useClientPagination } from '@/hooks/useClientPagination';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
 import { SlowLoadingHint } from '@/components/admin/SlowLoadingHint';
+import { LastSavedIndicator } from '@/components/admin/LastSavedIndicator';
 import { TablePagination } from '@/components/ui/TablePagination';
 import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
 import api from '@/services/api';
@@ -15,7 +16,6 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { FormField } from '@/components/ui/form-field';
 import {
   Select,
@@ -81,9 +81,14 @@ export default function Classes() {
   const [deleting, setDeleting] = useState(false);
   // Save confirmation
   const [isSaveConfirmOpen, setIsSaveConfirmOpen] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const [formBaseline, setFormBaseline] = useState<string>('');
 
   const fetcher = (url: string) => api.get(url).then((res) => res.data.data);
-  const swr = useSWR<ClassItem[]>('/classes', fetcher, { revalidateOnFocus: false });
+  const swr = useSWR<ClassItem[]>('/classes', fetcher, {
+    revalidateOnFocus: false,
+    dedupingInterval: 60_000,
+  });
   const {
     data: classes = [],
     isPending: loading,
@@ -104,6 +109,7 @@ export default function Classes() {
     {
       successMsg: editingClass ? 'Kelas berhasil diperbarui' : 'Kelas berhasil ditambahkan',
       errorMsg: (err) => toastErrorMessage(err, 'Terjadi kesalahan'),
+      onSuccess: () => setLastSavedAt(new Date()),
     }
   );
 
@@ -141,26 +147,33 @@ export default function Classes() {
 
   const handleOpenModal = (cls: ClassItem | null = null) => {
     if (cls) {
-      setEditingClass(cls);
-      setFormData({
+      const initial = {
         name: cls.name,
         semester: cls.semester || 1,
         course_code: cls.course_code || '',
         description: cls.description || '',
         lecturer_id: cls.lecturer_id,
-      });
+      };
+      setEditingClass(cls);
+      setFormData(initial);
+      setFormBaseline(JSON.stringify(initial));
     } else {
-      setEditingClass(null);
-      setFormData({
+      const initial = {
         name: '',
         semester: 1,
         course_code: '',
         description: '',
         lecturer_id: currentUser?.role === 'ADMIN' ? currentUser.id : '',
-      });
+      };
+      setEditingClass(null);
+      setFormData(initial);
+      setFormBaseline(JSON.stringify(initial));
     }
+    setLastSavedAt(null);
     setIsModalOpen(true);
   };
+
+  const formIsDirty = JSON.stringify(formData) !== formBaseline;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -458,13 +471,20 @@ export default function Classes() {
         {/* Modal Form */}
         <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
           <DialogContent className="max-w-lg p-0">
-            <div className="border-b border-border px-6 py-4 border-border">
-              <DialogHeader>
-                <DialogTitle className="text-xl font-bold text-foreground">
-                  {editingClass ? 'Edit Kelas' : 'Tambah Kelas Baru'}
-                </DialogTitle>
-                <DialogDescription className="sr-only">Form kelas</DialogDescription>
-              </DialogHeader>
+            <div className="border-b border-border px-6 py-4">
+              <div className="flex items-start justify-between gap-3">
+                <DialogHeader>
+                  <DialogTitle className="text-xl font-bold text-foreground">
+                    {editingClass ? 'Edit Kelas' : 'Tambah Kelas Baru'}
+                  </DialogTitle>
+                  <DialogDescription className="sr-only">Form kelas</DialogDescription>
+                </DialogHeader>
+                <LastSavedIndicator
+                  lastSavedAt={lastSavedAt}
+                  isDirty={formIsDirty}
+                  isSaving={saving}
+                />
+              </div>
             </div>
 
             <form onSubmit={handleSubmit} className="max-h-[70vh] space-y-4 overflow-y-auto p-6">
@@ -595,6 +615,11 @@ export default function Classes() {
                   isLoading={saving}
                   label="Simpan"
                   loadingLabel="Menyimpan…"
+                  className={
+                    formIsDirty
+                      ? 'ring-2 ring-offset-2 ring-sky-500/70 focus-visible:outline-none dark:ring-offset-slate-900'
+                      : undefined
+                  }
                 />
               </DialogFooter>
             </form>

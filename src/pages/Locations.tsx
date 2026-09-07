@@ -1,6 +1,6 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import api from '@/services/api';
-import { Plus, Edit2, Trash2, Search, X, MapPin, LocateFixed } from 'lucide-react';
+import { Plus, Edit2, Trash2, Search, MapPin, LocateFixed } from 'lucide-react';
 import { toast } from 'sonner';
 import { MapResizeOnOpen } from '@/components/MapResizeOnOpen';
 import useSWR from 'swr';
@@ -14,7 +14,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { FormField } from '@/components/ui/form-field';
 import { Badge } from '@/components/ui/badge';
@@ -39,7 +38,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -49,6 +47,7 @@ import { fixLeafletDefaultIcons } from '@/lib/media/leafletIcon';
 import { useAuthStore } from '@/stores/authStore';
 import { toastErrorMessage } from '@/lib/utils/toastMessage';
 import { useMutationToast } from '@/hooks/useMutationToast';
+import { LastSavedIndicator } from '@/components/admin/LastSavedIndicator';
 
 const MapContainer = lazy(() => import('react-leaflet').then((m) => ({ default: m.MapContainer })));
 const TileLayer = lazy(() => import('react-leaflet').then((m) => ({ default: m.TileLayer })));
@@ -117,10 +116,18 @@ export default function Locations() {
 
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const [formBaseline, setFormBaseline] = useState<string>('');
 
   // Custom Map hook state to force re-render map center
   const [mapCenter, setMapCenter] = useState<[number, number]>([-8.11475, 115.08865]);
   const [isLocating, setIsLocating] = useState(false);
+
+  // Bumped every time the modal opens so MapContainer always gets a brand-new
+  // key. Prevents "Map container is already initialized" errors from Leaflet
+  // when the dialog is closed and reopened (for the same location, or for a
+  // new location) faster than the previous map instance can be torn down.
+  const [mapInstanceKey, setMapInstanceKey] = useState(0);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -136,7 +143,10 @@ export default function Locations() {
   const searchTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
   const fetcher = (url: string) => api.get(url).then((res) => res.data.data);
-  const swr = useSWR<Location[]>('/locations', fetcher, { revalidateOnFocus: false });
+  const swr = useSWR<Location[]>('/locations', fetcher, {
+    revalidateOnFocus: false,
+    dedupingInterval: 60_000,
+  });
   const {
     data: locations = [],
     isPending: loading,
@@ -165,6 +175,7 @@ export default function Locations() {
     {
       successMsg: editingLocation ? 'Lokasi berhasil diperbarui' : 'Lokasi berhasil ditambahkan',
       errorMsg: (err) => toastErrorMessage(err, 'Terjadi kesalahan'),
+      onSuccess: () => setLastSavedAt(new Date()),
     }
   );
 
@@ -187,29 +198,35 @@ export default function Locations() {
         toast.error('Lokasi ini hanya bisa dikelola oleh pembuatnya (Super Admin).');
         return;
       }
-      setEditingLocation(location);
-      setMapCenter([location.latitude, location.longitude]);
-      setFormData({
+      const initial = {
         name: location.name,
         address: location.address || '',
         latitude: location.latitude,
         longitude: location.longitude,
         radius: location.radius,
         wifi_bssid: location.wifi_bssid.join(', '),
-      });
+      };
+      setEditingLocation(location);
+      setMapCenter([location.latitude, location.longitude]);
+      setFormData(initial);
+      setFormBaseline(JSON.stringify(initial));
     } else {
-      setEditingLocation(null);
-      // Center map to Undiksha coordinate by default
-      setMapCenter([-8.11475, 115.08865]);
-      setFormData({
+      const initial = {
         name: '',
         address: '',
         latitude: -8.11475,
         longitude: 115.08865,
         radius: 100,
         wifi_bssid: '',
-      });
+      };
+      setEditingLocation(null);
+      // Center map to Undiksha coordinate by default
+      setMapCenter([-8.11475, 115.08865]);
+      setFormData(initial);
+      setFormBaseline(JSON.stringify(initial));
     }
+    setLastSavedAt(null);
+    setMapInstanceKey((k) => k + 1);
     setIsModalOpen(true);
   };
 
@@ -347,6 +364,8 @@ export default function Locations() {
     resetDeps: [searchTerm, wifiFilter],
   });
 
+  const formIsDirty = JSON.stringify(formData) !== formBaseline;
+
   const actionOverlayLabel = saving
     ? editingLocation
       ? 'Menyimpan perubahan lokasi…'
@@ -385,10 +404,14 @@ export default function Locations() {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-9"
+                  aria-label="Cari lokasi absensi"
                 />
               </div>
               <Select value={wifiFilter} onValueChange={setWifiFilter}>
-                <SelectTrigger className="w-full sm:w-[200px]">
+                <SelectTrigger
+                  className="w-full sm:w-[200px]"
+                  aria-label="Filter batasan WiFi lokasi"
+                >
                   <SelectValue placeholder="Semua Batasan WiFi" />
                 </SelectTrigger>
                 <SelectContent>
@@ -402,7 +425,7 @@ export default function Locations() {
             <ul className="space-y-3 p-5 md:hidden" aria-label="Daftar lokasi">
               {loading ? (
                 Array.from({ length: 3 }).map((_, i) => (
-                  <li key={i} className="rounded-2xl border border-border p-4 border-border">
+                  <li key={i} className="rounded-2xl border border-border p-4">
                     <Skeleton className="mb-2 h-5 w-40" />
                     <Skeleton className="h-4 w-full" />
                   </li>
@@ -589,20 +612,27 @@ export default function Locations() {
         {/* Modal Form */}
         <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
           <DialogContent className="max-w-4xl p-0">
-            <div className="border-b border-border px-6 py-4 border-border">
-              <DialogHeader>
-                <DialogTitle className="text-xl font-bold text-foreground">
-                  {editingLocation ? 'Edit Lokasi' : 'Tambah Lokasi Baru'}
-                </DialogTitle>
-                <DialogDescription className="sr-only">Form lokasi geofencing</DialogDescription>
-              </DialogHeader>
+            <div className="border-b border-border px-6 py-4">
+              <div className="flex items-start justify-between gap-3">
+                <DialogHeader>
+                  <DialogTitle className="text-xl font-bold text-foreground">
+                    {editingLocation ? 'Edit Lokasi' : 'Tambah Lokasi Baru'}
+                  </DialogTitle>
+                  <DialogDescription className="sr-only">Form lokasi geofencing</DialogDescription>
+                </DialogHeader>
+                <LastSavedIndicator
+                  lastSavedAt={lastSavedAt}
+                  isDirty={formIsDirty}
+                  isSaving={saving}
+                />
+              </div>
             </div>
 
             <form
               onSubmit={handleSubmit}
               className="flex flex-col overflow-hidden md:flex-row md:items-stretch"
             >
-              <div className="relative z-10 shrink-0 space-y-4 overflow-y-auto border-r border-border border-r border-border bg-card p-6 md:w-1/2 md:max-h-[min(72vh,680px)]">
+              <div className="relative z-10 shrink-0 space-y-4 overflow-y-auto border-r border-border bg-card p-6 md:w-1/2 md:max-h-[min(72vh,680px)]">
                 <FormField id="location-name" label="Nama Lokasi" required>
                   {({ id, 'aria-describedby': ariaDescribedBy, 'aria-invalid': ariaInvalid }) => (
                     <Input
@@ -689,7 +719,7 @@ export default function Locations() {
                         step="10"
                         value={formData.radius}
                         onChange={(e) =>
-                          setFormData({ ...formData, radius: parseInt(e.target.value) })
+                          setFormData({ ...formData, radius: parseInt(e.target.value, 10) || 100 })
                         }
                         className="flex-1 accent-indigo-600"
                         aria-label="Radius lokasi dalam meter"
@@ -733,7 +763,7 @@ export default function Locations() {
                       }
                     >
                       <MapContainer
-                        key={editingLocation?.id ?? 'new-location'}
+                        key={mapInstanceKey}
                         center={mapCenter}
                         zoom={16}
                         style={{ height: '100%', width: '100%', minHeight: 320 }}
@@ -796,6 +826,11 @@ export default function Locations() {
                     isLoading={saving}
                     label="Simpan Lokasi"
                     loadingLabel="Menyimpan…"
+                    className={
+                      formIsDirty
+                        ? 'ring-2 ring-offset-2 ring-sky-500/70 focus-visible:outline-none dark:ring-offset-slate-900'
+                        : undefined
+                    }
                   />
                 </div>
               </div>

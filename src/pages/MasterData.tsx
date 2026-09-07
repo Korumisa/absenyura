@@ -314,11 +314,11 @@ export default function MasterData() {
                     ) : null}
                     {subjects.map((subject, index) => (
                       <div
-                        key={index}
-                        className="flex items-center justify-between rounded-lg border border-border p-3 border-border"
+                        key={`${subject.code}-${index}`}
+                        className="flex items-center justify-between rounded-lg border border-border p-3"
                       >
                         <div>
-                          <span className="mr-2 font-mono text-sm font-semibold text-brand text-brand">
+                          <span className="mr-2 font-mono text-sm font-semibold text-brand">
                             {subject.code}
                           </span>
                           <span className="text-foreground">{subject.name}</span>

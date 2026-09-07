@@ -1,8 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
 import PublicLayout from '@/components/PublicLayout';
-import useSWR from 'swr';
-import api from '@/services/api';
 import type { PublicGalleryAlbum, PublicProfile } from '@/types/publicSite';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
@@ -12,16 +10,27 @@ import PublicPageHero from '@/components/PublicPageHero';
 import PublicPhotoFrame from '@/components/PublicPhotoFrame';
 import PublicCoverImage from '@/components/PublicCoverImage';
 import useLockBodyScroll from '@/lib/a11y/useLockBodyScroll';
-import { useSwrPageState } from '@/hooks/useSwrPageState';
+import { useMockOrSwr } from '@/hooks/useMockOrSwr';
+import { mockGalleries, mockProfile } from '@/lib/utils/mockLandingData';
+import { safeRelation } from '@/lib/utils/publicContent';
 import { PublicPageError } from '@/components/public/PublicPageError';
 import { PublicEmptyState } from '@/components/public/PublicEmptyState';
 import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
+import { publicSiteFetcher, safeArray } from '@/lib/utils/publicSiteFetcher';
 
 export default function Galeri() {
-  const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
-  const { data: profile } = useSWR<PublicProfile | null>('/public-site/profile', fetcher, { revalidateOnFocus: false });
-  const swr = useSWR<PublicGalleryAlbum[]>('/public-site/galleries', fetcher, { revalidateOnFocus: false });
-  const { data: albums = [], isInitialLoading: isLoading, isError, retry } = useSwrPageState(swr);
+  const profileResult = useMockOrSwr<PublicProfile | null>({
+    swrKey: '/public-site/profile',
+    fetcher: publicSiteFetcher<PublicProfile | null>,
+    mockStatic: mockProfile,
+  });
+  const profile = profileResult.data ?? null;
+  const { swr, data, isInitialLoading: isLoading, isError, retry } = useMockOrSwr<PublicGalleryAlbum[]>({
+    swrKey: '/public-site/galleries',
+    fetcher: publicSiteFetcher<PublicGalleryAlbum[]>,
+    mockStatic: mockGalleries,
+  });
+  const albums = safeArray<PublicGalleryAlbum>(data);
   const orgName = profile?.org_name ?? '';
 
   const [activeAlbumId, setActiveAlbumId] = useState<string | null>(null);
@@ -125,13 +134,13 @@ export default function Galeri() {
                     <div className="mt-8 rounded-2xl border border-dashed border-black/15 bg-slate-50/80 p-6 text-sm text-muted-foreground">
                       Pilih album di sebelah kiri untuk melihat semua foto.
                     </div>
-                  ) : activeAlbum.items.length === 0 ? (
+                  ) : safeRelation(activeAlbum.items).length === 0 ? (
                     <div className="mt-8 rounded-2xl border border-dashed border-black/15 bg-slate-50/80 p-6 text-sm text-muted-foreground">
                       Belum ada foto di album ini.
                     </div>
                   ) : (
                     <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                      {activeAlbum.items.map((it, idx) => (
+                      {safeRelation(activeAlbum.items).map((it, idx) => (
                         <button
                           key={it.id}
                           type="button"
@@ -194,7 +203,7 @@ export default function Galeri() {
               <button
                 type="button"
                 onClick={() => {
-                  const total = lightboxAlbum.items.length;
+                  const total = safeRelation(lightboxAlbum.items).length;
                   setLightbox((s) => (s ? { ...s, index: (s.index - 1 + total) % total } : s));
                 }}
                 className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/15 p-2 text-white ring-1 ring-white/20 backdrop-blur transition hover:bg-white/20"
@@ -205,7 +214,7 @@ export default function Galeri() {
               <button
                 type="button"
                 onClick={() => {
-                  const total = lightboxAlbum.items.length;
+                  const total = safeRelation(lightboxAlbum.items).length;
                   setLightbox((s) => (s ? { ...s, index: (s.index + 1) % total } : s));
                 }}
                 className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/15 p-2 text-white ring-1 ring-white/20 backdrop-blur transition hover:bg-white/20"

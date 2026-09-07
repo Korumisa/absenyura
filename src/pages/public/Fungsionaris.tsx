@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import PublicLayout from '@/components/PublicLayout';
-import useSWR from 'swr';
 import api from '@/services/api';
 import type { PublicProfile, PublicStructureGroup } from '@/types/publicSite';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -11,15 +10,30 @@ import { useReducedMotion } from '@/lib/a11y/useReducedMotion';
 import { fadeTransition } from '@/lib/perf/motionPresets';
 import PublicEnter from '@/components/PublicEnter';
 import PublicReveal from '@/components/PublicReveal';
-import { useSwrPageState } from '@/hooks/useSwrPageState';
+import { useMockOrSwr } from '@/hooks/useMockOrSwr';
+import { mockStructure, mockProfile } from '@/lib/utils/mockLandingData';
+import { safeRelation } from '@/lib/utils/publicContent';
 import { PublicPageError } from '@/components/public/PublicPageError';
 import { PublicEmptyState } from '@/components/public/PublicEmptyState';
 import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 
+type StructureResp = { data: PublicStructureGroup[]; cabinet: any; allCabinets: any[] };
+
 export default function Fungsionaris() {
-  const fetcher = (url: string) => api.get(url).then((r) => r.data);
-  const structureSwr = useSWR<{ data: PublicStructureGroup[], cabinet: any, allCabinets: any[] }>('/public-site/structure', fetcher, { revalidateOnFocus: false });
-  const { data: structureData, isInitialLoading: isLoading, isError, retry } = useSwrPageState(structureSwr);
+  const fetcherStructure = (url: string) => api.get(url).then((r) => r.data);
+  const fetcherData = (url: string) => api.get(url).then((r) => r.data.data);
+  const structureResult = useMockOrSwr<StructureResp>({
+    swrKey: '/public-site/structure',
+    fetcher: fetcherStructure,
+    mockStatic: mockStructure as StructureResp,
+  });
+  const { swr: structureSwr, data: structureData, isInitialLoading: isLoading, isError, retry } = structureResult;
+  const profileResult = useMockOrSwr<PublicProfile | null>({
+    swrKey: '/public-site/profile',
+    fetcher: fetcherData,
+    mockStatic: mockProfile,
+  });
+  const profile = profileResult.data ?? null;
   const [selectedCabinetId, setSelectedCabinetId] = useState<string | null>(null);
   
   const allCabinets = useMemo(() => structureData?.allCabinets ?? [], [structureData]);
@@ -31,9 +45,8 @@ export default function Fungsionaris() {
     return activeCabinet;
   }, [allCabinets, selectedCabinetId, activeCabinet]);
   
-  const groups = useMemo(() => selectedCabinet?.groups ?? [], [selectedCabinet]);
+  const groups = useMemo(() => safeRelation(selectedCabinet?.groups), [selectedCabinet]);
   const cabinet = selectedCabinet ?? null;
-  const { data: profile } = useSWR<PublicProfile | null>('/public-site/profile', (url) => api.get(url).then(r => r.data.data), { revalidateOnFocus: false });
   const reducedMotion = useReducedMotion();
 
   const ordered = useMemo(
@@ -51,13 +64,26 @@ export default function Fungsionaris() {
     return t.includes('dosen') || t.includes('pembimbing') || t.includes('pembina');
   };
 
-  const advisorGroups = useMemo(() => ordered.filter((g: any) => isAdvisorByTitle(g.title)), [ordered]);
-  const coreGroups = useMemo(
-    () => ordered.filter((g: any) => !advisorGroups.some((x: any) => x.id === g.id) && (Boolean(g.is_core) || isCoreByTitle(g.title))),
+  const advisorGroups: PublicStructureGroup[] = useMemo(
+    () => ordered.filter((g: any) => isAdvisorByTitle(g.title)) as PublicStructureGroup[],
+    [ordered],
+  );
+  const coreGroups: PublicStructureGroup[] = useMemo(
+    () =>
+      ordered.filter(
+        (g: any) =>
+          !advisorGroups.some((x: any) => x.id === g.id) &&
+          (Boolean(g.is_core) || isCoreByTitle(g.title)),
+      ) as PublicStructureGroup[],
     [ordered, advisorGroups],
   );
-  const bidangGroups = useMemo(
-    () => ordered.filter((g: any) => !advisorGroups.some((x: any) => x.id === g.id) && !coreGroups.some((x: any) => x.id === g.id)),
+  const bidangGroups: PublicStructureGroup[] = useMemo(
+    () =>
+      ordered.filter(
+        (g: any) =>
+          !advisorGroups.some((x: any) => x.id === g.id) &&
+          !coreGroups.some((x: any) => x.id === g.id),
+      ) as PublicStructureGroup[],
     [ordered, advisorGroups, coreGroups],
   );
 
@@ -66,22 +92,25 @@ export default function Fungsionaris() {
     if (!activeId && bidangGroups.length) setActiveId(bidangGroups[0].id);
   }, [activeId, bidangGroups]);
 
-  const activeGroup = bidangGroups.find((g: any) => g.id === activeId) ?? null;
+  const activeGroup: PublicStructureGroup | null =
+    bidangGroups.find((g) => g.id === activeId) ?? null;
   const kabinetName = cabinet?.name ?? profile?.kabinet_name ?? '';
   const kabinetPeriod = cabinet?.period ?? profile?.kabinet_period ?? '';
   const subtitleBits = [kabinetName, kabinetPeriod].map((x) => String(x || '').trim()).filter(Boolean);
 
   const sortedMembers = (members: any[]) =>
-    (members ?? []).slice().sort((a: any, b: any) => (Number(a.sort_order ?? 999) || 999) - (Number(b.sort_order ?? 999) || 999));
+    safeRelation(members).slice().sort((a: any, b: any) => (Number(a.sort_order ?? 999) || 999) - (Number(b.sort_order ?? 999) || 999));
 
-  const corePeople = useMemo(() => sortedMembers(coreGroups.flatMap((g: any) => g.members ?? [])), [coreGroups]);
-  const advisorPeople = useMemo(() => sortedMembers(advisorGroups.flatMap((g: any) => g.members ?? [])), [advisorGroups]);
+  const corePeople = useMemo(() => sortedMembers(coreGroups.flatMap((g: any) => safeRelation(g.members))), [coreGroups]);
+  const advisorPeopleRaw = useMemo(() => sortedMembers(advisorGroups.flatMap((g: any) => safeRelation(g.members))), [advisorGroups]);
+  const advisorPeople = advisorPeopleRaw;
   const pickLeader = (people: PublicStructureGroup['members']) => {
-    const spotlight = people.find((p) => Boolean(p.is_spotlight));
+    const safe = safeRelation(people);
+    const spotlight = safe.find((p) => Boolean(p.is_spotlight));
     if (spotlight) return spotlight;
-    const ketua = people.find((p) => String(p.role ?? '').toLowerCase().includes('ketua'));
+    const ketua = safe.find((p) => String(p.role ?? '').toLowerCase().includes('ketua'));
     if (ketua) return ketua;
-    return people[0] ?? null;
+    return safe[0] ?? null;
   };
 
   const renderAvatar = (p: any, size: 'xl' | 'lg' | 'md') => {
@@ -92,17 +121,31 @@ export default function Fungsionaris() {
           ? 'h-28 w-28 sm:h-32 sm:w-32'
           : 'h-20 w-20 sm:h-24 sm:w-24';
     return (
-      <div key={p.id} className="flex w-[180px] flex-col items-center text-center sm:w-[200px]">
+      <div
+        key={p.id}
+        className="flex w-full max-w-[180px] shrink-0 flex-col items-center text-center break-words sm:max-w-[220px]"
+        style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}
+      >
         <div
           className={[
-            'relative overflow-hidden rounded-full border-[3px] border-[var(--public-primary)] bg-slate-100 shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)]',
+            'relative shrink-0 overflow-hidden rounded-full border-[3px] border-[var(--public-primary)] bg-slate-100 shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)]',
             sizeClass,
           ].join(' ')}
         >
           <PublicCoverImage url={p.photo_url} alt={p.name ?? 'Anggota'} imgClassName="object-cover" />
         </div>
-        <div className="mt-3 text-sm font-extrabold tracking-tight text-slate-900">{p.name ?? '-'}</div>
-        <div className="mt-1 text-xs font-semibold text-muted-foreground">{p.role ?? '-'}</div>
+        <div
+          className="mt-3 w-full text-sm font-extrabold leading-snug tracking-tight text-slate-900 hyphens-auto"
+          style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}
+        >
+          {p.name ?? '-'}
+        </div>
+        <div
+          className="mt-1 w-full text-xs font-semibold leading-snug text-muted-foreground hyphens-auto"
+          style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}
+        >
+          {p.role ?? '-'}
+        </div>
       </div>
     );
   };
@@ -129,19 +172,26 @@ export default function Fungsionaris() {
       {allCabinets.length > 1 && (
         <PublicEnter>
           <div className="mx-auto -mt-4 max-w-7xl px-4 py-4 sm:px-6">
-            <div className="flex flex-wrap items-center justify-center gap-2">
+            <div
+              role="tablist"
+              className="flex flex-wrap items-center justify-center gap-2"
+              aria-label="Pilih periode kabinet"
+            >
               {allCabinets.map((cab: any) => {
                 const isSelected = cabinet?.id === cab.id;
                 return (
                   <button
                     key={cab.id}
                     type="button"
+                    role="tab"
+                    aria-selected={isSelected}
+                    aria-pressed={isSelected}
                     onClick={() => setSelectedCabinetId(isSelected ? null : cab.id)}
                     className={
                       (isSelected
                         ? "bg-[var(--public-primary)] text-white shadow-[0_10px_22px_rgba(37,99,235,0.35)]"
                         : "bg-white text-slate-900 border border-black/10 hover:border-[var(--public-primary)]/40"
-                      ) + " inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-xs font-semibold uppercase tracking-wide transition"
+                      ) + " inline-flex min-h-10 items-center gap-2 rounded-xl px-5 py-2.5 text-xs font-semibold uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500 dark:focus-visible:ring-indigo-400"
                     }
                   >
                     {cab.name}
@@ -155,7 +205,8 @@ export default function Fungsionaris() {
         </PublicEnter>
       )}
 
-      <PublicReveal className="mx-auto -mt-6 max-w-7xl px-4 pb-24 sm:px-6">
+      <PublicReveal className="mx-auto -mt-6 w-full max-w-full overflow-x-hidden px-4 pb-24 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl overflow-x-hidden">
         {isLoading ? (
           <div className="mt-6 space-y-10">
             {Array.from({ length: 2 }).map((_, gi) => (
@@ -206,7 +257,7 @@ export default function Fungsionaris() {
                     DOSEN PEMBIMBING
                   </div>
                 </div>
-                <div className="mt-8 flex flex-wrap justify-center gap-x-10 gap-y-12">
+                <div className="mt-8 flex flex-wrap justify-center gap-x-8 gap-y-12">
                   {advisorPeople.map((p) => renderAvatar(p, advisorPeople.length === 1 ? 'xl' : 'lg'))}
                 </div>
               </div>
@@ -214,6 +265,9 @@ export default function Fungsionaris() {
 
             <div className="mt-10 text-center">
               <div className="text-5xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] sm:text-6xl">INTI</div>
+                <p className="mt-3 text-center text-sm font-medium text-muted-foreground">
+                  Pengurus inti periode {kabinetPeriod} — arah strategis dan koordinasi organisasi.
+                </p>
             </div>
 
             {corePeople.length ? (
@@ -225,18 +279,31 @@ export default function Fungsionaris() {
                 const mid = rest2.slice(0, 4);
                 const tail = rest2.slice(4);
                 return (
-                  <div className="mt-10">
-                    <div className="grid grid-cols-1 justify-items-center gap-10 sm:grid-cols-5 sm:gap-x-0 sm:gap-y-12">
-                      {leader ? <div className="sm:col-start-3">{renderAvatar(leader, 'xl')}</div> : null}
-                      {vices[0] ? <div className="sm:col-start-2">{renderAvatar(vices[0], 'lg')}</div> : null}
-                      {vices[1] ? <div className="sm:col-start-4">{renderAvatar(vices[1], 'lg')}</div> : null}
-                      {mid[0] ? <div className="sm:col-start-1">{renderAvatar(mid[0], 'md')}</div> : null}
-                      {mid[1] ? <div className="sm:col-start-2">{renderAvatar(mid[1], 'md')}</div> : null}
-                      {mid[2] ? <div className="sm:col-start-4">{renderAvatar(mid[2], 'md')}</div> : null}
-                      {mid[3] ? <div className="sm:col-start-5">{renderAvatar(mid[3], 'md')}</div> : null}
-                    </div>
+                  <div className="mx-auto mt-10 w-full max-w-6xl overflow-hidden px-0 sm:px-2">
+                    {/* ROW 1 — KETUA UMUM (single, centered top) */}
+                    {leader ? (
+                      <div className="flex w-full items-center justify-center pb-2 pt-2">
+                        {renderAvatar(leader, 'xl')}
+                      </div>
+                    ) : null}
+
+                    {/* ROW 2 — WAKIL KETUA UMUM (directly below leader, always centered) */}
+                    {vices.length ? (
+                      <div className="mt-6 flex w-full flex-wrap items-start justify-center gap-x-10 gap-y-10 sm:mt-10 sm:gap-x-12">
+                        {vices.map((p) => renderAvatar(p, 'lg'))}
+                      </div>
+                    ) : null}
+
+                    {/* ROW 3 — STAFF INTI (Sekretaris Jenderal, Bendahara, dll — responsive grid, NO col collision) */}
+                    {mid.length ? (
+                      <div className="mt-10 grid w-full grid-cols-2 items-start justify-items-center gap-6 sm:grid-cols-3 sm:gap-10 md:grid-cols-4">
+                        {mid.map((p) => renderAvatar(p, 'md'))}
+                      </div>
+                    ) : null}
+
+                    {/* ROW 4 — TAIL (remaining members) */}
                     {tail.length ? (
-                      <div className="mt-12 grid grid-cols-2 justify-items-center gap-8 sm:grid-cols-4 lg:grid-cols-6">
+                      <div className="mt-12 grid w-full grid-cols-2 items-start justify-items-center gap-8 sm:grid-cols-4 lg:grid-cols-6">
                         {tail.map((p) => renderAvatar(p, 'md'))}
                       </div>
                     ) : null}
@@ -253,6 +320,9 @@ export default function Fungsionaris() {
 
             <div className="mt-16 text-center">
               <div className="text-5xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] sm:text-6xl">BIDANG</div>
+              <p className="mt-3 text-center text-sm font-medium text-muted-foreground">
+                Divisi dan bidang pendukung untuk eksekusi program kerja.
+              </p>
             </div>
 
             {bidangGroups.length ? (
@@ -278,9 +348,9 @@ export default function Fungsionaris() {
                   })}
                 </div>
 
-                {activeGroup && (activeGroup.members ?? []).length ? (
+                {activeGroup && safeRelation(activeGroup.members).length ? (
                   (() => {
-                    const people = sortedMembers(activeGroup.members ?? []);
+                    const people = sortedMembers(activeGroup.members);
                     const leader = pickLeader(people);
                     const rest = people.filter((p) => p.id !== leader?.id);
                     const divisiHeads = rest.filter((p) => String(p.role ?? '').toLowerCase().includes('kadiv'));
@@ -346,6 +416,7 @@ export default function Fungsionaris() {
             )}
           </div>
         )}
+        </div>
       </PublicReveal>
     </PublicLayout>
   );

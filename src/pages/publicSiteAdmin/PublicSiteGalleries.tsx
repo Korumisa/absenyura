@@ -77,9 +77,7 @@ export default function PublicSiteGalleries() {
     });
     const fd = new FormData();
     fd.append('file', prepared);
-    const res = await api.post('/public-site/admin/upload', fd, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    const res = await api.post('/public-site/admin/upload', fd);
     return res.data.data.url as string;
   };
 
@@ -258,10 +256,7 @@ export default function PublicSiteGalleries() {
                   ) : (
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                       {(form.items ?? []).map((it, idx) => (
-                        <div
-                          key={idx}
-                          className="rounded-xl border border-border rounded-xl border border-border bg-muted/30 p-3"
-                        >
+                        <div key={idx} className="rounded-xl border border-border bg-muted/30 p-3">
                           <div className="aspect-video w-full overflow-hidden rounded-lg bg-slate-100 bg-background">
                             {it.imageUrl ? (
                               <img
@@ -387,7 +382,7 @@ export default function PublicSiteGalleries() {
                 <li className="py-8 text-center text-sm text-muted-foreground">Belum ada album.</li>
               ) : null}
               {galleries.map((g) => (
-                <li key={g.id} className="rounded-2xl border border-border p-4 border-border">
+                <li key={g.id} className="rounded-2xl border border-border p-4">
                   <p className="font-bold text-foreground">{g.title}</p>
                   <p className="text-sm text-muted-foreground">{g.items?.length ?? 0} foto</p>
                   <Badge className="mt-2" variant={g.is_published ? 'success' : 'secondary'}>

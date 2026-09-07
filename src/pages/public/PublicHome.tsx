@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import PublicLayout from '@/components/PublicLayout';
-import { ArrowRight, Lightbulb, PenLine, Users } from 'lucide-react';
+import { ArrowRight, GraduationCap, Lightbulb, PenLine, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { PublicProgram } from '@/types/publicSite';
 import PublicEnter from '@/components/PublicEnter';
@@ -227,6 +227,21 @@ export default function PublicHome() {
     return coreGroups.flatMap((g: any) => g.members ?? []);
   }, [structure]);
 
+  // T4 Dosen Pendamping / Pembimbing advisor extraction
+  const isAdvisorByTitle = (title: string) => {
+    const t = String(title ?? '').toLowerCase();
+    return t.includes('dosen') || t.includes('pembimbing') || t.includes('pembina');
+  };
+  const advisorGroups = useMemo(
+    () => structure.filter((g: any) => isAdvisorByTitle(g.title)),
+    [structure],
+  );
+  const advisorPeople = useMemo(
+    () => advisorGroups.flatMap((g: any) => (g.members ?? []) as any[]),
+    [advisorGroups],
+  );
+  const displayAdvisorPeople = advisorPeople;
+
   const ketua = useMemo(() => {
     const k = coreMembers.find((m: any) => String(m.role ?? '').toLowerCase().includes('ketua') && !String(m.role ?? '').toLowerCase().includes('wakil'));
     return k ?? coreMembers.find((m: any) => String(m.role ?? '').toLowerCase().includes('ketua')) ?? null;
@@ -356,21 +371,28 @@ export default function PublicHome() {
 
           {/* Cabinet Switcher */}
           {allCabinets.length > 1 && (
-            <section className="relative bg-slate-50/70 py-6">
+            <section className="relative bg-slate-50/70 py-5">
               <div className="mx-auto max-w-7xl px-4 sm:px-6">
-                <div className="flex flex-wrap items-center justify-center gap-2">
+                <div
+                  role="tablist"
+                  className="flex flex-wrap items-center justify-center gap-2"
+                  aria-label="Pilih periode kabinet"
+                >
                   {allCabinets.map((cabinet: any) => {
                     const isSelected = selectedCabinet?.id === cabinet.id;
                     return (
                       <button
                         key={cabinet.id}
                         type="button"
+                        role="tab"
+                        aria-selected={isSelected}
+                        aria-pressed={isSelected}
                         onClick={() => setSelectedCabinetId(isSelected ? null : cabinet.id)}
                         className={
                           (isSelected
                             ? "bg-[var(--public-primary)] text-white shadow-[0_10px_22px_rgba(37,99,235,0.35)]"
                             : "bg-white text-slate-900 border border-black/10 hover:border-[var(--public-primary)]/40"
-                          ) + " inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-xs font-semibold uppercase tracking-wide transition"
+                          ) + " inline-flex min-h-10 items-center gap-2 rounded-xl px-5 py-2.5 text-xs font-semibold uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500 dark:focus-visible:ring-indigo-400"
                         }
                       >
                         {cabinet.name}
@@ -380,8 +402,87 @@ export default function PublicHome() {
                     );
                   })}
                 </div>
+                {kabinetName ? (
+                  <div className="mx-auto mt-4 max-w-3xl text-center">
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Kabinet aktif periode {kabinetPeriod}. Terdapat {structure.length} kelompok struktur dan {programs.length} program kerja tercatat.
+                    </p>
+                    <div className="mt-6 flex justify-center">
+                      <Link
+                        to="/struktur-organisasi"
+                        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[var(--public-primary)] px-6 py-3 text-sm font-semibold text-white shadow-[0_16px_32px_rgba(37,99,235,0.35)] transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/45"
+                      >
+                        Lihat Struktur Organisasi Lengkap
+                        <ArrowRight size={18} aria-hidden="true" />
+                      </Link>
+                    </div>
+                  </div>
+                ) : null}
               </div>
             </section>
+          )}
+
+          {/* T4 — DOSEN PENDAMPING / PEMBIMBING Section */}
+          {displayAdvisorPeople.length > 0 && (
+          <section className="relative bg-white py-14 overflow-hidden" aria-label="Dosen pembimbing kabinet periode ini">
+            <div className="pointer-events-none absolute inset-0 opacity-70 [background:radial-gradient(circle_at_10%_20%,rgba(37,99,235,0.08),transparent_50%),radial-gradient(circle_at_90%_10%,rgba(56,189,248,0.07),transparent_55%)]" />
+            <PublicReveal className="relative mx-auto max-w-7xl px-4 sm:px-6">
+              <div className="mx-auto max-w-3xl text-center">
+                <div className="inline-flex items-center gap-2 rounded-full bg-[var(--public-primary)]/10 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-[var(--public-primary)]">
+                  <GraduationCap size={16} aria-hidden="true" />
+                  Dosen Pembimbing
+                </div>
+                <div className="mt-5">
+                  <h2 className="text-3xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] sm:text-4xl">
+                    Dosen Pendamping
+                  </h2>
+                  <p className="mt-3 text-sm font-medium text-muted-foreground">
+                    Pembina akademik dan penasihat organisasi periode {kabinetPeriod || 'ini'}.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-10 flex flex-wrap justify-center gap-x-10 gap-y-12 sm:gap-x-14 lg:gap-x-16">
+                {displayAdvisorPeople.map((p: any) => {
+                  const name = p.name ?? '-';
+                  const role = p.role ?? 'Pembimbing';
+                  const initial = String(name).trim().slice(0, 1).toUpperCase() || 'D';
+                  return (
+                    <div
+                      key={p.id ?? `${name}-${role}`}
+                      className="flex w-full max-w-[240px] shrink-0 flex-col items-center text-center break-words sm:max-w-[280px]"
+                      style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}
+                    >
+                      <div className="relative shrink-0 overflow-hidden rounded-full border-[3px] border-[var(--public-primary)] bg-slate-100 shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] h-36 w-36 sm:h-40 sm:w-40">
+                        {p.photo_url ? (
+                          <PublicCoverImage url={p.photo_url} alt={name} imgClassName="object-cover h-full w-full" displayWidth={320} />
+                        ) : (
+                          <div className="grid h-full w-full place-items-center bg-[linear-gradient(135deg,rgba(37,99,235,0.20),rgba(59,130,246,0.06))]">
+                            <div className="grid size-20 place-items-center rounded-2xl bg-white/85 text-5xl font-extrabold text-[var(--public-primary)] ring-1 ring-black/10">
+                              {initial}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      <div className="mt-4 w-full text-base font-extrabold leading-snug tracking-tight text-slate-900 hyphens-auto">
+                        {name}
+                      </div>
+                      <div className="mt-1 w-full text-sm font-semibold leading-snug text-muted-foreground hyphens-auto">
+                        {role}
+                      </div>
+                      {(p.nip || p.nidn) ? (
+                        <div className="mt-1 w-full text-xs text-muted-foreground/80">
+                          {p.nip ? `NIP. ${p.nip}` : null}
+                          {p.nip && p.nidn ? ' · ' : null}
+                          {p.nidn ? `NIDN. ${p.nidn}` : null}
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            </PublicReveal>
+          </section>
           )}
 
           {showAboutVideoSection ? (
@@ -431,7 +532,7 @@ export default function PublicHome() {
           ) : null}
 
           {showVisiMisiSection ? (
-          <section className="relative overflow-hidden bg-white py-20">
+          <section className="relative overflow-hidden bg-white py-14">
             <PublicReveal className="relative mx-auto max-w-7xl px-4 sm:px-6">
               <div className="mx-auto max-w-5xl text-center">
                 <div className="mx-auto flex max-w-xl items-center justify-center gap-4">
@@ -637,7 +738,7 @@ export default function PublicHome() {
         </PublicReveal>
       </section>
 
-      <section className="relative overflow-hidden bg-white py-20">
+      <section className="relative overflow-hidden bg-white py-14">
         <div className="pointer-events-none absolute inset-0 opacity-70 [background:radial-gradient(circle_at_14%_18%,rgba(37,99,235,0.10),transparent_56%),radial-gradient(circle_at_86%_14%,rgba(56,189,248,0.10),transparent_60%)]" />
         <div className="pointer-events-none absolute left-6 top-10 hidden lg:block">
           <div className="size-24 rotate-6 rounded-[28px] bg-[linear-gradient(135deg,rgba(37,99,235,0.16),rgba(255,255,255,0.9))] shadow-[0_26px_70px_-55px_rgba(15,23,42,0.55)] ring-1 ring-black/10 backdrop-blur" />
@@ -732,7 +833,7 @@ export default function PublicHome() {
       </section>
 
       {(isLoadingStructure || structure.length > 0) ? (
-      <section className="relative bg-slate-50/55 py-20">
+      <section className="relative bg-slate-50/55 py-16">
         <div className="pointer-events-none absolute inset-0 opacity-70 [background:radial-gradient(circle_at_12%_18%,rgba(37,99,235,0.10),transparent_55%),radial-gradient(circle_at_86%_12%,rgba(56,189,248,0.10),transparent_60%)]" />
         <div className="pointer-events-none absolute inset-0 opacity-[0.35] [background:linear-gradient(rgba(15,23,42,0.06)_1px,transparent_1px),linear-gradient(90deg,rgba(15,23,42,0.06)_1px,transparent_1px)] [background-size:44px_44px]" />
         <div className="pointer-events-none absolute left-5 top-10 hidden md:block">

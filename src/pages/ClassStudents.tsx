@@ -11,6 +11,7 @@ import AdminPageShell from '@/components/AdminPageShell';
 import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
 import { AdminBreadcrumbs } from '@/components/admin/AdminBreadcrumbs';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
+import { SlowLoadingHint } from '@/components/admin/SlowLoadingHint';
 import ActionLoadingOverlay from '@/components/ActionLoadingOverlay';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import StudentSearchPicker from '@/components/classes/StudentSearchPicker';
@@ -63,6 +64,7 @@ export default function ClassStudents() {
     isError: classError,
     retry: retryClass,
     error: classErr,
+    showSlowLoadingHint: classSlowHint,
   } = useSwrPageState(classSwr);
 
   const studentsSwr = useSWR<User[]>(classId ? `/classes/${classId}/students` : null, fetcher, {
@@ -74,6 +76,7 @@ export default function ClassStudents() {
     isError: studentsError,
     retry: retryStudents,
     mutate: mutateStudents,
+    showSlowLoadingHint: studentsSlowHint,
   } = useSwrPageState(studentsSwr);
 
   useEffect(() => {
@@ -112,9 +115,10 @@ export default function ClassStudents() {
     resetDeps: [searchTerm],
   });
 
+  const enrolledIdSet = useMemo(() => new Set(students.map((e) => e.id)), [students]);
   const notEnrolled = useMemo(
-    () => availableStudents.filter((s) => !students.some((e) => e.id === s.id)),
-    [availableStudents, students]
+    () => availableStudents.filter((s) => !enrolledIdSet.has(s.id)),
+    [availableStudents, enrolledIdSet]
   );
 
   const selectedStudentName =
@@ -185,6 +189,18 @@ export default function ClassStudents() {
           error={classSwr.error}
           onRetry={retryClass}
         />
+        <Button variant="outline" className="mt-4" onClick={() => navigate('/classes')}>
+          <ArrowLeft className="mr-2 size-4" />
+          Kembali ke Kelas
+        </Button>
+      </AdminPageShell>
+    );
+  }
+
+  if (classSlowHint && !classInfo) {
+    return (
+      <AdminPageShell title="Memuat data kelas" variant="plain">
+        <SlowLoadingHint onRetry={retryClass} />
         <Button variant="outline" className="mt-4" onClick={() => navigate('/classes')}>
           <ArrowLeft className="mr-2 size-4" />
           Kembali ke Kelas
@@ -311,6 +327,10 @@ export default function ClassStudents() {
                 onRetry={retryStudents}
               />
             </div>
+          ) : studentsSlowHint ? (
+            <div className="p-5">
+              <SlowLoadingHint onRetry={retryStudents} />
+            </div>
           ) : (
             <>
               <div className="overflow-x-auto">
@@ -376,7 +396,7 @@ export default function ClassStudents() {
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="size-9"
+                                  className="h-11 w-11 min-h-11"
                                   title="Biodata mahasiswa"
                                   onClick={() => openStudentDetail(student.id)}
                                 >
@@ -388,7 +408,7 @@ export default function ClassStudents() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  className="text-destructive hover:text-destructive"
+                                  className="min-h-11 text-destructive hover:text-destructive"
                                   onClick={() => {
                                     setStudentToRemove({ id: student.id, name: student.name });
                                     setIsRemoveConfirmOpen(true);

@@ -13,6 +13,8 @@ export function getDivisionTagline(input: string) {
   if (t.includes('psdm')) return 'Pengembangan anggota, pelatihan, dan internal organisasi.';
   if (t.includes('humas')) return 'Kemitraan, komunikasi, dan relasi eksternal organisasi.';
   if (t.includes('minat') || t.includes('bakat')) return 'Wadah kegiatan, lomba, dan pengembangan prestasi anggota.';
+  if (t.includes('kwu') || t.includes('kewirausahaan')) return 'Wadah pengembangan bisnis, pendanaan, dan jiwa entrepreneur anggota.';
+  if (t.includes('pengmas') || t.includes('abdimas') || t.includes('pengabdian')) return 'Program pengabdian masyarakat dan pengabdian sosial berbasis kampus.';
   return 'Kolaborasi dan eksekusi program kerja divisi.';
 }
 

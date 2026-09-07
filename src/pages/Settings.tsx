@@ -10,7 +10,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { FormField } from '@/components/ui/form-field';
 import AdminPageShell from '@/components/AdminPageShell';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
@@ -20,6 +19,7 @@ import { useMutationToast } from '@/hooks/useMutationToast';
 import { cn } from '@/lib/utils/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { LastSavedIndicator } from '@/components/admin/LastSavedIndicator';
 
 const settingsCardClass =
   'rounded-xl border border-border bg-card text-card-foreground shadow-card dark:shadow-none dark:ring-1 dark:ring-white/10';
@@ -65,6 +65,8 @@ export default function Settings() {
     new_password: '',
     confirm_password: '',
   });
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const [formBaseline, setFormBaseline] = useState<string>('');
 
   useEffect(() => {
     if (!user) return;
@@ -76,22 +78,30 @@ export default function Settings() {
         const res = await api.get('/settings/profile');
         const row = res.data.data;
         if (row) {
-          setFormData({
+          const initial = {
             name: row.name || user.name || '',
             email: row.email || user.email || '',
             phone: row.phone || '',
             current_password: '',
             new_password: '',
             confirm_password: '',
-          });
+          };
+          setFormData(initial);
+          setFormBaseline(JSON.stringify(initial));
+          setLastSavedAt(null);
         }
       } catch (err) {
         setProfileError(err);
-        setFormData((prev) => ({
-          ...prev,
-          name: user.name || '',
-          email: user.email || '',
-        }));
+        setFormData((prev) => {
+          const initial = {
+            ...prev,
+            name: user.name || '',
+            email: user.email || '',
+          };
+          setFormBaseline(JSON.stringify(initial));
+          setLastSavedAt(null);
+          return initial;
+        });
         toast.error(toastErrorMessage(err, 'Gagal memuat profil'));
       } finally {
         setProfileLoading(false);
@@ -120,6 +130,7 @@ export default function Settings() {
         if (Object.keys(fields).length > 0) setFieldErrors(fields);
         return toastErrorMessage(err, 'Gagal memperbarui profil');
       },
+      onSuccess: () => setLastSavedAt(new Date()),
     }
   );
 
@@ -136,17 +147,23 @@ export default function Settings() {
       const result = await doSaveProfile();
       if (result !== undefined) {
         setAuth({ ...user!, name: formData.name, email: formData.email });
-        setFormData((prev) => ({
-          ...prev,
-          current_password: '',
-          new_password: '',
-          confirm_password: '',
-        }));
+        setFormData((prev) => {
+          const updated = {
+            ...prev,
+            current_password: '',
+            new_password: '',
+            confirm_password: '',
+          };
+          setFormBaseline(JSON.stringify(updated));
+          return updated;
+        });
       }
     } finally {
       setSaving(false);
     }
   };
+
+  const formIsDirty = JSON.stringify(formData) !== formBaseline;
 
   return (
     <AdminPageShell
@@ -170,14 +187,17 @@ export default function Settings() {
                     const res = await api.get('/settings/profile');
                     const row = res.data.data;
                     if (row) {
-                      setFormData({
+                      const initial = {
                         name: row.name || user.name || '',
                         email: row.email || user.email || '',
                         phone: row.phone || '',
                         current_password: '',
                         new_password: '',
                         confirm_password: '',
-                      });
+                      };
+                      setFormData(initial);
+                      setFormBaseline(JSON.stringify(initial));
+                      setLastSavedAt(null);
                     }
                   } catch (err) {
                     setProfileError(err);
@@ -308,10 +328,19 @@ export default function Settings() {
 
               <Card className={cn(settingsCardClass, 'xl:col-span-8 2xl:col-span-9')}>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">Informasi Profil</CardTitle>
-                  <CardDescription>
-                    Perbarui nama, kontak, dan kata sandi akun Anda.
-                  </CardDescription>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <CardTitle className="text-lg">Informasi Profil</CardTitle>
+                      <CardDescription>
+                        Perbarui nama, kontak, dan kata sandi akun Anda.
+                      </CardDescription>
+                    </div>
+                    <LastSavedIndicator
+                      lastSavedAt={lastSavedAt}
+                      isDirty={formIsDirty}
+                      isSaving={saving}
+                    />
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <form onSubmit={handleSaveProfile} className="space-y-4">
@@ -504,6 +533,11 @@ export default function Settings() {
                             isLoading={saving}
                             label="Simpan Perubahan"
                             loadingLabel="Menyimpan..."
+                            className={
+                              formIsDirty
+                                ? 'min-h-11 ring-2 ring-offset-2 ring-sky-500/70 focus-visible:outline-none dark:ring-offset-slate-900'
+                                : 'min-h-11'
+                            }
                           />
                         </div>
                       </>

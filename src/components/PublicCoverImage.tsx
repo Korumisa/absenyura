@@ -62,9 +62,9 @@ export default function PublicCoverImage({
           className={cn('h-full w-full object-cover', imgClassName)}
           loading={priority ? 'eager' : 'lazy'}
           decoding="async"
-          fetchPriority={priority ? 'high' : undefined}
           referrerPolicy="no-referrer"
           onError={() => setFailed(true)}
+          {...(priority ? ({ fetchpriority: 'high' } as any) : {})}
         />
       ) : (
         <div className="relative h-full w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.24),rgba(15,23,42,0.05))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.22),rgba(255,255,255,0.04))]">

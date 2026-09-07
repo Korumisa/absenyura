@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import type { AuthRequest } from '../types/index.js';
 import { Prisma } from '@prisma/client';
 import prisma from '../utils/prisma.js';
@@ -48,7 +48,7 @@ export const getDashboardStats = async (req: AuthRequest, res: Response): Promis
           },
         ],
       };
-      // TODO: remove fallback once all envs confirm semester column exists (2026-02 migration applied)
+      // TODO(#post-audit-p3): remove fallback once all envs confirm semester column exists (2026-02 migration applied)
       const upcomingSessions = await queryWithSemesterFallback(
         () =>
           prisma.session.findMany({

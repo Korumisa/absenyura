@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import api from '@/services/api';
 import { toast } from 'sonner';
+import { useAuthStore } from '@/stores/authStore';
 import { Button } from '@/components/ui/button';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { Input } from '@/components/ui/input';
@@ -21,7 +22,6 @@ import { cn } from '@/lib/utils/utils';
 import { CmsTabNav, type CmsTabItem } from '@/components/ui/CmsTabNav';
 import { CmsEditorLayout } from '@/components/cms/CmsEditorLayout';
 import { AdminContentTransition } from '@/components/admin/AdminContentTransition';
-import { useMutationToast } from '@/hooks/useMutationToast';
 import { useFormDirtyGuard } from '@/hooks/useFormDirtyGuard';
 
 type ProfileTab = 'identity' | 'home' | 'visimisi' | 'contact';
@@ -34,6 +34,8 @@ const PROFILE_TABS: readonly CmsTabItem<ProfileTab>[] = [
 ];
 
 export default function PublicSiteProfile() {
+  const { user } = useAuthStore();
+  const isContentAdmin = user?.role === 'CONTENT_ADMIN';
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
   const { data: profile, mutate } = useSWR<PublicProfile | null>(
     '/public-site/admin/profile',
@@ -187,9 +189,7 @@ export default function PublicSiteProfile() {
     });
     const form = new FormData();
     form.append('file', prepared);
-    const res = await api.post('/public-site/admin/upload', form, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    const res = await api.post('/public-site/admin/upload', form);
     return res.data.data.url as string;
   };
 
@@ -328,6 +328,19 @@ export default function PublicSiteProfile() {
         cancelText="Batal"
         variant="primary"
       />
+
+      {isContentAdmin && (
+        <div
+          role="note"
+          className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-200"
+        >
+          <p className="font-semibold">Hak akses terbatas</p>
+          <p className="mt-1 text-amber-700 dark:text-amber-300">
+            Sebagai CONTENT_ADMIN, Anda dapat melihat profil situs tetapi tidak dapat menyimpan
+            perubahan. Hubungi ADMIN atau SUPER_ADMIN untuk melakukan update data organisasi.
+          </p>
+        </div>
+      )}
 
       <AdminCard
         title="Pengaturan Profil"
@@ -605,7 +618,7 @@ export default function PublicSiteProfile() {
                           </Button>
                         </div>
                       </div>
-                      <div className="overflow-hidden rounded-xl border border-border bg-slate-50 border-border">
+                      <div className="overflow-hidden rounded-xl border border-border bg-slate-50">
                         {draft.homeImageUrl ? (
                           <img
                             src={draft.homeImageUrl}

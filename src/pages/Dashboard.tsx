@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import AdminPageShell from '@/components/AdminPageShell';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
+import { SlowLoadingHint } from '@/components/admin/SlowLoadingHint';
 import { AttendanceChartLegend } from '@/components/charts/AttendanceChartLegend';
 import { AttendanceChartLoadingOverlay } from '@/components/charts/AttendanceChartLoadingOverlay';
 import { AttendanceChartSkeleton } from '@/components/charts/AttendanceChartSkeleton';
@@ -118,8 +119,25 @@ export default function Dashboard() {
     keepPreviousData: true,
   });
   const { data, isValidating } = swr;
-  const page = useSwrPageState(swr);
+  const {
+    data: _unusedData,
+    isPending: pageIsPending,
+    isError: pageIsError,
+    error: pageError,
+    showSlowLoadingHint,
+    retry,
+    ...restPage
+  } = useSwrPageState(swr);
 
+  const page = {
+    ...restPage,
+    data,
+    isPending: pageIsPending,
+    isError: pageIsError,
+    error: pageError,
+    showSlowLoadingHint,
+    retry,
+  };
   const chartRefreshing = isValidating && data !== undefined;
 
   const activeSession = useMemo(() => {
@@ -140,7 +158,7 @@ export default function Dashboard() {
 
   return (
     <AdminPageShell title="Dashboard" icon={<BarChart3 className="size-5" />}>
-      {page.isPending && !page.data ? (
+      {page.isPending && !page.showSlowLoadingHint && !page.data ? (
         isUser ? (
           <DashboardUserSkeleton />
         ) : (
@@ -152,6 +170,8 @@ export default function Dashboard() {
           error={page.error}
           onRetry={() => page.retry()}
         />
+      ) : page.showSlowLoadingHint && !page.data ? (
+        <SlowLoadingHint onRetry={() => page.retry()} />
       ) : !page.data ? null : isUser ? (
         // ================= USER DASHBOARD (Modern & Clean) =================
         <div className="space-y-8">
@@ -199,46 +219,61 @@ export default function Dashboard() {
           )}
 
           {/* Stats Grid */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            <div className="bg-card text-card-foreground p-4 sm:p-6 rounded-3xl border border-border shadow-sm hover:shadow-md transition-shadow group">
-              <div className="size-12 bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center text-brand text-brand mb-4 group-hover:scale-110 transition-transform">
-                <Calendar size={24} />
-              </div>
-              <p className="text-sm text-muted-foreground font-medium mb-1">Total Sesi</p>
-              <p className="text-3xl font-extrabold text-foreground">{data?.stats.total}</p>
-            </div>
-            <div className="bg-card text-card-foreground p-4 sm:p-6 rounded-3xl border border-border shadow-sm hover:shadow-md transition-shadow group">
-              <div className="size-12 bg-emerald-50 dark:bg-emerald-900/30 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 mb-4 group-hover:scale-110 transition-transform">
-                <CheckCircle2 size={24} />
-              </div>
-              <p className="text-sm text-muted-foreground font-medium mb-1">Hadir Tepat Waktu</p>
-              <p className="text-3xl font-extrabold text-foreground">{data?.stats.present}</p>
-            </div>
-            <div className="bg-card text-card-foreground p-4 sm:p-6 rounded-3xl border border-border shadow-sm hover:shadow-md transition-shadow group">
-              <div className="size-12 bg-amber-50 dark:bg-amber-900/30 rounded-2xl flex items-center justify-center text-amber-600 dark:text-amber-400 mb-4 group-hover:scale-110 transition-transform">
-                <FileText size={24} />
-              </div>
-              <p className="text-sm text-muted-foreground font-medium mb-1">Total Izin / Sakit</p>
-              <h3 className="text-3xl font-extrabold text-foreground">
-                {(data?.stats.sick || 0) + (data?.stats.excused || 0)}
-              </h3>
-            </div>
+          {(() => {
+            const stats = data?.stats ?? {
+              total: 0,
+              present: 0,
+              sick: 0,
+              excused: 0,
+              percentage: 0,
+            };
+            return (
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+                <div className="bg-card text-card-foreground p-4 sm:p-6 rounded-3xl border border-border shadow-sm hover:shadow-md transition-shadow group">
+                  <div className="size-12 bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center text-brand text-brand mb-4 group-hover:scale-110 transition-transform">
+                    <Calendar size={24} />
+                  </div>
+                  <p className="text-sm text-muted-foreground font-medium mb-1">Total Sesi</p>
+                  <p className="text-3xl font-extrabold text-foreground">{stats.total}</p>
+                </div>
+                <div className="bg-card text-card-foreground p-4 sm:p-6 rounded-3xl border border-border shadow-sm hover:shadow-md transition-shadow group">
+                  <div className="size-12 bg-emerald-50 dark:bg-emerald-900/30 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 mb-4 group-hover:scale-110 transition-transform">
+                    <CheckCircle2 size={24} />
+                  </div>
+                  <p className="text-sm text-muted-foreground font-medium mb-1">
+                    Hadir Tepat Waktu
+                  </p>
+                  <p className="text-3xl font-extrabold text-foreground">{stats.present}</p>
+                </div>
+                <div className="bg-card text-card-foreground p-4 sm:p-6 rounded-3xl border border-border shadow-sm hover:shadow-md transition-shadow group">
+                  <div className="size-12 bg-amber-50 dark:bg-amber-900/30 rounded-2xl flex items-center justify-center text-amber-600 dark:text-amber-400 mb-4 group-hover:scale-110 transition-transform">
+                    <FileText size={24} />
+                  </div>
+                  <p className="text-sm text-muted-foreground font-medium mb-1">
+                    Total Izin / Sakit
+                  </p>
+                  <h3 className="text-3xl font-extrabold text-foreground">
+                    {(stats.sick || 0) + (stats.excused || 0)}
+                  </h3>
+                </div>
 
-            <div className="bg-card text-card-foreground p-4 sm:p-6 rounded-3xl border border-border shadow-sm hover:shadow-md transition-shadow group">
-              <div className="size-12 bg-blue-50 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center text-blue-600 dark:text-blue-400 mb-4 group-hover:scale-110 transition-transform">
-                <BarChart3 size={24} />
+                <div className="bg-card text-card-foreground p-4 sm:p-6 rounded-3xl border border-border shadow-sm hover:shadow-md transition-shadow group">
+                  <div className="size-12 bg-blue-50 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center text-blue-600 dark:text-blue-400 mb-4 group-hover:scale-110 transition-transform">
+                    <BarChart3 size={24} />
+                  </div>
+                  <p className="text-sm text-muted-foreground font-medium mb-1">Rasio Kehadiran</p>
+                  <div className="flex items-end gap-2">
+                    <p className="text-3xl font-extrabold text-foreground">{stats.percentage}%</p>
+                    <span
+                      className={`text-xs font-bold mb-1.5 ${stats.percentage >= 80 ? 'text-green-500' : 'text-red-500'}`}
+                    >
+                      {stats.percentage >= 80 ? 'Aman' : 'Perlu perhatian'}
+                    </span>
+                  </div>
+                </div>
               </div>
-              <p className="text-sm text-muted-foreground font-medium mb-1">Rasio Kehadiran</p>
-              <div className="flex items-end gap-2">
-                <p className="text-3xl font-extrabold text-foreground">{data?.stats.percentage}%</p>
-                <span
-                  className={`text-xs font-bold mb-1.5 ${data?.stats.percentage >= 80 ? 'text-green-500' : 'text-red-500'}`}
-                >
-                  {data?.stats.percentage >= 80 ? 'Aman' : 'Perlu perhatian'}
-                </span>
-              </div>
-            </div>
-          </div>
+            );
+          })()}
 
           <div className="overflow-hidden rounded-xl border border-border bg-card shadow-card dark:shadow-none dark:ring-1 dark:ring-white/10">
             <div className="flex items-center justify-between border-b border-border px-6 py-5">

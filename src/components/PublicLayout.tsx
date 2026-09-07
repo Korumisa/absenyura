@@ -9,7 +9,7 @@ import { PublicPageMeta } from '@/components/public/PublicPageMeta';
 import { useLocation } from 'react-router-dom';
 import { loadCormorantDisplayFont } from '@/lib/perf/loadFonts';
 import { ensureHttpsUrl } from '@/lib/http/ensureHttpsUrl';
-import { isCloudinaryUrl, optimizeCloudinaryUrl } from '@/lib/media/cloudinaryImage';
+import { optimizeCloudinaryUrl } from '@/lib/media/cloudinaryImage';
 import { PublicSiteDataProvider } from '@/components/PublicSiteDataContext';
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {

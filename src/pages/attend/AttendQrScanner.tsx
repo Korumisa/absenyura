@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { toast } from 'sonner';
-import { QrCode, RefreshCw, AlertCircle, Loader2 } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   pickPreferredCameraId,
@@ -258,7 +258,7 @@ export default function AttendQrScanner({
 
   return (
     <div className="attend-qr-root w-full max-w-md">
-      <div className="relative overflow-hidden rounded-2xl border-4 border-border bg-slate-900 shadow-2xl border-border">
+      <div className="relative overflow-hidden rounded-2xl border-4 border-border bg-slate-900 shadow-2xl">
         <div className="pointer-events-none absolute inset-0 z-10 m-8 rounded-xl border-[3px] border-dashed border-indigo-500/50" />
         <div id="qr-reader" className="min-h-[300px] w-full bg-black" />
       </div>

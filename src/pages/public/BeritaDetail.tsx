@@ -1,27 +1,61 @@
-import React from 'react';
+import React, { useEffect, useLayoutEffect, useMemo } from 'react';
 import PublicLayout from '@/components/PublicLayout';
-import useSWR from 'swr';
-import api from '@/services/api';
 import type { PublicPost, PublicProfile } from '@/types/publicSite';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import PublicEnter from '@/components/PublicEnter';
 import PublicCoverImage from '@/components/PublicCoverImage';
-import { useSwrPageState } from '@/hooks/useSwrPageState';
+import { useMockOrSwr } from '@/hooks/useMockOrSwr';
+import { mockAllPosts, mockProfile } from '@/lib/utils/mockLandingData';
 import { PublicPageError } from '@/components/public/PublicPageError';
 import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
+import { publicSiteFetcher } from '@/lib/utils/publicSiteFetcher';
+
+const SCROLL_KEY_PREFIX = 'berita-detail-scroll-y';
 
 export default function BeritaDetail() {
   const { slug } = useParams();
-  const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
-  const { data: profile } = useSWR<PublicProfile | null>('/public-site/profile', fetcher, { revalidateOnFocus: false });
-  const postSwr = useSWR<PublicPost>(slug ? `/public-site/posts/${slug}` : null, fetcher, { revalidateOnFocus: false });
-  const { data: post, isInitialLoading: isLoading, isError, retry } = useSwrPageState(postSwr);
+  const scrollKey = useMemo(() => `${SCROLL_KEY_PREFIX}:${slug ?? ''}`, [slug]);
+  const profileResult = useMockOrSwr<PublicProfile | null>({
+    swrKey: '/public-site/profile',
+    fetcher: publicSiteFetcher<PublicProfile | null>,
+    mockStatic: mockProfile,
+  });
+  const profile = profileResult.data ?? null;
+  const { swr, data: post, isInitialLoading: isLoading, isError, retry } = useMockOrSwr<PublicPost | null>({
+    swrKey: slug ? `/public-site/posts/${slug}` : null,
+    fetcher: publicSiteFetcher<PublicPost | null>,
+    mockStatic: slug ? mockAllPosts.find((p) => p.slug === slug) ?? null : null,
+  });
   const orgName = profile?.org_name ?? '';
 
+  useLayoutEffect(() => {
+    if (!slug) {
+      window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+      return;
+    }
+    const saved = Number(sessionStorage.getItem(scrollKey) || 0);
+    if (saved > 0) {
+      window.scrollTo({ top: saved, behavior: 'instant' as ScrollBehavior });
+      sessionStorage.removeItem(scrollKey);
+    } else {
+      window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+    }
+  }, [slug, scrollKey]);
+
+  useEffect(() => {
+    if (!slug) return;
+    const save = () => sessionStorage.setItem(scrollKey, String(window.scrollY));
+    window.addEventListener('beforeunload', save);
+    return () => {
+      save();
+      window.removeEventListener('beforeunload', save);
+    };
+  }, [slug, scrollKey]);
+
   if (isError) {
-    return <PublicPageError title="Gagal memuat berita" error={postSwr.error} onRetry={retry} />;
+    return <PublicPageError title="Gagal memuat berita" error={swr.error} onRetry={retry} />;
   }
 
   return (
@@ -68,7 +102,10 @@ export default function BeritaDetail() {
             </header>
 
             <div className="mt-8 overflow-hidden rounded-2xl border border-black/10 bg-white">
-              <div className="aspect-[16/10] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))]">
+              <div
+                className="aspect-[16/10] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))]"
+                style={{ aspectRatio: '16 / 10' }}
+              >
                 <PublicCoverImage url={post.cover_image_url} alt={post.title} imgClassName="object-cover" />
               </div>
             </div>
