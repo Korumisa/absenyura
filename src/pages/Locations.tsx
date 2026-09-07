@@ -49,7 +49,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { toastErrorMessage } from '@/lib/utils/toastMessage';
 import { useMutationToast } from '@/hooks/useMutationToast';
 import { LastSavedIndicator } from '@/components/admin/LastSavedIndicator';
-
+import { useFormDirtyGuard } from '@/hooks/useFormDirtyGuard';
 // ── Leaflet systemic hardening (shared pattern) ──────────────────────────
 // Leaflet marks DOM elements with a custom `_leaflet_id` property when a map
 // is initialised on them. If React reuses that DOM node without Leaflet
@@ -116,8 +116,10 @@ class MapSelfHealingBoundary extends React.Component<
       // Schedule one-shot remount via parent key change.
       // Use a macrotask so React's current error dispatch finishes first.
       window.setTimeout(() => {
-        this.setState({ hasError: false });
-        this.props.onRemount();
+        flushSync(() => {
+          this.setState({ hasError: false });
+          this.props.onRemount();
+        });
       }, 16);
     } else {
       // Re-throw non-Leaflet-initialization errors up the chain.
@@ -220,9 +222,9 @@ export default function Locations() {
   // and calling it a second time throws "Map container is being reused by
   // another instance" in Leaflet 1.9 / StrictMode double-cleanup scenarios.
   useEffect(() => {
-    const panelRefSnapshot = mapPanelRef;
+    const panelSnapshot = mapPanelRef.current;
     return () => {
-      stripLeafletDomSignatures(panelRefSnapshot.current);
+      stripLeafletDomSignatures(panelSnapshot);
     };
   }, []);
 
@@ -857,7 +859,10 @@ export default function Locations() {
                         step="10"
                         value={formData.radius}
                         onChange={(e) =>
-                          setFormDataDirty({ ...formData, radius: parseInt(e.target.value, 10) || 100 })
+                          setFormDataDirty({
+                            ...formData,
+                            radius: parseInt(e.target.value, 10) || 100,
+                          })
                         }
                         className="flex-1 accent-indigo-600"
                         aria-label="Radius lokasi dalam meter"
@@ -880,7 +885,9 @@ export default function Locations() {
                       id={id}
                       type="text"
                       value={formData.wifi_bssid}
-                      onChange={(e) => setFormDataDirty({ ...formData, wifi_bssid: e.target.value })}
+                      onChange={(e) =>
+                        setFormDataDirty({ ...formData, wifi_bssid: e.target.value })
+                      }
                       placeholder="192.168.1.1, 10.0.0.0/24"
                       className="font-mono"
                       aria-describedby={ariaDescribedBy}
