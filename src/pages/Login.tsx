@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { toast } from 'sonner';
+import { toastError, toastSuccess, toastSuccessMessage } from '@/lib/utils/toastMessage';
 import { useAuthStore } from '@/stores/authStore';
 import api from '@/services/api';
 import { ArrowRight, Eye, EyeOff, Loader2, LogIn } from 'lucide-react';
@@ -63,7 +63,7 @@ export default function Login() {
       const res = await api.post('/auth/login', { nim, password, device_fingerprint });
       const { user } = res.data.data;
       setAuth(user);
-      toast.success('Berhasil masuk!');
+      toastSuccess('Berhasil masuk!');
 
       let target = getTarget();
       if (target) {
@@ -79,7 +79,7 @@ export default function Login() {
           ? 'Terlalu banyak percobaan login. Tunggu 2–3 menit lalu coba lagi.'
           : getErrorMessage(err, 'Gagal masuk. Periksa NIM dan kata sandi Anda.');
       setLoginError(msg);
-      toast.error(msg);
+      toastError(null, msg);
     } finally {
       setLoading(false);
     }

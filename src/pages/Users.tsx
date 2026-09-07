@@ -67,6 +67,7 @@ import type { PaginationMeta } from '@/types/common';
 import { ClassMultiSelect, type ClassOption } from '@/components/ClassMultiSelect';
 import { formatClassLabel } from '@/lib/utils/classLabel';
 import { LastSavedIndicator } from '@/components/admin/LastSavedIndicator';
+import { useFormDirtyGuard } from '@/hooks/useFormDirtyGuard';
 
 export default function Users() {
   const { user: currentUser } = useAuthStore();
@@ -193,6 +194,10 @@ export default function Users() {
   );
 
   const handleOpenModal = async (user: User | null = null) => {
+    if (isModalOpen) {
+      const ok = await confirmIfDirty();
+      if (!ok) return;
+    }
     setClassIds([]);
     setEnrolledClasses([]);
     setShowPassword(false);
@@ -246,6 +251,7 @@ export default function Users() {
     try {
       const result = await doSaveUser();
       if (result !== undefined) {
+        setFormBaseline(JSON.stringify(formData));
         setIsModalOpen(false);
         setClassIds([]);
         setEnrolledClasses([]);
@@ -410,6 +416,7 @@ export default function Users() {
   };
 
   const formIsDirty = JSON.stringify(formData) !== formBaseline;
+  const { confirmIfDirty } = useFormDirtyGuard(formIsDirty);
 
   const actionOverlayLabel = saving
     ? editingUser
@@ -699,7 +706,16 @@ export default function Users() {
           </div>
         )}
 
-        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <Dialog
+          open={isModalOpen}
+          onOpenChange={async (open) => {
+            if (!open) {
+              const ok = await confirmIfDirty();
+              if (!ok) return;
+            }
+            setIsModalOpen(open);
+          }}
+        >
           <DialogContent className="max-w-2xl p-0">
             <div className="border-b border-border px-6 py-4">
               <div className="flex items-start justify-between gap-3">
@@ -958,7 +974,10 @@ export default function Users() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={async () => {
+                    const ok = await confirmIfDirty();
+                    if (ok) setIsModalOpen(false);
+                  }}
                   disabled={saving}
                 >
                   Batal

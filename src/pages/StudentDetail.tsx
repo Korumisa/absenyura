@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import useSWR from 'swr';
 import { ArrowLeft, FileText, Smartphone, User } from 'lucide-react';
@@ -14,6 +14,7 @@ import { SlowLoadingHint } from '@/components/admin/SlowLoadingHint';
 import ActionLoadingOverlay from '@/components/ActionLoadingOverlay';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import { Button } from '@/components/ui/button';
+import { SubmitButton } from '@/components/ui/submit-button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
@@ -31,6 +32,7 @@ import {
 import type { User as AppUser } from '@/types/user';
 import { formatClassLabel } from '@/lib/utils/classLabel';
 import { toastErrorMessage } from '@/lib/utils/toastMessage';
+import { useFormDirtyGuard } from '@/hooks/useFormDirtyGuard';
 
 type EnrollmentRow = { id: string; name: string; semester: number };
 
@@ -82,6 +84,30 @@ export default function StudentDetail() {
   const [isSaveConfirmOpen, setIsSaveConfirmOpen] = useState(false);
   const [isPasswordConfirmOpen, setIsPasswordConfirmOpen] = useState(false);
   const [isResetDeviceOpen, setIsResetDeviceOpen] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const { confirmIfDirty } = useFormDirtyGuard(dirty);
+
+  const setFormDirty = useMemo(
+    () => (updater: React.SetStateAction<ProfileForm>) => {
+      setDirty(true);
+      setForm(updater);
+    },
+    []
+  );
+  const setPasswordDirty = useMemo(
+    () => (v: string) => {
+      setDirty(true);
+      setPassword(v);
+    },
+    []
+  );
+  const setPasswordConfirmDirty = useMemo(
+    () => (v: string) => {
+      setDirty(true);
+      setPasswordConfirm(v);
+    },
+    []
+  );
 
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
   const userDetailFetcher = (url: string) => api.get(url).then((res) => res.data.data);
@@ -142,6 +168,7 @@ export default function StudentDetail() {
         is_active: form.is_active,
       });
       toast.success('Data mahasiswa berhasil disimpan');
+      setDirty(false);
       setIsSaveConfirmOpen(false);
       await mutate();
     } catch (err: unknown) {
@@ -165,6 +192,7 @@ export default function StudentDetail() {
     try {
       await api.put(`/users/${studentId}`, { password });
       toast.success('Kata sandi berhasil diperbarui');
+      setDirty(false);
       setPassword('');
       setPasswordConfirm('');
       setIsPasswordConfirmOpen(false);
@@ -201,7 +229,13 @@ export default function StudentDetail() {
   if (!studentId) {
     return (
       <AdminPageShell title="Mahasiswa tidak ditemukan" variant="plain">
-        <Button variant="outline" onClick={() => navigate('/classes')}>
+        <Button
+          variant="outline"
+          onClick={async () => {
+            const ok = await confirmIfDirty();
+            if (ok) navigate('/classes');
+          }}
+        >
           Kembali
         </Button>
       </AdminPageShell>
@@ -217,7 +251,14 @@ export default function StudentDetail() {
           error={profileSwr.error}
           onRetry={retry}
         />
-        <Button variant="outline" className="mt-4" onClick={() => navigate(backTo)}>
+        <Button
+          variant="outline"
+          className="mt-4"
+          onClick={async () => {
+            const ok = await confirmIfDirty();
+            if (ok) navigate(backTo);
+          }}
+        >
           <ArrowLeft className="mr-2 size-4" />
           Kembali
         </Button>
@@ -229,7 +270,14 @@ export default function StudentDetail() {
     return (
       <AdminPageShell title="Biodata Mahasiswa" variant="plain">
         <SlowLoadingHint onRetry={retry} />
-        <Button variant="outline" className="mt-4" onClick={() => navigate(backTo)}>
+        <Button
+          variant="outline"
+          className="mt-4"
+          onClick={async () => {
+            const ok = await confirmIfDirty();
+            if (ok) navigate(backTo);
+          }}
+        >
           <ArrowLeft className="mr-2 size-4" />
           Kembali
         </Button>
@@ -264,11 +312,13 @@ export default function StudentDetail() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() =>
-                  navigate(`/students/${studentId}/attendance`, {
-                    state: { backToStudent: `/students/${studentId}`, classId: classIdFromState },
-                  })
-                }
+                onClick={async () => {
+                  const ok = await confirmIfDirty();
+                  if (ok)
+                    navigate(`/students/${studentId}/attendance`, {
+                      state: { backToStudent: `/students/${studentId}`, classId: classIdFromState },
+                    });
+                }}
               >
                 <FileText className="mr-2 size-4" />
                 Rekap Kehadiran
@@ -348,14 +398,15 @@ export default function StudentDetail() {
             <section className="rounded-lg border border-border bg-card p-5 sm:p-6">
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
                 <h2 className="text-sm font-semibold text-foreground">Informasi akun</h2>
-                <Button
+                <SubmitButton
                   type="button"
                   size="sm"
                   disabled={isInitialLoading}
                   onClick={() => setIsSaveConfirmOpen(true)}
-                >
-                  Simpan perubahan
-                </Button>
+                  isLoading={saving}
+                  label="Simpan perubahan"
+                  loadingLabel="Menyimpan…"
+                />
               </div>
 
               {isInitialLoading ? (
@@ -373,7 +424,7 @@ export default function StudentDetail() {
                     <Input
                       required
                       value={form.name}
-                      onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+                      onChange={(e) => setFormDirty((p) => ({ ...p, name: e.target.value }))}
                     />
                   </div>
                   <div className="space-y-2">
@@ -383,7 +434,7 @@ export default function StudentDetail() {
                     <Input
                       required
                       value={form.nim_nip}
-                      onChange={(e) => setForm((p) => ({ ...p, nim_nip: e.target.value }))}
+                      onChange={(e) => setFormDirty((p) => ({ ...p, nim_nip: e.target.value }))}
                     />
                   </div>
                   <div className="space-y-2">
@@ -397,7 +448,7 @@ export default function StudentDetail() {
                       required
                       value={form.semester}
                       onChange={(e) =>
-                        setForm((p) => ({
+                        setFormDirty((p) => ({
                           ...p,
                           semester: Math.max(
                             1,
@@ -415,7 +466,7 @@ export default function StudentDetail() {
                       type="email"
                       required
                       value={form.email}
-                      onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
+                      onChange={(e) => setFormDirty((p) => ({ ...p, email: e.target.value }))}
                     />
                   </div>
                   <div className="space-y-2">
@@ -426,7 +477,7 @@ export default function StudentDetail() {
                       type="tel"
                       required
                       value={form.phone}
-                      onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))}
+                      onChange={(e) => setFormDirty((p) => ({ ...p, phone: e.target.value }))}
                     />
                   </div>
                   <div className="space-y-2">
@@ -435,7 +486,7 @@ export default function StudentDetail() {
                     </Label>
                     <Select
                       value={form.department}
-                      onValueChange={(val) => setForm((p) => ({ ...p, department: val }))}
+                      onValueChange={(val) => setFormDirty((p) => ({ ...p, department: val }))}
                       disabled={facultiesData.length === 0}
                       onOpenChange={(open) => {
                         if (!open) setDepartmentQuery('');
@@ -505,7 +556,7 @@ export default function StudentDetail() {
                       id="student-active"
                       checked={form.is_active}
                       onCheckedChange={(checked) =>
-                        setForm((p) => ({ ...p, is_active: Boolean(checked) }))
+                        setFormDirty((p) => ({ ...p, is_active: Boolean(checked) }))
                       }
                     />
                     <Label htmlFor="student-active" className="cursor-pointer font-normal">
@@ -541,7 +592,7 @@ export default function StudentDetail() {
                     type="password"
                     autoComplete="new-password"
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => setPasswordDirty(e.target.value)}
                     placeholder="Min. 6 karakter"
                   />
                 </div>
@@ -551,7 +602,7 @@ export default function StudentDetail() {
                     type="password"
                     autoComplete="new-password"
                     value={passwordConfirm}
-                    onChange={(e) => setPasswordConfirm(e.target.value)}
+                    onChange={(e) => setPasswordConfirmDirty(e.target.value)}
                   />
                 </div>
               </div>

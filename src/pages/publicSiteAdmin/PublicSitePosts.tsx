@@ -29,8 +29,9 @@ import { getErrorMessage } from '@/lib/http/errorMessage';
 import { prepareImageForUpload } from '@/lib/media/imageUpload';
 import AdminPageShell from '@/components/AdminPageShell';
 import AdminCard from '@/components/AdminCard';
-import { Newspaper } from 'lucide-react';
+import { Newspaper, Plus as PlusIcon } from 'lucide-react';
 import { CmsTabNav, type CmsTabItem } from '@/components/ui/CmsTabNav';
+import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
 import { CmsPublishTabs } from '@/components/ui/CmsPublishTabs';
 import PublicSitePostPreview from '@/components/publicSiteAdmin/PublicSitePostPreview';
 import { CmsEditorLayout } from '@/components/cms/CmsEditorLayout';
@@ -769,8 +770,28 @@ export default function PublicSitePosts() {
             />
             <ul className="space-y-4 md:hidden" aria-label="Daftar konten">
               {posts.length === 0 ? (
-                <li className="py-8 text-center text-sm text-muted-foreground">
-                  Belum ada konten.
+                <li>
+                  <AdminEmptyState
+                    compact
+                    icon={Newspaper}
+                    title="Belum ada konten"
+                    description={`Tambahkan ${typeLabel.toLowerCase()} baru untuk memulai.`}
+                    action={
+                      <Button
+                        type="button"
+                        onClick={async () => {
+                          const ok = await confirmIfDirty();
+                          if (!ok) return;
+                          resetPostForm();
+                          setContentTab('edit');
+                        }}
+                        className="min-h-11"
+                      >
+                        <PlusIcon className="mr-2 size-4" aria-hidden="true" />
+                        Tambah {typeLabel}
+                      </Button>
+                    }
+                  />
                 </li>
               ) : null}
               {posts.map((p) => (
@@ -817,8 +838,29 @@ export default function PublicSitePosts() {
                 <TableBody>
                   {posts.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
-                        Belum ada konten.
+                      <TableCell colSpan={5} className="p-0">
+                        <AdminEmptyState
+                          compact
+                          icon={Newspaper}
+                          title="Belum ada konten"
+                          description={`Tambahkan ${typeLabel.toLowerCase()} baru untuk memulai.`}
+                          action={
+                            <Button
+                              type="button"
+                              onClick={async () => {
+                                const ok = await confirmIfDirty();
+                                if (!ok) return;
+                                resetPostForm();
+                                setContentTab('edit');
+                              }}
+                              className="min-h-11"
+                            >
+                              <PlusIcon className="mr-2 size-4" aria-hidden="true" />
+                              Tambah {typeLabel}
+                            </Button>
+                          }
+                          className="border-0 shadow-none"
+                        />
                       </TableCell>
                     </TableRow>
                   ) : null}

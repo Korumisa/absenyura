@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import api from '@/services/api';
-import { toast } from 'sonner';
+import { toastError, toastSuccess, toastSuccessMessage } from '@/lib/utils/toastMessage';
 import { useAuthStore } from '@/stores/authStore';
 import { Button } from '@/components/ui/button';
 import { SubmitButton } from '@/components/ui/submit-button';
@@ -15,7 +15,6 @@ import { prepareImageForUpload } from '@/lib/media/imageUpload';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import AdminPageShell from '@/components/AdminPageShell';
 import AdminCard from '@/components/AdminCard';
-import { AdminCardActions } from '@/components/admin/AdminCardActions';
 import PublicSiteProfilePreview from '@/components/publicSiteAdmin/PublicSiteProfilePreview';
 import { Globe } from 'lucide-react';
 import { cn } from '@/lib/utils/utils';
@@ -23,6 +22,7 @@ import { CmsTabNav, type CmsTabItem } from '@/components/ui/CmsTabNav';
 import { CmsEditorLayout } from '@/components/cms/CmsEditorLayout';
 import { AdminContentTransition } from '@/components/admin/AdminContentTransition';
 import { useFormDirtyGuard } from '@/hooks/useFormDirtyGuard';
+import { LastSavedIndicator } from '@/components/admin/LastSavedIndicator';
 
 type ProfileTab = 'identity' | 'home' | 'visimisi' | 'contact';
 
@@ -119,6 +119,7 @@ export default function PublicSiteProfile() {
   });
 
   const [dirty, setDirty] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const updateDraft = (updater: React.SetStateAction<Draft>) => {
     setDirty(true);
     setDraft(updater);
@@ -253,18 +254,19 @@ export default function PublicSiteProfile() {
 
       if (failures.length > 0) {
         const failureMsg = `${successes.length} bagian tersimpan, ${failures.length} gagal: ${failedLabels.join(', ')}`;
-        toast.error(failureMsg);
+        toastError(null, failureMsg);
         return;
       }
 
       await api.put('/public-site/admin/profile', { data: draft });
-      toast.success(
+      toastSuccess(
         `${successes.length} bagian tersimpan, ${failures.length} gagal${failedLabels.length ? `: ${failedLabels.join(', ')}` : ''}`
       );
+      setLastSavedAt(new Date());
       setDirty(false);
       mutate();
     } catch (e: any) {
-      toast.error(getErrorMessage(e, 'Gagal menyimpan'));
+      toastError(e, 'Gagal menyimpan');
     } finally {
       setSaving(false);
     }
@@ -587,9 +589,9 @@ export default function PublicSiteProfile() {
                             try {
                               const url = await uploadImage(file);
                               updateDraft((p) => ({ ...p, homeImageUrl: url }));
-                              toast.success('Upload foto anggota berhasil');
+                              toastSuccess('Upload foto anggota berhasil');
                             } catch (err: any) {
-                              toast.error(String(getErrorMessage(err, 'Gagal upload')));
+                              toastError(err, 'Gagal upload');
                             } finally {
                               setUploading((x) => ({ ...x, home: false }));
                               e.currentTarget.value = '';
@@ -720,9 +722,9 @@ export default function PublicSiteProfile() {
                             try {
                               const url = await uploadImage(file);
                               updateDraft((p) => ({ ...p, visiPhotoUrl: url }));
-                              toast.success('Upload foto visi berhasil');
+                              toastSuccess('Upload foto visi berhasil');
                             } catch (err: any) {
-                              toast.error(String(getErrorMessage(err, 'Gagal upload')));
+                              toastError(err, 'Gagal upload');
                             } finally {
                               setUploading((x) => ({ ...x, visi: false }));
                               e.currentTarget.value = '';
@@ -834,9 +836,9 @@ export default function PublicSiteProfile() {
                             try {
                               const url = await uploadImage(file);
                               updateDraft((p) => ({ ...p, misiPhotoUrl: url }));
-                              toast.success('Upload foto misi berhasil');
+                              toastSuccess('Upload foto misi berhasil');
                             } catch (err: any) {
-                              toast.error(String(getErrorMessage(err, 'Gagal upload')));
+                              toastError(err, 'Gagal upload');
                             } finally {
                               setUploading((x) => ({ ...x, misi: false }));
                               e.currentTarget.value = '';
@@ -1044,9 +1046,9 @@ export default function PublicSiteProfile() {
                           try {
                             const url = await uploadImage(file);
                             updateDraft((p) => ({ ...p, logoLightUrl: url }));
-                            toast.success('Upload logo light berhasil');
+                            toastSuccess('Upload logo light berhasil');
                           } catch (err: any) {
-                            toast.error(String(getErrorMessage(err, 'Gagal upload')));
+                            toastError(err, 'Gagal upload');
                           } finally {
                             setUploading((x) => ({ ...x, light: false }));
                             e.currentTarget.value = '';
@@ -1119,9 +1121,9 @@ export default function PublicSiteProfile() {
                           try {
                             const url = await uploadImage(file);
                             updateDraft((p) => ({ ...p, logoDarkUrl: url }));
-                            toast.success('Upload logo dark berhasil');
+                            toastSuccess('Upload logo dark berhasil');
                           } catch (err: any) {
-                            toast.error(String(getErrorMessage(err, 'Gagal upload')));
+                            toastError(err, 'Gagal upload');
                           } finally {
                             setUploading((x) => ({ ...x, dark: false }));
                             e.currentTarget.value = '';
@@ -1171,26 +1173,33 @@ export default function PublicSiteProfile() {
               </div>
             </AdminContentTransition>
 
-            <AdminCardActions>
-              <Button
-                variant="outline"
-                type="button"
-                onClick={() => setIsResetOpen(true)}
-                disabled={saving}
-                className="min-h-11 w-full sm:w-auto"
-              >
-                Reset
-              </Button>
-              <SubmitButton
-                type="button"
-                onClick={handleSave}
-                disabled={!dirty}
-                className="min-h-11 w-full sm:w-auto"
-                isLoading={saving}
-                label="Simpan"
-                loadingLabel="Menyimpan…"
+            <div className="flex flex-col-reverse gap-4 pt-2 sm:flex-row sm:items-center sm:justify-between">
+              <LastSavedIndicator
+                lastSavedAt={lastSavedAt}
+                isDirty={dirty}
+                isSaving={saving}
               />
-            </AdminCardActions>
+              <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                <Button
+                  variant="outline"
+                  type="button"
+                  onClick={() => setIsResetOpen(true)}
+                  disabled={saving}
+                  className="min-h-11 w-full sm:w-auto"
+                >
+                  Reset
+                </Button>
+                <SubmitButton
+                  type="button"
+                  onClick={handleSave}
+                  disabled={!dirty}
+                  className="min-h-11 w-full sm:w-auto"
+                  isLoading={saving}
+                  label="Simpan"
+                  loadingLabel="Menyimpan…"
+                />
+              </div>
+            </div>
           </div>
         </CmsEditorLayout>
       </AdminCard>

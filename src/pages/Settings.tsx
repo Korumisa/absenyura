@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { LastSavedIndicator } from '@/components/admin/LastSavedIndicator';
+import { useFormDirtyGuard } from '@/hooks/useFormDirtyGuard';
 
 const settingsCardClass =
   'rounded-xl border border-border bg-card text-card-foreground shadow-card dark:shadow-none dark:ring-1 dark:ring-white/10';
@@ -164,6 +165,7 @@ export default function Settings() {
   };
 
   const formIsDirty = JSON.stringify(formData) !== formBaseline;
+  const { confirmIfDirty } = useFormDirtyGuard(formIsDirty);
 
   return (
     <AdminPageShell

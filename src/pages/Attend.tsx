@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import api from '@/services/api';
 import { toast } from 'sonner';
+import { toastError, toastSuccess, toastSuccessMessage, toastInfo } from '@/lib/utils/toastMessage';
 import {
   MapPin,
   QrCode,
@@ -247,7 +248,7 @@ export default function Attend() {
     const resumeAfterOnline = () => {
       setIsOffline(false);
       setSubmitError(null);
-      toast.success(ONLINE_USER_MESSAGE, { id: 'attend-online' });
+      toast.success(toastSuccessMessage(ONLINE_USER_MESSAGE), { id: 'attend-online' });
       void reloadSession();
       if (isCheckoutMode) void reloadCheckout();
     };
@@ -258,20 +259,20 @@ export default function Attend() {
   const handleCheckOut = async () => {
     if (!myAttendance?.id || checkoutSubmitting || isOffline) return;
     if (!location || !gpsAccuracy || gpsAccuracy <= 0) {
-      toast.error('Menunggu lokasi GPS yang valid…');
+      toastError(null, 'Menunggu lokasi GPS yang valid…');
       return;
     }
     if (!photoBlob) {
-      toast.error('Silakan ambil foto bukti check-out terlebih dahulu.');
+      toastError(null, 'Silakan ambil foto bukti check-out terlebih dahulu.');
       return;
     }
     const sessionId = sessionIdForLoad?.trim();
     if (!sessionId) {
-      toast.error('Sesi tidak ditemukan.');
+      toastError(null, 'Sesi tidak ditemukan.');
       return;
     }
     if (sessionDetails?.qr_mode && sessionDetails.qr_mode !== 'NONE' && !scanResult) {
-      toast.error('Silakan scan QR Code terlebih dahulu.');
+      toastError(null, 'Silakan scan QR Code terlebih dahulu.');
       return;
     }
 
@@ -319,12 +320,12 @@ export default function Attend() {
           'X-Idempotency-Key': idempotencyKey,
         },
       });
-      toast.success(res.data?.message || 'Check-out berhasil!');
+      toastSuccess(res.data?.message || 'Check-out berhasil!');
       navigate('/dashboard');
     } catch (err) {
       const msg = getErrorMessage(err, 'Check-out gagal. Coba lagi.');
       setCheckoutError(msg);
-      toast.error(msg);
+      toastError(err, 'Check-out gagal. Coba lagi.');
     } finally {
       setCheckoutSubmitting(false);
     }
@@ -357,7 +358,7 @@ export default function Attend() {
   const handlePosition = useCallback((pos: GeolocationPosition) => {
     if (isSpoofedLocation(pos)) {
       setGpsError('Terdeteksi aplikasi Fake GPS atau anomali lokasi.');
-      toast.error('Lokasi ditolak: Terdeteksi aplikasi Fake GPS.');
+      toastError(null, 'Lokasi ditolak: Terdeteksi aplikasi Fake GPS.');
       setLocation(null);
       return;
     }
@@ -379,7 +380,7 @@ export default function Attend() {
   const requestLocationOnce = useCallback(() => {
     if (!navigator.geolocation) {
       setGpsError('Browser tidak mendukung Geolocation');
-      toast.error('Browser Anda tidak mendukung Geolocation.');
+      toastError(null, 'Browser Anda tidak mendukung Geolocation.');
       return;
     }
     setGpsError(null);
@@ -392,7 +393,7 @@ export default function Attend() {
       (err) => {
         toast.dismiss('gps-loc');
         setGpsError(err.message || 'Gagal mendapatkan lokasi GPS');
-        toast.error('Gagal mendapatkan lokasi GPS. Pastikan izin lokasi aktif.');
+        toastError(null, 'Gagal mendapatkan lokasi GPS. Pastikan izin lokasi aktif.');
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
@@ -486,7 +487,7 @@ export default function Attend() {
 
         const msg = humanizeCameraError(lastErr);
         setCameraPermissionError(msg);
-        toast.error(msg);
+        toastError(null, msg);
       } finally {
         setCameraStarting(false);
       }
@@ -574,24 +575,24 @@ export default function Attend() {
   const handleCheckIn = async () => {
     if (isSubmittingRef.current) return;
     if (gpsError) {
-      toast.error(`GPS bermasalah: ${gpsError}`);
+      toastError(null, `GPS bermasalah: ${gpsError}`);
       return;
     }
     if (!scanResult) {
-      toast.error('Silakan scan QR Code terlebih dahulu.');
+      toastError(null, 'Silakan scan QR Code terlebih dahulu.');
       return;
     }
     if (!location) {
-      toast.error('Menunggu lokasi GPS...');
+      toastError(null, 'Menunggu lokasi GPS...');
       return;
     }
     if (!gpsAccuracy || gpsAccuracy <= 0) {
-      toast.error('Menunggu akurasi GPS yang valid...');
+      toastError(null, 'Menunggu akurasi GPS yang valid...');
       return;
     }
     // We require photo evidence for this iteration as requested
     if (!photoBlob) {
-      toast.error('Silakan ambil foto bukti terlebih dahulu.');
+      toastError(null, 'Silakan ambil foto bukti terlebih dahulu.');
       return;
     }
 
@@ -613,7 +614,7 @@ export default function Attend() {
 
       if (isOffline) {
         if (storagePermanentlyFailedRef.current) {
-          toast.error('Penyimpanan foto gagal.');
+          toastError(null, 'Penyimpanan foto gagal.');
           setStorageSaveFailed(true);
           return;
         }
@@ -646,10 +647,10 @@ export default function Attend() {
           }
           storagePermanentlyFailedRef.current = true;
           setStorageSaveFailed(true);
-          toast.error('Penyimpanan foto gagal.');
+          toastError(null, 'Penyimpanan foto gagal.');
           return;
         }
-        toast.success('Tersimpan offline. Akan terkirim otomatis saat internet kembali.');
+        toastSuccess('Tersimpan offline. Akan terkirim otomatis saat internet kembali.');
         navigate('/dashboard');
         return;
       }
@@ -699,7 +700,7 @@ export default function Attend() {
         },
       });
 
-      toast.success(res.data.message || 'Check-in berhasil!');
+      toastSuccess(res.data.message || 'Check-in berhasil!');
       track('checkin_success');
       navigate('/dashboard');
     } catch (error: unknown) {
@@ -723,7 +724,7 @@ export default function Attend() {
         setPhotoBlob(null);
         setPhotoPreview(null);
         setQrError({ code: 'NOT_ENROLLED', detail: code });
-        toast.error(notEnrolledMsg);
+        toastError(null, notEnrolledMsg);
       } else if (isBadSigQrError) {
         const badSigMsg = 'Kode QR tidak valid atau sudah digunakan.';
         setScanResult(null);
@@ -735,13 +736,13 @@ export default function Attend() {
           message: badSigMsg,
           hint: 'Scan ulang QR Code dari layar dosen, lalu lanjutkan langkah berikutnya.',
         });
-        toast.error(badSigMsg);
+        toastError(null, badSigMsg);
       } else {
         setSubmitError({
           message: apiMsg,
           hint: 'Periksa koneksi internet atau lokasi GPS, lalu tekan "Coba kirim lagi" tanpa mengulang dari awal.',
         });
-        toast.error(apiMsg);
+        toastError(error, 'Absensi gagal dikirim');
       }
     } finally {
       setLoading(false);
@@ -1011,7 +1012,7 @@ export default function Attend() {
                     setScanning(false);
                   }
                   setShowResumeCard(false);
-                  toast.success('Melanjutkan check-in...');
+                  toastSuccess('Melanjutkan check-in...');
                 }}
                 className="flex-1"
               >
@@ -1023,7 +1024,7 @@ export default function Attend() {
                 onClick={() => {
                   clearWizardDraft();
                   setShowResumeCard(false);
-                  toast.info('Draft check-in dibatalkan.');
+                  toastInfo('Draft check-in dibatalkan.');
                 }}
                 className="flex-1"
               >

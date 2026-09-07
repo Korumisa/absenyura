@@ -1,4 +1,5 @@
-import React, { useState, useEffect, lazy, Suspense } from 'react';
+import React, { useState, useEffect, lazy, Suspense, useMemo } from 'react';
+import { flushSync } from 'react-dom';
 import api from '@/services/api';
 import { Plus, Edit2, Trash2, Search, MapPin, LocateFixed } from 'lucide-react';
 import { toast } from 'sonner';
@@ -48,7 +49,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { toastErrorMessage } from '@/lib/utils/toastMessage';
 import { useMutationToast } from '@/hooks/useMutationToast';
 import { LastSavedIndicator } from '@/components/admin/LastSavedIndicator';
-
+import { useFormDirtyGuard } from '@/hooks/useFormDirtyGuard';
 // ── Leaflet systemic hardening (shared pattern) ──────────────────────────
 // Leaflet marks DOM elements with a custom `_leaflet_id` property when a map
 // is initialised on them. If React reuses that DOM node without Leaflet
@@ -115,8 +116,10 @@ class MapSelfHealingBoundary extends React.Component<
       // Schedule one-shot remount via parent key change.
       // Use a macrotask so React's current error dispatch finishes first.
       window.setTimeout(() => {
-        this.setState({ hasError: false });
-        this.props.onRemount();
+        flushSync(() => {
+          this.setState({ hasError: false });
+          this.props.onRemount();
+        });
       }, 16);
     } else {
       // Re-throw non-Leaflet-initialization errors up the chain.
@@ -219,9 +222,9 @@ export default function Locations() {
   // and calling it a second time throws "Map container is being reused by
   // another instance" in Leaflet 1.9 / StrictMode double-cleanup scenarios.
   useEffect(() => {
-    const panelRefSnapshot = mapPanelRef;
+    const panelSnapshot = mapPanelRef.current;
     return () => {
-      stripLeafletDomSignatures(panelRefSnapshot.current);
+      stripLeafletDomSignatures(panelSnapshot);
     };
   }, []);
 
@@ -234,6 +237,16 @@ export default function Locations() {
     radius: 100,
     wifi_bssid: '',
   });
+  const [dirty, setDirty] = useState(false);
+  const { confirmIfDirty } = useFormDirtyGuard(dirty);
+
+  const setFormDataDirty = useMemo(
+    () => (updater: React.SetStateAction<typeof formData>) => {
+      setDirty(true);
+      setFormData(updater);
+    },
+    []
+  );
 
   const [isGeocoding, setIsGeocoding] = useState(false);
   const searchTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
@@ -288,7 +301,11 @@ export default function Locations() {
     return false;
   };
 
-  const handleOpenModal = (location: Location | null = null) => {
+  const handleOpenModal = async (location: Location | null = null) => {
+    if (isModalOpen) {
+      const ok = await confirmIfDirty();
+      if (!ok) return;
+    }
     if (location) {
       if (!canManageLocation(location)) {
         toast.error('Lokasi ini hanya bisa dikelola oleh pembuatnya (Super Admin).');
@@ -321,6 +338,7 @@ export default function Locations() {
       setFormData(initial);
       setFormBaseline(JSON.stringify(initial));
     }
+    setDirty(false);
     setLastSavedAt(null);
     // ── Robust Leaflet re-init sequence ────────────────────────────────
     // 0) Nuke every `_leaflet_id` / internal expando from the map panel
@@ -349,6 +367,7 @@ export default function Locations() {
     try {
       const result = await doSaveLocation();
       if (result !== undefined) {
+        setDirty(false);
         setIsModalOpen(false);
         mutate();
       }
@@ -395,7 +414,7 @@ export default function Locations() {
         const lat = position.coords.latitude;
         const lng = position.coords.longitude;
         setMapCenter([lat, lng]);
-        setFormData({
+        setFormDataDirty({
           ...formData,
           latitude: lat,
           longitude: lng,
@@ -418,7 +437,7 @@ export default function Locations() {
 
   const handleAddressChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
-    setFormData({ ...formData, address: value });
+    setFormDataDirty({ ...formData, address: value });
 
     // Debounce Geocoding API Call (OpenStreetMap Nominatim)
     if (searchTimeoutRef.current) {
@@ -438,7 +457,7 @@ export default function Locations() {
           if (data && data.length > 0) {
             const lat = parseFloat(data[0].lat);
             const lon = parseFloat(data[0].lon);
-            setFormData((prev) => ({
+            setFormDataDirty((prev) => ({
               ...prev,
               latitude: lat,
               longitude: lon,
@@ -722,7 +741,16 @@ export default function Locations() {
         )}
 
         {/* Modal Form */}
-        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <Dialog
+          open={isModalOpen}
+          onOpenChange={async (open) => {
+            if (!open) {
+              const ok = await confirmIfDirty();
+              if (!ok) return;
+            }
+            setIsModalOpen(open);
+          }}
+        >
           <DialogContent className="max-w-4xl p-0">
             <div className="border-b border-border px-6 py-4">
               <div className="flex items-start justify-between gap-3">
@@ -752,7 +780,7 @@ export default function Locations() {
                       type="text"
                       required
                       value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      onChange={(e) => setFormDataDirty({ ...formData, name: e.target.value })}
                       placeholder="Gedung A Ruang 201"
                       aria-describedby={ariaDescribedBy}
                       aria-invalid={ariaInvalid}
@@ -796,7 +824,7 @@ export default function Locations() {
                         required
                         value={formData.latitude}
                         onChange={(e) =>
-                          setFormData({ ...formData, latitude: parseFloat(e.target.value) })
+                          setFormDataDirty({ ...formData, latitude: parseFloat(e.target.value) })
                         }
                         aria-describedby={ariaDescribedBy}
                         aria-invalid={ariaInvalid}
@@ -812,7 +840,7 @@ export default function Locations() {
                         required
                         value={formData.longitude}
                         onChange={(e) =>
-                          setFormData({ ...formData, longitude: parseFloat(e.target.value) })
+                          setFormDataDirty({ ...formData, longitude: parseFloat(e.target.value) })
                         }
                         aria-describedby={ariaDescribedBy}
                         aria-invalid={ariaInvalid}
@@ -831,7 +859,10 @@ export default function Locations() {
                         step="10"
                         value={formData.radius}
                         onChange={(e) =>
-                          setFormData({ ...formData, radius: parseInt(e.target.value, 10) || 100 })
+                          setFormDataDirty({
+                            ...formData,
+                            radius: parseInt(e.target.value, 10) || 100,
+                          })
                         }
                         className="flex-1 accent-indigo-600"
                         aria-label="Radius lokasi dalam meter"
@@ -854,7 +885,9 @@ export default function Locations() {
                       id={id}
                       type="text"
                       value={formData.wifi_bssid}
-                      onChange={(e) => setFormData({ ...formData, wifi_bssid: e.target.value })}
+                      onChange={(e) =>
+                        setFormDataDirty({ ...formData, wifi_bssid: e.target.value })
+                      }
                       placeholder="192.168.1.1, 10.0.0.0/24"
                       className="font-mono"
                       aria-describedby={ariaDescribedBy}
@@ -935,7 +968,11 @@ export default function Locations() {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => setIsModalOpen(false)}
+                    onClick={async () => {
+                      const ok = await confirmIfDirty();
+                      if (!ok) return;
+                      setIsModalOpen(false);
+                    }}
                     disabled={saving}
                   >
                     Batal

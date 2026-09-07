@@ -49,6 +49,7 @@ import AdminPageShell from '@/components/AdminPageShell';
 import { AdminTableShell, adminTableHeaderClass } from '@/components/admin/AdminTableShell';
 import type { ClassItem } from '@/types/class';
 import type { User } from '@/types/user';
+import { useFormDirtyGuard } from '@/hooks/useFormDirtyGuard';
 
 export default function Classes() {
   const navigate = useNavigate();
@@ -145,7 +146,11 @@ export default function Classes() {
     fetchSubjects();
   }, [fetchLecturers]);
 
-  const handleOpenModal = (cls: ClassItem | null = null) => {
+  const handleOpenModal = async (cls: ClassItem | null = null) => {
+    if (isModalOpen) {
+      const ok = await confirmIfDirty();
+      if (!ok) return;
+    }
     if (cls) {
       const initial = {
         name: cls.name,
@@ -174,6 +179,7 @@ export default function Classes() {
   };
 
   const formIsDirty = JSON.stringify(formData) !== formBaseline;
+  const { confirmIfDirty } = useFormDirtyGuard(formIsDirty);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -186,6 +192,7 @@ export default function Classes() {
     try {
       const result = await doSaveClass();
       if (result !== undefined) {
+        setFormBaseline(JSON.stringify(formData));
         setIsSaveConfirmOpen(false);
         setIsModalOpen(false);
         mutate();
@@ -469,7 +476,16 @@ export default function Classes() {
         )}
 
         {/* Modal Form */}
-        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <Dialog
+          open={isModalOpen}
+          onOpenChange={async (open) => {
+            if (!open) {
+              const ok = await confirmIfDirty();
+              if (!ok) return;
+            }
+            setIsModalOpen(open);
+          }}
+        >
           <DialogContent className="max-w-lg p-0">
             <div className="border-b border-border px-6 py-4">
               <div className="flex items-start justify-between gap-3">
@@ -603,7 +619,10 @@ export default function Classes() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={async () => {
+                    const ok = await confirmIfDirty();
+                    if (ok) setIsModalOpen(false);
+                  }}
                   disabled={saving}
                 >
                   Batal

@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import api from '@/services/api';
-import { toast } from 'sonner';
+import { toastError, toastSuccess, toastSuccessMessage } from '@/lib/utils/toastMessage';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,13 +21,15 @@ import { getErrorMessage } from '@/lib/http/errorMessage';
 import AdminPageShell from '@/components/AdminPageShell';
 import AdminCard from '@/components/AdminCard';
 import PublicSiteProgramPreview from '@/components/publicSiteAdmin/PublicSiteProgramPreview';
-import { ClipboardList } from 'lucide-react';
+import { ClipboardList, Plus as PlusIcon } from 'lucide-react';
 import { CmsTabNav, type CmsTabItem } from '@/components/ui/CmsTabNav';
+import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
 import { CmsPublishTabs } from '@/components/ui/CmsPublishTabs';
 import { CmsEditorLayout } from '@/components/cms/CmsEditorLayout';
 import { CmsListToolbar } from '@/components/cms/CmsListToolbar';
 import { AdminContentTransition } from '@/components/admin/AdminContentTransition';
 import { useFormDirtyGuard } from '@/hooks/useFormDirtyGuard';
+import { LastSavedIndicator } from '@/components/admin/LastSavedIndicator';
 
 type PageTab = 'form' | 'list';
 const PAGE_TABS: readonly CmsTabItem<PageTab>[] = [
@@ -59,6 +61,7 @@ export default function PublicSitePrograms() {
   const [dateEnd, setDateEnd] = useState('');
   const [dirty, setDirty] = useState(false);
   const { confirmIfDirty } = useFormDirtyGuard(dirty);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
 
   const setFormDirty = useMemo(
     () => (updater: React.SetStateAction<typeof form>) => {
@@ -78,6 +81,7 @@ export default function PublicSitePrograms() {
   const resetForm = () => {
     setForm({});
     setDirty(false);
+    setLastSavedAt(null);
   };
   const resetDatesFromRange = (range: string) => {
     const raw = String(range ?? '').trim();
@@ -113,12 +117,12 @@ export default function PublicSitePrograms() {
     if (!deleteId) return;
     try {
       await api.delete(`/public-site/admin/programs/${deleteId}`);
-      toast.success('Berhasil dihapus');
+      toastSuccess('Berhasil dihapus');
       setIsDeleteOpen(false);
       setDeleteId(null);
       mutate();
     } catch (e: any) {
-      toast.error(getErrorMessage(e, 'Gagal menghapus'));
+      toastError(e, 'Gagal menghapus');
     }
   };
 
@@ -139,7 +143,7 @@ export default function PublicSitePrograms() {
           target: form.target,
           rationale: form.rationale,
         });
-        toast.success('Program kerja diperbarui');
+        toastSuccess('Program kerja diperbarui');
       } else {
         await api.post('/public-site/admin/programs', {
           title: form.title,
@@ -152,15 +156,16 @@ export default function PublicSitePrograms() {
           target: form.target,
           rationale: form.rationale,
         });
-        toast.success('Program kerja ditambahkan');
+        toastSuccess('Program kerja ditambahkan');
       }
+      setLastSavedAt(new Date());
       resetForm();
       setDateStart('');
       setDateEnd('');
       setPageTab('list');
       mutate();
     } catch (err: any) {
-      toast.error(getErrorMessage(err, 'Gagal menyimpan'));
+      toastError(err, 'Gagal menyimpan');
     }
   };
 
@@ -202,6 +207,11 @@ export default function PublicSitePrograms() {
               description="Isi detail program kerja."
             >
               <form onSubmit={upsert} className="space-y-4">
+                <LastSavedIndicator
+                  lastSavedAt={lastSavedAt}
+                  isDirty={dirty}
+                  isSaving={false}
+                />
                 <div className="space-y-2">
                   <Label>Judul</Label>
                   <Input
@@ -315,6 +325,31 @@ export default function PublicSitePrograms() {
               }}
             />
             <ul className="space-y-4 md:hidden" aria-label="Daftar program">
+              {programs.length === 0 ? (
+                <li>
+                  <AdminEmptyState
+                    compact
+                    icon={ClipboardList}
+                    title="Belum ada program"
+                    description="Tambahkan program kerja baru untuk memulai."
+                    action={
+                      <Button
+                        type="button"
+                        onClick={async () => {
+                          const ok = await confirmIfDirty();
+                          if (!ok) return;
+                          resetForm();
+                          setPageTab('form');
+                        }}
+                        className="min-h-11"
+                      >
+                        <PlusIcon className="mr-2 size-4" aria-hidden="true" />
+                        Tambah Program
+                      </Button>
+                    }
+                  />
+                </li>
+              ) : null}
               {programs.map((p) => (
                 <li key={p.id} className="rounded-2xl border border-border p-4">
                   <p className="font-bold text-foreground">{p.title}</p>
@@ -375,8 +410,29 @@ export default function PublicSitePrograms() {
                 <TableBody>
                   {programs.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="h-20 text-center text-muted-foreground">
-                        Belum ada program.
+                      <TableCell colSpan={4} className="p-0">
+                        <AdminEmptyState
+                          compact
+                          icon={ClipboardList}
+                          title="Belum ada program"
+                          description="Tambahkan program kerja baru untuk memulai."
+                          action={
+                            <Button
+                              type="button"
+                              onClick={async () => {
+                                const ok = await confirmIfDirty();
+                                if (!ok) return;
+                                resetForm();
+                                setPageTab('form');
+                              }}
+                              className="min-h-11"
+                            >
+                              <PlusIcon className="mr-2 size-4" aria-hidden="true" />
+                              Tambah Program
+                            </Button>
+                          }
+                          className="border-0 shadow-none"
+                        />
                       </TableCell>
                     </TableRow>
                   ) : (

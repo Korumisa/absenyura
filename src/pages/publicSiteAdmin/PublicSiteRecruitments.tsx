@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import api from '@/services/api';
-import { toast } from 'sonner';
+import { toastError, toastSuccess, toastSuccessMessage } from '@/lib/utils/toastMessage';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,13 +22,15 @@ import { prepareImageForUpload } from '@/lib/media/imageUpload';
 import AdminPageShell from '@/components/AdminPageShell';
 import AdminCard from '@/components/AdminCard';
 import PublicSiteRecruitmentPreview from '@/components/publicSiteAdmin/PublicSiteRecruitmentPreview';
-import { FileText } from 'lucide-react';
+import { FileText, Plus as PlusIcon } from 'lucide-react';
 import { CmsTabNav, type CmsTabItem } from '@/components/ui/CmsTabNav';
+import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
 import { CmsPublishTabs } from '@/components/ui/CmsPublishTabs';
 import { CmsEditorLayout } from '@/components/cms/CmsEditorLayout';
 import { CmsListToolbar } from '@/components/cms/CmsListToolbar';
 import { AdminContentTransition } from '@/components/admin/AdminContentTransition';
 import { useFormDirtyGuard } from '@/hooks/useFormDirtyGuard';
+import { LastSavedIndicator } from '@/components/admin/LastSavedIndicator';
 
 type PageTab = 'form' | 'list';
 type FormTab = 'info' | 'team';
@@ -54,8 +56,8 @@ export default function PublicSiteRecruitments() {
   const [pageTab, setPageTab] = useState<PageTab>('list');
   const [formTab, setFormTab] = useState<FormTab>('info');
 
-  type CommitteeDraft = { name: string; role: string };
-  type ContactDraft = { name: string; contact: string };
+  type CommitteeDraft = { name: string; role: string; _uuid: string };
+  type ContactDraft = { name: string; contact: string; _uuid: string };
   const [form, setForm] = useState<{
     id?: string;
     title?: string;
@@ -71,6 +73,7 @@ export default function PublicSiteRecruitments() {
   const [uploadingPoster, setUploadingPoster] = useState(false);
   const [dirty, setDirty] = useState(false);
   const { confirmIfDirty } = useFormDirtyGuard(dirty);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
 
   const setFormDirty = useMemo(
     () => (updater: React.SetStateAction<typeof form>) => {
@@ -90,6 +93,7 @@ export default function PublicSiteRecruitments() {
   const resetForm = () => {
     setForm({ committee: [], contacts: [] });
     setDirty(false);
+    setLastSavedAt(null);
   };
   const resetDatesFromRange = (range: string) => {
     const raw = String(range ?? '').trim();
@@ -139,7 +143,7 @@ export default function PublicSiteRecruitments() {
     e.preventDefault();
     const publishErr = validatePublish();
     if (publishErr) {
-      toast.error(publishErr);
+      toastError(null, publishErr);
       return;
     }
     try {
@@ -166,7 +170,7 @@ export default function PublicSiteRecruitments() {
           committee,
           contacts,
         });
-        toast.success('Open recruitment diperbarui');
+        toastSuccess('Open recruitment diperbarui');
       } else {
         await api.post('/public-site/admin/recruitments', {
           title: form.title,
@@ -178,15 +182,16 @@ export default function PublicSiteRecruitments() {
           committee,
           contacts,
         });
-        toast.success('Open recruitment ditambahkan');
+        toastSuccess('Open recruitment ditambahkan');
       }
+      setLastSavedAt(new Date());
       resetForm();
       setDateStart('');
       setDateEnd('');
       setPageTab('list');
       mutate();
     } catch (err: any) {
-      toast.error(getErrorMessage(err, 'Gagal menyimpan'));
+      toastError(err, 'Gagal menyimpan');
     }
   };
 
@@ -203,12 +208,12 @@ export default function PublicSiteRecruitments() {
     if (!deleteId) return;
     try {
       await api.delete(`/public-site/admin/recruitments/${deleteId}`);
-      toast.success('Berhasil dihapus');
+      toastSuccess('Berhasil dihapus');
       setIsDeleteOpen(false);
       setDeleteId(null);
       mutate();
     } catch (e: any) {
-      toast.error(getErrorMessage(e, 'Gagal menghapus'));
+      toastError(e, 'Gagal menghapus');
     }
   };
 
@@ -220,8 +225,8 @@ export default function PublicSiteRecruitments() {
       formUrl: r.form_url ?? '',
       posterImageUrl: r.poster_image_url ?? '',
       isPublished: r.is_published,
-      committee: (r.committee ?? []).map((x) => ({ name: x.name, role: x.role })),
-      contacts: (r.contacts ?? []).map((x) => ({ name: x.name, contact: x.contact })),
+      committee: (r.committee ?? []).map((x) => ({ name: x.name, role: x.role, _uuid: crypto.randomUUID() })),
+      contacts: (r.contacts ?? []).map((x) => ({ name: x.name, contact: x.contact, _uuid: crypto.randomUUID() })),
     });
     resetDatesFromRange(r.date_range ?? '');
     setDirty(false);
@@ -267,6 +272,11 @@ export default function PublicSiteRecruitments() {
               description="Informasi umum dan data panitia."
             >
               <form onSubmit={upsert} className="space-y-5">
+                <LastSavedIndicator
+                  lastSavedAt={lastSavedAt}
+                  isDirty={dirty}
+                  isSaving={false}
+                />
                 <CmsTabNav<FormTab>
                   tabs={FORM_TABS}
                   value={formTab}
@@ -344,9 +354,9 @@ export default function PublicSiteRecruitments() {
                             try {
                               const url = await uploadImage(file);
                               setFormDirty((p) => ({ ...p, posterImageUrl: url }));
-                              toast.success('Upload poster berhasil');
+                              toastSuccess('Upload poster berhasil');
                             } catch (err: any) {
-                              toast.error(getErrorMessage(err, 'Gagal upload poster'));
+                              toastError(err, 'Gagal upload poster');
                             } finally {
                               setUploadingPoster(false);
                               e.currentTarget.value = '';
@@ -438,7 +448,7 @@ export default function PublicSiteRecruitments() {
                         onClick={() =>
                           setFormDirty((p) => ({
                             ...p,
-                            committee: [...(p.committee ?? []), { name: '', role: '' }],
+                            committee: [...(p.committee ?? []), { name: '', role: '', _uuid: crypto.randomUUID() }],
                           }))
                         }
                       >
@@ -452,7 +462,7 @@ export default function PublicSiteRecruitments() {
                     ) : (
                       <div className="space-y-3">
                         {(form.committee ?? []).map((c, idx) => (
-                          <div key={idx} className="grid gap-3 md:grid-cols-2">
+                          <div key={c._uuid} className="grid gap-3 md:grid-cols-2">
                             <Input
                               value={c.name}
                               onChange={(e) =>
@@ -508,7 +518,7 @@ export default function PublicSiteRecruitments() {
                         onClick={() =>
                           setFormDirty((p) => ({
                             ...p,
-                            contacts: [...(p.contacts ?? []), { name: '', contact: '' }],
+                            contacts: [...(p.contacts ?? []), { name: '', contact: '', _uuid: crypto.randomUUID() }],
                           }))
                         }
                       >
@@ -522,7 +532,7 @@ export default function PublicSiteRecruitments() {
                     ) : (
                       <div className="space-y-3">
                         {(form.contacts ?? []).map((c, idx) => (
-                          <div key={idx} className="grid gap-3 md:grid-cols-2">
+                          <div key={c._uuid} className="grid gap-3 md:grid-cols-2">
                             <Input
                               value={c.name}
                               onChange={(e) =>
@@ -615,8 +625,31 @@ export default function PublicSiteRecruitments() {
             />
             <ul className="space-y-4 md:hidden" aria-label="Daftar recruitment">
               {recruitments.length === 0 ? (
-                <li className="py-8 text-center text-sm text-muted-foreground">
-                  Belum ada recruitment.
+                <li>
+                  <AdminEmptyState
+                    compact
+                    icon={FileText}
+                    title="Belum ada lowongan"
+                    description="Tambahkan lowongan open recruitment baru untuk memulai."
+                    action={
+                      <Button
+                        type="button"
+                        onClick={async () => {
+                          const ok = await confirmIfDirty();
+                          if (!ok) return;
+                          resetForm();
+                          setDateStart('');
+                          setDateEnd('');
+                          setFormTab('info');
+                          setPageTab('form');
+                        }}
+                        className="min-h-11"
+                      >
+                        <PlusIcon className="mr-2 size-4" aria-hidden="true" />
+                        Tambah Lowongan
+                      </Button>
+                    }
+                  />
                 </li>
               ) : null}
               {recruitments.map((r) => (
@@ -665,8 +698,32 @@ export default function PublicSiteRecruitments() {
                 <TableBody>
                   {recruitments.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="py-10 text-center text-muted-foreground">
-                        Belum ada recruitment.
+                      <TableCell colSpan={4} className="p-0">
+                        <AdminEmptyState
+                          compact
+                          icon={FileText}
+                          title="Belum ada lowongan"
+                          description="Tambahkan lowongan open recruitment baru untuk memulai."
+                          action={
+                            <Button
+                              type="button"
+                              onClick={async () => {
+                                const ok = await confirmIfDirty();
+                                if (!ok) return;
+                                resetForm();
+                                setDateStart('');
+                                setDateEnd('');
+                                setFormTab('info');
+                                setPageTab('form');
+                              }}
+                              className="min-h-11"
+                            >
+                              <PlusIcon className="mr-2 size-4" aria-hidden="true" />
+                              Tambah Lowongan
+                            </Button>
+                          }
+                          className="border-0 shadow-none"
+                        />
                       </TableCell>
                     </TableRow>
                   ) : null}
