@@ -29,7 +29,7 @@ export function LastSavedIndicator({
       <Badge
         variant="outline"
         className={cn(
-          'border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200',
+          'smooth-state-toggle border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200',
           className
         )}
         aria-live="polite"
@@ -48,7 +48,7 @@ export function LastSavedIndicator({
       <Badge
         variant="outline"
         className={cn(
-          'border-sky-300 bg-sky-50 text-sky-800 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-200',
+          'smooth-state-toggle border-sky-300 bg-sky-50 text-sky-800 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-200',
           className
         )}
       >
@@ -71,7 +71,7 @@ export function LastSavedIndicator({
     <Badge
       variant="outline"
       className={cn(
-        'border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200',
+        'smooth-state-toggle border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200',
         className
       )}
       aria-live="polite"

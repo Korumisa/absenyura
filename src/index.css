@@ -2,6 +2,22 @@
 @tailwind components;
 @tailwind utilities;
 
+/* [IDE3] Signature tagline fade-in anim — dipakai di Home cabinet filosofis section
+   (PublicHome.tsx). Fade opacity 0 → 1 dengan subtle translateY lift agar tagline
+   tampil muncul saat user toggle antar periode kabinet. */
+@keyframes taglineFadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+    filter: blur(4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
 @layer base {
   :root {
     /* [TOKEN] Design tokens — admin & publik */
@@ -101,6 +117,99 @@
   :focus-visible {
     outline: 2px solid hsl(var(--ring));
     outline-offset: 2px;
+  }
+}
+
+@layer components {
+  /* ═══════════════════════════════════════════════════════════════════════
+   * [ANIM SYSTEM] Reusable animation primitives — diadaptasi dari pola
+   * taglineFadeIn dan public-enter yang sudah ADA.
+   * RULES PERFORMA & A11Y WAJIB DIPATUHI:
+   * 1. HANYA animasikan transform + opacity + filter → compositor GPU
+   *    (TIDAK boleh animasikan width/height/top/color → paint/layout INP buruk!)
+   * 2. Guard prefers-reduced-motion GLOBAL sudah aktif line 178-188 — semua
+   *    animasi class di-bawah ini otomatis disabled 0.01ms untuk user yg pilih.
+   * 3. JANGAN pakai anim ini di HERO / above-the-fold / LCP section —
+   *    hanya untuk below-fold konten agar LCP & CLS score 0 impact.
+   * ═══════════════════════════════════════════════════════════════════════ */
+
+  /* ── 1) card-hover-lift: Micro-interaction hover card universal
+   *    Dipakai: AdminCard (semua halaman admin CMS), StatCard Dashboard,
+   *             Location cards, Public feature cards.
+   *    Props disesuaikan: durasi pendek 220ms, easing cubic-bezier
+   *    natural, translateY 2px lift, shadow ring-1 subtle — tidak norak. */
+  .card-hover-lift {
+    transition:
+      transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 220ms cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: transform;
+    transform: translateZ(0);
+  }
+  .card-hover-lift:hover {
+    transform: translateY(-2px) translateZ(0);
+    box-shadow:
+      0 12px 24px -12px hsl(222.2 47.4% 11.2% / 0.12),
+      0 2px 6px -2px hsl(222.2 47.4% 11.2% / 0.06);
+  }
+  .card-hover-lift:active {
+    transform: translateY(0) scale(0.995);
+  }
+
+  /* ── 2) reveal-scroll: Reveal element saat masuk viewport
+   *    Dipakai: StatCard Dashboard, section PublicHome About/Timeline,
+   *             card list CMS.
+   *    Kombinasi taglineFadeIn (blur 4px→0) + public-enter (translate 14px).
+   *    DIPASANGKAN dengan useInView() hook — aktifkan `reveal-scroll-visible`
+   *    saat IntersectionObserver fire triggerOnce. */
+  .reveal-scroll {
+    opacity: 0;
+    transform: translateY(14px) translateZ(0);
+    filter: blur(3px);
+    transition:
+      opacity 460ms cubic-bezier(0.22, 1, 0.36, 1),
+      transform 460ms cubic-bezier(0.22, 1, 0.36, 1),
+      filter 460ms cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: transform, opacity, filter;
+  }
+  .reveal-scroll-visible {
+    opacity: 1;
+    transform: translateY(0) translateZ(0);
+    filter: blur(0);
+  }
+
+  /* ── 3) stagger-reveal-{1..6}: Stagger child delay untuk grid/list
+   *    Urutan delay: 80ms per increment (tidak terlalu lambat, tidak cepet).
+   *    Dipasang pada setiap child di dalam grid (contoh: 4 Dashboard stat
+   *    cards pakai stagger 1-4). */
+  .reveal-scroll.stagger-reveal-1 {
+    transition-delay: 60ms;
+  }
+  .reveal-scroll.stagger-reveal-2 {
+    transition-delay: 140ms;
+  }
+  .reveal-scroll.stagger-reveal-3 {
+    transition-delay: 220ms;
+  }
+  .reveal-scroll.stagger-reveal-4 {
+    transition-delay: 300ms;
+  }
+  .reveal-scroll.stagger-reveal-5 {
+    transition-delay: 380ms;
+  }
+  .reveal-scroll.stagger-reveal-6 {
+    transition-delay: 460ms;
+  }
+
+  /* ── 4) smooth-state-toggle: Transition antar state badge/indicator
+   *    Dipakai: LastSavedIndicator (dirty ↔ saving ↔ saved state toggle),
+   *             Badge status color swap, form error banner show/hide.
+   *    Mencegah FOUC / flicker saat React re-render status berbeda. */
+  .smooth-state-toggle {
+    transition:
+      transform 200ms cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 200ms cubic-bezier(0.22, 1, 0.36, 1),
+      background-color 200ms ease,
+      border-color 200ms ease;
   }
 }
 

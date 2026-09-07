@@ -22,6 +22,7 @@ import { AttendanceChartSkeleton } from '@/components/charts/AttendanceChartSkel
 import { type ChartFilterValue } from '@/lib/utils/attendanceChartTheme';
 import { cn } from '@/lib/utils/utils';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
+import { useInView } from '@/hooks/useInView';
 
 const DashboardAttendanceBarChart = lazy(
   () => import('@/components/charts/DashboardAttendanceBarChart')
@@ -112,6 +113,13 @@ export default function Dashboard() {
   const [chartFilter, setChartFilter] = useState('ALL');
 
   const [dateRange, setDateRange] = useState('30');
+
+  /* [ANIM] useInView hooks — DIPASANG di top-level component body
+   * (RULES OF HOOKS: JANGAN pernah panggil hook di dalam map/loop/if/IIFE).
+   * TriggerOnce=true default → animasi reveal 1x saja saat masuk viewport,
+   * tidak recalc saat scroll bolak-balik (hemat CPU + INP score aman). */
+  const statsGridInView = useInView<HTMLDivElement>();
+  const statsGrid = statsGridInView;
 
   const fetcher = (url: string) => api.get(url).then((res) => res.data.data);
   const swr = useSWR(user?.id ? `/dashboard?range=${dateRange}` : null, fetcher, {
@@ -227,16 +235,35 @@ export default function Dashboard() {
               excused: 0,
               percentage: 0,
             };
+            /* [ANIM] Gunakan useInView yang sudah di-init di TOP-LEVEL component
+             * body (RULES OF HOOKS COMPLIANT). triggerOnce=true. */
+            const on = statsGrid.inView ? 'reveal-scroll-visible' : '';
             return (
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-                <div className="bg-card text-card-foreground p-4 sm:p-6 rounded-3xl border border-border shadow-sm hover:shadow-md transition-shadow group">
+              <div
+                ref={statsGrid.ref}
+                className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6"
+                aria-label="Ringkasan statistik kehadiran"
+              >
+                <div
+                  className={cn(
+                    'reveal-scroll stagger-reveal-1 card-hover-lift',
+                    on,
+                    'bg-card text-card-foreground p-4 sm:p-6 rounded-3xl border border-border shadow-sm hover:shadow-md group'
+                  )}
+                >
                   <div className="size-12 bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center text-brand text-brand mb-4 group-hover:scale-110 transition-transform">
                     <Calendar size={24} />
                   </div>
                   <p className="text-sm text-muted-foreground font-medium mb-1">Total Sesi</p>
                   <p className="text-3xl font-extrabold text-foreground">{stats.total}</p>
                 </div>
-                <div className="bg-card text-card-foreground p-4 sm:p-6 rounded-3xl border border-border shadow-sm hover:shadow-md transition-shadow group">
+                <div
+                  className={cn(
+                    'reveal-scroll stagger-reveal-2 card-hover-lift',
+                    on,
+                    'bg-card text-card-foreground p-4 sm:p-6 rounded-3xl border border-border shadow-sm hover:shadow-md group'
+                  )}
+                >
                   <div className="size-12 bg-emerald-50 dark:bg-emerald-900/30 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 mb-4 group-hover:scale-110 transition-transform">
                     <CheckCircle2 size={24} />
                   </div>
@@ -245,7 +272,13 @@ export default function Dashboard() {
                   </p>
                   <p className="text-3xl font-extrabold text-foreground">{stats.present}</p>
                 </div>
-                <div className="bg-card text-card-foreground p-4 sm:p-6 rounded-3xl border border-border shadow-sm hover:shadow-md transition-shadow group">
+                <div
+                  className={cn(
+                    'reveal-scroll stagger-reveal-3 card-hover-lift',
+                    on,
+                    'bg-card text-card-foreground p-4 sm:p-6 rounded-3xl border border-border shadow-sm hover:shadow-md group'
+                  )}
+                >
                   <div className="size-12 bg-amber-50 dark:bg-amber-900/30 rounded-2xl flex items-center justify-center text-amber-600 dark:text-amber-400 mb-4 group-hover:scale-110 transition-transform">
                     <FileText size={24} />
                   </div>
@@ -257,7 +290,13 @@ export default function Dashboard() {
                   </h3>
                 </div>
 
-                <div className="bg-card text-card-foreground p-4 sm:p-6 rounded-3xl border border-border shadow-sm hover:shadow-md transition-shadow group">
+                <div
+                  className={cn(
+                    'reveal-scroll stagger-reveal-4 card-hover-lift',
+                    on,
+                    'bg-card text-card-foreground p-4 sm:p-6 rounded-3xl border border-border shadow-sm hover:shadow-md group'
+                  )}
+                >
                   <div className="size-12 bg-blue-50 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center text-blue-600 dark:text-blue-400 mb-4 group-hover:scale-110 transition-transform">
                     <BarChart3 size={24} />
                   </div>

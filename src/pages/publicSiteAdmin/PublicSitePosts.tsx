@@ -699,7 +699,8 @@ export default function PublicSitePosts() {
                       type="file"
                       accept="image/*"
                       onChange={async (e) => {
-                        const file = e.target.files?.[0];
+                        const inputEl = e.currentTarget;
+                        const file = inputEl.files?.[0];
                         if (!file) return;
                         try {
                           const url = await uploadImage(file);
@@ -708,7 +709,7 @@ export default function PublicSitePosts() {
                         } catch (err: any) {
                           toast.error(getErrorMessage(err, 'Gagal upload'));
                         } finally {
-                          e.target.value = '';
+                          inputEl.value = '';
                         }
                       }}
                       aria-describedby={ariaDescribedBy}

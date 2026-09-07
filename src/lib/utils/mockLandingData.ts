@@ -122,12 +122,16 @@ const publicStructureCabinet: {
   period: string;
   is_active: boolean;
   groups: PublicStructureGroup[];
+  tagline: string;
+  motto: string;
 } = {
   id: 'mock-cabinet-1',
   name: 'Kabinet Sinergi Nirmala',
   period: '2025/2026',
   is_active: true,
   groups: [],
+  tagline: 'Atma Siddhi Wiweka',
+  motto: 'Sinergi, Karya, dan Prestasi untuk Nusa',
 };
 
 const publicStructureCabinet2: typeof publicStructureCabinet = {
@@ -136,6 +140,8 @@ const publicStructureCabinet2: typeof publicStructureCabinet = {
   period: '2024/2025',
   is_active: false,
   groups: [],
+  tagline: 'Arkatama Abhipraya',
+  motto: 'Restorasi Jiwa Organisasi & Keadilan Intelektual',
 };
 
 export const mockAllCabinets = [publicStructureCabinet, publicStructureCabinet2];

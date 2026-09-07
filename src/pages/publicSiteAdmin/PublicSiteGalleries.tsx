@@ -97,7 +97,10 @@ export default function PublicSiteGalleries() {
       for (const f of list) uploaded.push(await uploadImage(f));
       setFormDirty((p) => ({
         ...p,
-        items: [...(p.items ?? []), ...uploaded.map((url) => ({ imageUrl: url, caption: '', _uuid: crypto.randomUUID() }))],
+        items: [
+          ...(p.items ?? []),
+          ...uploaded.map((url) => ({ imageUrl: url, caption: '', _uuid: crypto.randomUUID() })),
+        ],
       }));
       toastSuccess('Foto berhasil ditambahkan');
     } catch (e: any) {
@@ -233,7 +236,10 @@ export default function PublicSiteGalleries() {
                       onClick={() =>
                         setFormDirty((p) => ({
                           ...p,
-                          items: [...(p.items ?? []), { imageUrl: '', caption: '', _uuid: crypto.randomUUID() }],
+                          items: [
+                            ...(p.items ?? []),
+                            { imageUrl: '', caption: '', _uuid: crypto.randomUUID() },
+                          ],
                         }))
                       }
                     >
@@ -250,10 +256,11 @@ export default function PublicSiteGalleries() {
                       multiple
                       disabled={uploading}
                       onChange={async (e) => {
-                        const files = e.target.files;
+                        const inputEl = e.currentTarget;
+                        const files = inputEl.files;
                         if (!files || !files.length) return;
                         await appendItemsFromFiles(files);
-                        e.target.value = '';
+                        inputEl.value = '';
                       }}
                     />
                   </div>
@@ -265,7 +272,10 @@ export default function PublicSiteGalleries() {
                   ) : (
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                       {(form.items ?? []).map((it, idx) => (
-                        <div key={it._uuid} className="rounded-xl border border-border bg-muted/30 p-3">
+                        <div
+                          key={it._uuid}
+                          className="rounded-xl border border-border bg-muted/30 p-3"
+                        >
                           <div className="aspect-video w-full overflow-hidden rounded-lg bg-slate-100 bg-background">
                             {it.imageUrl ? (
                               <img
@@ -352,11 +362,7 @@ export default function PublicSiteGalleries() {
                   )}
                 </div>
                 <div className="flex flex-col-reverse gap-4 pt-2 sm:flex-row sm:items-center sm:justify-between">
-                  <LastSavedIndicator
-                    lastSavedAt={lastSavedAt}
-                    isDirty={dirty}
-                    isSaving={saving}
-                  />
+                  <LastSavedIndicator lastSavedAt={lastSavedAt} isDirty={dirty} isSaving={saving} />
                   <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                     <Button
                       type="button"
@@ -367,7 +373,12 @@ export default function PublicSiteGalleries() {
                       Kembali ke daftar
                     </Button>
                     {form.id ? (
-                      <Button variant="ghost" type="button" className="min-h-11" onClick={resetForm}>
+                      <Button
+                        variant="ghost"
+                        type="button"
+                        className="min-h-11"
+                        onClick={resetForm}
+                      >
                         Reset
                       </Button>
                     ) : null}

@@ -371,7 +371,7 @@ export default function PublicHome() {
 
           {/* Cabinet Switcher */}
           {allCabinets.length > 1 && (
-            <section className="relative bg-slate-50/70 py-5">
+            <section className="relative bg-slate-50/70 py-5 pt-10 sm:pt-14">
               <div className="mx-auto max-w-7xl px-4 sm:px-6">
                 <div
                   role="tablist"
@@ -402,6 +402,44 @@ export default function PublicHome() {
                     );
                   })}
                 </div>
+
+                {/* ── IDE 3: Signature Tagline Kabinet + Filosofi Logo ─── */}
+                {/* Setiap periode kabinet punya identitas filosofis unik (nama    */}
+                {/* tagline + motto). Render dengan gradien ungu→emas, italic      */}
+                {/* serif, dan prefix Unicode ✦ (asterate ornamental) yang identik */}
+                {/* dengan footer profile tagline "Atma Siddhi Wiweka".            */}
+                {selectedCabinet?.tagline || selectedCabinet?.motto ? (
+                  <div
+                    key={`tagline-${selectedCabinet?.id ?? 'default'}`}
+                    className="mx-auto mt-6 max-w-4xl text-center"
+                    style={{ animation: 'taglineFadeIn 520ms ease-out both' }}
+                  >
+                    {selectedCabinet?.tagline ? (
+                      <p
+                        className="font-serif text-xl italic font-medium leading-tight sm:text-2xl md:text-3xl"
+                        style={{
+                          backgroundImage:
+                            'linear-gradient(135deg, #7c3aed 0%, #a855f7 35%, #d4af37 70%, #b8860b 100%)',
+                          WebkitBackgroundClip: 'text',
+                          backgroundClip: 'text',
+                          WebkitTextFillColor: 'transparent',
+                          color: 'transparent',
+                          textShadow: '0 1px 1px rgba(124,58,237,0.08)',
+                        }}
+                      >
+                        <span className="mr-2 select-none opacity-70">✦</span>
+                        {String(selectedCabinet.tagline)}
+                        <span className="ml-2 select-none opacity-70">✦</span>
+                      </p>
+                    ) : null}
+                    {selectedCabinet?.motto ? (
+                      <p className="mt-2 text-sm italic text-slate-600 sm:text-base md:text-[15px]">
+                        {String(selectedCabinet.motto)}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+
                 {kabinetName ? (
                   <div className="mx-auto mt-4 max-w-3xl text-center">
                     <p className="text-sm font-medium text-muted-foreground">

@@ -16,7 +16,7 @@ import { ConfirmModal } from '@/components/ConfirmModal';
 import AdminPageShell from '@/components/AdminPageShell';
 import AdminCard from '@/components/AdminCard';
 import PublicSiteProfilePreview from '@/components/publicSiteAdmin/PublicSiteProfilePreview';
-import { Globe } from 'lucide-react';
+import { AlertTriangle, Globe, Info } from 'lucide-react';
 import { cn } from '@/lib/utils/utils';
 import { CmsTabNav, type CmsTabItem } from '@/components/ui/CmsTabNav';
 import { CmsEditorLayout } from '@/components/cms/CmsEditorLayout';
@@ -120,8 +120,11 @@ export default function PublicSiteProfile() {
 
   const [dirty, setDirty] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  type SectionValidationError = { id: string; label: string; hint: string; tab: ProfileTab };
+  const [validationErrors, setValidationErrors] = useState<SectionValidationError[]>([]);
   const updateDraft = (updater: React.SetStateAction<Draft>) => {
     setDirty(true);
+    setValidationErrors([]);
     setDraft(updater);
   };
 
@@ -194,79 +197,125 @@ export default function PublicSiteProfile() {
     return res.data.data.url as string;
   };
 
-  const CMS_SECTIONS: readonly { id: string; label: string; validate: (d: Draft) => boolean }[] = [
+  const CMS_SECTIONS: readonly {
+    id: string;
+    label: string;
+    tab: ProfileTab;
+    validate: (d: Draft) => boolean;
+    errorHint: (d: Draft) => string;
+  }[] = [
     {
       id: 'identity',
       label: 'Identitas',
+      tab: 'identity',
       validate: (d) => d.orgName.trim().length > 0,
+      errorHint: () =>
+        'Kolom "Nama Organisasi" tidak boleh kosong. Harus diisi minimal 1 karakter.',
     },
     {
       id: 'home',
       label: 'Beranda',
+      tab: 'home',
       validate: (d) => d.heroSubtitle.trim().length > 0 || d.aboutTitle.trim().length > 0,
+      errorHint: () =>
+        'Tab Beranda: Minimal isi "Hero Subtitle" ATAU "Judul Tentang (About Title)". Keduanya tidak boleh kosong bersamaan.',
     },
     {
       id: 'homeCards',
       label: 'Kartu Beranda',
+      tab: 'home',
       validate: () => true,
+      errorHint: () => 'Kartu kiri & kanan bersifat opsional, selalu dianggap valid.',
     },
     {
       id: 'visimisi',
       label: 'Visi & Misi',
+      tab: 'visimisi',
       validate: (d) => d.vision.trim().length > 0 || d.mission.trim().length > 0,
+      errorHint: () =>
+        'Tab Visi & Misi: Minimal isi kolom "Visi" ATAU "Misi". Keduanya tidak boleh kosong bersamaan.',
     },
     {
       id: 'contact',
       label: 'Kontak',
+      tab: 'contact',
       validate: (d) =>
         d.email.trim().length > 0 || d.phone.trim().length > 0 || d.address.trim().length > 0,
+      errorHint: () =>
+        'Tab Kontak & Sosial: Minimal isi salah satu dari 3 kolom: "Alamat Email", "Nomor Telepon", atau "Alamat Kantor".',
     },
     {
       id: 'logo',
       label: 'Logo',
+      tab: 'identity',
       validate: () => true,
+      errorHint: () => 'Logo bersifat opsional, selalu dianggap valid.',
     },
   ] as const;
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      const sectionResults = await Promise.allSettled(
-        CMS_SECTIONS.map(
-          (section) =>
-            new Promise<string>((resolve, reject) => {
-              window.setTimeout(() => {
-                if (section.validate(draft)) {
-                  resolve(section.label);
-                } else {
-                  reject(new Error(section.label));
-                }
-              }, 0);
-            })
-        )
-      );
+      // ── STEP 1: SYNC client-side validation (NO FAKE setTimeout) ──
+      // Loop 6 CMS sections, untuk setiap section yang validate()=false
+      // kumpulkan error HINT yang SPESIFIK (bukan cuma nama section!)
+      // + mapping tab mana user harus buka untuk memperbaiki.
+      const sectionResults = CMS_SECTIONS.map((section) => {
+        const ok = section.validate(draft);
+        return {
+          id: section.id,
+          label: section.label,
+          tab: section.tab,
+          ok,
+          hint: ok ? '' : section.errorHint(draft),
+        };
+      });
 
-      const successes = sectionResults.filter((r) => r.status === 'fulfilled');
-      const failures = sectionResults.filter((r) => r.status === 'rejected');
-      const failedLabels = failures
-        .map((r) => (r as PromiseRejectedResult).reason?.message)
-        .filter(Boolean) as string[];
+      const successes = sectionResults.filter((r) => r.ok);
+      const failures = sectionResults.filter((r) => !r.ok);
 
       if (failures.length > 0) {
-        const failureMsg = `${successes.length} bagian tersimpan, ${failures.length} gagal: ${failedLabels.join(', ')}`;
-        toastError(null, failureMsg);
+        // ── VALIDASI GAGAL: BERI PESAN YANG INFORMATIF SEKALI ──
+        // (1) Simpan error array agar banner inline muncul
+        setValidationErrors(failures as SectionValidationError[]);
+        // (2) Auto-jump user ke TAB PERTAMA yang ada error (tidak usah cari-cari)
+        const firstFailed = failures[0];
+        if (firstFailed) setProfileTab(firstFailed.tab as ProfileTab);
+        // (3) Toast ERROR structured: nama section + pesan hint field mana yang kurang
+        const failureList = failures
+          .map((f, idx) => `${idx + 1}. [${f.label}] ${f.hint}`)
+          .join('\n');
+        const summary = `${successes.length} bagian siap, ${failures.length} bagian butuh perbaikan sebelum simpan:`;
+        // Pakai toast.error panjang (bisa multi-line untuk list)
+        toastError(null, `${summary}\n${failureList}`);
         return;
       }
 
+      // ── STEP 2: VALIDASI 100% LULUS → HANYA SEKARANG KIRIM KE SERVER ──
+      // (Dulu: ada bug return sebelum api.put, save never runs kalau 1 section invalid!)
+      setValidationErrors([]);
       await api.put('/public-site/admin/profile', { data: draft });
-      toastSuccess(
-        `${successes.length} bagian tersimpan, ${failures.length} gagal${failedLabels.length ? `: ${failedLabels.join(', ')}` : ''}`
-      );
+      toastSuccess(`${CMS_SECTIONS.length} bagian profil berhasil tersimpan ke server.`);
       setLastSavedAt(new Date());
+      // ⚠️ PALING PENTING: dirty=false HANYA SETELAH server confirm 200 OK
+      // Ini menghilangkan false-positive "Perubahan belum disimpan" dialog
+      // yang dulu muncul setiap user pindah section meskipun sudah tekan Simpan.
       setDirty(false);
       mutate();
     } catch (e: any) {
-      toastError(e, 'Gagal menyimpan');
+      // ── STEP 3: ERROR HANDLING STRUCTURED untuk server / network / auth
+      // Gunakan getErrorMessage yang sudah punya pesan human-friendly:
+      // • ERR_NETWORK / ERR_CANCELED → gangguan koneksi
+      // • 401 Unauthorized → sesi masuk habis
+      // • 403 Forbidden → tidak punya akses (CONTENT_ADMIN)
+      // • 413 Payload Too Large → file foto/logo terlalu besar >5MB
+      // • 422 Unprocessable → validasi server (misal email format salah)
+      // • 500+ Internal Server Error → database / prisma gangguan
+      const structuredMsg = getErrorMessage(
+        e,
+        'Gagal menyimpan data profil ke server. Silakan coba lagi.'
+      );
+      toastError(e, structuredMsg);
     } finally {
       setSaving(false);
     }
@@ -360,6 +409,74 @@ export default function PublicSiteProfile() {
               }}
               ariaLabel="Bagian profil"
             />
+
+            {/* ── Inline Validation Errors Banner (spesifik per-section hints) ─ */}
+            {validationErrors.length > 0 ? (
+              <div
+                role="alert"
+                aria-live="polite"
+                className="mt-5 rounded-2xl border-2 border-red-200 bg-gradient-to-br from-red-50 to-rose-50 p-5 shadow-sm dark:border-red-900/60 dark:from-red-950/40 dark:to-rose-950/30"
+              >
+                <div className="flex flex-wrap items-start gap-3">
+                  <div className="flex h-10 w-10 flex-none items-center justify-center rounded-xl bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-300">
+                    <AlertTriangle size={22} aria-hidden="true" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-base font-bold text-red-900 dark:text-red-100">
+                      Data belum lengkap — {validationErrors.length} bagian perlu diperbaiki sebelum
+                      simpan
+                    </h3>
+                    <p className="mt-1 text-sm text-red-700/85 dark:text-red-200/85">
+                      Tekan tombol &quot;Langsung perbaiki&quot; di bawah untuk berpindah ke tab
+                      yang bersangkutan.
+                    </p>
+                    <ul className="mt-4 space-y-3">
+                      {validationErrors.map((err) => {
+                        const tabInfo = PROFILE_TABS.find((t) => t.id === err.tab);
+                        return (
+                          <li
+                            key={err.id}
+                            className="flex flex-wrap items-start gap-3 rounded-xl border border-red-100 bg-white/60 p-3 backdrop-blur-sm dark:border-red-900/30 dark:bg-black/20"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-red-700 dark:bg-red-900/50 dark:text-red-200">
+                                  <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+                                  Bagian {err.label}
+                                </span>
+                                {tabInfo ? (
+                                  <span className="text-xs font-medium text-red-600/75 dark:text-red-300/75">
+                                    (Tab: {tabInfo.label})
+                                  </span>
+                                ) : null}
+                              </div>
+                              <p className="mt-2 text-sm text-red-800/90 dark:text-red-100/90">
+                                {err.hint}
+                              </p>
+                            </div>
+                            {tabInfo && (
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  const ok = profileTab === err.tab ? true : await confirmIfDirty();
+                                  if (ok) {
+                                    setProfileTab(err.tab);
+                                  }
+                                }}
+                                className="inline-flex flex-none items-center gap-1.5 rounded-xl bg-red-600 px-3.5 py-2 text-xs font-semibold text-white shadow-[0_6px_14px_rgba(220,38,38,0.28)] transition hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2"
+                              >
+                                Langsung perbaiki
+                                <span aria-hidden="true">→</span>
+                              </button>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            ) : null}
 
             <AdminContentTransition contentKey={profileTab}>
               <div
@@ -583,7 +700,8 @@ export default function PublicSiteProfile() {
                           className="hidden"
                           disabled={uploading.home || uploading.light || uploading.dark}
                           onChange={async (e) => {
-                            const file = e.currentTarget.files?.[0];
+                            const inputEl = e.currentTarget;
+                            const file = inputEl.files?.[0];
                             if (!file) return;
                             setUploading((x) => ({ ...x, home: true }));
                             try {
@@ -594,7 +712,7 @@ export default function PublicSiteProfile() {
                               toastError(err, 'Gagal upload');
                             } finally {
                               setUploading((x) => ({ ...x, home: false }));
-                              e.currentTarget.value = '';
+                              inputEl.value = '';
                             }
                           }}
                         />
@@ -716,7 +834,8 @@ export default function PublicSiteProfile() {
                             uploading.misi
                           }
                           onChange={async (e) => {
-                            const file = e.currentTarget.files?.[0];
+                            const inputEl = e.currentTarget;
+                            const file = inputEl.files?.[0];
                             if (!file) return;
                             setUploading((x) => ({ ...x, visi: true }));
                             try {
@@ -727,7 +846,7 @@ export default function PublicSiteProfile() {
                               toastError(err, 'Gagal upload');
                             } finally {
                               setUploading((x) => ({ ...x, visi: false }));
-                              e.currentTarget.value = '';
+                              inputEl.value = '';
                             }
                           }}
                         />
@@ -830,7 +949,8 @@ export default function PublicSiteProfile() {
                             uploading.visi
                           }
                           onChange={async (e) => {
-                            const file = e.currentTarget.files?.[0];
+                            const inputEl = e.currentTarget;
+                            const file = inputEl.files?.[0];
                             if (!file) return;
                             setUploading((x) => ({ ...x, misi: true }));
                             try {
@@ -841,7 +961,7 @@ export default function PublicSiteProfile() {
                               toastError(err, 'Gagal upload');
                             } finally {
                               setUploading((x) => ({ ...x, misi: false }));
-                              e.currentTarget.value = '';
+                              inputEl.value = '';
                             }
                           }}
                         />
@@ -1040,7 +1160,8 @@ export default function PublicSiteProfile() {
                           uploading.misi
                         }
                         onChange={async (e) => {
-                          const file = e.currentTarget.files?.[0];
+                          const inputEl = e.currentTarget;
+                          const file = inputEl.files?.[0];
                           if (!file) return;
                           setUploading((x) => ({ ...x, light: true }));
                           try {
@@ -1051,7 +1172,7 @@ export default function PublicSiteProfile() {
                             toastError(err, 'Gagal upload');
                           } finally {
                             setUploading((x) => ({ ...x, light: false }));
-                            e.currentTarget.value = '';
+                            inputEl.value = '';
                           }
                         }}
                       />
@@ -1115,7 +1236,8 @@ export default function PublicSiteProfile() {
                           uploading.misi
                         }
                         onChange={async (e) => {
-                          const file = e.currentTarget.files?.[0];
+                          const inputEl = e.currentTarget;
+                          const file = inputEl.files?.[0];
                           if (!file) return;
                           setUploading((x) => ({ ...x, dark: true }));
                           try {
@@ -1126,7 +1248,7 @@ export default function PublicSiteProfile() {
                             toastError(err, 'Gagal upload');
                           } finally {
                             setUploading((x) => ({ ...x, dark: false }));
-                            e.currentTarget.value = '';
+                            inputEl.value = '';
                           }
                         }}
                       />
@@ -1174,11 +1296,7 @@ export default function PublicSiteProfile() {
             </AdminContentTransition>
 
             <div className="flex flex-col-reverse gap-4 pt-2 sm:flex-row sm:items-center sm:justify-between">
-              <LastSavedIndicator
-                lastSavedAt={lastSavedAt}
-                isDirty={dirty}
-                isSaving={saving}
-              />
+              <LastSavedIndicator lastSavedAt={lastSavedAt} isDirty={dirty} isSaving={saving} />
               <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
                 <Button
                   variant="outline"

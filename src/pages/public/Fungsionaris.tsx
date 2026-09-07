@@ -169,7 +169,7 @@ export default function Fungsionaris() {
       {/* Cabinet Switcher */}
       {allCabinets.length > 1 && (
         <PublicEnter>
-          <div className="mx-auto -mt-4 max-w-7xl px-4 py-4 sm:px-6">
+          <div className="mx-auto -mt-4 max-w-7xl px-4 pb-4 pt-8 sm:px-6 sm:pt-10">
             <div
               role="tablist"
               className="flex flex-wrap items-center justify-center gap-2"
