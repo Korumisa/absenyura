@@ -719,7 +719,7 @@ export default function Locations() {
                         step="10"
                         value={formData.radius}
                         onChange={(e) =>
-                          setFormData({ ...formData, radius: parseInt(e.target.value) })
+                          setFormData({ ...formData, radius: parseInt(e.target.value, 10) || 100 })
                         }
                         className="flex-1 accent-indigo-600"
                         aria-label="Radius lokasi dalam meter"

@@ -61,12 +61,7 @@ export default function Kegiatan() {
       return buildPagedResponse(list, 1, 24);
     },
   });
-  const items = useMemo(() => {
-    const list = safeItems<PublicPost>(paged);
-    const selected = TABS.find((t) => t.label === tab);
-    if (!selected?.type) return list;
-    return list;
-  }, [paged, tab]);
+  const items = useMemo(() => safeItems<PublicPost>(paged), [paged]);
 
   const selected = useMemo(() => safeItems<PublicPost>(paged).find((e) => e.id === openId) ?? null, [paged, openId]);
   useLockBodyScroll(Boolean(selected));

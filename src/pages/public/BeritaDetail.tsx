@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo } from 'react';
 import PublicLayout from '@/components/PublicLayout';
 import type { PublicPost, PublicProfile } from '@/types/publicSite';
 import { Link, useParams } from 'react-router-dom';
@@ -12,10 +12,11 @@ import { PublicPageError } from '@/components/public/PublicPageError';
 import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 import { publicSiteFetcher } from '@/lib/utils/publicSiteFetcher';
 
-const SCROLL_RESTORE_KEY = 'berita-detail-scroll-y';
+const SCROLL_KEY_PREFIX = 'berita-detail-scroll-y';
 
 export default function BeritaDetail() {
   const { slug } = useParams();
+  const scrollKey = useMemo(() => `${SCROLL_KEY_PREFIX}:${slug ?? ''}`, [slug]);
   const profileResult = useMockOrSwr<PublicProfile | null>({
     swrKey: '/public-site/profile',
     fetcher: publicSiteFetcher<PublicProfile | null>,
@@ -30,23 +31,28 @@ export default function BeritaDetail() {
   const orgName = profile?.org_name ?? '';
 
   useLayoutEffect(() => {
-    const saved = Number(sessionStorage.getItem(SCROLL_RESTORE_KEY) || 0);
+    if (!slug) {
+      window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+      return;
+    }
+    const saved = Number(sessionStorage.getItem(scrollKey) || 0);
     if (saved > 0) {
       window.scrollTo({ top: saved, behavior: 'instant' as ScrollBehavior });
-      sessionStorage.removeItem(SCROLL_RESTORE_KEY);
+      sessionStorage.removeItem(scrollKey);
     } else {
       window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
     }
-  }, [slug]);
+  }, [slug, scrollKey]);
 
   useEffect(() => {
-    const save = () => sessionStorage.setItem(SCROLL_RESTORE_KEY, String(window.scrollY));
+    if (!slug) return;
+    const save = () => sessionStorage.setItem(scrollKey, String(window.scrollY));
     window.addEventListener('beforeunload', save);
     return () => {
       save();
       window.removeEventListener('beforeunload', save);
     };
-  }, []);
+  }, [slug, scrollKey]);
 
   if (isError) {
     return <PublicPageError title="Gagal memuat berita" error={swr.error} onRetry={retry} />;

@@ -12,7 +12,7 @@ import { PublicPageError } from '@/components/public/PublicPageError';
 import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 import { publicSiteFetcher, safeArray } from '@/lib/utils/publicSiteFetcher';
 
-const SCROLL_RESTORE_KEY = 'proker-detail-scroll-y';
+const SCROLL_KEY_PREFIX = 'proker-detail-scroll-y';
 
 function parseProgramDescriptionFallback(description: string | null) {
   const raw = String(description ?? '').trim();
@@ -64,6 +64,7 @@ function parseProgramDescriptionFallback(description: string | null) {
 
 export default function ProgramKerjaDetail() {
   const { id } = useParams();
+  const scrollKey = useMemo(() => `${SCROLL_KEY_PREFIX}:${id ?? ''}`, [id]);
   const { swr, data, isInitialLoading: isLoading, isError, retry } = useMockOrSwr<PublicProgram[]>({
     swrKey: '/public-site/programs',
     fetcher: publicSiteFetcher<PublicProgram[]>,
@@ -80,23 +81,28 @@ export default function ProgramKerjaDetail() {
   const rationale = program?.rationale ?? parsedFallback.body;
 
   useLayoutEffect(() => {
-    const saved = Number(sessionStorage.getItem(SCROLL_RESTORE_KEY) || 0);
+    if (!id) {
+      window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+      return;
+    }
+    const saved = Number(sessionStorage.getItem(scrollKey) || 0);
     if (saved > 0) {
       window.scrollTo({ top: saved, behavior: 'instant' as ScrollBehavior });
-      sessionStorage.removeItem(SCROLL_RESTORE_KEY);
+      sessionStorage.removeItem(scrollKey);
     } else {
       window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
     }
-  }, [id]);
+  }, [id, scrollKey]);
 
   useEffect(() => {
-    const save = () => sessionStorage.setItem(SCROLL_RESTORE_KEY, String(window.scrollY));
+    if (!id) return;
+    const save = () => sessionStorage.setItem(scrollKey, String(window.scrollY));
     window.addEventListener('beforeunload', save);
     return () => {
       save();
       window.removeEventListener('beforeunload', save);
     };
-  }, []);
+  }, [id, scrollKey]);
 
   if (isError) {
     return <PublicPageError title="Gagal memuat program" error={swr.error} onRetry={retry} />;

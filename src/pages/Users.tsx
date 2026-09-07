@@ -894,7 +894,7 @@ export default function Users() {
                         max={14}
                         value={formData.semester}
                         onChange={(e) =>
-                          setFormData({ ...formData, semester: parseInt(e.target.value) || 1 })
+                          setFormData({ ...formData, semester: parseInt(e.target.value, 10) || 1 })
                         }
                       />
                     )}

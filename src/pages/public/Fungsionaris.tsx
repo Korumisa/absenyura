@@ -103,17 +103,7 @@ export default function Fungsionaris() {
 
   const corePeople = useMemo(() => sortedMembers(coreGroups.flatMap((g: any) => safeRelation(g.members))), [coreGroups]);
   const advisorPeopleRaw = useMemo(() => sortedMembers(advisorGroups.flatMap((g: any) => safeRelation(g.members))), [advisorGroups]);
-  const advisorFallbackList: any[] = advisorPeopleRaw.length ? [] : [
-    {
-      id: 'fallback-advisor-1',
-      name: 'Dr. Drs. I Wayan Sutjana, M.Kom.',
-      role: 'Pembina Utama Organisasi',
-      photo_url: null,
-      photoPrompt: 'Senior Balinese male lecturer portrait, glasses, purple batik shirt, university office background, professional warm smile',
-      sort_order: 1,
-    },
-  ];
-  const advisorPeople = advisorPeopleRaw.length ? advisorPeopleRaw : advisorFallbackList;
+  const advisorPeople = advisorPeopleRaw;
   const pickLeader = (people: PublicStructureGroup['members']) => {
     const safe = safeRelation(people);
     const spotlight = safe.find((p) => Boolean(p.is_spotlight));

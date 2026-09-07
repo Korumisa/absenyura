@@ -598,16 +598,34 @@ export default function PublicSitePosts() {
                     )}
                   </FormField>
                 )}
-                <FormField id="ps-post-status" label="Status singkat (opsional)">
+                <FormField
+                  id="ps-post-status"
+                  label="Status singkat (opsional)"
+                  description="Digunakan untuk LOMBA menandakan periode pendaftaran."
+                >
                   {({ id, 'aria-describedby': ariaDescribedBy, 'aria-invalid': ariaInvalid }) => (
-                    <Input
-                      id={id}
-                      value={postForm.status ?? ''}
-                      onChange={(e) => setPostFormDirty((p) => ({ ...p, status: e.target.value }))}
-                      placeholder="Buka / Tutup"
-                      aria-describedby={ariaDescribedBy}
-                      aria-invalid={ariaInvalid}
-                    />
+                    <Select
+                      value={postForm.status ?? '__none__'}
+                      onValueChange={(v) =>
+                        setPostFormDirty((p) => ({
+                          ...p,
+                          status: v === '__none__' ? undefined : v,
+                        }))
+                      }
+                    >
+                      <SelectTrigger
+                        id={id}
+                        aria-describedby={ariaDescribedBy}
+                        aria-invalid={ariaInvalid}
+                      >
+                        <SelectValue placeholder="Pilih status (opsional)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">Tanpa status</SelectItem>
+                        <SelectItem value="Buka">Buka</SelectItem>
+                        <SelectItem value="Tutup">Tutup</SelectItem>
+                      </SelectContent>
+                    </Select>
                   )}
                 </FormField>
                 {postType === 'LOMBA' ? (

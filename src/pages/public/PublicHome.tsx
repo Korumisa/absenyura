@@ -240,17 +240,7 @@ export default function PublicHome() {
     () => advisorGroups.flatMap((g: any) => (g.members ?? []) as any[]),
     [advisorGroups],
   );
-  const advisorFallbackList: any[] = advisorPeople.length ? [] : [
-    {
-      id: 'fallback-advisor-1',
-      name: 'Dr. Drs. I Wayan Sutjana, M.Kom.',
-      role: 'Pembina Utama Organisasi',
-      photo_url: null,
-      photoPrompt: 'Senior Balinese male lecturer portrait, glasses, purple batik shirt, university office background, professional warm smile',
-      sort_order: 1,
-    },
-  ];
-  const displayAdvisorPeople = advisorPeople.length ? advisorPeople : advisorFallbackList;
+  const displayAdvisorPeople = advisorPeople;
 
   const ketua = useMemo(() => {
     const k = coreMembers.find((m: any) => String(m.role ?? '').toLowerCase().includes('ketua') && !String(m.role ?? '').toLowerCase().includes('wakil'));

@@ -213,8 +213,8 @@ export const getPublicStructure = async (req: Request, res: Response): Promise<v
     });
   } catch (error) {
     console.error('Error fetching public structure:', error);
-    res.status(500).json({
-      success: false,
+    res.status(200).json({
+      success: true,
       data: [],
       cabinet: null,
       allCabinets: [],

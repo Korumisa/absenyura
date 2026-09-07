@@ -1160,7 +1160,7 @@ export default function Sessions() {
                                 clearFieldError('late_threshold_minutes');
                                 setFormData({
                                   ...formData,
-                                  late_threshold_minutes: parseInt(e.target.value),
+                                  late_threshold_minutes: parseInt(e.target.value, 10) || 0,
                                 });
                               }}
                             />

@@ -314,7 +314,7 @@ export default function MasterData() {
                     ) : null}
                     {subjects.map((subject, index) => (
                       <div
-                        key={index}
+                        key={`${subject.code}-${index}`}
                         className="flex items-center justify-between rounded-lg border border-border p-3"
                       >
                         <div>
