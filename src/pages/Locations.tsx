@@ -877,7 +877,11 @@ export default function Locations() {
                           radius={formData.radius}
                           pathOptions={{ color: 'indigo', fillColor: 'indigo', fillOpacity: 0.2 }}
                         />
-                        <MapEvents formData={formData} setFormData={setFormData} mapRef={leafletMapRef} />
+                        <MapEvents
+                          formData={formData}
+                          setFormData={setFormData}
+                          mapRef={leafletMapRef}
+                        />
                         <MapResizeOnOpen when={isModalOpen} />
                       </MapContainer>
                     </Suspense>
