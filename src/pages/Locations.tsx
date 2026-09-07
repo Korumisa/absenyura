@@ -48,6 +48,37 @@ import { useAuthStore } from '@/stores/authStore';
 import { toastErrorMessage } from '@/lib/utils/toastMessage';
 import { useMutationToast } from '@/hooks/useMutationToast';
 import { LastSavedIndicator } from '@/components/admin/LastSavedIndicator';
+import type L from 'leaflet';
+
+// ── Leaflet systemic hardening (shared pattern) ──────────────────────────
+// Leaflet marks DOM elements with a custom `_leaflet_id` property when a map
+// is initialised on them. If React reuses that DOM node without Leaflet
+// properly tearing down first (fast remount / StrictMode double-invoke),
+// Leaflet throws "Map container is already initialized".
+// We therefore (1) strip every `_leaflet_id` property from the subtree
+// before a MapContainer mounts, (2) key the tree with a random UUID so the
+// identity is globally unique across mounts, and (3) destroy any ref-held
+// raw instance on unmount.
+function stripLeafletDomSignatures(root: HTMLElement | null) {
+  if (!root) return;
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT);
+  let node: Node | null = walker.currentNode;
+  while (node) {
+    if (node instanceof HTMLElement) {
+      try {
+        // @ts-expect-error — Leaflet internal expando; we intentionally wipe it
+        if (node._leaflet_id !== undefined) delete node._leaflet_id;
+        // @ts-expect-error — same internal expando reason
+        if (node._leaflet_events !== undefined) delete node._leaflet_events;
+        // @ts-expect-error — same internal expando reason
+        if (node._leaflet_tile_loaded !== undefined) delete node._leaflet_tile_loaded;
+      } catch {
+        /* defensive — older engines can throw on delete of non-configurable */
+      }
+    }
+    node = walker.nextNode();
+  }
+}
 
 const MapContainer = lazy(() => import('react-leaflet').then((m) => ({ default: m.MapContainer })));
 const TileLayer = lazy(() => import('react-leaflet').then((m) => ({ default: m.TileLayer })));
@@ -70,9 +101,10 @@ interface MapEventsProps {
       wifi_bssid: string;
     }>
   >;
+  mapRef: React.MutableRefObject<L.Map | null>;
 }
 
-const MapEvents: React.FC<MapEventsProps> = ({ formData, setFormData }) => {
+const MapEvents: React.FC<MapEventsProps> = ({ formData, setFormData, mapRef }) => {
   const map = useMapEvents({
     click(e) {
       setFormData((prev) => ({
@@ -82,6 +114,15 @@ const MapEvents: React.FC<MapEventsProps> = ({ formData, setFormData }) => {
       }));
     },
   });
+
+  useEffect(() => {
+    mapRef.current = map;
+    return () => {
+      // Best-effort cleanup on unmount: if the parent component is already
+      // destroying this map via key-change, also clear the ref.
+      if (mapRef.current === map) mapRef.current = null;
+    };
+  }, [map, mapRef]);
 
   useEffect(() => {
     map.setView([formData.latitude, formData.longitude], map.getZoom(), {
@@ -127,7 +168,37 @@ export default function Locations() {
   // key. Prevents "Map container is already initialized" errors from Leaflet
   // when the dialog is closed and reopened (for the same location, or for a
   // new location) faster than the previous map instance can be torn down.
-  const [mapInstanceKey, setMapInstanceKey] = useState(0);
+  // Uses crypto.randomUUID() — identity is globally unique across mounts.
+  const [mapInstanceKey, setMapInstanceKey] = useState<string>(() => crypto.randomUUID());
+  // Extra safety: hold the raw Leaflet map instance so we can forcefully
+  // destroy it (map.remove()) right before reopening — guards against any
+  // race where React's key-change unmount is not fast enough for Leaflet.
+  const leafletMapRef = React.useRef<L.Map | null>(null);
+  // Holds the map panel wrapper DOM so we can strip Leaflet's custom DOM
+  // expandos (`_leaflet_id` etc.) before every fresh mount.
+  const mapPanelRef = React.useRef<HTMLDivElement | null>(null);
+
+  // Tear down raw map + strip DOM signatures when the entire Locations page
+  // is unmounted (user navigates away). Stops any lingering Leaflet handles
+  // from leaking into a later mount on the same node slot.
+  useEffect(() => {
+    // Capture refs into local variables during effect setup so the cleanup
+    // function does not read a potentially-stale `.current` (per
+    // react-hooks/exhaustive-deps ref-stale rule).
+    const mapRefSnapshot = leafletMapRef;
+    const panelRefSnapshot = mapPanelRef;
+    return () => {
+      try {
+        if (mapRefSnapshot.current) {
+          mapRefSnapshot.current.remove();
+          mapRefSnapshot.current = null;
+        }
+      } catch {
+        /* transient unmount throws are acceptable */
+      }
+      stripLeafletDomSignatures(panelRefSnapshot.current);
+    };
+  }, []);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -226,8 +297,32 @@ export default function Locations() {
       setFormBaseline(JSON.stringify(initial));
     }
     setLastSavedAt(null);
-    setMapInstanceKey((k) => k + 1);
-    setIsModalOpen(true);
+    // ── Robust Leaflet re-init sequence ────────────────────────────────
+    // 0) Nuke every `_leaflet_id` / internal expando from the map panel
+    //    DOM subtree. Leaflet throws "Map container is already initialized"
+    //    when it sees a node with this signature already on it — even if
+    //    React has since re-mounted. Doing this before anything else is the
+    //    strongest guard (removes the trigger at source).
+    stripLeafletDomSignatures(mapPanelRef.current);
+    // 1) Forcefully destroy any lingering raw Leaflet map instance (if any
+    //    survived a fast close/reopen). This is the final manual guard.
+    try {
+      if (leafletMapRef.current) {
+        leafletMapRef.current.remove();
+        leafletMapRef.current = null;
+      }
+    } catch {
+      /* ignore — some cleanup steps can throw during transient states */
+    }
+    // 2) Close the dialog first so React can fully flush the unmount of the
+    //    old MapContainer (and its DOM div). Then, on the next microtask
+    //    (after React commit + layout), bump the key and re-open. This
+    //    avoids StrictMode batching keeping a stale map handle alive.
+    setIsModalOpen(false);
+    queueMicrotask(() => {
+      setMapInstanceKey(crypto.randomUUID());
+      setIsModalOpen(true);
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -753,9 +848,13 @@ export default function Locations() {
               </div>
 
               <div className="flex min-h-[360px] flex-1 flex-col md:w-1/2">
-                <div className="location-map-panel relative isolate z-0 min-h-[320px] flex-1 overflow-hidden bg-slate-100 bg-background md:min-h-[480px]">
+                <div
+                  ref={mapPanelRef}
+                  className="location-map-panel relative isolate z-0 min-h-[320px] flex-1 overflow-hidden bg-slate-100 bg-background md:min-h-[480px]"
+                >
                   {isModalOpen && leafletLoaded ? (
                     <Suspense
+                      key={mapInstanceKey}
                       fallback={
                         <div className="flex h-full w-full items-center justify-center bg-muted">
                           <span className="text-sm text-muted-foreground">Memuat peta…</span>
@@ -763,7 +862,6 @@ export default function Locations() {
                       }
                     >
                       <MapContainer
-                        key={mapInstanceKey}
                         center={mapCenter}
                         zoom={16}
                         style={{ height: '100%', width: '100%', minHeight: 320 }}
@@ -779,7 +877,11 @@ export default function Locations() {
                           radius={formData.radius}
                           pathOptions={{ color: 'indigo', fillColor: 'indigo', fillOpacity: 0.2 }}
                         />
-                        <MapEvents formData={formData} setFormData={setFormData} />
+                        <MapEvents
+                          formData={formData}
+                          setFormData={setFormData}
+                          mapRef={leafletMapRef}
+                        />
                         <MapResizeOnOpen when={isModalOpen} />
                       </MapContainer>
                     </Suspense>
