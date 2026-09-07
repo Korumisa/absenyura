@@ -59,6 +59,7 @@ import { TablePagination } from '@/components/ui/TablePagination';
 import { applyApiFieldErrors, firstFieldErrorMessage } from '@/lib/http/apiFieldErrors';
 import { LastSavedIndicator } from '@/components/admin/LastSavedIndicator';
 import { cn } from '@/lib/utils/utils';
+import { useFormDirtyGuard } from '@/hooks/useFormDirtyGuard';
 
 const WIZARD_LABELS = ['Info & Lokasi', 'Jadwal', 'Aturan Absen', 'Kelas'] as const;
 const WIZARD_HINTS = [
@@ -236,7 +237,11 @@ export default function Sessions() {
     return d.toISOString().slice(0, 16);
   };
 
-  const handleOpenModal = (session: any = null) => {
+  const handleOpenModal = async (session: any = null) => {
+    if (isModalOpen) {
+      const ok = await confirmIfDirty();
+      if (!ok) return;
+    }
     if (session) {
       setEditingSession(session);
       const linkedIds = Array.isArray(session.session_classes)
@@ -398,6 +403,7 @@ export default function Sessions() {
 
       const result = await doSaveSession();
       if (result !== undefined) {
+        setFormBaseline(JSON.stringify(formData));
         setIsSaveConfirmOpen(false);
         setIsModalOpen(false);
         await mutate();
@@ -481,6 +487,7 @@ export default function Sessions() {
   });
 
   const formIsDirty = JSON.stringify(formData) !== formBaseline;
+  const { confirmIfDirty } = useFormDirtyGuard(formIsDirty);
 
   const actionOverlayLabel = saving
     ? editingSession
@@ -902,7 +909,13 @@ export default function Sessions() {
 
         <Dialog
           open={Boolean(isModalOpen && currentUser?.role !== 'USER')}
-          onOpenChange={setIsModalOpen}
+          onOpenChange={async (open) => {
+            if (!open) {
+              const ok = await confirmIfDirty();
+              if (!ok) return;
+            }
+            setIsModalOpen(open);
+          }}
         >
           <DialogContent className="max-w-4xl p-0">
             <div className="border-b border-border px-6 py-4">
@@ -1352,7 +1365,10 @@ export default function Sessions() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={async () => {
+                    const ok = await confirmIfDirty();
+                    if (ok) setIsModalOpen(false);
+                  }}
                   disabled={saving}
                   className="min-h-11"
                 >

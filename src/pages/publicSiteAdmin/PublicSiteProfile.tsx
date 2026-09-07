@@ -22,6 +22,7 @@ import { CmsTabNav, type CmsTabItem } from '@/components/ui/CmsTabNav';
 import { CmsEditorLayout } from '@/components/cms/CmsEditorLayout';
 import { AdminContentTransition } from '@/components/admin/AdminContentTransition';
 import { useFormDirtyGuard } from '@/hooks/useFormDirtyGuard';
+import { LastSavedIndicator } from '@/components/admin/LastSavedIndicator';
 
 type ProfileTab = 'identity' | 'home' | 'visimisi' | 'contact';
 
@@ -118,6 +119,7 @@ export default function PublicSiteProfile() {
   });
 
   const [dirty, setDirty] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const updateDraft = (updater: React.SetStateAction<Draft>) => {
     setDirty(true);
     setDraft(updater);
@@ -1171,26 +1173,33 @@ export default function PublicSiteProfile() {
               </div>
             </AdminContentTransition>
 
-            <AdminCardActions>
-              <Button
-                variant="outline"
-                type="button"
-                onClick={() => setIsResetOpen(true)}
-                disabled={saving}
-                className="min-h-11 w-full sm:w-auto"
-              >
-                Reset
-              </Button>
-              <SubmitButton
-                type="button"
-                onClick={handleSave}
-                disabled={!dirty}
-                className="min-h-11 w-full sm:w-auto"
-                isLoading={saving}
-                label="Simpan"
-                loadingLabel="Menyimpan…"
+            <div className="flex flex-col-reverse gap-4 pt-2 sm:flex-row sm:items-center sm:justify-between">
+              <LastSavedIndicator
+                lastSavedAt={lastSavedAt}
+                isDirty={dirty}
+                isSaving={saving}
               />
-            </AdminCardActions>
+              <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                <Button
+                  variant="outline"
+                  type="button"
+                  onClick={() => setIsResetOpen(true)}
+                  disabled={saving}
+                  className="min-h-11 w-full sm:w-auto"
+                >
+                  Reset
+                </Button>
+                <SubmitButton
+                  type="button"
+                  onClick={handleSave}
+                  disabled={!dirty}
+                  className="min-h-11 w-full sm:w-auto"
+                  isLoading={saving}
+                  label="Simpan"
+                  loadingLabel="Menyimpan…"
+                />
+              </div>
+            </div>
           </div>
         </CmsEditorLayout>
       </AdminCard>

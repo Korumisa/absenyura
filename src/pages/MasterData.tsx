@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import api from '@/services/api';
 import useSWR from 'swr';
@@ -14,18 +14,63 @@ import AdminCard from '@/components/AdminCard';
 import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
 import { AdminContentTransition } from '@/components/admin/AdminContentTransition';
 import { cn } from '@/lib/utils/utils';
+import { useFormDirtyGuard } from '@/hooks/useFormDirtyGuard';
 
 export default function MasterData() {
   const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState<'departments' | 'subjects'>('departments');
+  const [dirty, setDirty] = useState(false);
+  const { confirmIfDirty } = useFormDirtyGuard(dirty);
 
   const [faculties, setFaculties] = useState<{ name: string; departments: string[] }[]>([]);
+  const setFacultiesDirty = useMemo(
+    () => (updater: React.SetStateAction<{ name: string; departments: string[] }[]>) => {
+      setDirty(true);
+      setFaculties(updater);
+    },
+    []
+  );
   const [newFaculty, setNewFaculty] = useState('');
+  const setNewFacultyDirty = useMemo(
+    () => (v: string) => {
+      setDirty(true);
+      setNewFaculty(v);
+    },
+    []
+  );
   const [newDepartments, setNewDepartments] = useState<Record<string, string>>({});
+  const setNewDepartmentsDirty = useMemo(
+    () => (updater: React.SetStateAction<Record<string, string>>) => {
+      setDirty(true);
+      setNewDepartments(updater);
+    },
+    []
+  );
 
   const [subjects, setSubjects] = useState<{ code: string; name: string }[]>([]);
+  const setSubjectsDirty = useMemo(
+    () => (updater: React.SetStateAction<{ code: string; name: string }[]>) => {
+      setDirty(true);
+      setSubjects(updater);
+    },
+    []
+  );
   const [newSubjectCode, setNewSubjectCode] = useState('');
+  const setNewSubjectCodeDirty = useMemo(
+    () => (v: string) => {
+      setDirty(true);
+      setNewSubjectCode(v);
+    },
+    []
+  );
   const [newSubjectName, setNewSubjectName] = useState('');
+  const setNewSubjectNameDirty = useMemo(
+    () => (v: string) => {
+      setDirty(true);
+      setNewSubjectName(v);
+    },
+    []
+  );
 
   const fetcher = (url: string) => api.get(url).then((res) => res.data.data);
 
@@ -60,6 +105,7 @@ export default function MasterData() {
     try {
       await api.post('/settings/departments', { data: faculties });
       toast.success('Data Fakultas & Prodi berhasil disimpan');
+      setDirty(false);
     } catch (err) {
       toast.error(toastErrorMessage(err, 'Gagal menyimpan Fakultas & Prodi'));
     }
@@ -69,6 +115,7 @@ export default function MasterData() {
     try {
       await api.post('/settings/subjects', { data: subjects });
       toast.success('Data Mata Kuliah berhasil disimpan');
+      setDirty(false);
     } catch (err) {
       toast.error(toastErrorMessage(err, 'Gagal menyimpan Mata Kuliah'));
     }
@@ -92,7 +139,13 @@ export default function MasterData() {
     <Button
       type="button"
       variant="ghost"
-      onClick={() => setActiveTab(id)}
+      onClick={async () => {
+        if (activeTab !== id) {
+          const ok = await confirmIfDirty();
+          if (!ok) return;
+        }
+        setActiveTab(id);
+      }}
       className={cn(
         'w-full justify-start min-h-11',
         activeTab === id
@@ -172,7 +225,7 @@ export default function MasterData() {
                               size="sm"
                               className="text-red-500"
                               onClick={() =>
-                                setFaculties(faculties.filter((f) => f.name !== facultyName))
+                                setFacultiesDirty(faculties.filter((f) => f.name !== facultyName))
                               }
                             >
                               Hapus fakultas
@@ -206,7 +259,7 @@ export default function MasterData() {
                                         newFacs[facultyIndex].departments = newFacs[
                                           facultyIndex
                                         ].departments.filter((d) => d !== deptName);
-                                        setFaculties(newFacs);
+                                        setFacultiesDirty(newFacs);
                                       }
                                     }}
                                   >
@@ -222,7 +275,7 @@ export default function MasterData() {
                                 className="h-9 text-sm"
                                 value={newDepartments[facultyName] || ''}
                                 onChange={(e) =>
-                                  setNewDepartments({
+                                  setNewDepartmentsDirty({
                                     ...newDepartments,
                                     [facultyName]: e.target.value,
                                   })
@@ -238,8 +291,8 @@ export default function MasterData() {
                                       newFacs[facultyIndex].departments.push(
                                         newDepartments[facultyName]
                                       );
-                                      setFaculties(newFacs);
-                                      setNewDepartments({ ...newDepartments, [facultyName]: '' });
+                                      setFacultiesDirty(newFacs);
+                                      setNewDepartmentsDirty({ ...newDepartments, [facultyName]: '' });
                                     }
                                   }
                                 }}
@@ -258,8 +311,8 @@ export default function MasterData() {
                                       newFacs[facultyIndex].departments.push(
                                         newDepartments[facultyName]
                                       );
-                                      setFaculties(newFacs);
-                                      setNewDepartments({ ...newDepartments, [facultyName]: '' });
+                                      setFacultiesDirty(newFacs);
+                                      setNewDepartmentsDirty({ ...newDepartments, [facultyName]: '' });
                                     }
                                   }
                                 }}
@@ -276,7 +329,7 @@ export default function MasterData() {
                       <Input
                         placeholder="Nama fakultas baru…"
                         value={newFaculty}
-                        onChange={(e) => setNewFaculty(e.target.value)}
+                        onChange={(e) => setNewFacultyDirty(e.target.value)}
                       />
                       <Button
                         type="button"
@@ -284,8 +337,8 @@ export default function MasterData() {
                         className="shrink-0"
                         onClick={() => {
                           if (newFaculty) {
-                            setFaculties([...faculties, { name: newFaculty, departments: [] }]);
-                            setNewFaculty('');
+                            setFacultiesDirty([...faculties, { name: newFaculty, departments: [] }]);
+                            setNewFacultyDirty('');
                           }
                         }}
                       >
@@ -328,7 +381,7 @@ export default function MasterData() {
                           variant="ghost"
                           size="sm"
                           className="text-red-500"
-                          onClick={() => setSubjects(subjects.filter((_, i) => i !== index))}
+                          onClick={() => setSubjectsDirty(subjects.filter((_, i) => i !== index))}
                         >
                           <Trash2 className="size-4" />
                         </Button>
@@ -341,13 +394,13 @@ export default function MasterData() {
                         className="sm:w-32"
                         maxLength={10}
                         value={newSubjectCode}
-                        onChange={(e) => setNewSubjectCode(e.target.value.toUpperCase())}
+                        onChange={(e) => setNewSubjectCodeDirty(e.target.value.toUpperCase())}
                       />
                       <Input
                         placeholder="Nama mata kuliah…"
                         className="flex-1"
                         value={newSubjectName}
-                        onChange={(e) => setNewSubjectName(e.target.value)}
+                        onChange={(e) => setNewSubjectNameDirty(e.target.value)}
                       />
                       <Button
                         type="button"
@@ -359,12 +412,12 @@ export default function MasterData() {
                             newSubjectCode &&
                             !subjects.some((s) => s.code === newSubjectCode)
                           ) {
-                            setSubjects([
+                            setSubjectsDirty([
                               ...subjects,
                               { code: newSubjectCode, name: newSubjectName },
                             ]);
-                            setNewSubjectCode('');
-                            setNewSubjectName('');
+                            setNewSubjectCodeDirty('');
+                            setNewSubjectNameDirty('');
                           }
                         }}
                       >

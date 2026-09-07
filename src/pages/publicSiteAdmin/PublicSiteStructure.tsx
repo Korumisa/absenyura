@@ -14,8 +14,10 @@ import AdminCard from '@/components/AdminCard';
 import { AdminCardActions } from '@/components/admin/AdminCardActions';
 import PublicSiteStructurePreview from '@/components/publicSiteAdmin/PublicSiteStructurePreview';
 import { CmsEditorLayout } from '@/components/cms/CmsEditorLayout';
-import { Layers } from 'lucide-react';
+import { Layers, Plus as PlusIcon } from 'lucide-react';
 import { useFormDirtyGuard } from '@/hooks/useFormDirtyGuard';
+import { LastSavedIndicator } from '@/components/admin/LastSavedIndicator';
+import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
 
 export default function PublicSiteStructure() {
   const formId = React.useId();
@@ -33,6 +35,7 @@ export default function PublicSiteStructure() {
   const [cabinetPeriod, setCabinetPeriod] = useState('');
   const [viewingCabinetId, setViewingCabinetId] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const dirtyRef = useRef(false);
   const markDirty = () => {
     if (dirtyRef.current) return;
@@ -190,6 +193,7 @@ export default function PublicSiteStructure() {
     }
     dirtyRef.current = false;
     setDirty(false);
+    setLastSavedAt(null);
   };
 
   return (
@@ -237,6 +241,11 @@ export default function PublicSiteStructure() {
             </Button>
           }
         >
+          <LastSavedIndicator
+            lastSavedAt={lastSavedAt}
+            isDirty={dirty}
+            isSaving={saving}
+          />
           {/* Cabinet Info */}
           <div className="mb-6 flex flex-col gap-3">
             <div className="flex flex-col gap-2">

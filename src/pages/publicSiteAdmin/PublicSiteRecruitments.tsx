@@ -73,6 +73,7 @@ export default function PublicSiteRecruitments() {
   const [uploadingPoster, setUploadingPoster] = useState(false);
   const [dirty, setDirty] = useState(false);
   const { confirmIfDirty } = useFormDirtyGuard(dirty);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
 
   const setFormDirty = useMemo(
     () => (updater: React.SetStateAction<typeof form>) => {
@@ -92,6 +93,7 @@ export default function PublicSiteRecruitments() {
   const resetForm = () => {
     setForm({ committee: [], contacts: [] });
     setDirty(false);
+    setLastSavedAt(null);
   };
   const resetDatesFromRange = (range: string) => {
     const raw = String(range ?? '').trim();
@@ -270,6 +272,11 @@ export default function PublicSiteRecruitments() {
               description="Informasi umum dan data panitia."
             >
               <form onSubmit={upsert} className="space-y-5">
+                <LastSavedIndicator
+                  lastSavedAt={lastSavedAt}
+                  isDirty={dirty}
+                  isSaving={false}
+                />
                 <CmsTabNav<FormTab>
                   tabs={FORM_TABS}
                   value={formTab}

@@ -21,13 +21,15 @@ import { getErrorMessage } from '@/lib/http/errorMessage';
 import AdminPageShell from '@/components/AdminPageShell';
 import AdminCard from '@/components/AdminCard';
 import PublicSiteProgramPreview from '@/components/publicSiteAdmin/PublicSiteProgramPreview';
-import { ClipboardList } from 'lucide-react';
+import { ClipboardList, Plus as PlusIcon } from 'lucide-react';
 import { CmsTabNav, type CmsTabItem } from '@/components/ui/CmsTabNav';
+import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
 import { CmsPublishTabs } from '@/components/ui/CmsPublishTabs';
 import { CmsEditorLayout } from '@/components/cms/CmsEditorLayout';
 import { CmsListToolbar } from '@/components/cms/CmsListToolbar';
 import { AdminContentTransition } from '@/components/admin/AdminContentTransition';
 import { useFormDirtyGuard } from '@/hooks/useFormDirtyGuard';
+import { LastSavedIndicator } from '@/components/admin/LastSavedIndicator';
 
 type PageTab = 'form' | 'list';
 const PAGE_TABS: readonly CmsTabItem<PageTab>[] = [
@@ -59,6 +61,7 @@ export default function PublicSitePrograms() {
   const [dateEnd, setDateEnd] = useState('');
   const [dirty, setDirty] = useState(false);
   const { confirmIfDirty } = useFormDirtyGuard(dirty);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
 
   const setFormDirty = useMemo(
     () => (updater: React.SetStateAction<typeof form>) => {
@@ -78,6 +81,7 @@ export default function PublicSitePrograms() {
   const resetForm = () => {
     setForm({});
     setDirty(false);
+    setLastSavedAt(null);
   };
   const resetDatesFromRange = (range: string) => {
     const raw = String(range ?? '').trim();
