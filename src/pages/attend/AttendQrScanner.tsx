@@ -39,6 +39,8 @@ export default function AttendQrScanner({
   const qrBootGenRef = useRef(0);
   const qrDecodeTimeoutRef = useRef<number | null>(null);
   const qrDecodedSuccessRef = useRef(false);
+  const qrReleasedRef = useRef(false);
+
   const [camerasReady, setCamerasReady] = useState(false);
   const [qrBootNonce, setQrBootNonce] = useState(0);
   const [qrFacingMode, setQrFacingMode] = useState<'user' | 'environment'>('environment');
@@ -85,6 +87,8 @@ export default function AttendQrScanner({
   }, [loadQrCamera, initialPreferRear]);
 
   const releaseQrScanner = useCallback(async () => {
+    if (qrReleasedRef.current) return;
+    qrReleasedRef.current = true;
     const instance = scannerRef.current;
     if (instance) {
       try {
@@ -97,6 +101,7 @@ export default function AttendQrScanner({
       }
       scannerRef.current = null;
     }
+    stripHtml5QrDomSignatures('qr-reader');
     await waitForCameraRelease();
   }, []);
 
@@ -116,6 +121,7 @@ export default function AttendQrScanner({
 
     const bootScanner = async () => {
       setQrError(null);
+      qrReleasedRef.current = false;
       await waitForCameraRelease(350);
       if (cancelled || bootGen !== qrBootGenRef.current || scannerRef.current) return;
 
@@ -149,11 +155,15 @@ export default function AttendQrScanner({
           }
         );
         if (cancelled || bootGen !== qrBootGenRef.current) {
-          try {
-            if (qr.isScanning) await qr.stop();
-            qr.clear();
-          } catch {
-            void 0;
+          if (!qrReleasedRef.current) {
+            qrReleasedRef.current = true;
+            try {
+              if (qr.isScanning) await qr.stop();
+              qr.clear();
+            } catch {
+              void 0;
+            }
+            stripHtml5QrDomSignatures('qr-reader');
           }
           return;
         }
@@ -205,19 +215,10 @@ export default function AttendQrScanner({
       cancelled = true;
       clearQrTimeout();
       qrBootGenRef.current += 1;
-      const instance = scannerRef.current;
-      scannerRef.current = null;
-      if (instance) {
-        void (async () => {
-          try {
-            if (instance.isScanning) await instance.stop();
-            instance.clear();
-          } catch {
-            void 0;
-          }
-          await waitForCameraRelease(200);
-        })();
-      }
+      void (async () => {
+        await releaseQrScanner();
+        await waitForCameraRelease(200);
+      })();
     };
   }, [
     scanning,
@@ -234,14 +235,21 @@ export default function AttendQrScanner({
   // Cleanup saat unmount
   useEffect(() => {
     return () => {
-      const instance = scannerRef.current;
-      scannerRef.current = null;
-
       const teardown = (async () => {
-        if (instance) {
+        if (!qrReleasedRef.current) {
+          qrReleasedRef.current = true;
+          const instance = scannerRef.current;
+          scannerRef.current = null;
+          if (instance) {
+            try {
+              if (instance.isScanning) await instance.stop();
+              instance.clear();
+            } catch {
+              void 0;
+            }
+          }
           try {
-            if (instance.isScanning) await instance.stop();
-            instance.clear();
+            stripHtml5QrDomSignatures('qr-reader');
           } catch {
             void 0;
           }

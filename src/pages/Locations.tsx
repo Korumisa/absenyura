@@ -1,4 +1,5 @@
-import React, { useState, useEffect, lazy, Suspense } from 'react';
+import React, { useState, useEffect, lazy, Suspense, useMemo } from 'react';
+import { flushSync } from 'react-dom';
 import api from '@/services/api';
 import { Plus, Edit2, Trash2, Search, MapPin, LocateFixed } from 'lucide-react';
 import { toast } from 'sonner';
@@ -115,8 +116,10 @@ class MapSelfHealingBoundary extends React.Component<
       // Schedule one-shot remount via parent key change.
       // Use a macrotask so React's current error dispatch finishes first.
       window.setTimeout(() => {
-        this.setState({ hasError: false });
-        this.props.onRemount();
+        flushSync(() => {
+          this.setState({ hasError: false });
+          this.props.onRemount();
+        });
       }, 16);
     } else {
       // Re-throw non-Leaflet-initialization errors up the chain.
@@ -219,9 +222,9 @@ export default function Locations() {
   // and calling it a second time throws "Map container is being reused by
   // another instance" in Leaflet 1.9 / StrictMode double-cleanup scenarios.
   useEffect(() => {
-    const panelRefSnapshot = mapPanelRef;
+    const panel = mapPanelRef.current;
     return () => {
-      stripLeafletDomSignatures(panelRefSnapshot.current);
+      stripLeafletDomSignatures(panel);
     };
   }, []);
 

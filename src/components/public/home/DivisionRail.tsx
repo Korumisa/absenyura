@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import PublicCoverImage from '@/components/PublicCoverImage';
 import { useReducedMotion } from '@/lib/a11y/useReducedMotion';
@@ -26,6 +26,7 @@ export function DivisionRail({
   const groupRefs = useRef<Array<HTMLDivElement | null>>([]);
   const offsets = useRef<number[]>([]);
   const rafScroll = useRef<number | null>(null);
+  const rafInitRef = useRef<number | null>(null);
   const [activeTitle, setActiveTitle] = useState(() => getDivisionDisplayTitle(ordered[0]?.title ?? ''));
   const reducedMotion = useReducedMotion();
 
@@ -54,7 +55,8 @@ export function DivisionRail({
 
   useEffect(() => {
     setActiveTitle(getDivisionDisplayTitle(ordered[0]?.title ?? ''));
-    requestAnimationFrame(() => {
+    rafInitRef.current = requestAnimationFrame(() => {
+      rafInitRef.current = null;
       recalc();
       updateActive();
     });
@@ -63,7 +65,17 @@ export function DivisionRail({
       updateActive();
     };
     window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
+    const rafSnapInit = rafInitRef.current;
+    const rafSnapScroll = rafScroll.current;
+    return () => {
+      window.removeEventListener('resize', onResize);
+      if (rafSnapInit !== null) cancelAnimationFrame(rafSnapInit);
+      if (rafSnapScroll !== null) cancelAnimationFrame(rafSnapScroll);
+      if (rafInitRef.current !== null) cancelAnimationFrame(rafInitRef.current);
+      if (rafScroll.current !== null) cancelAnimationFrame(rafScroll.current);
+      rafInitRef.current = null;
+      rafScroll.current = null;
+    };
   }, [ordered, updateActive]);
 
   const onScroll = () => {
