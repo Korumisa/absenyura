@@ -80,20 +80,23 @@ function stripLeafletDomSignatures(root: HTMLElement | null) {
   }
 }
 
-/** Aggresive pre- & post-mount panel sanitizer for Leaflet reuse-safety:
- *  1. Empty innerHTML → removes leftover Leaflet DOM (.leaflet-control-container,
- *     .leaflet-pane stacks, tile image nodes that React-leaflet's internal
- *     unmount sometimes leaves behind when component errors mid-render).
- *  2. Strips every `_leaflet_id` / `_leaflet_events` / `_leaflet_tile_loaded`
- *     expando from the tree via the existing local TreeWalker helper.
+/** Safe Leaflet panel sanitizer — **never wipes innerHTML**.
+ *  React owns the wrapper div's children via react-leaflet's lazy-loaded
+ *  <MapContainer> host fiber tree. Manually clearing innerHTML here would
+ *  make React's reconciler try to `removeChild` a node that no longer
+ *  exists during a subsequent unmount, crashing with:
+ *    NotFoundError: Failed to execute 'removeChild' on 'Node'.
+ *
+ *  We therefore ONLY strip every `_leaflet_id` / `_leaflet_events` /
+ *  `_leaflet_tile_loaded` expando from the subtree via the local
+ *  TreeWalker helper. React itself is responsible for adding/removing DOM
+ *  children (and react-leaflet's native L.Map.remove() still runs on its
+ *  own unmount). Use-case sites:
+ *    • Pre-mount — every time the mapInstanceKey changes (fresh attempt).
+ *    • Unmount — final sweep to prevent cross-component key collisions.
  */
 function pruneLeafletPanel(root: HTMLElement | null) {
   if (!root) return;
-  try {
-    root.innerHTML = '';
-  } catch {
-    while (root.firstChild) root.removeChild(root.firstChild);
-  }
   stripLeafletDomSignatures(root);
 }
 
@@ -263,7 +266,6 @@ export default function Locations() {
   useEffect(() => {
     pruneLeafletPanel(mapPanelRef.current);
     // Depends on mapInstanceKey only — run once per remount cycle.
-     
   }, [mapInstanceKey]);
 
   // Form state
