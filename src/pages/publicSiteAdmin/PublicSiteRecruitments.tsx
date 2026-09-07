@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import api from '@/services/api';
-import { toast } from 'sonner';
+import { toastError, toastSuccess, toastSuccessMessage } from '@/lib/utils/toastMessage';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -139,7 +139,7 @@ export default function PublicSiteRecruitments() {
     e.preventDefault();
     const publishErr = validatePublish();
     if (publishErr) {
-      toast.error(publishErr);
+      toastError(null, publishErr);
       return;
     }
     try {
@@ -166,7 +166,7 @@ export default function PublicSiteRecruitments() {
           committee,
           contacts,
         });
-        toast.success('Open recruitment diperbarui');
+        toastSuccess('Open recruitment diperbarui');
       } else {
         await api.post('/public-site/admin/recruitments', {
           title: form.title,
@@ -178,15 +178,16 @@ export default function PublicSiteRecruitments() {
           committee,
           contacts,
         });
-        toast.success('Open recruitment ditambahkan');
+        toastSuccess('Open recruitment ditambahkan');
       }
+      setLastSavedAt(new Date());
       resetForm();
       setDateStart('');
       setDateEnd('');
       setPageTab('list');
       mutate();
     } catch (err: any) {
-      toast.error(getErrorMessage(err, 'Gagal menyimpan'));
+      toastError(err, 'Gagal menyimpan');
     }
   };
 
@@ -203,12 +204,12 @@ export default function PublicSiteRecruitments() {
     if (!deleteId) return;
     try {
       await api.delete(`/public-site/admin/recruitments/${deleteId}`);
-      toast.success('Berhasil dihapus');
+      toastSuccess('Berhasil dihapus');
       setIsDeleteOpen(false);
       setDeleteId(null);
       mutate();
     } catch (e: any) {
-      toast.error(getErrorMessage(e, 'Gagal menghapus'));
+      toastError(e, 'Gagal menghapus');
     }
   };
 
@@ -344,9 +345,9 @@ export default function PublicSiteRecruitments() {
                             try {
                               const url = await uploadImage(file);
                               setFormDirty((p) => ({ ...p, posterImageUrl: url }));
-                              toast.success('Upload poster berhasil');
+                              toastSuccess('Upload poster berhasil');
                             } catch (err: any) {
-                              toast.error(getErrorMessage(err, 'Gagal upload poster'));
+                              toastError(err, 'Gagal upload poster');
                             } finally {
                               setUploadingPoster(false);
                               e.currentTarget.value = '';

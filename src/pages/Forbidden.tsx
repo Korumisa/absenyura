@@ -1,7 +1,7 @@
 import { ShieldAlert } from 'lucide-react';
 import { useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { toast } from 'sonner';
+import { toastError, toastSuccess, toastSuccessMessage } from '@/lib/utils/toastMessage';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/stores/authStore';
 
@@ -16,7 +16,7 @@ export default function Forbidden() {
   const backTo = state?.from ?? defaultBack;
 
   useEffect(() => {
-    toast.error('Akses ditolak: Anda tidak memiliki izin mengakses halaman ini.');
+    toastError(null, 'Akses ditolak: Anda tidak memiliki izin mengakses halaman ini.');
   }, []);
 
   return (

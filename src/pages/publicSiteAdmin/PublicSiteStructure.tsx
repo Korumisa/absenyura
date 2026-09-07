@@ -1,13 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import api from '@/services/api';
-import { toast } from 'sonner';
+import { toastError, toastSuccess } from '@/lib/utils/toastMessage';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import type { PublicStructureGroup } from '@/types/publicSite';
-import { getErrorMessage } from '@/lib/http/errorMessage';
 import { prepareImageForUpload } from '@/lib/media/imageUpload';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import AdminPageShell from '@/components/AdminPageShell';
@@ -119,9 +118,9 @@ export default function PublicSiteStructure() {
             : g
         )
       );
-      toast.success('Upload foto anggota berhasil');
+      toastSuccess('Upload foto anggota berhasil');
     } catch (e: any) {
-      toast.error(getErrorMessage(e, 'Gagal upload foto'));
+      toastError(e, 'Gagal upload foto');
     } finally {
       setUploadingKey(null);
     }
@@ -143,13 +142,14 @@ export default function PublicSiteStructure() {
         })),
       }));
       await api.put('/public-site/admin/structure', { cabinetName, cabinetPeriod, data: payload });
-      toast.success('Struktur organisasi tersimpan');
+      toastSuccess('Struktur organisasi tersimpan');
+      setLastSavedAt(new Date());
       setViewingCabinetId(null); // Reset to new active cabinet after saving
       dirtyRef.current = false;
       setDirty(false);
       mutate();
     } catch (e: any) {
-      toast.error(getErrorMessage(e, 'Gagal menyimpan'));
+      toastError(e, 'Gagal menyimpan');
     } finally {
       setSaving(false);
     }
@@ -158,10 +158,10 @@ export default function PublicSiteStructure() {
   const handleSetActive = async (id: string) => {
     try {
       await api.put(`/public-site/admin/structure/active/${id}`);
-      toast.success('Kabinet aktif diubah');
+      toastSuccess('Kabinet aktif diubah');
       mutate();
     } catch (e: any) {
-      toast.error(getErrorMessage(e, 'Gagal mengubah kabinet aktif'));
+      toastError(e, 'Gagal mengubah kabinet aktif');
     }
   };
 

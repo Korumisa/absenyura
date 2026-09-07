@@ -8,14 +8,20 @@ export function toastErrorMessage(err: unknown, fallback: string, maxLen = 80): 
   return `${message.slice(0, maxLen - 1).trimEnd()}…`;
 }
 
+/** [UX] Toast success maks 80 karakter — simetris dengan toastErrorMessage agar layout toast konsisten */
+export function toastSuccessMessage(message: string, maxLen = 80): string {
+  if (message.length <= maxLen) return message;
+  return `${message.slice(0, maxLen - 1).trimEnd()}…`;
+}
+
 export function toastError(err: unknown, fallback: string) {
   toast.error(toastErrorMessage(err, fallback), { duration: 5000 });
 }
 
 export function toastSuccess(message: string) {
-  toast.success(message, { duration: 3000 });
+  toast.success(toastSuccessMessage(message), { duration: 3000 });
 }
 
 export function toastInfo(message: string) {
-  toast(message, { duration: 4000 });
+  toast(toastSuccessMessage(message, 100), { duration: 4000 });
 }

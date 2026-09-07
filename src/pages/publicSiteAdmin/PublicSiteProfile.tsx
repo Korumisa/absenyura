@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import api from '@/services/api';
-import { toast } from 'sonner';
+import { toastError, toastSuccess, toastSuccessMessage } from '@/lib/utils/toastMessage';
 import { useAuthStore } from '@/stores/authStore';
 import { Button } from '@/components/ui/button';
 import { SubmitButton } from '@/components/ui/submit-button';
@@ -253,18 +253,19 @@ export default function PublicSiteProfile() {
 
       if (failures.length > 0) {
         const failureMsg = `${successes.length} bagian tersimpan, ${failures.length} gagal: ${failedLabels.join(', ')}`;
-        toast.error(failureMsg);
+        toastError(null, failureMsg);
         return;
       }
 
       await api.put('/public-site/admin/profile', { data: draft });
-      toast.success(
+      toastSuccess(
         `${successes.length} bagian tersimpan, ${failures.length} gagal${failedLabels.length ? `: ${failedLabels.join(', ')}` : ''}`
       );
+      setLastSavedAt(new Date());
       setDirty(false);
       mutate();
     } catch (e: any) {
-      toast.error(getErrorMessage(e, 'Gagal menyimpan'));
+      toastError(e, 'Gagal menyimpan');
     } finally {
       setSaving(false);
     }
@@ -587,9 +588,9 @@ export default function PublicSiteProfile() {
                             try {
                               const url = await uploadImage(file);
                               updateDraft((p) => ({ ...p, homeImageUrl: url }));
-                              toast.success('Upload foto anggota berhasil');
+                              toastSuccess('Upload foto anggota berhasil');
                             } catch (err: any) {
-                              toast.error(String(getErrorMessage(err, 'Gagal upload')));
+                              toastError(err, 'Gagal upload');
                             } finally {
                               setUploading((x) => ({ ...x, home: false }));
                               e.currentTarget.value = '';
@@ -720,9 +721,9 @@ export default function PublicSiteProfile() {
                             try {
                               const url = await uploadImage(file);
                               updateDraft((p) => ({ ...p, visiPhotoUrl: url }));
-                              toast.success('Upload foto visi berhasil');
+                              toastSuccess('Upload foto visi berhasil');
                             } catch (err: any) {
-                              toast.error(String(getErrorMessage(err, 'Gagal upload')));
+                              toastError(err, 'Gagal upload');
                             } finally {
                               setUploading((x) => ({ ...x, visi: false }));
                               e.currentTarget.value = '';
@@ -834,9 +835,9 @@ export default function PublicSiteProfile() {
                             try {
                               const url = await uploadImage(file);
                               updateDraft((p) => ({ ...p, misiPhotoUrl: url }));
-                              toast.success('Upload foto misi berhasil');
+                              toastSuccess('Upload foto misi berhasil');
                             } catch (err: any) {
-                              toast.error(String(getErrorMessage(err, 'Gagal upload')));
+                              toastError(err, 'Gagal upload');
                             } finally {
                               setUploading((x) => ({ ...x, misi: false }));
                               e.currentTarget.value = '';
@@ -1044,9 +1045,9 @@ export default function PublicSiteProfile() {
                           try {
                             const url = await uploadImage(file);
                             updateDraft((p) => ({ ...p, logoLightUrl: url }));
-                            toast.success('Upload logo light berhasil');
+                            toastSuccess('Upload logo light berhasil');
                           } catch (err: any) {
-                            toast.error(String(getErrorMessage(err, 'Gagal upload')));
+                            toastError(err, 'Gagal upload');
                           } finally {
                             setUploading((x) => ({ ...x, light: false }));
                             e.currentTarget.value = '';
@@ -1119,9 +1120,9 @@ export default function PublicSiteProfile() {
                           try {
                             const url = await uploadImage(file);
                             updateDraft((p) => ({ ...p, logoDarkUrl: url }));
-                            toast.success('Upload logo dark berhasil');
+                            toastSuccess('Upload logo dark berhasil');
                           } catch (err: any) {
-                            toast.error(String(getErrorMessage(err, 'Gagal upload')));
+                            toastError(err, 'Gagal upload');
                           } finally {
                             setUploading((x) => ({ ...x, dark: false }));
                             e.currentTarget.value = '';

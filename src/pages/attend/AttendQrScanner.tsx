@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
-import { toast } from 'sonner';
+import { toastError } from '@/lib/utils/toastMessage';
+import { stripHtml5QrDomSignatures } from '@/lib/systemic/stripDomExpandos';
 import { RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -71,7 +72,7 @@ export default function AttendQrScanner({
         qrCameraIdRef.current = null;
         const msg = 'Kamera tidak diizinkan. Buka pengaturan browser.';
         setQrError({ code: 'PERMISSION' });
-        toast.error(msg);
+        toastError(null, msg);
       } finally {
         setCamerasReady(true);
       }
@@ -164,13 +165,17 @@ export default function AttendQrScanner({
           const msg =
             'Tidak dapat membaca kode. Pastikan QR berada di tengah layar dan cahaya cukup.';
           setQrError({ code: 'SCAN_TIMEOUT' });
-          toast.error(msg);
+          toastError(null, msg);
           void (async () => {
-            try {
-              if (qr.isScanning) await qr.stop();
-              qr.clear();
-            } catch {
-              void 0;
+            if (!qrReleasedRef.current) {
+              qrReleasedRef.current = true;
+              try {
+                if (qr.isScanning) await qr.stop();
+                qr.clear();
+              } catch {
+                void 0;
+              }
+              stripHtml5QrDomSignatures('qr-reader');
             }
             if (scannerRef.current === qr) {
               scannerRef.current = null;
@@ -181,11 +186,15 @@ export default function AttendQrScanner({
         clearQrTimeout();
         const msg = 'Kamera tidak diizinkan. Buka pengaturan browser.';
         setQrError({ code: 'PERMISSION' });
-        toast.error(msg);
-        try {
-          qr.clear();
-        } catch {
-          void 0;
+        toastError(null, msg);
+        if (!qrReleasedRef.current) {
+          qrReleasedRef.current = true;
+          try {
+            qr.clear();
+          } catch {
+            void 0;
+          }
+          stripHtml5QrDomSignatures('qr-reader');
         }
       }
     };

@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import api from '@/services/api';
-import { toast } from 'sonner';
+import { toastError, toastSuccess, toastSuccessMessage } from '@/lib/utils/toastMessage';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -113,12 +113,12 @@ export default function PublicSitePrograms() {
     if (!deleteId) return;
     try {
       await api.delete(`/public-site/admin/programs/${deleteId}`);
-      toast.success('Berhasil dihapus');
+      toastSuccess('Berhasil dihapus');
       setIsDeleteOpen(false);
       setDeleteId(null);
       mutate();
     } catch (e: any) {
-      toast.error(getErrorMessage(e, 'Gagal menghapus'));
+      toastError(e, 'Gagal menghapus');
     }
   };
 
@@ -139,7 +139,7 @@ export default function PublicSitePrograms() {
           target: form.target,
           rationale: form.rationale,
         });
-        toast.success('Program kerja diperbarui');
+        toastSuccess('Program kerja diperbarui');
       } else {
         await api.post('/public-site/admin/programs', {
           title: form.title,
@@ -152,15 +152,16 @@ export default function PublicSitePrograms() {
           target: form.target,
           rationale: form.rationale,
         });
-        toast.success('Program kerja ditambahkan');
+        toastSuccess('Program kerja ditambahkan');
       }
+      setLastSavedAt(new Date());
       resetForm();
       setDateStart('');
       setDateEnd('');
       setPageTab('list');
       mutate();
     } catch (err: any) {
-      toast.error(getErrorMessage(err, 'Gagal menyimpan'));
+      toastError(err, 'Gagal menyimpan');
     }
   };
 
