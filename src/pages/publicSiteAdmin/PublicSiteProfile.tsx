@@ -16,7 +16,7 @@ import { ConfirmModal } from '@/components/ConfirmModal';
 import AdminPageShell from '@/components/AdminPageShell';
 import AdminCard from '@/components/AdminCard';
 import PublicSiteProfilePreview from '@/components/publicSiteAdmin/PublicSiteProfilePreview';
-import { AlertTriangle, Globe, Info, AlertCircle } from 'lucide-react';
+import { AlertTriangle, Globe, Info } from 'lucide-react';
 import { cn } from '@/lib/utils/utils';
 import { CmsTabNav, type CmsTabItem } from '@/components/ui/CmsTabNav';
 import { CmsEditorLayout } from '@/components/cms/CmsEditorLayout';
@@ -184,10 +184,6 @@ export default function PublicSiteProfile() {
   });
   const [isResetOpen, setIsResetOpen] = useState(false);
   const [profileTab, setProfileTab] = useState<ProfileTab>('identity');
-  const [infoWarnings, setInfoWarnings] = useState<SectionValidationError[]>([]);
-  const VALIDATION_ERROR_SEVERITY = ['error', 'warn'] as const;
-  type ValidationSeverity = (typeof VALIDATION_ERROR_SEVERITY)[number];
-  type ValidatedSection = SectionValidationError & { severity: ValidationSeverity };
 
   const uploadImage = async (file: File) => {
     const prepared = await prepareImageForUpload(file, {
@@ -273,19 +269,10 @@ export default function PublicSiteProfile() {
 
       const blockingErrors = sectionResults.filter(
         (r) => !r.ok && r.tab === profileTab
-      ) as unknown as ValidatedSection[];
-      blockingErrors.forEach((r) => (r.severity = 'error'));
-
-      const nonBlockingWarnings = sectionResults.filter(
-        (r) => !r.ok && r.tab !== profileTab
-      ) as unknown as ValidatedSection[];
-      nonBlockingWarnings.forEach((r) => (r.severity = 'warn'));
-
-      const successes = sectionResults.filter((r) => r.ok);
+      ) as SectionValidationError[];
 
       if (blockingErrors.length > 0) {
-        setValidationErrors(blockingErrors as unknown as SectionValidationError[]);
-        setInfoWarnings(nonBlockingWarnings as unknown as SectionValidationError[]);
+        setValidationErrors(blockingErrors);
         const blockingList = blockingErrors
           .map((f, idx) => `${idx + 1}. [${f.label}] ${f.hint}`)
           .join('\n');
@@ -297,16 +284,8 @@ export default function PublicSiteProfile() {
       }
 
       setValidationErrors([]);
-      setInfoWarnings(nonBlockingWarnings as unknown as SectionValidationError[]);
       await api.put('/public-site/admin/profile', { data: draft });
-      const savedCount = successes.length + blockingErrors.length;
-      toastSuccess(
-        `${savedCount} bagian profil tersimpan. ${
-          nonBlockingWarnings.length
-            ? `${nonBlockingWarnings.length} tab lain masih kosong (bisa diisi nanti).`
-            : 'Semua bagian lengkap!'
-        }`
-      );
+      toastSuccess('Profil situs berhasil tersimpan.');
       setLastSavedAt(new Date());
       setDirty(false);
       mutate();
@@ -427,7 +406,7 @@ export default function PublicSiteProfile() {
                       sebelum simpan
                     </h3>
                     <p className="mt-1 text-sm text-red-700/85 dark:text-red-200/85">
-                      Tab lain yang masih kosong tidak menghalangi simpan — bisa dikerjakan nanti.
+                      Lengkapi kolom di bawah lalu simpan kembali.
                     </p>
                     <ul className="mt-4 space-y-3">
                       {validationErrors.map((err) => {
@@ -465,73 +444,6 @@ export default function PublicSiteProfile() {
                                 className="inline-flex flex-none items-center gap-1.5 rounded-xl bg-red-600 px-3.5 py-2 text-xs font-semibold text-white shadow-[0_6px_14px_rgba(220,38,38,0.28)] transition hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2"
                               >
                                 Langsung perbaiki
-                                <span aria-hidden="true">→</span>
-                              </button>
-                            )}
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            ) : null}
-
-            {/* ── Info Warnings Banner (NON-BLOCKING: tab lain yang kosong) ─ */}
-            {infoWarnings.length > 0 ? (
-              <div
-                role="note"
-                className="mt-4 rounded-2xl border-2 border-indigo-200 bg-gradient-to-br from-indigo-50 to-sky-50 p-5 shadow-sm dark:border-indigo-900/60 dark:from-indigo-950/40 dark:to-sky-950/30"
-              >
-                <div className="flex flex-wrap items-start gap-3">
-                  <div className="flex h-10 w-10 flex-none items-center justify-center rounded-xl bg-indigo-100 text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-300">
-                    <AlertCircle size={22} aria-hidden="true" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h3 className="text-base font-bold text-indigo-900 dark:text-indigo-100">
-                      {infoWarnings.length} bagian dari tab lain masih kosong — bisa disimpan dulu,
-                      diisi nanti
-                    </h3>
-                    <p className="mt-1 text-sm text-indigo-700/85 dark:text-indigo-200/85">
-                      Simpan progres tab ini terlebih dahulu. Tab di bawah bisa dikerjakan lain kali
-                      tanpa kehilangan perubahan.
-                    </p>
-                    <ul className="mt-4 space-y-3">
-                      {infoWarnings.map((warn) => {
-                        const tabInfo = PROFILE_TABS.find((t) => t.id === warn.tab);
-                        return (
-                          <li
-                            key={warn.id}
-                            className="flex flex-wrap items-start gap-3 rounded-xl border border-indigo-100 bg-white/60 p-3 backdrop-blur-sm dark:border-indigo-900/30 dark:bg-black/20"
-                          >
-                            <div className="flex-1 min-w-0">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <span className="inline-flex items-center gap-1 rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-200">
-                                  <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
-                                  Bagian {warn.label} • opsional sekarang
-                                </span>
-                                {tabInfo ? (
-                                  <span className="text-xs font-medium text-indigo-600/75 dark:text-indigo-300/75">
-                                    (Tab: {tabInfo.label})
-                                  </span>
-                                ) : null}
-                              </div>
-                              <p className="mt-2 text-sm text-indigo-800/90 dark:text-indigo-100/90">
-                                {warn.hint}
-                              </p>
-                            </div>
-                            {tabInfo && profileTab !== warn.tab && (
-                              <button
-                                type="button"
-                                onClick={async () => {
-                                  const ok = await confirmIfDirty();
-                                  if (ok) {
-                                    setProfileTab(warn.tab);
-                                  }
-                                }}
-                                className="inline-flex flex-none items-center gap-1.5 rounded-xl bg-indigo-600 px-3.5 py-2 text-xs font-semibold text-white shadow-[0_6px_14px_rgba(79,70,229,0.28)] transition hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
-                              >
-                                Lihat tab
                                 <span aria-hidden="true">→</span>
                               </button>
                             )}
