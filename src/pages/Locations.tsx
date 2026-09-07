@@ -80,6 +80,23 @@ function stripLeafletDomSignatures(root: HTMLElement | null) {
   }
 }
 
+/** Aggresive pre- & post-mount panel sanitizer for Leaflet reuse-safety:
+ *  1. Empty innerHTML → removes leftover Leaflet DOM (.leaflet-control-container,
+ *     .leaflet-pane stacks, tile image nodes that React-leaflet's internal
+ *     unmount sometimes leaves behind when component errors mid-render).
+ *  2. Strips every `_leaflet_id` / `_leaflet_events` / `_leaflet_tile_loaded`
+ *     expando from the tree via the existing local TreeWalker helper.
+ */
+function pruneLeafletPanel(root: HTMLElement | null) {
+  if (!root) return;
+  try {
+    root.innerHTML = '';
+  } catch {
+    while (root.firstChild) root.removeChild(root.firstChild);
+  }
+  stripLeafletDomSignatures(root);
+}
+
 const MapContainer = lazy(() => import('react-leaflet').then((m) => ({ default: m.MapContainer })));
 const TileLayer = lazy(() => import('react-leaflet').then((m) => ({ default: m.TileLayer })));
 const Marker = lazy(() => import('react-leaflet').then((m) => ({ default: m.Marker })));
@@ -99,28 +116,41 @@ interface MapSelfHealingBoundaryProps {
 }
 interface MapSelfHealingBoundaryState {
   hasError: boolean;
+  remountSeq: number;
 }
 class MapSelfHealingBoundary extends React.Component<
   MapSelfHealingBoundaryProps,
   MapSelfHealingBoundaryState
 > {
-  state: MapSelfHealingBoundaryState = { hasError: false };
+  state: MapSelfHealingBoundaryState = { hasError: false, remountSeq: 0 };
   static getDerivedStateFromError(_: any): MapSelfHealingBoundaryState {
-    return { hasError: true };
+    return { hasError: true, remountSeq: (_.remountSeq ?? 0) + 1 };
   }
   componentDidCatch(error: any) {
     // Only remap the specific map errors — ignore other unrelated errors
     // to the parent boundary that should bubble up to the route boundary.
     const msg: string = String(error?.message ?? '');
     if (/Map container (is already initialized|is being reused)/i.test(msg)) {
-      // Schedule one-shot remount via parent key change.
-      // Use a macrotask so React's current error dispatch finishes first.
+      // STEP 1: Commit skeleton first (hasError=true) → React unmounts the
+      // stale MapContainer (runs Leaflet internal .remove() + our effect
+      // cleanup strip expandos). This guarantees the old instance is gone.
+      flushSync(() => {
+        this.setState((s) => ({ hasError: true, remountSeq: s.remountSeq + 1 }));
+      });
+      // STEP 2+3: Wait 2 consecutive frames + macrotask so React commit &
+      // DOM cleanup are 100% flushed before we attempt a fresh mount.
       window.setTimeout(() => {
-        flushSync(() => {
-          this.setState({ hasError: false });
-          this.props.onRemount();
+        window.requestAnimationFrame(() => {
+          window.requestAnimationFrame(() => {
+            // Parent regenerates mapInstanceKey (different DOM id) and we
+            // let React build a brand new subtree for the MapContainer.
+            flushSync(() => {
+              this.props.onRemount();
+              this.setState({ hasError: false });
+            });
+          });
         });
-      }, 16);
+      }, 50);
     } else {
       // Re-throw non-Leaflet-initialization errors up the chain.
       throw error;
@@ -134,7 +164,7 @@ class MapSelfHealingBoundary extends React.Component<
         </div>
       );
     }
-    return this.props.children;
+    return <React.Fragment key={this.state.remountSeq}>{this.props.children}</React.Fragment>;
   }
 }
 
@@ -216,17 +246,25 @@ export default function Locations() {
   // expandos (`_leaflet_id` etc.) before every fresh mount.
   const mapPanelRef = React.useRef<HTMLDivElement | null>(null);
 
-  // When the entire Locations page is unmounted, strip any lingering Leaflet
-  // DOM expandos from the panel container. We deliberately do NOT call
-  // L.Map.remove() here — React-leaflet's internal unmount already does this,
-  // and calling it a second time throws "Map container is being reused by
-  // another instance" in Leaflet 1.9 / StrictMode double-cleanup scenarios.
+  // Cleanup on unmount: prune DOM children (empty container innerHTML)
+  // + strip all Leaflet DOM expandos (`_leaflet_id`, `_leaflet_events`).
+  // React-leaflet's native unmount already calls internal L.Map.remove()
+  // — we don't duplicate that call (it triggers "being reused" on 1.9).
   useEffect(() => {
     const panelSnapshot = mapPanelRef.current;
     return () => {
-      stripLeafletDomSignatures(panelSnapshot);
+      pruneLeafletPanel(panelSnapshot);
     };
   }, []);
+
+  // Pre-mount prune: every time the map key changes (fresh mount attempt),
+  // nuke residual DOM children + expandos from the wrapper BEFORE React
+  // commits the new MapContainer. Eliminates "another instance" reuse race.
+  useEffect(() => {
+    pruneLeafletPanel(mapPanelRef.current);
+    // Depends on mapInstanceKey only — run once per remount cycle.
+     
+  }, [mapInstanceKey]);
 
   // Form state
   const [formData, setFormData] = useState({

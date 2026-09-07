@@ -51,10 +51,30 @@ export function getErrorMessage(err: any, fallback: string) {
   if (
     !err?.response &&
     (code === 'ERR_NETWORK' ||
+      code === 'ERR_CANCELED' ||
+      code === 'ECONNABORTED' ||
+      String(err?.message || '')
+        .toLowerCase()
+        .includes('canceled') ||
+      String(err?.message || '')
+        .toLowerCase()
+        .includes('abort') ||
       String(err?.message || '')
         .toLowerCase()
         .includes('network'))
   ) {
+    if (
+      code === 'ERR_CANCELED' ||
+      code === 'ECONNABORTED' ||
+      String(err?.message || '')
+        .toLowerCase()
+        .includes('canceled') ||
+      String(err?.message || '')
+        .toLowerCase()
+        .includes('abort')
+    ) {
+      return 'Permintaan dibatalkan atau koneksi terputus. Silakan coba lagi.';
+    }
     return 'Sistem kami sedang mengalami gangguan koneksi. Tenang, kami sedang memperbaikinya. Silakan segarkan halaman dalam beberapa saat.';
   }
 
