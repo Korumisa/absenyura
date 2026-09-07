@@ -3,18 +3,38 @@ import { flushSync } from 'react-dom';
 import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { fixLeafletDefaultIcons } from '@/lib/media/leafletIcon';
-import { stripLeafletDomSignatures as stripLeafletById } from '@/lib/systemic/stripDomExpandos';
 
 fixLeafletDefaultIcons();
 
-// AttendLocationMap wrapper: helper menerima string rootId, sedangkan call sites
-// saat ini pakai HTMLElement|null (snapshot ref .current). Adapter kompatibilitas:
+// ── Leaflet systemic hardening (shared pattern with Locations.tsx) ────────
 function stripLeafletDomSignatures(root: HTMLElement | null) {
-  if (!root || !root.id) {
-    stripLeafletById(root?.id ?? '__no_id__');
-    return;
+  if (!root) return;
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT);
+  let node: Node | null = walker.currentNode;
+  while (node) {
+    if (node instanceof HTMLElement) {
+      try {
+        // @ts-expect-error — Leaflet internal expando; we intentionally wipe it
+        if (node._leaflet_id !== undefined) delete node._leaflet_id;
+        // @ts-expect-error — same internal expando reason
+        if (node._leaflet_events !== undefined) delete node._leaflet_events;
+        // @ts-expect-error — same internal expando reason
+        if (node._leaflet_tile_loaded !== undefined) delete node._leaflet_tile_loaded;
+      } catch {
+        /* defensive — older engines can throw on delete of non-configurable */
+      }
+    }
   }
-  stripLeafletById(root.id);
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex h-full w-full items-center justify-center bg-muted text-sm text-muted-foreground">
+          Memuat ulang peta…
+        </div>
+      );
+    }
+    return this.props.children;
+  }
 }
 
 // ── Self-healing error boundary for Leaflet ──────────────────────────────
@@ -37,10 +57,8 @@ class MapSelfHealingBoundary extends React.Component<
     const msg: string = String(error?.message ?? '');
     if (/Map container (is already initialized|is being reused)/i.test(msg)) {
       window.setTimeout(() => {
-        flushSync(() => {
-          this.setState({ hasError: false });
-          this.props.onRemount();
-        });
+        this.setState({ hasError: false });
+        this.props.onRemount();
       }, 16);
     } else {
       throw error;
@@ -100,9 +118,9 @@ export default function AttendLocationMap({
   // call L.Map.remove() here — React-leaflet's native unmount already does
   // this, and a double-call triggers Leaflet 1.9's "being reused" error.
   useEffect(() => {
-    const panel = mapPanelRef.current;
+    const panelSnapshot = mapPanelRef;
     return () => {
-      stripLeafletDomSignatures(panel);
+      stripLeafletDomSignatures(panelSnapshot.current);
     };
   }, []);
 

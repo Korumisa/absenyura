@@ -49,7 +49,6 @@ import { useAuthStore } from '@/stores/authStore';
 import { toastErrorMessage } from '@/lib/utils/toastMessage';
 import { useMutationToast } from '@/hooks/useMutationToast';
 import { LastSavedIndicator } from '@/components/admin/LastSavedIndicator';
-import { useFormDirtyGuard } from '@/hooks/useFormDirtyGuard';
 
 // ── Leaflet systemic hardening (shared pattern) ──────────────────────────
 // Leaflet marks DOM elements with a custom `_leaflet_id` property when a map
@@ -117,10 +116,8 @@ class MapSelfHealingBoundary extends React.Component<
       // Schedule one-shot remount via parent key change.
       // Use a macrotask so React's current error dispatch finishes first.
       window.setTimeout(() => {
-        flushSync(() => {
-          this.setState({ hasError: false });
-          this.props.onRemount();
-        });
+        this.setState({ hasError: false });
+        this.props.onRemount();
       }, 16);
     } else {
       // Re-throw non-Leaflet-initialization errors up the chain.
@@ -223,9 +220,9 @@ export default function Locations() {
   // and calling it a second time throws "Map container is being reused by
   // another instance" in Leaflet 1.9 / StrictMode double-cleanup scenarios.
   useEffect(() => {
-    const panel = mapPanelRef.current;
+    const panelRefSnapshot = mapPanelRef;
     return () => {
-      stripLeafletDomSignatures(panel);
+      stripLeafletDomSignatures(panelRefSnapshot.current);
     };
   }, []);
 
@@ -927,7 +924,7 @@ export default function Locations() {
                             radius={formData.radius}
                             pathOptions={{ color: 'indigo', fillColor: 'indigo', fillOpacity: 0.2 }}
                           />
-                          <MapEvents formData={formData} setFormData={setFormDataDirty} />
+                          <MapEvents formData={formData} setFormData={setFormData} />
                           <MapResizeOnOpen when={isModalOpen} />
                         </MapContainer>
                       </Suspense>
