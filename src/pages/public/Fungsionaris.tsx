@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import PublicLayout from '@/components/PublicLayout';
-import api from '@/services/api';
 import type { PublicProfile, PublicStructureGroup } from '@/types/publicSite';
 import { Skeleton } from '@/components/ui/skeleton';
 import PublicPageHero from '@/components/PublicPageHero';
@@ -12,6 +11,7 @@ import PublicEnter from '@/components/PublicEnter';
 import PublicReveal from '@/components/PublicReveal';
 import { useMockOrSwr } from '@/hooks/useMockOrSwr';
 import { mockStructure, mockProfile } from '@/lib/utils/mockLandingData';
+import { publicSiteFetcher } from '@/lib/utils/publicSiteFetcher';
 import { safeRelation } from '@/lib/utils/publicContent';
 import { PublicPageError } from '@/components/public/PublicPageError';
 import { PublicEmptyState } from '@/components/public/PublicEmptyState';
@@ -20,17 +20,15 @@ import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 type StructureResp = { data: PublicStructureGroup[]; cabinet: any; allCabinets: any[] };
 
 export default function Fungsionaris() {
-  const fetcherStructure = (url: string) => api.get(url).then((r) => r.data);
-  const fetcherData = (url: string) => api.get(url).then((r) => r.data.data);
   const structureResult = useMockOrSwr<StructureResp>({
     swrKey: '/public-site/structure',
-    fetcher: fetcherStructure,
+    fetcher: (u) => publicSiteFetcher<StructureResp>(u, { kind: 'top' }),
     mockStatic: mockStructure as StructureResp,
   });
   const { swr: structureSwr, data: structureData, isInitialLoading: isLoading, isError, retry } = structureResult;
   const profileResult = useMockOrSwr<PublicProfile | null>({
     swrKey: '/public-site/profile',
-    fetcher: fetcherData,
+    fetcher: publicSiteFetcher<PublicProfile | null>,
     mockStatic: mockProfile,
   });
   const profile = profileResult.data ?? null;

@@ -40,6 +40,7 @@ export default function AttendQrScanner({
   const qrDecodeTimeoutRef = useRef<number | null>(null);
   const qrDecodedSuccessRef = useRef(false);
   const qrReleasedRef = useRef(false);
+  const qrAbortErrorHandlerRef = useRef<((ev: ErrorEvent) => boolean) | null>(null);
 
   const [camerasReady, setCamerasReady] = useState(false);
   const [qrBootNonce, setQrBootNonce] = useState(0);
@@ -101,6 +102,15 @@ export default function AttendQrScanner({
       }
       scannerRef.current = null;
     }
+    // Uninstall transient global abort-error catcher (if any)
+    if (qrAbortErrorHandlerRef.current) {
+      window.removeEventListener(
+        'error',
+        qrAbortErrorHandlerRef.current as any as EventListener,
+        true
+      );
+      qrAbortErrorHandlerRef.current = null;
+    }
     stripHtml5QrDomSignatures('qr-reader');
     await waitForCameraRelease();
   }, []);
@@ -122,6 +132,30 @@ export default function AttendQrScanner({
     const bootScanner = async () => {
       setQrError(null);
       qrReleasedRef.current = false;
+      // Install a transient global error listener that SILENTLY swallows the
+      // very specific html5-qrcode "RenderedCameraImpl video surface onabort"
+      // noise triggered by mid-stream navigation / unmount. Nothing user-
+      // facing breaks when this fires — the scanner just restarts cleanly.
+      if (!qrAbortErrorHandlerRef.current) {
+        const h = (ev: ErrorEvent): boolean => {
+          const raw: string = String(
+            (ev && (ev.message || ((ev.error as any) && (ev.error as any).message))) || ''
+          );
+          if (
+            /onabort/i.test(raw) ||
+            /RenderedCameraImpl/i.test(raw) ||
+            /video surface/i.test(raw)
+          ) {
+            ev.preventDefault?.();
+            ev.stopPropagation?.();
+            return false;
+          }
+          return true;
+        };
+        qrAbortErrorHandlerRef.current = h;
+        window.addEventListener('error', h as any as EventListener, true);
+      }
+
       await waitForCameraRelease(350);
       if (cancelled || bootGen !== qrBootGenRef.current || scannerRef.current) return;
 
@@ -209,7 +243,11 @@ export default function AttendQrScanner({
       }
     };
 
-    void bootScanner();
+    void bootScanner().catch((_e) => {
+      // Swallow any async boot noise (media aborts, mid-flight unmounts) —
+      // user-facing error toast was already shown by inner catch clauses.
+      void _e;
+    });
 
     return () => {
       cancelled = true;
@@ -218,7 +256,9 @@ export default function AttendQrScanner({
       void (async () => {
         await releaseQrScanner();
         await waitForCameraRelease(200);
-      })();
+      })().catch(() => {
+        void 0;
+      });
     };
   }, [
     scanning,
@@ -253,6 +293,15 @@ export default function AttendQrScanner({
           } catch {
             void 0;
           }
+        }
+        // Always uninstall global abort-catcher on full unmount
+        if (qrAbortErrorHandlerRef.current) {
+          window.removeEventListener(
+            'error',
+            qrAbortErrorHandlerRef.current as any as EventListener,
+            true
+          );
+          qrAbortErrorHandlerRef.current = null;
         }
         await releaseActiveVideoTracks();
         await new Promise<void>((r) => setTimeout(r, 300));
