@@ -1,39 +1,55 @@
 import { z } from 'zod';
 
-const sanitizedUrl = z.string().trim().nullable().optional();
+const emptyToNull = <T extends z.ZodTypeAny>(schema: T) =>
+  z.preprocess((val) => {
+    if (val === undefined || val === null) return null;
+    if (typeof val === 'string' && val.trim() === '') return null;
+    return val;
+  }, schema.nullable().optional());
+
+const trimmedString = (fallback?: string) =>
+  z.preprocess((val) => {
+    if (val === undefined || val === null) return fallback ?? '';
+    return String(val).trim();
+  }, z.string());
+
+const requiredTrimmed = (min: number, msg: string) =>
+  trimmedString().pipe(z.string().min(min, msg));
+
+const sanitizedUrl = emptyToNull(z.string().trim().url('Format URL tidak valid'));
 
 export const PublicProfileData = z.object({
-  orgName: z.string().trim().min(1, 'Nama organisasi wajib diisi'),
-  campusName: z.string().trim().min(1, 'Nama kampus wajib diisi'),
-  kabinetName: z.string().trim().nullable().optional(),
-  kabinetPeriod: z.string().trim().nullable().optional(),
-  heroSubtitle: z.string().trim().nullable().optional(),
+  orgName: requiredTrimmed(1, 'Nama organisasi wajib diisi'),
+  campusName: requiredTrimmed(1, 'Nama kampus wajib diisi'),
+  kabinetName: emptyToNull(z.string().trim()),
+  kabinetPeriod: emptyToNull(z.string().trim()),
+  heroSubtitle: emptyToNull(z.string().trim()),
   homeImageUrl: sanitizedUrl,
-  youtubeEmbedUrl: z.string().trim().nullable().optional(),
-  aboutTitle: z.string().trim().nullable().optional(),
-  aboutContent: z.string().trim().nullable().optional(),
-  homeCardLeftTitle: z.string().trim().nullable().optional(),
-  homeCardLeftBody: z.string().trim().nullable().optional(),
-  homeCardRightTitle: z.string().trim().nullable().optional(),
-  homeCardRightBody: z.string().trim().nullable().optional(),
-  vision: z.string().trim().nullable().optional(),
-  mission: z.string().trim().nullable().optional(),
+  youtubeEmbedUrl: emptyToNull(z.string().trim()),
+  aboutTitle: emptyToNull(z.string().trim()),
+  aboutContent: emptyToNull(z.string().trim()),
+  homeCardLeftTitle: emptyToNull(z.string().trim()),
+  homeCardLeftBody: emptyToNull(z.string().trim()),
+  homeCardRightTitle: emptyToNull(z.string().trim()),
+  homeCardRightBody: emptyToNull(z.string().trim()),
+  vision: emptyToNull(z.string().trim()),
+  mission: emptyToNull(z.string().trim()),
   visiPhotoUrl: sanitizedUrl,
-  visiName: z.string().trim().nullable().optional(),
-  visiRole: z.string().trim().nullable().optional(),
+  visiName: emptyToNull(z.string().trim()),
+  visiRole: emptyToNull(z.string().trim()),
   misiPhotoUrl: sanitizedUrl,
-  misiName: z.string().trim().nullable().optional(),
-  misiRole: z.string().trim().nullable().optional(),
-  footerTagline: z.string().trim().nullable().optional(),
+  misiName: emptyToNull(z.string().trim()),
+  misiRole: emptyToNull(z.string().trim()),
+  footerTagline: emptyToNull(z.string().trim()),
   instagramUrl: sanitizedUrl,
   tiktokUrl: sanitizedUrl,
   youtubeUrl: sanitizedUrl,
-  address: z.string().trim().nullable().optional(),
-  email: z.string().trim().email('Format email tidak valid').nullable().optional(),
-  phone: z.string().trim().nullable().optional(),
+  address: emptyToNull(z.string().trim()),
+  email: emptyToNull(z.string().trim().email('Format email tidak valid')),
+  phone: emptyToNull(z.string().trim()),
   logoLightUrl: sanitizedUrl,
   logoDarkUrl: sanitizedUrl,
-  primaryColor: z.string().trim().nullable().optional(),
+  primaryColor: emptyToNull(z.string().trim()),
 });
 
 export const UpsertPublicProfileBody = z.object({
