@@ -203,6 +203,11 @@ export default function PublicSitePrograms() {
               description="Isi detail program kerja."
             >
               <form onSubmit={upsert} className="space-y-4">
+                <LastSavedIndicator
+                  lastSavedAt={lastSavedAt}
+                  isDirty={dirty}
+                  isSaving={false}
+                />
                 <div className="space-y-2">
                   <Label>Judul</Label>
                   <Input
@@ -316,6 +321,31 @@ export default function PublicSitePrograms() {
               }}
             />
             <ul className="space-y-4 md:hidden" aria-label="Daftar program">
+              {programs.length === 0 ? (
+                <li>
+                  <AdminEmptyState
+                    compact
+                    icon={ClipboardList}
+                    title="Belum ada program"
+                    description="Tambahkan program kerja baru untuk memulai."
+                    action={
+                      <Button
+                        type="button"
+                        onClick={async () => {
+                          const ok = await confirmIfDirty();
+                          if (!ok) return;
+                          resetForm();
+                          setPageTab('form');
+                        }}
+                        className="min-h-11"
+                      >
+                        <PlusIcon className="mr-2 size-4" aria-hidden="true" />
+                        Tambah Program
+                      </Button>
+                    }
+                  />
+                </li>
+              ) : null}
               {programs.map((p) => (
                 <li key={p.id} className="rounded-2xl border border-border p-4">
                   <p className="font-bold text-foreground">{p.title}</p>
@@ -376,8 +406,29 @@ export default function PublicSitePrograms() {
                 <TableBody>
                   {programs.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="h-20 text-center text-muted-foreground">
-                        Belum ada program.
+                      <TableCell colSpan={4} className="p-0">
+                        <AdminEmptyState
+                          compact
+                          icon={ClipboardList}
+                          title="Belum ada program"
+                          description="Tambahkan program kerja baru untuk memulai."
+                          action={
+                            <Button
+                              type="button"
+                              onClick={async () => {
+                                const ok = await confirmIfDirty();
+                                if (!ok) return;
+                                resetForm();
+                                setPageTab('form');
+                              }}
+                              className="min-h-11"
+                            >
+                              <PlusIcon className="mr-2 size-4" aria-hidden="true" />
+                              Tambah Program
+                            </Button>
+                          }
+                          className="border-0 shadow-none"
+                        />
                       </TableCell>
                     </TableRow>
                   ) : (

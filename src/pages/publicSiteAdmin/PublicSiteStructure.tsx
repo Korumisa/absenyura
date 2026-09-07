@@ -308,9 +308,31 @@ export default function PublicSiteStructure() {
           )}
 
           {groups.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-border bg-muted/30 p-6 text-sm text-muted-foreground">
-              Belum ada struktur. Klik “Tambah Grup” untuk mulai.
-            </div>
+            <AdminEmptyState
+              compact
+              icon={Layers}
+              title="Belum ada struktur"
+              description="Klik “Tambah Grup” di bawah ini untuk mulai menyusun struktur organisasi."
+              action={
+                <Button
+                  type="button"
+                  onClick={() =>
+                    setGroupsDirty((prev) => [
+                      ...prev,
+                      {
+                        title: '',
+                        isCore: false,
+                        people: [{ name: '', role: '', photoUrl: '', isSpotlight: false }],
+                      },
+                    ])
+                  }
+                  className="min-h-11"
+                >
+                  <PlusIcon className="mr-2 size-4" aria-hidden="true" />
+                  Tambah Grup
+                </Button>
+              }
+            />
           ) : (
             <div className="space-y-5">
               {groups.map((g, gi) => (

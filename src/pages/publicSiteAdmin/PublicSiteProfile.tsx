@@ -15,7 +15,6 @@ import { prepareImageForUpload } from '@/lib/media/imageUpload';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import AdminPageShell from '@/components/AdminPageShell';
 import AdminCard from '@/components/AdminCard';
-import { AdminCardActions } from '@/components/admin/AdminCardActions';
 import PublicSiteProfilePreview from '@/components/publicSiteAdmin/PublicSiteProfilePreview';
 import { Globe } from 'lucide-react';
 import { cn } from '@/lib/utils/utils';

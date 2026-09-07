@@ -22,13 +22,15 @@ import { prepareImageForUpload } from '@/lib/media/imageUpload';
 import AdminPageShell from '@/components/AdminPageShell';
 import AdminCard from '@/components/AdminCard';
 import PublicSiteGalleryPreview from '@/components/publicSiteAdmin/PublicSiteGalleryPreview';
-import { Image } from 'lucide-react';
+import { Image, Plus as PlusIcon } from 'lucide-react';
 import { CmsTabNav, type CmsTabItem } from '@/components/ui/CmsTabNav';
 import { CmsPublishTabs } from '@/components/ui/CmsPublishTabs';
 import { CmsEditorLayout } from '@/components/cms/CmsEditorLayout';
 import { CmsListToolbar } from '@/components/cms/CmsListToolbar';
 import { AdminContentTransition } from '@/components/admin/AdminContentTransition';
 import { useFormDirtyGuard } from '@/hooks/useFormDirtyGuard';
+import { LastSavedIndicator } from '@/components/admin/LastSavedIndicator';
+import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
 
 type PageTab = 'form' | 'list';
 const PAGE_TABS: readonly CmsTabItem<PageTab>[] = [
@@ -46,7 +48,7 @@ export default function PublicSiteGalleries() {
   );
 
   const [pageTab, setPageTab] = useState<PageTab>('list');
-  type ItemDraft = { imageUrl: string; caption: string };
+  type ItemDraft = { imageUrl: string; caption: string; _uuid: string };
   const [form, setForm] = useState<{
     id?: string;
     title?: string;
@@ -55,18 +57,21 @@ export default function PublicSiteGalleries() {
     items?: ItemDraft[];
   }>({ items: [] });
   const [dirty, setDirty] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const [saving, setSaving] = useState(false);
   const { confirmIfDirty } = useFormDirtyGuard(dirty);
 
   const setFormDirty = useMemo(
     () => (updater: React.SetStateAction<typeof form>) => {
       setDirty(true);
-      setFormDirty(updater);
+      setForm(updater);
     },
     []
   );
   const resetForm = () => {
     setForm({ items: [] });
     setDirty(false);
+    setLastSavedAt(null);
   };
 
   const uploadImage = async (file: File) => {
@@ -104,6 +109,7 @@ export default function PublicSiteGalleries() {
 
   const upsert = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSaving(true);
     try {
       const items = (form.items ?? []).map((x, idx) => ({
         imageUrl: x.imageUrl,
@@ -125,13 +131,16 @@ export default function PublicSiteGalleries() {
           isPublished: form.isPublished ?? false,
           items,
         });
-        toast.success('Album ditambahkan');
+        toastSuccess('Album ditambahkan');
       }
+      setLastSavedAt(new Date());
       resetForm();
       setPageTab('list');
       mutate();
     } catch (err: any) {
-      toast.error(getErrorMessage(err, 'Gagal menyimpan'));
+      toastError(err, 'Gagal menyimpan');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -224,7 +233,7 @@ export default function PublicSiteGalleries() {
                       onClick={() =>
                         setFormDirty((p) => ({
                           ...p,
-                          items: [...(p.items ?? []), { imageUrl: '', caption: '' }],
+                          items: [...(p.items ?? []), { imageUrl: '', caption: '', _uuid: crypto.randomUUID() }],
                         }))
                       }
                     >
@@ -256,7 +265,7 @@ export default function PublicSiteGalleries() {
                   ) : (
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                       {(form.items ?? []).map((it, idx) => (
-                        <div key={idx} className="rounded-xl border border-border bg-muted/30 p-3">
+                        <div key={it._uuid} className="rounded-xl border border-border bg-muted/30 p-3">
                           <div className="aspect-video w-full overflow-hidden rounded-lg bg-slate-100 bg-background">
                             {it.imageUrl ? (
                               <img
@@ -342,23 +351,30 @@ export default function PublicSiteGalleries() {
                     </div>
                   )}
                 </div>
-                <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="min-h-11"
-                    onClick={() => setPageTab('list')}
-                  >
-                    Kembali ke daftar
-                  </Button>
-                  {form.id ? (
-                    <Button variant="ghost" type="button" className="min-h-11" onClick={resetForm}>
-                      Reset
+                <div className="flex flex-col-reverse gap-4 pt-2 sm:flex-row sm:items-center sm:justify-between">
+                  <LastSavedIndicator
+                    lastSavedAt={lastSavedAt}
+                    isDirty={dirty}
+                    isSaving={saving}
+                  />
+                  <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="min-h-11"
+                      onClick={() => setPageTab('list')}
+                    >
+                      Kembali ke daftar
                     </Button>
-                  ) : null}
-                  <Button type="submit" className="min-h-11" disabled={uploading}>
-                    {form.id ? 'Simpan album' : 'Tambah album'}
-                  </Button>
+                    {form.id ? (
+                      <Button variant="ghost" type="button" className="min-h-11" onClick={resetForm}>
+                        Reset
+                      </Button>
+                    ) : null}
+                    <Button type="submit" className="min-h-11" disabled={uploading || saving}>
+                      {saving ? 'Menyimpan…' : form.id ? 'Simpan album' : 'Tambah album'}
+                    </Button>
+                  </div>
                 </div>
               </form>
             </AdminCard>
@@ -379,7 +395,29 @@ export default function PublicSiteGalleries() {
             />
             <ul className="space-y-4 md:hidden" aria-label="Daftar album">
               {galleries.length === 0 ? (
-                <li className="py-8 text-center text-sm text-muted-foreground">Belum ada album.</li>
+                <li>
+                  <AdminEmptyState
+                    compact
+                    icon={Image}
+                    title="Belum ada album"
+                    description="Tambahkan album galeri baru untuk memulai."
+                    action={
+                      <Button
+                        type="button"
+                        onClick={async () => {
+                          const ok = await confirmIfDirty();
+                          if (!ok) return;
+                          resetForm();
+                          setPageTab('form');
+                        }}
+                        className="min-h-11"
+                      >
+                        <PlusIcon className="mr-2 size-4" aria-hidden="true" />
+                        Tambah Album
+                      </Button>
+                    }
+                  />
+                </li>
               ) : null}
               {galleries.map((g) => (
                 <li key={g.id} className="rounded-2xl border border-border p-4">
@@ -405,6 +443,7 @@ export default function PublicSiteGalleries() {
                           items: (g.items ?? []).map((it) => ({
                             imageUrl: it.image_url,
                             caption: it.caption ?? '',
+                            _uuid: crypto.randomUUID(),
                           })),
                         });
                         setDirty(false);
@@ -439,8 +478,29 @@ export default function PublicSiteGalleries() {
                 <TableBody>
                   {galleries.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="py-10 text-center text-muted-foreground">
-                        Belum ada album.
+                      <TableCell colSpan={4} className="p-0">
+                        <AdminEmptyState
+                          compact
+                          icon={Image}
+                          title="Belum ada album"
+                          description="Tambahkan album galeri baru untuk memulai."
+                          action={
+                            <Button
+                              type="button"
+                              onClick={async () => {
+                                const ok = await confirmIfDirty();
+                                if (!ok) return;
+                                resetForm();
+                                setPageTab('form');
+                              }}
+                              className="min-h-11"
+                            >
+                              <PlusIcon className="mr-2 size-4" aria-hidden="true" />
+                              Tambah Album
+                            </Button>
+                          }
+                          className="border-0 shadow-none"
+                        />
                       </TableCell>
                     </TableRow>
                   ) : null}
@@ -469,6 +529,7 @@ export default function PublicSiteGalleries() {
                               items: (g.items ?? []).map((it) => ({
                                 imageUrl: it.image_url,
                                 caption: it.caption ?? '',
+                                _uuid: crypto.randomUUID(),
                               })),
                             });
                             setDirty(false);

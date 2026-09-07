@@ -22,13 +22,15 @@ import { prepareImageForUpload } from '@/lib/media/imageUpload';
 import AdminPageShell from '@/components/AdminPageShell';
 import AdminCard from '@/components/AdminCard';
 import PublicSiteRecruitmentPreview from '@/components/publicSiteAdmin/PublicSiteRecruitmentPreview';
-import { FileText } from 'lucide-react';
+import { FileText, Plus as PlusIcon } from 'lucide-react';
 import { CmsTabNav, type CmsTabItem } from '@/components/ui/CmsTabNav';
+import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
 import { CmsPublishTabs } from '@/components/ui/CmsPublishTabs';
 import { CmsEditorLayout } from '@/components/cms/CmsEditorLayout';
 import { CmsListToolbar } from '@/components/cms/CmsListToolbar';
 import { AdminContentTransition } from '@/components/admin/AdminContentTransition';
 import { useFormDirtyGuard } from '@/hooks/useFormDirtyGuard';
+import { LastSavedIndicator } from '@/components/admin/LastSavedIndicator';
 
 type PageTab = 'form' | 'list';
 type FormTab = 'info' | 'team';
@@ -54,8 +56,8 @@ export default function PublicSiteRecruitments() {
   const [pageTab, setPageTab] = useState<PageTab>('list');
   const [formTab, setFormTab] = useState<FormTab>('info');
 
-  type CommitteeDraft = { name: string; role: string };
-  type ContactDraft = { name: string; contact: string };
+  type CommitteeDraft = { name: string; role: string; _uuid: string };
+  type ContactDraft = { name: string; contact: string; _uuid: string };
   const [form, setForm] = useState<{
     id?: string;
     title?: string;
@@ -221,8 +223,8 @@ export default function PublicSiteRecruitments() {
       formUrl: r.form_url ?? '',
       posterImageUrl: r.poster_image_url ?? '',
       isPublished: r.is_published,
-      committee: (r.committee ?? []).map((x) => ({ name: x.name, role: x.role })),
-      contacts: (r.contacts ?? []).map((x) => ({ name: x.name, contact: x.contact })),
+      committee: (r.committee ?? []).map((x) => ({ name: x.name, role: x.role, _uuid: crypto.randomUUID() })),
+      contacts: (r.contacts ?? []).map((x) => ({ name: x.name, contact: x.contact, _uuid: crypto.randomUUID() })),
     });
     resetDatesFromRange(r.date_range ?? '');
     setDirty(false);
@@ -439,7 +441,7 @@ export default function PublicSiteRecruitments() {
                         onClick={() =>
                           setFormDirty((p) => ({
                             ...p,
-                            committee: [...(p.committee ?? []), { name: '', role: '' }],
+                            committee: [...(p.committee ?? []), { name: '', role: '', _uuid: crypto.randomUUID() }],
                           }))
                         }
                       >
@@ -453,7 +455,7 @@ export default function PublicSiteRecruitments() {
                     ) : (
                       <div className="space-y-3">
                         {(form.committee ?? []).map((c, idx) => (
-                          <div key={idx} className="grid gap-3 md:grid-cols-2">
+                          <div key={c._uuid} className="grid gap-3 md:grid-cols-2">
                             <Input
                               value={c.name}
                               onChange={(e) =>
@@ -509,7 +511,7 @@ export default function PublicSiteRecruitments() {
                         onClick={() =>
                           setFormDirty((p) => ({
                             ...p,
-                            contacts: [...(p.contacts ?? []), { name: '', contact: '' }],
+                            contacts: [...(p.contacts ?? []), { name: '', contact: '', _uuid: crypto.randomUUID() }],
                           }))
                         }
                       >
@@ -523,7 +525,7 @@ export default function PublicSiteRecruitments() {
                     ) : (
                       <div className="space-y-3">
                         {(form.contacts ?? []).map((c, idx) => (
-                          <div key={idx} className="grid gap-3 md:grid-cols-2">
+                          <div key={c._uuid} className="grid gap-3 md:grid-cols-2">
                             <Input
                               value={c.name}
                               onChange={(e) =>
@@ -616,8 +618,31 @@ export default function PublicSiteRecruitments() {
             />
             <ul className="space-y-4 md:hidden" aria-label="Daftar recruitment">
               {recruitments.length === 0 ? (
-                <li className="py-8 text-center text-sm text-muted-foreground">
-                  Belum ada recruitment.
+                <li>
+                  <AdminEmptyState
+                    compact
+                    icon={FileText}
+                    title="Belum ada lowongan"
+                    description="Tambahkan lowongan open recruitment baru untuk memulai."
+                    action={
+                      <Button
+                        type="button"
+                        onClick={async () => {
+                          const ok = await confirmIfDirty();
+                          if (!ok) return;
+                          resetForm();
+                          setDateStart('');
+                          setDateEnd('');
+                          setFormTab('info');
+                          setPageTab('form');
+                        }}
+                        className="min-h-11"
+                      >
+                        <PlusIcon className="mr-2 size-4" aria-hidden="true" />
+                        Tambah Lowongan
+                      </Button>
+                    }
+                  />
                 </li>
               ) : null}
               {recruitments.map((r) => (
@@ -666,8 +691,32 @@ export default function PublicSiteRecruitments() {
                 <TableBody>
                   {recruitments.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="py-10 text-center text-muted-foreground">
-                        Belum ada recruitment.
+                      <TableCell colSpan={4} className="p-0">
+                        <AdminEmptyState
+                          compact
+                          icon={FileText}
+                          title="Belum ada lowongan"
+                          description="Tambahkan lowongan open recruitment baru untuk memulai."
+                          action={
+                            <Button
+                              type="button"
+                              onClick={async () => {
+                                const ok = await confirmIfDirty();
+                                if (!ok) return;
+                                resetForm();
+                                setDateStart('');
+                                setDateEnd('');
+                                setFormTab('info');
+                                setPageTab('form');
+                              }}
+                              className="min-h-11"
+                            >
+                              <PlusIcon className="mr-2 size-4" aria-hidden="true" />
+                              Tambah Lowongan
+                            </Button>
+                          }
+                          className="border-0 shadow-none"
+                        />
                       </TableCell>
                     </TableRow>
                   ) : null}

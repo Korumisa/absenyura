@@ -21,6 +21,7 @@ import { id } from 'date-fns/locale';
 import QRCode from 'qrcode';
 import { reportClassLabel } from '@/lib/utils/reportLabel';
 import { Button } from '@/components/ui/button';
+import { SubmitButton } from '@/components/ui/submit-button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
@@ -894,9 +895,9 @@ export default function Reports() {
                   </TableRow>
                 ) : (
                   (filteredReports ?? [])
-                    .filter((r): r is Report => Boolean(r && (r as any).id))
-                    .map((report: any, idx: number) => (
-                      <TableRow key={String(report?.id ?? idx)}>
+                    .filter((r): r is Report => Boolean(r && (r as Report).id))
+                    .map((report: Report) => (
+                      <TableRow key={String(report.id)}>
                         <TableCell
                           scope="row"
                           className="sticky left-0 z-10 bg-white dark:bg-slate-900 border-r border-r-slate-200 dark:border-r-slate-700/60"
@@ -1053,20 +1054,13 @@ export default function Reports() {
               >
                 Batal
               </Button>
-              <Button
+              <SubmitButton
                 type="button"
-                disabled={overrideSubmitting}
+                isLoading={overrideSubmitting}
                 onClick={() => setIsOverrideConfirmOpen(true)}
-              >
-                {overrideSubmitting ? (
-                  <>
-                    <Loader2 className="mr-2 size-4 animate-spin" aria-hidden="true" />
-                    Menyimpan…
-                  </>
-                ) : (
-                  'Simpan Status'
-                )}
-              </Button>
+                label="Simpan Status"
+                loadingLabel="Menyimpan…"
+              />
             </DialogFooter>
           </form>
         </DialogContent>
@@ -1086,6 +1080,8 @@ export default function Reports() {
         }
         confirmText="Ya, Ubah Status"
         variant="warning"
+        loading={overrideSubmitting}
+        loadingText="Menyimpan…"
       />
     </AdminPageShell>
   );

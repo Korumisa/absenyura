@@ -14,6 +14,7 @@ import { SlowLoadingHint } from '@/components/admin/SlowLoadingHint';
 import ActionLoadingOverlay from '@/components/ActionLoadingOverlay';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import { Button } from '@/components/ui/button';
+import { SubmitButton } from '@/components/ui/submit-button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
@@ -31,6 +32,7 @@ import {
 import type { User as AppUser } from '@/types/user';
 import { formatClassLabel } from '@/lib/utils/classLabel';
 import { toastErrorMessage } from '@/lib/utils/toastMessage';
+import { useFormDirtyGuard } from '@/hooks/useFormDirtyGuard';
 
 type EnrollmentRow = { id: string; name: string; semester: number };
 
@@ -348,14 +350,15 @@ export default function StudentDetail() {
             <section className="rounded-lg border border-border bg-card p-5 sm:p-6">
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
                 <h2 className="text-sm font-semibold text-foreground">Informasi akun</h2>
-                <Button
+                <SubmitButton
                   type="button"
                   size="sm"
                   disabled={isInitialLoading}
                   onClick={() => setIsSaveConfirmOpen(true)}
-                >
-                  Simpan perubahan
-                </Button>
+                  isLoading={saving}
+                  label="Simpan perubahan"
+                  loadingLabel="Menyimpan…"
+                />
               </div>
 
               {isInitialLoading ? (
