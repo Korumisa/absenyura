@@ -26,6 +26,21 @@ export function sendInternalServerError(res: Response, err: unknown, fallbackDat
   });
 }
 
+export function sendServiceUnavailable(
+  res: Response,
+  opts: { error?: string; fallbackData?: any; reason?: string }
+) {
+  const { error = 'Service unavailable', fallbackData = [], reason } = opts;
+  const expose = process.env.EXPOSE_ERROR_DETAILS === '1' || process.env.NODE_ENV !== 'production';
+  res.status(503).json({
+    success: false,
+    error,
+    data: fallbackData,
+    retry_after_ms: 2000,
+    ...(expose && reason ? { details: { reason } } : {}),
+  });
+}
+
 export function sendForbidden(res: Response, payload: { error_code: string; message: string }) {
   res.status(403).json({
     success: false,

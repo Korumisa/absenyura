@@ -3,7 +3,7 @@ import type { AuthRequest } from '../types/index.js';
 import prisma from '../utils/prisma.js';
 import { upload, validateUploadedFileContent } from '../utils/upload.js';
 import { v2 as cloudinary } from 'cloudinary';
-import { sendInternalServerError } from '../utils/errorResponse.js';
+import { sendInternalServerError, sendServiceUnavailable } from '../utils/errorResponse.js';
 import { sanitizeWebUrl } from '../utils/sanitizeUrl.js';
 import fs from 'fs';
 
@@ -87,6 +87,51 @@ function normalizeYoutubeEmbedUrl(input: string): string | null {
     return `https://www.youtube.com/embed/${id}`;
   } catch {
     return null;
+  }
+}
+
+const PRISMA_CONNECTION_ERROR_CODES = new Set([
+  'P1000',
+  'P1001',
+  'P1002',
+  'P1003',
+  'P1008',
+  'P1009',
+  'P1010',
+  'P1011',
+  'P1012',
+  'P1013',
+  'P1014',
+  'P1015',
+  'P1016',
+  'P1017',
+  'P2024',
+]);
+
+function isPrismaConnectionError(err: unknown): boolean {
+  const e = err as { code?: unknown; name?: unknown; message?: unknown };
+  if (typeof e.code === 'string' && PRISMA_CONNECTION_ERROR_CODES.has(e.code)) return true;
+  const name = typeof e.name === 'string' ? e.name : '';
+  const msg = typeof e.message === 'string' ? e.message : '';
+  if (
+    /connection|database|timeout|pool|epipe|econnrefused|etimedout|enoent/i.test(name + ' ' + msg)
+  ) {
+    return true;
+  }
+  return false;
+}
+
+const STRUCTURE_FALLBACK = { cabinets: [], activeCabinetId: null, activeGroups: [] } as const;
+
+async function withTransientRetry<T>(fn: () => Promise<T>, retries = 1, delayMs = 250): Promise<T> {
+  try {
+    return await fn();
+  } catch (err) {
+    if (retries > 0 && isPrismaConnectionError(err)) {
+      await new Promise((r) => setTimeout(r, delayMs));
+      return withTransientRetry(fn, retries - 1, delayMs * 2);
+    }
+    throw err;
   }
 }
 
@@ -213,8 +258,9 @@ export const getPublicStructure = async (req: Request, res: Response): Promise<v
     });
   } catch (error) {
     console.error('Error fetching public structure:', error);
-    const expose = process.env.EXPOSE_ERROR_DETAILS === '1' || process.env.NODE_ENV !== 'production';
-    const message = String(error instanceof Error ? error.message : error ?? '').slice(0, 360);
+    const expose =
+      process.env.EXPOSE_ERROR_DETAILS === '1' || process.env.NODE_ENV !== 'production';
+    const message = String(error instanceof Error ? error.message : (error ?? '')).slice(0, 360);
     res.status(500).json({
       success: false,
       error: 'Internal server error',
@@ -228,30 +274,53 @@ export const getPublicStructure = async (req: Request, res: Response): Promise<v
 
 export const getAdminStructure = async (req: Request, res: Response): Promise<void> => {
   try {
-    const cabinets = await prisma.publicStructureCabinet.findMany({
-      orderBy: [{ sort_order: 'asc' }, { created_at: 'desc' }],
-      include: {
-        groups: {
-          orderBy: [{ sort_order: 'asc' }],
-          include: { members: { orderBy: [{ sort_order: 'asc' }, { created_at: 'asc' }] } },
-        },
-      },
-    });
+    const cabinets = await withTransientRetry(
+      () =>
+        prisma.publicStructureCabinet.findMany({
+          orderBy: [{ sort_order: 'asc' }, { created_at: 'desc' }],
+          include: {
+            groups: {
+              orderBy: [{ sort_order: 'asc' }],
+              include: {
+                members: { orderBy: [{ sort_order: 'asc' }, { created_at: 'asc' }] },
+              },
+            },
+          },
+        }),
+      1,
+      250
+    );
 
     const activeCabinet = cabinets.find((c: any) => c.is_active) || cabinets[0] || null;
     const activeGroups = activeCabinet ? activeCabinet.groups : [];
 
     res.status(200).json({
       success: true,
-      data: { cabinets, activeCabinetId: activeCabinet?.id || null, activeGroups },
+      data: {
+        cabinets,
+        activeCabinetId: activeCabinet?.id || null,
+        activeGroups,
+      },
     });
   } catch (error) {
-    console.error('Error fetching admin structure:', error);
-    sendInternalServerError(res, error, {
-      cabinets: [],
-      activeCabinetId: null,
-      activeGroups: [],
-    });
+    const e = error as { code?: unknown; name?: unknown; message?: unknown };
+    const errCode = typeof e.code === 'string' ? e.code : '';
+    const errName = typeof e.name === 'string' ? e.name : 'Error';
+    console.error(
+      `[admin-structure] Fetch failed (code=${errCode || 'n/a'} name=${errName}):`,
+      error instanceof Error ? error.message : error
+    );
+
+    if (isPrismaConnectionError(error)) {
+      sendServiceUnavailable(res, {
+        error: 'Database unavailable',
+        fallbackData: STRUCTURE_FALLBACK,
+        reason: typeof e.message === 'string' ? e.message : errCode || errName,
+      });
+      return;
+    }
+
+    sendInternalServerError(res, error, STRUCTURE_FALLBACK);
   }
 };
 
@@ -850,9 +919,14 @@ export const deleteAdminGallery = async (req: AuthRequest, res: Response): Promi
   }
 };
 
-function parseDateRangeServer(dateRangeStr: string | null | undefined): { start?: Date; end?: Date } {
+function parseDateRangeServer(dateRangeStr: string | null | undefined): {
+  start?: Date;
+  end?: Date;
+} {
   if (!dateRangeStr) return {};
-  const parts = String(dateRangeStr).split(' - ').map((s) => s.trim());
+  const parts = String(dateRangeStr)
+    .split(' - ')
+    .map((s) => s.trim());
   const start = parts[0] ? new Date(parts[0]) : undefined;
   const end = parts[1] ? new Date(parts[1]) : undefined;
   return {

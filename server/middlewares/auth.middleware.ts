@@ -15,6 +15,8 @@ export const authenticate = (req: AuthRequest, res: Response, next: NextFunction
     return;
   }
 
+  req.cookies = req.cookies ?? ({} as Record<string, string>);
+
   // Read token from cookies first, fallback to Authorization header
   let token = req.cookies.accessToken;
 
