@@ -25,8 +25,8 @@ class ChunkLoadErrorBoundary extends Component<
     return { hasError: true };
   }
   componentDidCatch(error: unknown) {
-    const msg = String(error instanceof Error ? error.message : error ?? '');
-    // eslint-disable-next-line no-console
+    const msg = String(error instanceof Error ? error.message : (error ?? ''));
+     
     console.warn('[ChunkLoadErrorBoundary] suppressed non-critical chunk error:', msg);
   }
   render() {
@@ -72,6 +72,29 @@ window.addEventListener('vite:preloadError', (event) => {
   event.preventDefault();
   window.location.reload();
 });
+
+// Swap media attribute untuk Google Fonts stylesheet — menggantikan inline onload=""
+// yang melanggar CSP script-src-attr 'none'. Event listener via JS property diizinkan CSP.
+(function activateGoogleFonts() {
+  if (typeof document === 'undefined') return;
+  const link = document.getElementById('google-fonts-stylesheet') as HTMLLinkElement | null;
+  if (!link) return;
+  const swap = () => {
+    if (link.media !== 'all') link.media = 'all';
+  };
+  if (link.sheet) {
+    swap();
+  } else {
+    link.addEventListener('load', swap, { once: true });
+    link.addEventListener(
+      'error',
+      () => {
+        link.media = 'all';
+      },
+      { once: true }
+    );
+  }
+})();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
