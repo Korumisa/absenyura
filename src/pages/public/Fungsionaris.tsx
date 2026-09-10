@@ -122,7 +122,6 @@ export default function Fungsionaris() {
       <div
         key={p.id}
         className="flex w-full max-w-[180px] shrink-0 flex-col items-center text-center break-words sm:max-w-[220px]"
-        style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}
       >
         <div
           className={[
@@ -133,14 +132,12 @@ export default function Fungsionaris() {
           <PublicCoverImage url={p.photo_url} alt={p.name ?? 'Anggota'} imgClassName="object-cover" />
         </div>
         <div
-          className="mt-3 w-full text-sm font-extrabold leading-snug tracking-tight text-slate-900 hyphens-auto"
-          style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}
+          className="mt-3 w-full break-words text-sm font-extrabold leading-snug tracking-tight text-slate-900 hyphens-auto"
         >
           {p.name ?? '-'}
         </div>
         <div
-          className="mt-1 w-full text-xs font-semibold leading-snug text-muted-foreground hyphens-auto"
-          style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}
+          className="mt-1 w-full break-words text-xs font-semibold leading-snug text-muted-foreground hyphens-auto"
         >
           {p.role ?? '-'}
         </div>

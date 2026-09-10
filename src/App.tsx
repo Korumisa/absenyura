@@ -1,7 +1,8 @@
 import { Suspense, useEffect } from 'react';
 import { lazyWithRetry } from '@/lib/perf/lazyWithRetry';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster, toast } from 'sonner';
+import { SWRConfig } from 'swr';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import Layout from '@/components/Layout';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
@@ -284,7 +285,13 @@ export default function App() {
 
   return (
     <ThemeProvider defaultTheme="light" storageKey="absensyura-theme">
-      <ErrorBoundary>
+      <SWRConfig
+        value={{
+          dedupingInterval: 30_000,
+          focusThrottleInterval: 5000,
+        }}
+      >
+        <ErrorBoundary>
         <Toaster
           aria-label="Notifikasi berhasil"
           position="top-right"
@@ -331,12 +338,11 @@ export default function App() {
           show={isMaintenance}
           label={maintenanceReason || 'Menghubungkan ke server...'}
         />
+        <ScrollToTop />
         {!hasHydrated || isAuthBootstrapPending ? (
           <PageSkeleton />
         ) : (
-          <Router>
-            <ScrollToTop />
-            <Routes>
+          <Routes>
               <Route
                 path="/"
                 element={
@@ -445,17 +451,17 @@ export default function App() {
               />
 
               <Route element={<ProtectedRoute />}>
-                <Route
-                  path="/sessions/:id/qr"
-                  element={
-                    <PageSuspense>
-                      <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}>
-                        <QRDisplay />
-                      </ProtectedRoute>
-                    </PageSuspense>
-                  }
-                />
                 <Route element={<Layout />}>
+                  <Route
+                    path="/sessions/:id/qr"
+                    element={
+                      <PageSuspense>
+                        <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}>
+                          <QRDisplay />
+                        </ProtectedRoute>
+                      </PageSuspense>
+                    }
+                  />
                   <Route
                     path="/dashboard"
                     element={
@@ -689,24 +695,8 @@ export default function App() {
                     }
                   />
                   {/* Other protected routes go here */}
-                  <Route
-                    path="/other"
-                    element={
-                      <div className="p-8 text-xl font-medium text-slate-700 dark:text-zinc-300">
-                        Other Page - Coming Soon
-                      </div>
-                    }
-                  />
                 </Route>
               </Route>
-              <Route
-                path="/403-forbidden"
-                element={
-                  <PageSuspense>
-                    <Navigate to="/forbidden" replace />
-                  </PageSuspense>
-                }
-              />
               <Route
                 path="/forbidden"
                 element={
@@ -723,10 +713,10 @@ export default function App() {
                   </PageSuspense>
                 }
               />
-            </Routes>
-          </Router>
+          </Routes>
         )}
       </ErrorBoundary>
+      </SWRConfig>
     </ThemeProvider>
   );
 }

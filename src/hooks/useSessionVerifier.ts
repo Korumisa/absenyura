@@ -2,6 +2,8 @@ import { useEffect, useRef, useCallback } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import { verifySession } from '@/services/api';
 import { saveTarget } from '@/lib/auth/postLoginTarget';
+import { useNavigate } from 'react-router-dom';
+import { toastInfo } from '@/lib/utils/toastMessage';
 
 type SessionStatus = 'guest' | 'unknown' | 'verifying' | 'verified';
 
@@ -22,6 +24,7 @@ export function useSessionVerifier(): UseSessionVerifierReturn {
   const startSessionVerification = useAuthStore((state) => state.startSessionVerification);
   const completeSessionVerification = useAuthStore((state) => state.completeSessionVerification);
   const logout = useAuthStore((state) => state.logout);
+  const navigate = useNavigate();
 
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>();
   const cancelledRef = useRef(false);
@@ -73,6 +76,8 @@ export function useSessionVerifier(): UseSessionVerifierReturn {
         if (!cancelledRef.current && (status === 401 || status === 403)) {
           saveTarget(window.location.pathname + window.location.search + window.location.hash);
           logout();
+          toastInfo('Sesi Anda habis. Silakan login kembali.');
+          navigate('/login', { replace: true });
           return;
         }
 

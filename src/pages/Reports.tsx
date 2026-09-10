@@ -18,7 +18,6 @@ import {
 import { toast } from 'sonner';
 import { format, isValid } from 'date-fns';
 import { id } from 'date-fns/locale';
-import QRCode from 'qrcode';
 import { reportClassLabel } from '@/lib/utils/reportLabel';
 import { Button } from '@/components/ui/button';
 import { SubmitButton } from '@/components/ui/submit-button';
@@ -97,7 +96,8 @@ async function buildSessionAttendUrl(sessionId: string): Promise<string> {
 }
 
 async function qrImageBase64(url: string): Promise<string> {
-  const dataUrl = await QRCode.toDataURL(url, {
+  const { default: QRCodeLib } = await import('qrcode');
+  const dataUrl = await QRCodeLib.toDataURL(url, {
     width: 280,
     margin: 1,
     color: { dark: '#1e3a8a' },

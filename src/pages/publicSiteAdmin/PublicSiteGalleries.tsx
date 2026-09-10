@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import api from '@/services/api';
-import { toastError, toastSuccess, toastSuccessMessage } from '@/lib/utils/toastMessage';
+import { toastError, toastSuccess, toastSuccessMessage, toastWarning } from '@/lib/utils/toastMessage';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -76,7 +76,6 @@ export default function PublicSiteGalleries() {
 
   const uploadImage = async (file: File) => {
     const prepared = await prepareImageForUpload(file, {
-      maxBytes: 4 * 1024 * 1024,
       maxWidth: 1600,
       quality: 0.82,
     });
@@ -92,19 +91,37 @@ export default function PublicSiteGalleries() {
     const list = Array.from(files);
     if (!list.length) return;
     setUploading(true);
+    const successUrls: string[] = [];
+    const failedFilenames: string[] = [];
+    for (const f of list) {
+      try {
+        const url = await uploadImage(f);
+        successUrls.push(url);
+      } catch {
+        failedFilenames.push(f.name);
+      }
+    }
     try {
-      const uploaded: string[] = [];
-      for (const f of list) uploaded.push(await uploadImage(f));
-      setFormDirty((p) => ({
-        ...p,
-        items: [
-          ...(p.items ?? []),
-          ...uploaded.map((url) => ({ imageUrl: url, caption: '', _uuid: crypto.randomUUID() })),
-        ],
-      }));
-      toastSuccess('Foto berhasil ditambahkan');
+      if (successUrls.length > 0) {
+        setFormDirty((p) => ({
+          ...p,
+          items: [
+            ...(p.items ?? []),
+            ...successUrls.map((url) => ({ imageUrl: url, caption: '', _uuid: crypto.randomUUID() })),
+          ],
+        }));
+      }
+      if (failedFilenames.length === 0) {
+        toastSuccess(`${successUrls.length} foto berhasil ditambahkan`);
+      } else if (successUrls.length > 0) {
+        toastWarning(
+          `${successUrls.length} foto berhasil diunggah, ${failedFilenames.length} gagal: ${failedFilenames.join(', ')}`
+        );
+      } else {
+        toastError(null, 'Gagal upload foto');
+      }
     } catch (e: any) {
-      toastError(e, 'Gagal upload foto');
+      toastError(e, 'Gagal memproses hasil upload');
     } finally {
       setUploading(false);
     }

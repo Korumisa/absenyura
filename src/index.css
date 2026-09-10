@@ -226,6 +226,80 @@
   .public-enter {
     animation: public-enter 0.42s ease-out both;
   }
+
+  /* ═══════════════════════════════════════════════════════════════════════
+   * [RAIL PERF] GPU-accelerated horizontal scroll rail
+   * RULES:
+   * 1. Promosikan layer terpisah dengan translateZ(0) + will-change
+   * 2. HANYA composite properties (transform, opacity) — NEVER layout/paint
+   * 3. contain: layout style paint — isolasi rendering biar sibling tidak
+   *    ikut invalidated saat scroll terjadi
+   * ═══════════════════════════════════════════════════════════════════════ */
+  .rail-scroll-container {
+    will-change: scroll-position;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    contain: layout style paint;
+  }
+
+  .rail-card {
+    will-change: transform;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    contain: layout style paint;
+  }
+
+  .rail-card-image {
+    will-change: transform, filter;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+  }
+
+  .rail-track {
+    will-change: transform;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    contain: layout style;
+  }
+
+  /* ── rail-title-swap: crossfade title antar divisi tanpa FOUC
+   *    Dipakai: DivisionRail — saat activeTitle berganti, hindari layout
+   *    reflow dengan position absolute stacking + opacity swap. */
+  .rail-title-swap {
+    position: relative;
+    min-height: 4.5rem;
+  }
+  .rail-title-swap > * {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    will-change: transform, opacity;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+  }
+
+  /* ── Ornamen visual: soft decorative shapes untuk empty space
+   *    Dipakai: section headers, empty areas di Home.
+   *    HANYA composite properties — tidak memicu layout! */
+  .deco-blob {
+    will-change: transform, opacity;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+  }
+
+  .deco-grid-overlay {
+    background-image:
+      linear-gradient(rgba(124, 58, 237, 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(124, 58, 237, 0.06) 1px, transparent 1px);
+    background-size: 32px 32px;
+    background-position: center center;
+    will-change: opacity;
+  }
 }
 
 @keyframes public-enter {

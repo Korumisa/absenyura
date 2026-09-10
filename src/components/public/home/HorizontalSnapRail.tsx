@@ -20,12 +20,13 @@ export function HorizontalSnapRail({
       }}
       onWheelCapture={wheel.onWheel}
       onScroll={onScroll}
-      className="overflow-x-auto overflow-y-hidden pb-2 scrollbar-hide"
+      className="overflow-x-auto overflow-y-hidden pb-2 scrollbar-hide rail-scroll-container"
       style={{
         touchAction: 'pan-x',
         overscrollBehaviorX: 'contain',
         overscrollBehaviorY: 'contain',
         WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'],
+        scrollBehavior: 'smooth',
       }}
       role="region"
       aria-label={ariaLabel}

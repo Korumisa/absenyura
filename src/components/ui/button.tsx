@@ -12,6 +12,8 @@ const buttonVariants = cva(
       variant: {
         default: 'bg-brand text-brand-foreground hover:bg-brand/90 shadow-md',
         destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-md',
+        success: 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-md',
+        warning: 'bg-amber-500 text-white hover:bg-amber-600 shadow-md',
         outline: 'border border-border bg-background hover:bg-muted hover:text-foreground',
         secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
         ghost: 'hover:bg-muted hover:text-foreground',

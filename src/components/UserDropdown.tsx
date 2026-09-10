@@ -3,6 +3,7 @@ import { LogOut, Settings } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useNavigate } from 'react-router-dom';
 import api from '@/services/api';
+import { ConfirmModal } from '@/components/ConfirmModal';
 
 export function UserDropdown() {
   const [isOpen, setIsOpen] = useState(false);
@@ -12,6 +13,7 @@ export function UserDropdown() {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
   const menuId = 'user-account-menu';
+  const [confirmLogoutOpen, setConfirmLogoutOpen] = useState(false);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -45,7 +47,7 @@ export function UserDropdown() {
       console.error(e);
     }
     logout();
-    navigate('/login');
+    navigate('/login', { replace: true });
   };
 
   return (
@@ -101,7 +103,10 @@ export function UserDropdown() {
             </button>
             <div className="h-px bg-slate-200 bg-muted my-1"></div>
             <button
-              onClick={handleLogout}
+              onClick={() => {
+                setIsOpen(false);
+                setConfirmLogoutOpen(true);
+              }}
               role="menuitem"
               className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"
             >
@@ -111,6 +116,16 @@ export function UserDropdown() {
           </div>
         </div>
       )}
+      <ConfirmModal
+        isOpen={confirmLogoutOpen}
+        onClose={() => setConfirmLogoutOpen(false)}
+        onConfirm={handleLogout}
+        variant="danger"
+        title="Keluar dari akun?"
+        description="Perubahan yang belum disimpan akan hilang. Anda yakin ingin keluar?"
+        confirmText="Ya, Keluar"
+        cancelText="Batal"
+      />
     </div>
   );
 }

@@ -36,6 +36,8 @@ model User {
   lecturer_classes Class[]           @relation("LecturerClasses")
   enrollments      ClassEnrollment[] @relation("StudentEnrollments")
   reviewed_excuses ExcuseRequest[]   @relation("Reviewer")
+
+  @@index([role, is_active])
 }
 
 model Organization {
@@ -124,6 +126,7 @@ model Session {
   @@index([status, session_start])
   @@index([session_start])
   @@index([created_at])
+  @@index([created_by_id, created_at])
 }
 
 model SessionClass {
@@ -165,6 +168,7 @@ model Attendance {
   @@index([user_id, check_in_time])
   @@index([check_in_time])
   @@index([session_id, check_in_time])
+  @@index([status])
 }
 
 model ExcuseRequest {
@@ -184,6 +188,8 @@ model ExcuseRequest {
   updated_at  DateTime  @updatedAt
 
   @@unique([user_id, session_id])
+  @@index([session_id, status])
+  @@index([user_id, created_at])
 }
 
 model AuditLog {
@@ -196,6 +202,9 @@ model AuditLog {
   new_value    String? // JSON as string
   ip_address   String?
   created_at   DateTime @default(now())
+
+  @@index([created_at])
+  @@index([actor_id, created_at])
 }
 
 model Notification {
@@ -207,6 +216,9 @@ model Notification {
   type       String   @default("INFO") // INFO, WARNING, SUCCESS
   is_read    Boolean  @default(false)
   created_at DateTime @default(now())
+
+  @@index([user_id, created_at])
+  @@index([user_id, is_read])
 }
 
 model Setting {

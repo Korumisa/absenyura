@@ -5,11 +5,13 @@ export default function useHorizontalWheelScroll(enabled: boolean) {
   const [node, setNode] = useState<HTMLElement | null>(null);
   const rafId = useRef<number | null>(null);
   const targetLeft = useRef<number>(0);
+  const velocity = useRef<number>(0);
   const lastEl = useRef<HTMLElement | null>(null);
 
   const stop = () => {
     if (rafId.current) cancelAnimationFrame(rafId.current);
     rafId.current = null;
+    velocity.current = 0;
   };
 
   const animateToTarget = useCallback(() => {
@@ -20,12 +22,14 @@ export default function useHorizontalWheelScroll(enabled: boolean) {
     const target = Math.min(max, Math.max(0, targetLeft.current));
     const cur = el.scrollLeft;
     const diff = target - cur;
-    if (Math.abs(diff) < 0.75) {
+    if (Math.abs(diff) < 0.5) {
       el.scrollLeft = target;
       stop();
       return;
     }
-    el.scrollLeft = cur + diff * 0.22;
+    const nextVel = velocity.current * 0.85 + diff * 0.35;
+    velocity.current = nextVel;
+    el.scrollLeft = cur + nextVel;
     rafId.current = requestAnimationFrame(animateToTarget);
   }, []);
 
@@ -53,7 +57,7 @@ export default function useHorizontalWheelScroll(enabled: boolean) {
       stopPropagation();
 
       lastEl.current = el;
-      targetLeft.current = Math.min(max, Math.max(0, el.scrollLeft + delta * 0.9));
+      targetLeft.current = Math.min(max, Math.max(0, el.scrollLeft + delta * 1.1));
       if (!rafId.current) rafId.current = requestAnimationFrame(animateToTarget);
     },
     [enabled, animateToTarget]

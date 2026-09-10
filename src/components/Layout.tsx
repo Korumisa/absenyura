@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, lazy, Suspense } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import {
@@ -22,11 +22,17 @@ import {
   Newspaper,
   Image,
   ClipboardList,
+  Settings as SettingsIcon,
+  ClipboardCheck,
+  Bell,
 } from 'lucide-react';
 
-import { NotificationMenu } from './NotificationMenu';
 import { UserDropdown } from './UserDropdown';
 import { ThemeToggle } from './ThemeToggle';
+
+const NotificationMenu = lazy(() =>
+  import('./NotificationMenu').then((m) => ({ default: m.NotificationMenu })),
+);
 import { Button } from '@/components/ui/button';
 import { AdminRouteTransition } from '@/components/admin/AdminRouteTransition';
 import PageSkeleton from '@/components/PageSkeleton';
@@ -74,6 +80,12 @@ export default function Layout() {
       icon: FileText,
       roles: ['SUPER_ADMIN', 'ADMIN', 'USER'],
     },
+    {
+      name: 'Izin Saya',
+      path: '/excuses/me',
+      icon: ClipboardCheck,
+      roles: ['USER'],
+    },
     { name: 'Riwayat Saya', path: '/history', icon: History, roles: ['USER'] },
     { name: 'Manajemen Lokasi', path: '/locations', icon: MapPin, roles: ['SUPER_ADMIN', 'ADMIN'] },
     {
@@ -91,6 +103,12 @@ export default function Layout() {
     { name: 'Pengguna', path: '/users', icon: Users, roles: ['SUPER_ADMIN'] },
     { name: 'Fakultas & Prodi', path: '/master-data', icon: Building2, roles: ['SUPER_ADMIN'] },
     { name: 'Audit Log', path: '/audit', icon: ShieldAlert, roles: ['SUPER_ADMIN'] },
+    {
+      name: 'Pengaturan Akun',
+      path: '/settings',
+      icon: SettingsIcon,
+      roles: ['SUPER_ADMIN', 'ADMIN', 'USER', 'CONTENT_ADMIN'],
+    },
   ];
 
   const allowedNavItems = navItems.filter((item) => user && item.roles.includes(user.role));
@@ -275,7 +293,15 @@ export default function Layout() {
 
           <div className="ml-auto flex items-center gap-2 sm:gap-4">
             <ThemeToggle />
-            <NotificationMenu />
+            <Suspense
+              fallback={
+                <Button variant="ghost" size="icon" aria-hidden disabled>
+                  <Bell size={20} className="text-muted-foreground opacity-60" />
+                </Button>
+              }
+            >
+              <NotificationMenu />
+            </Suspense>
             <UserDropdown />
           </div>
         </header>

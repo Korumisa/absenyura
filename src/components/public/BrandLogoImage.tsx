@@ -29,6 +29,11 @@ function resolveLogoSrc(raw?: string | null): { webp?: string; fallback: string 
 
 export function BrandLogoImage({ src, alt, className, priority = false }: BrandLogoImageProps) {
   const resolved = useMemo(() => resolveLogoSrc(src), [src]);
+  const isCloudinary = useMemo(
+    () => /res\.cloudinary\.com/i.test(resolved.fallback ?? ''),
+    [resolved.fallback]
+  );
+  const crossOrigin = isCloudinary ? 'anonymous' : undefined;
 
   if (resolved.webp) {
     return (
@@ -42,6 +47,7 @@ export function BrandLogoImage({ src, alt, className, priority = false }: BrandL
           height={40}
           decoding="async"
           loading={priority ? 'eager' : 'lazy'}
+          crossOrigin={crossOrigin}
           {...({ fetchpriority: priority ? 'high' : undefined } as any)}
         />
       </picture>
@@ -57,6 +63,7 @@ export function BrandLogoImage({ src, alt, className, priority = false }: BrandL
       height={40}
       decoding="async"
       loading={priority ? 'eager' : 'lazy'}
+      crossOrigin={crossOrigin}
       {...({ fetchpriority: priority ? 'high' : undefined } as any)}
     />
   );

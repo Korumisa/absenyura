@@ -19,7 +19,11 @@ export function toastError(err: unknown, fallback: string) {
 }
 
 export function toastSuccess(message: string) {
-  toast.success(toastSuccessMessage(message), { duration: 3000 });
+  toast.success(toastSuccessMessage(message), { duration: 3500 });
+}
+
+export function toastWarning(message: string) {
+  toast.warning(toastSuccessMessage(message, 100), { duration: 4000 });
 }
 
 export function toastInfo(message: string) {

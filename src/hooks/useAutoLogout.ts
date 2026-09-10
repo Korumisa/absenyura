@@ -1,9 +1,10 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useAuthStore } from '@/stores/authStore';
-import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 import api from '@/services/api';
 import { useSessionVerifier } from './useSessionVerifier';
 import { saveTarget } from '@/lib/auth/postLoginTarget';
+import { toastInfo } from '@/lib/utils/toastMessage';
 
 const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 const PROACTIVE_REFRESH_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
@@ -11,6 +12,7 @@ const PROACTIVE_REFRESH_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
 export function useAutoLogout() {
   const { isAuthenticated, logout } = useAuthStore();
   const { verifyNow } = useSessionVerifier();
+  const navigate = useNavigate();
   const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
   const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
   const verifyNowRef = useRef(verifyNow);
@@ -34,9 +36,9 @@ export function useAutoLogout() {
         }
         saveTarget(window.location.pathname + window.location.search + window.location.hash);
         logout();
-        toast.info('Anda telah logout otomatis karena tidak ada aktivitas selama 30 menit.');
+        toastInfo('Anda telah logout otomatis karena tidak ada aktivitas selama 30 menit.');
         if (window.location.pathname !== '/login') {
-          window.location.href = '/login';
+          navigate('/login', { replace: true });
         }
       }, INACTIVITY_TIMEOUT_MS);
     }

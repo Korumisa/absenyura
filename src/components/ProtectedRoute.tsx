@@ -47,7 +47,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles, ch
   }
 
   if (allowedRoles && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/forbidden" state={{ from: location.pathname }} replace />;
+    return <Navigate to="/forbidden" state={{ from: location }} replace />;
   }
 
   return children ? <>{children}</> : <Outlet />;

@@ -135,7 +135,7 @@ export default function InformasiLomba() {
                   key={l.id}
                   className="group overflow-hidden rounded-2xl border border-[var(--public-primary)]/30 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)]"
                 >
-                  <div className="relative aspect-[4/3] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))]">
+                  <div className="relative aspect-[4/3] w-full bg-gradient-to-br from-slate-50 to-slate-100 ring-1 ring-slate-200">
                     <PublicCoverImage url={l.cover_image_url} alt={l.title} imgClassName="object-cover transition duration-700 group-hover:scale-[1.02]" />
                     <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-black/5" />
                   </div>

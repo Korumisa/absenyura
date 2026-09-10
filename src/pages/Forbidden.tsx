@@ -5,7 +5,7 @@ import { toastError, toastSuccess, toastSuccessMessage } from '@/lib/utils/toast
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/stores/authStore';
 
-type ForbiddenLocationState = { from?: string };
+type ForbiddenLocationState = { from?: Location | string };
 
 export default function Forbidden() {
   const { user, logout } = useAuthStore();
@@ -13,7 +13,8 @@ export default function Forbidden() {
   const state = location.state as ForbiddenLocationState | null;
   const defaultBack =
     user?.role === 'CONTENT_ADMIN' ? '/public-site/profile' : user ? '/dashboard' : '/login';
-  const backTo = state?.from ?? defaultBack;
+  const fromRaw = state?.from;
+  const backTo = typeof fromRaw === 'object' && fromRaw ? fromRaw.pathname + (fromRaw.search || '') : (typeof fromRaw === 'string' ? fromRaw : undefined) ?? defaultBack;
 
   useEffect(() => {
     toastError(null, 'Akses ditolak: Anda tidak memiliki izin mengakses halaman ini.');

@@ -103,8 +103,7 @@ export default function BeritaDetail() {
 
             <div className="mt-8 overflow-hidden rounded-2xl border border-black/10 bg-white">
               <div
-                className="aspect-[16/10] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))]"
-                style={{ aspectRatio: '16 / 10' }}
+                className="aspect-[16/10] w-full bg-gradient-to-br from-slate-50 to-slate-100 ring-1 ring-slate-200"
               >
                 <PublicCoverImage url={post.cover_image_url} alt={post.title} imgClassName="object-cover" />
               </div>

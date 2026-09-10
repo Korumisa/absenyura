@@ -35,7 +35,6 @@ const PROFILE_TABS: readonly CmsTabItem<ProfileTab>[] = [
 
 export default function PublicSiteProfile() {
   const { user } = useAuthStore();
-  const isContentAdmin = user?.role === 'CONTENT_ADMIN';
   const fetcher = (url: string) => api.get(url).then((r) => r.data.data);
   const { data: profile, mutate } = useSWR<PublicProfile | null>(
     '/public-site/admin/profile',
@@ -187,7 +186,6 @@ export default function PublicSiteProfile() {
 
   const uploadImage = async (file: File) => {
     const prepared = await prepareImageForUpload(file, {
-      maxBytes: 4 * 1024 * 1024,
       maxWidth: 1920,
       quality: 0.82,
     });
@@ -358,19 +356,6 @@ export default function PublicSiteProfile() {
         cancelText="Batal"
         variant="primary"
       />
-
-      {isContentAdmin && (
-        <div
-          role="note"
-          className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-200"
-        >
-          <p className="font-semibold">Hak akses terbatas</p>
-          <p className="mt-1 text-amber-700 dark:text-amber-300">
-            Sebagai CONTENT_ADMIN, Anda dapat melihat profil situs tetapi tidak dapat menyimpan
-            perubahan. Hubungi ADMIN atau SUPER_ADMIN untuk melakukan update data organisasi.
-          </p>
-        </div>
-      )}
 
       <AdminCard
         title="Pengaturan Profil"
@@ -714,6 +699,22 @@ export default function PublicSiteProfile() {
                                   : 'Upload Foto'}
                             </Label>
                           </Button>
+                          {draft.homeImageUrl ? (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              onClick={() => updateDraft((p) => ({ ...p, homeImageUrl: '' }))}
+                              disabled={
+                                uploading.home ||
+                                uploading.light ||
+                                uploading.dark ||
+                                uploading.visi ||
+                                uploading.misi
+                              }
+                            >
+                              Hapus
+                            </Button>
+                          ) : null}
                         </div>
                       </div>
                       <div className="overflow-hidden rounded-xl border border-border bg-slate-50">

@@ -20,25 +20,7 @@ export default function PublicFooter() {
 
   return (
     <footer className="relative border-t border-black/10 bg-slate-50 pb-10 pt-14 text-slate-700">
-      <div className="pointer-events-none absolute inset-0 opacity-70 [background:radial-gradient(circle_at_15%_25%,rgba(37,99,235,0.14),transparent_55%),radial-gradient(circle_at_85%_10%,rgba(56,189,248,0.10),transparent_60%),linear-gradient(180deg,rgba(255,255,255,0.75),transparent)]" />
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-transparent via-[var(--public-primary)]/45 to-transparent" />
-      <div className="pointer-events-none absolute left-6 top-0 -translate-y-1/2 -rotate-6">
-        <div className="relative">
-          <div className="absolute -inset-6 rounded-full bg-[var(--public-primary)]/14 blur-2xl" />
-          <div className="relative size-14 overflow-hidden rounded-2xl bg-white/80 ring-1 ring-black/10 shadow-[0_20px_55px_-45px_rgba(15,23,42,0.55)] backdrop-blur">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_25%,rgba(37,99,235,0.24),transparent_60%),radial-gradient(circle_at_75%_35%,rgba(56,189,248,0.18),transparent_60%),linear-gradient(135deg,rgba(15,23,42,0.08),transparent)]" />
-          </div>
-        </div>
-      </div>
-      <div className="pointer-events-none absolute right-6 top-0 -translate-y-1/2 rotate-6">
-        <div className="relative">
-          <div className="absolute -inset-6 rounded-full bg-sky-400/12 blur-2xl" />
-          <div className="relative size-14 overflow-hidden rounded-2xl bg-white/80 ring-1 ring-black/10 shadow-[0_20px_55px_-45px_rgba(15,23,42,0.55)] backdrop-blur">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(56,189,248,0.20),transparent_60%),radial-gradient(circle_at_70%_70%,rgba(37,99,235,0.20),transparent_60%),linear-gradient(135deg,rgba(15,23,42,0.08),transparent)]" />
-          </div>
-        </div>
-      </div>
-
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
         <div className="grid gap-10 md:grid-cols-3">
           <div className="md:col-span-1">
