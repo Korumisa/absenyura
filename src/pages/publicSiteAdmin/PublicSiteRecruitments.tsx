@@ -117,7 +117,6 @@ export default function PublicSiteRecruitments() {
 
   const uploadImage = async (file: File) => {
     const prepared = await prepareImageForUpload(file, {
-      maxBytes: 4 * 1024 * 1024,
       maxWidth: 1600,
       quality: 0.82,
     });

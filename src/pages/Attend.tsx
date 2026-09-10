@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import api from '@/services/api';
 import { toast } from 'sonner';
-import { toastError, toastSuccess, toastSuccessMessage, toastInfo } from '@/lib/utils/toastMessage';
+import { toastError, toastSuccess, toastSuccessMessage, toastInfo, toastWarning } from '@/lib/utils/toastMessage';
 import {
   MapPin,
   QrCode,
@@ -368,7 +368,7 @@ export default function Attend() {
 
     if (acc > 150) {
       setGpsError(`Akurasi lokasi terlalu rendah (${Math.round(acc)}m). Silakan ke area terbuka.`);
-      toast.warning('Akurasi lokasi rendah. Cari tempat terbuka.');
+      toastWarning('Akurasi lokasi rendah. Cari tempat terbuka.');
       setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
       return;
     }

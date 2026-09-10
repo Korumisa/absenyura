@@ -71,7 +71,7 @@ export default function Login() {
       } else {
         target = getPostLoginTarget(location.state?.from, user);
       }
-      navigate(target, { replace: true });
+      setTimeout(() => navigate(target, { replace: true }), 0);
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status;
       const msg =

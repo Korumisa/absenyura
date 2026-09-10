@@ -6,7 +6,7 @@ export async function prepareImageForUpload(
     quality?: number;
   }
 ) {
-  const maxBytes = opts?.maxBytes ?? 4 * 1024 * 1024;
+  const maxBytes = opts?.maxBytes ?? 4800 * 1024;
   const maxWidth = opts?.maxWidth ?? 1920;
   const baseQuality = opts?.quality ?? 0.82;
 

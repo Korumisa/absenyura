@@ -6,8 +6,11 @@ import { useAuthStore } from '@/stores/authStore';
 export default function NotFound() {
   const location = useLocation();
   const { user } = useAuthStore();
-  const defaultBack =
-    user?.role === 'CONTENT_ADMIN' ? '/public-site/profile' : user ? '/dashboard' : '/login';
+  const isGuest = !user;
+  const primaryLabel = isGuest ? 'Ke Beranda' : 'Kembali ke Dashboard';
+  const primaryTo = isGuest ? '/' : user?.role === 'CONTENT_ADMIN' ? '/public-site/profile' : '/dashboard';
+  const secondaryLabel = isGuest ? 'Login' : 'Kembali ke Beranda';
+  const secondaryTo = isGuest ? '/login' : '/';
 
   return (
     <div className="min-h-screen bg-sidebar flex items-center justify-center p-6">
@@ -28,10 +31,10 @@ export default function NotFound() {
           </p>
           <div className="mt-8 flex flex-col sm:flex-row gap-3">
             <Button asChild className="w-full sm:flex-1 font-semibold">
-              <Link to={defaultBack}>Kembali ke Dashboard</Link>
+              <Link to={primaryTo}>{primaryLabel}</Link>
             </Button>
             <Button variant="outline" asChild className="w-full sm:flex-1 font-semibold">
-              <Link to="/">Kembali ke Beranda</Link>
+              <Link to={secondaryTo}>{secondaryLabel}</Link>
             </Button>
           </div>
           <p className="mt-6 text-xs text-muted-foreground">

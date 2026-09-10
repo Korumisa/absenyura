@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { ConfirmModalProps } from '@/types/confirmModal';
+import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,12 +28,8 @@ export function ConfirmModal({
   const [confirming, setConfirming] = useState(false);
   const busy = loading || confirming;
 
-  const actionClassName =
-    variant === 'danger'
-      ? 'bg-rose-600 hover:bg-rose-700'
-      : variant === 'warning'
-        ? 'bg-orange-600 hover:bg-orange-700'
-        : 'bg-brand hover:bg-brand/90';
+  const actionVariant =
+    variant === 'danger' ? 'destructive' : variant === 'warning' ? 'warning' : 'default';
 
   const handleConfirm = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -65,20 +62,17 @@ export function ConfirmModal({
           <AlertDialogCancel onClick={onClose} disabled={busy}>
             {cancelText}
           </AlertDialogCancel>
-          <AlertDialogAction
-            className={actionClassName}
-            onClick={handleConfirm}
-            disabled={busy}
-            aria-busy={busy}
-          >
-            {busy ? (
-              <span className="inline-flex items-center gap-2">
-                <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-                {loadingText}
-              </span>
-            ) : (
-              confirmText
-            )}
+          <AlertDialogAction asChild disabled={busy} aria-busy={busy} onClick={handleConfirm}>
+            <Button variant={actionVariant} disabled={busy}>
+              {busy ? (
+                <span className="inline-flex items-center gap-2">
+                  <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                  {loadingText}
+                </span>
+              ) : (
+                confirmText
+              )}
+            </Button>
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

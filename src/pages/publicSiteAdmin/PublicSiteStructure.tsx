@@ -96,7 +96,6 @@ export default function PublicSiteStructure() {
 
   const uploadImage = async (file: File) => {
     const prepared = await prepareImageForUpload(file, {
-      maxBytes: 4 * 1024 * 1024,
       maxWidth: 1200,
       quality: 0.82,
     });

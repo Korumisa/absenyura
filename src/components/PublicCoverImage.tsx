@@ -51,6 +51,8 @@ export default function PublicCoverImage({
   );
   const showImg = Boolean(src) && !failed;
 
+  const isCloudinary = useMemo(() => /res\.cloudinary\.com/i.test(rawSrc ?? ''), [rawSrc]);
+
   return (
     <div className={cn('relative h-full w-full', className)}>
       {showImg ? (
@@ -63,13 +65,13 @@ export default function PublicCoverImage({
           loading={priority ? 'eager' : 'lazy'}
           decoding="async"
           referrerPolicy="no-referrer"
+          crossOrigin={isCloudinary ? 'anonymous' : undefined}
           onError={() => setFailed(true)}
           {...(priority ? ({ fetchpriority: 'high' } as any) : {})}
         />
       ) : (
-        <div className="relative h-full w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.24),rgba(15,23,42,0.05))] dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.22),rgba(255,255,255,0.04))]">
-          <div className="pointer-events-none absolute inset-0 opacity-80 [background:radial-gradient(circle_at_30%_25%,rgba(255,255,255,0.8),transparent_60%)]" />
-          <div className="grid h-full w-full place-items-center text-6xl font-extrabold text-white/90 drop-shadow-sm">
+        <div className="relative h-full w-full bg-gradient-to-br from-slate-50 to-slate-100 ring-1 ring-slate-200 dark:from-slate-800 dark:to-slate-900 dark:ring-white/10">
+          <div className="grid h-full w-full place-items-center text-6xl font-extrabold text-[var(--public-primary)]/80 drop-shadow-sm dark:text-white/80">
             {initial}
           </div>
         </div>

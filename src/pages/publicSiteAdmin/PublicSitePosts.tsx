@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import api from '@/services/api';
 import { toast } from 'sonner';
+import { toastSuccess, toastError } from '@/lib/utils/toastMessage';
 import { Button } from '@/components/ui/button';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { Input } from '@/components/ui/input';
@@ -161,7 +162,6 @@ export default function PublicSitePosts() {
 
   const uploadImage = async (file: File) => {
     const prepared = await prepareImageForUpload(file, {
-      maxBytes: 4 * 1024 * 1024,
       maxWidth: 1920,
       quality: 0.82,
     });
@@ -705,9 +705,9 @@ export default function PublicSitePosts() {
                         try {
                           const url = await uploadImage(file);
                           setPostFormDirty((p) => ({ ...p, coverImageUrl: url }));
-                          toast.success('Upload berhasil');
+                          toastSuccess('Upload berhasil');
                         } catch (err: any) {
-                          toast.error(getErrorMessage(err, 'Gagal upload'));
+                          toastError(err, getErrorMessage(err, 'Gagal upload'));
                         } finally {
                           inputEl.value = '';
                         }

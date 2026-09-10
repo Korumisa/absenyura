@@ -1,5 +1,6 @@
 // api.ts — perubahan: tambah cooldown mechanism dan device fingerprint
 import axios from 'axios';
+import { toast } from 'sonner';
 import { useAuthStore } from '../stores/authStore';
 import { useAppStatusStore } from '../stores/appStatusStore';
 import { getDeviceFingerprint } from '../lib/storage/deviceFingerprint';
@@ -90,6 +91,7 @@ export const verifySession = async () => {
     if (shouldLogoutFromRefresh(refreshStatus)) {
       saveTarget(window.location.pathname + window.location.search + window.location.hash);
       useAuthStore.getState().logout();
+      toast.info('Sesi Anda habis. Silakan login kembali.');
       if (window.location.pathname !== '/login') {
         window.location.href = '/login';
       }

@@ -213,12 +213,15 @@ export const getPublicStructure = async (req: Request, res: Response): Promise<v
     });
   } catch (error) {
     console.error('Error fetching public structure:', error);
-    res.status(200).json({
-      success: true,
+    const expose = process.env.EXPOSE_ERROR_DETAILS === '1' || process.env.NODE_ENV !== 'production';
+    const message = String(error instanceof Error ? error.message : error ?? '').slice(0, 360);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
       data: [],
       cabinet: null,
       allCabinets: [],
-      error: 'Internal server error',
+      ...(expose && message ? { details: { message } } : {}),
     });
   }
 };
@@ -244,10 +247,10 @@ export const getAdminStructure = async (req: Request, res: Response): Promise<vo
     });
   } catch (error) {
     console.error('Error fetching admin structure:', error);
-    res.status(200).json({
-      success: true,
-      data: { cabinets: [], activeCabinetId: null, activeGroups: [] },
-      error: 'Internal server error - returning empty structure',
+    sendInternalServerError(res, error, {
+      cabinets: [],
+      activeCabinetId: null,
+      activeGroups: [],
     });
   }
 };
@@ -847,6 +850,34 @@ export const deleteAdminGallery = async (req: AuthRequest, res: Response): Promi
   }
 };
 
+function parseDateRangeServer(dateRangeStr: string | null | undefined): { start?: Date; end?: Date } {
+  if (!dateRangeStr) return {};
+  const parts = String(dateRangeStr).split(' - ').map((s) => s.trim());
+  const start = parts[0] ? new Date(parts[0]) : undefined;
+  const end = parts[1] ? new Date(parts[1]) : undefined;
+  return {
+    start: start && !isNaN(start.getTime()) ? start : undefined,
+    end: end && !isNaN(end.getTime()) ? end : undefined,
+  };
+}
+
+function isRecruitmentOpenServer(r: { date_range: string | null }): boolean {
+  const { start, end } = parseDateRangeServer(r.date_range);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (start) {
+    const s = new Date(start);
+    s.setHours(0, 0, 0, 0);
+    if (today < s) return false;
+  }
+  if (end) {
+    const e = new Date(end);
+    e.setHours(23, 59, 59, 999);
+    if (today > e) return false;
+  }
+  return true;
+}
+
 export const getPublicRecruitments = async (req: Request, res: Response): Promise<void> => {
   try {
     const items = await prisma.publicRecruitment.findMany({
@@ -857,7 +888,8 @@ export const getPublicRecruitments = async (req: Request, res: Response): Promis
         contacts: { orderBy: [{ sort_order: 'asc' }] },
       },
     });
-    res.status(200).json({ success: true, data: items });
+    const filteredOpen = items.filter((r) => isRecruitmentOpenServer(r));
+    res.status(200).json({ success: true, data: filteredOpen });
   } catch (error) {
     console.error('Error fetching public recruitments:', error);
     sendInternalServerError(res, error);

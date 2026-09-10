@@ -1,5 +1,6 @@
 import { StrictMode, lazy, Suspense, useEffect, useState, Component, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { BrowserRouter as Router } from 'react-router-dom';
 import { LazyMotion, domAnimation } from 'framer-motion';
 import App from './App';
 import './index.css';
@@ -74,11 +75,13 @@ window.addEventListener('vite:preloadError', (event) => {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <LazyMotion features={domAnimation}>
-      <App />
-    </LazyMotion>
-    <ChunkLoadErrorBoundary>
-      <DeferredMonitoring />
-    </ChunkLoadErrorBoundary>
+    <Router>
+      <LazyMotion features={domAnimation}>
+        <App />
+      </LazyMotion>
+      <ChunkLoadErrorBoundary>
+        <DeferredMonitoring />
+      </ChunkLoadErrorBoundary>
+    </Router>
   </StrictMode>
 );

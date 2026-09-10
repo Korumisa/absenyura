@@ -15,6 +15,7 @@ import { DivisionRail } from '@/components/public/home/DivisionRail';
 import { isCoreStructureGroup } from '@/components/public/home/divisionUtils';
 import { PublicHomeCmsHint } from '@/components/public/home/PublicHomeCmsHint';
 import { normalizeYoutubeEmbedUrl } from '@/lib/media/normalizeYoutubeEmbedUrl';
+import { optimizeCloudinaryUrl } from '@/lib/media/cloudinaryImage';
 import { PublicSlowLoadingHint } from '@/components/public/PublicSlowLoadingHint';
 import { usePublicHomeData, isPublicProfileSparse } from '@/hooks/usePublicHomeData';
 import { ensureHttpsUrl } from '@/lib/http/ensureHttpsUrl';
@@ -35,9 +36,8 @@ function PublicHomeSkeleton({
         <div>
           <section
             aria-label="Beranda organisasi"
-            className="relative overflow-hidden bg-[radial-gradient(circle_at_20%_20%,rgba(37,99,235,0.18),transparent_50%),radial-gradient(circle_at_70%_10%,rgba(59,130,246,0.14),transparent_55%),linear-gradient(180deg,rgba(15,23,42,0.02),transparent)]"
+            className="relative overflow-hidden bg-slate-50/60"
           >
-            <div className="pointer-events-none absolute inset-0 opacity-70 [background:radial-gradient(circle_at_18%_15%,rgba(37,99,235,0.10),transparent_56%),radial-gradient(circle_at_78%_10%,rgba(56,189,248,0.08),transparent_60%)]" />
             <PublicEnter instant className="mx-auto grid max-w-7xl items-center gap-12 px-4 py-16 sm:px-6 md:grid-cols-2 md:py-24">
               <div className="flex items-start gap-6">
                 <div className="hidden size-28 shrink-0 sm:block">
@@ -166,6 +166,27 @@ export default function PublicHome() {
   const isLoadingPrograms = programsState.isPending;
   const isProgramsError = programsState.isError;
   const retryPrograms = programsState.retry;
+
+  React.useEffect(() => {
+    const raw = profile?.home_image_url;
+    if (!raw) return;
+    const href = optimizeCloudinaryUrl(ensureHttpsUrl(raw), { width: 828 });
+    const existing = document.querySelector('link[data-public-hero-preload]');
+    if (existing?.getAttribute('href') === href) return;
+    existing?.remove();
+    if (document.head.querySelector(`link[rel="preload"][href="${CSS.escape(href)}"]`)) return;
+    const link = document.createElement('link');
+    link.rel = 'preload';
+    link.as = 'image';
+    link.href = href;
+    link.crossOrigin = 'anonymous';
+    link.referrerPolicy = 'no-referrer';
+    link.setAttribute('data-public-hero-preload', '1');
+    document.head.appendChild(link);
+    return () => {
+      link.remove();
+    };
+  }, [profile?.home_image_url]);
   
   const [selectedCabinetId, setSelectedCabinetId] = useState<string | null>(null);
   const structureData = structureState.data;
@@ -286,9 +307,8 @@ export default function PublicHome() {
         <div>
           <section
             aria-label="Beranda organisasi"
-            className="relative overflow-hidden bg-[radial-gradient(circle_at_20%_20%,rgba(37,99,235,0.18),transparent_50%),radial-gradient(circle_at_70%_10%,rgba(59,130,246,0.14),transparent_55%),linear-gradient(180deg,rgba(15,23,42,0.02),transparent)]"
+            className="relative overflow-hidden bg-slate-50/60"
           >
-            <div className="pointer-events-none absolute inset-0 opacity-70 [background:radial-gradient(circle_at_18%_15%,rgba(37,99,235,0.10),transparent_56%),radial-gradient(circle_at_78%_10%,rgba(56,189,248,0.08),transparent_60%)]" />
             <PublicEnter instant className="mx-auto grid max-w-7xl items-center gap-12 px-4 py-16 sm:px-6 md:grid-cols-2 md:py-24">
               <div className="flex items-start gap-6">
                 <BrandMark className="hidden size-28 shrink-0 sm:block" src={logoSrc} name={orgName || campusName} />
@@ -411,25 +431,13 @@ export default function PublicHome() {
                 {selectedCabinet?.tagline || selectedCabinet?.motto ? (
                   <div
                     key={`tagline-${selectedCabinet?.id ?? 'default'}`}
-                    className="mx-auto mt-6 max-w-4xl text-center"
-                    style={{ animation: 'taglineFadeIn 520ms ease-out both' }}
+                    className="mx-auto mt-6 max-w-4xl text-center animate-[taglineFadeIn_520ms_ease-out_both]"
                   >
                     {selectedCabinet?.tagline ? (
                       <p
-                        className="font-serif text-xl italic font-medium leading-tight sm:text-2xl md:text-3xl"
-                        style={{
-                          backgroundImage:
-                            'linear-gradient(135deg, #7c3aed 0%, #a855f7 35%, #d4af37 70%, #b8860b 100%)',
-                          WebkitBackgroundClip: 'text',
-                          backgroundClip: 'text',
-                          WebkitTextFillColor: 'transparent',
-                          color: 'transparent',
-                          textShadow: '0 1px 1px rgba(124,58,237,0.08)',
-                        }}
+                        className="font-serif text-xl italic font-extrabold leading-tight sm:text-2xl md:text-3xl text-[var(--public-primary)]"
                       >
-                        <span className="mr-2 select-none opacity-70">✦</span>
                         {String(selectedCabinet.tagline)}
-                        <span className="ml-2 select-none opacity-70">✦</span>
                       </p>
                     ) : null}
                     {selectedCabinet?.motto ? (
@@ -446,7 +454,6 @@ export default function PublicHome() {
           {/* T4 — DOSEN PENDAMPING / PEMBIMBING Section */}
           {displayAdvisorPeople.length > 0 && (
           <section className="relative bg-white py-14 overflow-hidden" aria-label="Dosen pembimbing kabinet periode ini">
-            <div className="pointer-events-none absolute inset-0 opacity-70 [background:radial-gradient(circle_at_10%_20%,rgba(37,99,235,0.08),transparent_50%),radial-gradient(circle_at_90%_10%,rgba(56,189,248,0.07),transparent_55%)]" />
             <PublicReveal className="relative mx-auto max-w-7xl px-4 sm:px-6">
               <div className="mx-auto max-w-3xl text-center">
                 <div className="inline-flex items-center gap-2 rounded-full bg-[var(--public-primary)]/10 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-[var(--public-primary)]">
@@ -472,13 +479,12 @@ export default function PublicHome() {
                     <div
                       key={p.id ?? `${name}-${role}`}
                       className="flex w-full max-w-[240px] shrink-0 flex-col items-center text-center break-words sm:max-w-[280px]"
-                      style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}
                     >
                       <div className="relative shrink-0 overflow-hidden rounded-full border-[3px] border-[var(--public-primary)] bg-slate-100 shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] h-36 w-36 sm:h-40 sm:w-40">
                         {p.photo_url ? (
                           <PublicCoverImage url={p.photo_url} alt={name} imgClassName="object-cover h-full w-full" displayWidth={320} />
                         ) : (
-                          <div className="grid h-full w-full place-items-center bg-[linear-gradient(135deg,rgba(37,99,235,0.20),rgba(59,130,246,0.06))]">
+                          <div className="grid h-full w-full place-items-center bg-gradient-to-br from-slate-50 to-slate-100 ring-1 ring-slate-200">
                             <div className="grid size-20 place-items-center rounded-2xl bg-white/85 text-5xl font-extrabold text-[var(--public-primary)] ring-1 ring-black/10">
                               {initial}
                             </div>
@@ -508,7 +514,6 @@ export default function PublicHome() {
 
           {showAboutVideoSection ? (
           <section className="relative overflow-hidden bg-white">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_10%,rgba(37,99,235,0.12),transparent_55%),radial-gradient(circle_at_75%_20%,rgba(59,130,246,0.10),transparent_60%)] opacity-70" />
             <PublicReveal className="relative mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 md:grid-cols-2 md:py-20">
               {videoSrc ? (
               <div className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_22px_56px_-48px_rgba(15,23,42,0.45)]">
@@ -536,19 +541,6 @@ export default function PublicHome() {
               </div>
               ) : null}
             </PublicReveal>
-
-            <div className="relative mx-auto max-w-7xl px-4 sm:px-6">
-              <div className="pointer-events-none absolute left-0 top-0 -translate-y-1/2">
-                <div className="size-16 rounded-full bg-[var(--public-primary)]/14 blur-2xl" />
-              </div>
-              <div className="pointer-events-none absolute right-0 top-0 -translate-y-1/2">
-                <div className="size-16 rounded-full bg-sky-400/12 blur-2xl" />
-              </div>
-              <div className="relative h-10 w-full">
-                <div className="absolute left-1/2 top-1/2 h-10 w-44 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--public-primary)]/18 blur-2xl" />
-                <div className="absolute left-1/2 top-1/2 size-1 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--public-primary)]/70" />
-              </div>
-            </div>
           </section>
           ) : null}
 
@@ -679,13 +671,7 @@ export default function PublicHome() {
           ) : null}
 
           <section className="relative bg-slate-50/55 py-20">
-            <PublicReveal className="mx-auto max-w-7xl px-4 text-center sm:px-6">
-          <div className="pointer-events-none absolute left-0 top-12 hidden md:block">
-            <div className="size-24 rounded-full bg-[var(--public-primary)]/16 blur-2xl" />
-          </div>
-          <div className="pointer-events-none absolute right-0 top-12 hidden md:block">
-            <div className="size-24 rounded-full bg-sky-400/14 blur-2xl" />
-          </div>
+        <PublicReveal className="mx-auto max-w-7xl px-4 text-center sm:px-6">
 
           <div className="font-display text-5xl italic tracking-tight text-slate-900 sm:text-6xl md:text-7xl">Program</div>
           <div className="-mt-2 text-5xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] sm:-mt-3 sm:text-6xl md:text-7xl">Kerja</div>
@@ -694,8 +680,6 @@ export default function PublicHome() {
           </div>
 
           <div className="relative mx-auto mt-10 max-w-5xl">
-            <div className="pointer-events-none absolute -left-10 top-10 size-44 rounded-full bg-[var(--public-primary)]/10 blur-3xl" />
-            <div className="pointer-events-none absolute -right-10 bottom-8 size-52 rounded-full bg-sky-400/10 blur-3xl" />
             {isLoadingPrograms ? (
               <div className="h-40" aria-busy="true" />
             ) : isProgramsError ? (
@@ -718,13 +702,9 @@ export default function PublicHome() {
               </div>
             ) : programs.length === 0 ? (
               <div className="relative overflow-hidden rounded-2xl border border-dashed border-black/15 bg-white/60 p-6 text-left text-sm text-muted-foreground sm:p-10">
-                <div className="pointer-events-none absolute -left-16 -top-16 size-52 rounded-[48%_52%_58%_42%/44%_43%_57%_56%] bg-[var(--public-primary)]/14 blur-3xl" />
-                <div className="pointer-events-none absolute -right-16 -bottom-16 size-56 rounded-[53%_47%_45%_55%/48%_56%_44%_52%] bg-sky-400/10 blur-3xl" />
-                <div className="relative">
-                  <div className="text-base font-extrabold tracking-tight text-slate-900">Belum ada program kerja</div>
-                  <div className="mt-2 max-w-2xl">
-                    Program kerja yang dipublikasikan akan muncul di sini. Admin bisa menambahkannya dari menu Konten Website.
-                  </div>
+                <div className="text-base font-extrabold tracking-tight text-slate-900">Belum ada program kerja</div>
+                <div className="mt-2 max-w-2xl">
+                  Program kerja yang dipublikasikan akan muncul di sini. Admin bisa menambahkannya dari menu Konten Website.
                 </div>
               </div>
             ) : (
@@ -759,13 +739,7 @@ export default function PublicHome() {
         </PublicReveal>
       </section>
 
-      <section className="relative overflow-hidden bg-white py-14">
-        <div className="pointer-events-none absolute inset-0 opacity-70 [background:radial-gradient(circle_at_14%_18%,rgba(37,99,235,0.10),transparent_56%),radial-gradient(circle_at_86%_14%,rgba(56,189,248,0.10),transparent_60%)]" />
-        <div className="pointer-events-none absolute left-6 top-10 hidden lg:block">
-          <div className="size-24 rotate-6 rounded-[28px] bg-[linear-gradient(135deg,rgba(37,99,235,0.16),rgba(255,255,255,0.9))] shadow-[0_26px_70px_-55px_rgba(15,23,42,0.55)] ring-1 ring-black/10 backdrop-blur" />
-          <div className="-mt-10 ml-14 size-20 -rotate-6 rounded-[26px] bg-[linear-gradient(135deg,rgba(56,189,248,0.14),rgba(255,255,255,0.92))] shadow-[0_26px_70px_-55px_rgba(15,23,42,0.55)] ring-1 ring-black/10 backdrop-blur" />
-          <div className="-mt-10 ml-3 size-12 rotate-12 rounded-[18px] bg-[linear-gradient(135deg,rgba(99,102,241,0.12),rgba(255,255,255,0.94))] ring-1 ring-black/10 backdrop-blur" />
-        </div>
+      <section className="relative bg-white py-14">
         <PublicReveal className="mx-auto max-w-7xl px-4 sm:px-6" shiftY={0}>
           <div className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
             <div>
@@ -809,7 +783,7 @@ export default function PublicHome() {
                         key={r.id}
                         className="flex h-full flex-col overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)]"
                       >
-                      <div className="aspect-[16/10] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))]">
+                      <div className="aspect-[16/10] w-full bg-gradient-to-br from-slate-50 to-slate-100 ring-1 ring-slate-200">
                         <PublicCoverImage url={r.poster_image_url} alt={r.title} imgClassName="object-cover" />
                       </div>
                       <div className="flex flex-1 flex-col p-5">
@@ -855,17 +829,6 @@ export default function PublicHome() {
 
       {(isLoadingStructure || structure.length > 0) ? (
       <section className="relative bg-slate-50/55 py-16">
-        <div className="pointer-events-none absolute inset-0 opacity-70 [background:radial-gradient(circle_at_12%_18%,rgba(37,99,235,0.10),transparent_55%),radial-gradient(circle_at_86%_12%,rgba(56,189,248,0.10),transparent_60%)]" />
-        <div className="pointer-events-none absolute inset-0 opacity-[0.35] [background:linear-gradient(rgba(15,23,42,0.06)_1px,transparent_1px),linear-gradient(90deg,rgba(15,23,42,0.06)_1px,transparent_1px)] [background-size:44px_44px]" />
-        <div className="pointer-events-none absolute left-5 top-10 hidden md:block">
-          <div className="size-24 rotate-6 rounded-[28px] bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(255,255,255,0.88))] shadow-[0_26px_70px_-55px_rgba(15,23,42,0.55)] ring-1 ring-black/10 backdrop-blur" />
-          <div className="-mt-9 ml-14 size-20 -rotate-6 rounded-[26px] bg-[linear-gradient(135deg,rgba(56,189,248,0.16),rgba(255,255,255,0.9))] shadow-[0_26px_70px_-55px_rgba(15,23,42,0.55)] ring-1 ring-black/10 backdrop-blur" />
-          <div className="-mt-10 ml-3 size-12 rotate-12 rounded-[18px] bg-[linear-gradient(135deg,rgba(99,102,241,0.14),rgba(255,255,255,0.92))] ring-1 ring-black/10 backdrop-blur" />
-        </div>
-        <div className="pointer-events-none absolute right-6 top-14 hidden lg:block">
-          <div className="size-20 -rotate-12 rounded-[26px] bg-[linear-gradient(135deg,rgba(99,102,241,0.14),rgba(255,255,255,0.9))] shadow-[0_26px_70px_-55px_rgba(15,23,42,0.55)] ring-1 ring-black/10 backdrop-blur" />
-          <div className="-mt-6 ml-12 size-14 rotate-6 rounded-[22px] bg-[linear-gradient(135deg,rgba(37,99,235,0.12),rgba(255,255,255,0.92))] ring-1 ring-black/10 backdrop-blur" />
-        </div>
         <PublicReveal className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="text-center">
             <div className="font-display text-5xl italic tracking-tight text-slate-900 sm:text-6xl md:text-7xl">Susunan</div>
@@ -1020,7 +983,7 @@ export default function PublicHome() {
                       to="/galeri"
                       className="group flex h-full flex-col overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-[var(--public-primary)]/30"
                     >
-                      <div className="aspect-[16/10] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))]">
+                      <div className="aspect-[16/10] w-full bg-gradient-to-br from-slate-50 to-slate-100 ring-1 ring-slate-200">
                         <PublicCoverImage url={a.items?.[0]?.image_url} alt={a.title} imgClassName="transition duration-500 group-hover:scale-[1.02]" />
                       </div>
                       <div className="flex flex-1 flex-col p-5">
@@ -1090,7 +1053,7 @@ export default function PublicHome() {
                       to={`/berita/${p.slug}`}
                       className="group flex h-full flex-col overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-[var(--public-primary)]/30"
                     >
-                      <div className="aspect-[16/10] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))]">
+                      <div className="aspect-[16/10] w-full bg-gradient-to-br from-slate-50 to-slate-100 ring-1 ring-slate-200">
                         <PublicCoverImage url={p.cover_image_url} alt={p.title} imgClassName="object-cover transition duration-700 group-hover:scale-[1.01]" />
                       </div>
                       <div className="flex flex-1 flex-col p-5">

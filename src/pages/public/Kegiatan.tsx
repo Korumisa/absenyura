@@ -144,7 +144,7 @@ export default function Kegiatan() {
                   key={e.id}
                   className="group overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-[var(--public-primary)]/25"
                 >
-                  <div className="aspect-[16/10] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))]">
+                  <div className="aspect-[16/10] w-full bg-gradient-to-br from-slate-50 to-slate-100 ring-1 ring-slate-200">
                     <PublicCoverImage url={e.cover_image_url} alt={e.title} imgClassName="transition duration-700 group-hover:scale-[1.01]" />
                   </div>
                   <div className="p-5">

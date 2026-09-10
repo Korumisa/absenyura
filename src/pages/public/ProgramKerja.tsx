@@ -128,8 +128,7 @@ export default function ProgramKerja() {
                         scrollerRef.current = node;
                         wheel.ref(node);
                       }}
-                      className="mt-5 overflow-x-auto snap-x snap-mandatory pb-2 scrollbar-hide"
-                      style={{ touchAction: 'pan-x', overscrollBehaviorX: 'contain', overscrollBehaviorY: 'contain' }}
+                      className="mt-5 overflow-x-auto snap-x snap-mandatory pb-2 scrollbar-hide touch-pan-x overscroll-x-contain overscroll-y-contain"
                       role="region"
                       aria-label="Program kerja per divisi"
                       tabIndex={0}
