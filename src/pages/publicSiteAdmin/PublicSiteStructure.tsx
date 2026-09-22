@@ -5,6 +5,7 @@ import { toastError, toastSuccess } from '@/lib/utils/toastMessage';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import type { PublicStructureGroup } from '@/types/publicSite';
 import { prepareImageForUpload } from '@/lib/media/imageUpload';
@@ -30,7 +31,7 @@ export default function PublicSiteStructure() {
   }>('/public-site/admin/structure', fetcher, { revalidateOnFocus: false });
 
   type MemberDraft = { name: string; role: string; photoUrl: string; isSpotlight: boolean };
-  type GroupDraft = { title: string; isCore: boolean; people: MemberDraft[] };
+  type GroupDraft = { title: string; description: string; isCore: boolean; people: MemberDraft[] };
   const [groups, setGroups] = useState<GroupDraft[]>([]);
   const [cabinetName, setCabinetName] = useState('');
   const [cabinetPeriod, setCabinetPeriod] = useState('');
@@ -65,6 +66,7 @@ export default function PublicSiteStructure() {
     if (currentViewCabinet) {
       const mapped: GroupDraft[] = (currentViewCabinet.groups ?? []).map((g: any) => ({
         title: g.title ?? '',
+        description: g.description ?? '',
         isCore: Boolean(g.is_core ?? false),
         people: (g.members ?? []).map((m: any) => ({
           name: m.name ?? '',
@@ -141,6 +143,7 @@ export default function PublicSiteStructure() {
       const payload = groups
         .map((g, gi) => ({
           title: String(g.title ?? '').trim(),
+          description: String(g.description ?? '').trim() || null,
           isCore: g.isCore,
           sortOrder: gi,
           people: (g.people ?? [])
@@ -224,6 +227,7 @@ export default function PublicSiteStructure() {
     if (currentViewCabinet) {
       const mapped: GroupDraft[] = (currentViewCabinet.groups ?? []).map((g: any) => ({
         title: g.title ?? '',
+        description: g.description ?? '',
         isCore: Boolean(g.is_core ?? false),
         people: (g.members ?? []).map((m: any) => ({
           name: m.name ?? '',
@@ -276,6 +280,7 @@ export default function PublicSiteStructure() {
                   ...prev,
                   {
                     title: '',
+                    description: '',
                     isCore: false,
                     people: [{ name: '', role: '', photoUrl: '', isSpotlight: false }],
                   },
@@ -371,6 +376,7 @@ export default function PublicSiteStructure() {
                       ...prev,
                       {
                         title: '',
+                        description: '',
                         isCore: false,
                         people: [{ name: '', role: '', photoUrl: '', isSpotlight: false }],
                       },
@@ -399,6 +405,21 @@ export default function PublicSiteStructure() {
                           )
                         }
                         placeholder="Contoh: INTI"
+                      />
+                      <Label htmlFor={`${formId}-group-desc-${gi}`}>Deskripsi (opsional)</Label>
+                      <Textarea
+                        id={`${formId}-group-desc-${gi}`}
+                        value={g.description}
+                        onChange={(e) =>
+                          setGroupsDirty((prev) =>
+                            prev.map((x, idx) =>
+                              idx === gi ? { ...x, description: e.target.value } : x
+                            )
+                          )
+                        }
+                        placeholder="Tampil di bawah judul grup di halaman publik"
+                        rows={2}
+                        maxLength={500}
                       />
                       <div className="flex items-center gap-2 text-sm text-foreground">
                         <Checkbox

@@ -18,6 +18,23 @@ const requiredTrimmed = (min: number, msg: string) =>
 
 const sanitizedUrl = emptyToNull(z.string().trim().url('Format URL tidak valid'));
 
+/** Absolute, protocol-relative, or site-relative image URLs (member photos / uploads). */
+const mediaUrl = emptyToNull(
+  z
+    .string()
+    .trim()
+    .refine((v) => {
+      if (v.startsWith('/') || v.startsWith('//')) return true;
+      try {
+         
+        new URL(v);
+        return true;
+      } catch {
+        return false;
+      }
+    }, 'Format URL tidak valid')
+);
+
 export const PublicProfileData = z.object({
   orgName: requiredTrimmed(1, 'Nama organisasi wajib diisi'),
   campusName: requiredTrimmed(1, 'Nama kampus wajib diisi'),
@@ -59,7 +76,7 @@ export const UpsertPublicProfileBody = z.object({
 const StructureMember = z.object({
   name: z.string().trim().min(1, 'Nama anggota wajib diisi'),
   role: z.string().trim().min(1, 'Peran anggota wajib diisi'),
-  photoUrl: sanitizedUrl,
+  photoUrl: mediaUrl,
   isSpotlight: z.boolean().optional(),
   is_spotlight: z.boolean().optional(),
   sortOrder: z.union([z.string(), z.number()]).optional(),
@@ -67,6 +84,7 @@ const StructureMember = z.object({
 
 const StructureGroup = z.object({
   title: z.string().trim().min(1, 'Judul kelompok wajib diisi'),
+  description: emptyToNull(z.string().trim().max(500, 'Deskripsi maksimal 500 karakter')),
   isCore: z.boolean().optional(),
   is_core: z.boolean().optional(),
   sortOrder: z.union([z.string(), z.number()]).optional(),

@@ -104,6 +104,7 @@ export type PublicRecruitment = {
 export type PublicStructureGroup = {
   id: string;
   title: string;
+  description?: string | null;
   sort_order: number;
   is_core?: boolean;
   members: {

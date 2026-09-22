@@ -107,6 +107,16 @@ export default function Fungsionaris() {
   const corePeople = useMemo(() => sortedMembers(coreGroups.flatMap((g: any) => safeRelation(g.members))), [coreGroups]);
   const advisorPeopleRaw = useMemo(() => sortedMembers(advisorGroups.flatMap((g: any) => safeRelation(g.members))), [advisorGroups]);
   const advisorPeople = advisorPeopleRaw;
+  const intiDescription = useMemo(() => {
+    const fromGroups = coreGroups
+      .map((g: any) => String(g.description ?? '').trim())
+      .filter(Boolean);
+    if (fromGroups.length) return fromGroups[0];
+    return kabinetPeriod
+      ? `Pengurus inti periode ${kabinetPeriod} — arah strategis dan koordinasi organisasi.`
+      : 'Pengurus inti — arah strategis dan koordinasi organisasi.';
+  }, [coreGroups, kabinetPeriod]);
+  const activeBidangDescription = String(activeGroup?.description ?? '').trim();
   const pickLeader = (people: PublicStructureGroup['members']) => {
     const safe = safeRelation(people);
     const spotlight = safe.find((p) => Boolean(p.is_spotlight));
@@ -123,6 +133,7 @@ export default function Fungsionaris() {
         : size === 'lg'
           ? 'h-28 w-28 sm:h-32 sm:w-32'
           : 'h-20 w-20 sm:h-24 sm:w-24';
+    const displayWidth = size === 'xl' ? 352 : size === 'lg' ? 256 : 192;
     return (
       <div
         key={p.id}
@@ -134,7 +145,14 @@ export default function Fungsionaris() {
             sizeClass,
           ].join(' ')}
         >
-          <PublicCoverImage url={p.photo_url} alt={p.name ?? 'Anggota'} imgClassName="object-cover" />
+          <PublicCoverImage
+            url={p.photo_url}
+            alt={p.name ?? 'Anggota'}
+            imgClassName="object-cover"
+            variant="avatar"
+            displayWidth={displayWidth}
+            priority={size === 'xl'}
+          />
         </div>
         <div
           className="mt-3 w-full break-words text-sm font-extrabold leading-snug tracking-tight text-slate-900 hyphens-auto"
@@ -242,10 +260,35 @@ export default function Fungsionaris() {
           <div className="mt-6">
             {subtitleBits.length ? (
               <div className="flex justify-center">
-                <div className="flex w-full max-w-5xl items-center justify-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                  <span className="flex-none rounded-full bg-[var(--public-primary)] px-8 py-2 text-xs font-semibold uppercase tracking-widest text-white shadow-[0_16px_32px_rgba(37,99,235,0.30)]">
+                <div className="relative flex w-full max-w-5xl items-center justify-center gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                  <span
+                    aria-hidden="true"
+                    className="hidden h-px w-10 bg-gradient-to-r from-transparent to-[var(--public-primary)]/55 sm:block"
+                  />
+                  <span className="relative flex-none overflow-hidden rounded-full bg-[var(--public-primary)] px-8 py-2.5 text-xs font-semibold uppercase tracking-[0.22em] text-white shadow-[0_16px_32px_rgba(37,99,235,0.30)] ring-1 ring-white/25">
+                    <span
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-x-3 top-1 h-px bg-gradient-to-r from-transparent via-white/55 to-transparent"
+                    />
+                    <span
+                      aria-hidden="true"
+                      className="pointer-events-none absolute -left-1 top-1/2 h-2 w-2 -translate-y-1/2 rotate-45 rounded-[2px] bg-white/70"
+                    />
+                    <span
+                      aria-hidden="true"
+                      className="pointer-events-none absolute -right-1 top-1/2 h-2 w-2 -translate-y-1/2 rotate-45 rounded-[2px] bg-white/70"
+                    />
                     {subtitleBits[0]}
+                    {subtitleBits[1] ? (
+                      <span className="ml-2 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-medium tracking-widest text-white/90">
+                        {subtitleBits[1]}
+                      </span>
+                    ) : null}
                   </span>
+                  <span
+                    aria-hidden="true"
+                    className="hidden h-px w-10 bg-gradient-to-l from-transparent to-[var(--public-primary)]/55 sm:block"
+                  />
                 </div>
               </div>
             ) : null}
@@ -265,8 +308,8 @@ export default function Fungsionaris() {
 
             <div className="mt-10 text-center">
               <div className="text-5xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] sm:text-6xl">INTI</div>
-                <p className="mt-3 text-center text-sm font-medium text-muted-foreground">
-                  Pengurus inti periode {kabinetPeriod} — arah strategis dan koordinasi organisasi.
+                <p className="mx-auto mt-3 max-w-2xl text-center text-sm font-medium text-muted-foreground">
+                  {intiDescription}
                 </p>
             </div>
 
@@ -320,7 +363,7 @@ export default function Fungsionaris() {
 
             <div className="mt-16 text-center">
               <div className="text-5xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] sm:text-6xl">BIDANG</div>
-              <p className="mt-3 text-center text-sm font-medium text-muted-foreground">
+              <p className="mx-auto mt-3 max-w-2xl text-center text-sm font-medium text-muted-foreground">
                 Divisi dan bidang pendukung untuk eksekusi program kerja.
               </p>
             </div>
@@ -348,6 +391,11 @@ export default function Fungsionaris() {
                   })}
                 </div>
 
+                {activeBidangDescription ? (
+                  <p className="mx-auto mt-4 max-w-2xl text-center text-sm font-medium text-muted-foreground">
+                    {activeBidangDescription}
+                  </p>
+                ) : null}
                 {activeGroup && safeRelation(activeGroup.members).length ? (
                   (() => {
                     const people = sortedMembers(activeGroup.members);

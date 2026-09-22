@@ -298,14 +298,15 @@ model PublicStructureCabinet {
 }
 
 model PublicStructureGroup {
-  id         String   @id @default(uuid())
-  cabinet_id String
-  cabinet    PublicStructureCabinet @relation(fields: [cabinet_id], references: [id], onDelete: Cascade)
-  title      String
-  sort_order Int      @default(0)
-  is_core    Boolean  @default(false)
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+  id          String   @id @default(uuid())
+  cabinet_id  String
+  cabinet     PublicStructureCabinet @relation(fields: [cabinet_id], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  sort_order  Int      @default(0)
+  is_core     Boolean  @default(false)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
 
   members PublicStructureMember[]
 }

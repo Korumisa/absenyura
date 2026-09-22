@@ -396,10 +396,15 @@ export const replaceAdminStructure = async (req: AuthRequest, res: Response): Pr
             const title = String(g.title ?? '').trim();
             if (!title) continue;
             const is_core = Boolean((g as any).isCore ?? (g as any).is_core ?? false);
+            const description =
+              typeof (g as any).description === 'string'
+                ? String((g as any).description).trim() || null
+                : null;
             const group = await tx.publicStructureGroup.create({
               data: {
                 cabinet_id: cabinet.id,
                 title,
+                description,
                 sort_order: toInt(g.sortOrder, gi),
                 is_core,
               } as any,

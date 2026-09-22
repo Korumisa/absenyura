@@ -2,6 +2,7 @@ import { CmsPreviewAside } from '@/components/ui/CmsPreviewAside';
 
 type GroupPreview = {
   title: string;
+  description?: string;
   isCore: boolean;
   people: { name: string; role: string; photoUrl: string; isSpotlight: boolean }[];
 };
@@ -25,6 +26,9 @@ export default function PublicSiteStructurePreview({ groups }: { groups: GroupPr
                   </span>
                 ) : null}
               </div>
+              {g.description?.trim() ? (
+                <p className="mt-1 text-xs text-muted-foreground">{g.description}</p>
+              ) : null}
               <ul className="mt-3 space-y-2">
                 {g.people
                   .filter((p) => p.name.trim() || p.role.trim())
