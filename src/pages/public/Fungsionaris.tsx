@@ -23,6 +23,11 @@ export default function Fungsionaris() {
   const structureResult = useMockOrSwr<StructureResp>({
     swrKey: '/public-site/structure',
     fetcher: (u) => publicSiteFetcher<StructureResp>(u, { kind: 'top' }),
+    swrConfig: {
+      errorRetryCount: 2,
+      errorRetryInterval: 1500,
+      dedupingInterval: 10_000,
+    },
     mockStatic: mockStructure as StructureResp,
   });
   const { swr: structureSwr, data: structureData, isInitialLoading: isLoading, isError, retry } = structureResult;

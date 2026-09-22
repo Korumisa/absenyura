@@ -178,10 +178,11 @@ export default function PublicHome() {
     const link = document.createElement('link');
     link.rel = 'preload';
     link.as = 'image';
-    link.href = href;
-    link.crossOrigin = 'anonymous';
+    // Match <img> default (no CORS). Setting crossOrigin after href would fetch
+    // no-cors then fail to match a CORS consumer — leave both unset for display-only.
     link.referrerPolicy = 'no-referrer';
     link.setAttribute('data-public-hero-preload', '1');
+    link.href = href;
     document.head.appendChild(link);
     return () => {
       link.remove();

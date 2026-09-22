@@ -236,17 +236,30 @@ export const upsertAdminProfile = async (req: AuthRequest, res: Response): Promi
   }
 };
 
+const PUBLIC_STRUCTURE_EMPTY = {
+  data: [] as unknown[],
+  cabinet: null,
+  allCabinets: [] as unknown[],
+};
+
 export const getPublicStructure = async (req: Request, res: Response): Promise<void> => {
   try {
-    const allCabinets = await prisma.publicStructureCabinet.findMany({
-      orderBy: [{ is_active: 'desc' }, { sort_order: 'asc' }, { created_at: 'desc' }],
-      include: {
-        groups: {
-          orderBy: [{ sort_order: 'asc' }],
-          include: { members: { orderBy: [{ sort_order: 'asc' }, { created_at: 'asc' }] } },
-        },
-      },
-    });
+    const allCabinets = await withTransientRetry(
+      () =>
+        prisma.publicStructureCabinet.findMany({
+          orderBy: [{ is_active: 'desc' }, { sort_order: 'asc' }, { created_at: 'desc' }],
+          include: {
+            groups: {
+              orderBy: [{ sort_order: 'asc' }],
+              include: {
+                members: { orderBy: [{ sort_order: 'asc' }, { created_at: 'asc' }] },
+              },
+            },
+          },
+        }),
+      1,
+      250
+    );
 
     const activeCabinet = allCabinets.find((c) => c.is_active) || allCabinets[0] || null;
 
@@ -257,17 +270,34 @@ export const getPublicStructure = async (req: Request, res: Response): Promise<v
       allCabinets,
     });
   } catch (error) {
-    console.error('Error fetching public structure:', error);
+    const e = error as { code?: unknown; name?: unknown; message?: unknown };
+    const errCode = typeof e.code === 'string' ? e.code : '';
+    const errName = typeof e.name === 'string' ? e.name : 'Error';
+    console.error(
+      `[public-structure] Fetch failed (code=${errCode || 'n/a'} name=${errName}):`,
+      error instanceof Error ? error.message : error
+    );
+
     const expose =
       process.env.EXPOSE_ERROR_DETAILS === '1' || process.env.NODE_ENV !== 'production';
-    const message = String(error instanceof Error ? error.message : (error ?? '')).slice(0, 360);
+    const reason = typeof e.message === 'string' ? e.message : errCode || errName;
+
+    if (isPrismaConnectionError(error)) {
+      res.status(503).json({
+        success: false,
+        error: 'Database unavailable',
+        ...PUBLIC_STRUCTURE_EMPTY,
+        retry_after_ms: 2000,
+        ...(expose && reason ? { details: { reason } } : {}),
+      });
+      return;
+    }
+
     res.status(500).json({
       success: false,
       error: 'Internal server error',
-      data: [],
-      cabinet: null,
-      allCabinets: [],
-      ...(expose && message ? { details: { message } } : {}),
+      ...PUBLIC_STRUCTURE_EMPTY,
+      ...(expose && reason ? { details: { message: String(reason).slice(0, 360) } } : {}),
     });
   }
 };

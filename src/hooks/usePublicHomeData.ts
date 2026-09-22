@@ -98,6 +98,12 @@ export function usePublicHomeData() {
   const structure = useMockOrSwr<StructureResp>({
     swrKey: belowFoldKey ? '/public-site/structure' : null,
     fetcher,
+    swrConfig: {
+      // Avoid retry storms against a failing/cold structure endpoint (logs showed 5× 500).
+      errorRetryCount: 2,
+      errorRetryInterval: 1500,
+      dedupingInterval: 10_000,
+    },
     mockStatic: () =>
       loadBelowFold
         ? mockStructure

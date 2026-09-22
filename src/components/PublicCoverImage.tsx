@@ -51,8 +51,6 @@ export default function PublicCoverImage({
   );
   const showImg = Boolean(src) && !failed;
 
-  const isCloudinary = useMemo(() => /res\.cloudinary\.com/i.test(rawSrc ?? ''), [rawSrc]);
-
   return (
     <div className={cn('relative h-full w-full', className)}>
       {showImg ? (
@@ -65,7 +63,6 @@ export default function PublicCoverImage({
           loading={priority ? 'eager' : 'lazy'}
           decoding="async"
           referrerPolicy="no-referrer"
-          crossOrigin={isCloudinary ? 'anonymous' : undefined}
           onError={() => setFailed(true)}
           {...(priority ? ({ fetchpriority: 'high' } as any) : {})}
         />

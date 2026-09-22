@@ -3,6 +3,7 @@ import { describe, expect, test, vi, beforeEach } from 'vitest';
 const prismaMock = vi.hoisted(() => ({
   $transaction: vi.fn(),
   publicStructureCabinet: {
+    findMany: vi.fn(),
     updateMany: vi.fn(),
     create: vi.fn(),
   },
@@ -19,7 +20,7 @@ const prismaMock = vi.hoisted(() => ({
 
 vi.mock('../utils/prisma.js', () => ({ default: prismaMock }));
 
-import { replaceAdminStructure } from './public-site.v2.controller';
+import { getPublicStructure, replaceAdminStructure } from './public-site.v2.controller';
 
 const createRes = () => {
   const res: { status?: any; json?: any } = {};
@@ -207,5 +208,70 @@ describe('replaceAdminStructure', () => {
       message: 'Struktur organisasi berhasil disimpan',
     });
     expect(consoleErrorSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe('getPublicStructure', () => {
+  let consoleErrorSpy: any;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  test('mengembalikan 503 dengan shape publik saat prisma connection error', async () => {
+    prismaMock.publicStructureCabinet.findMany.mockRejectedValue({
+      code: 'P1001',
+      name: 'PrismaClientInitializationError',
+      message: "Can't reach database server",
+    });
+
+    const res = createRes();
+    await getPublicStructure({} as any, res);
+
+    expect(res.status).toHaveBeenCalledWith(503);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: false,
+        error: 'Database unavailable',
+        data: [],
+        cabinet: null,
+        allCabinets: [],
+        retry_after_ms: 2000,
+      })
+    );
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('[public-structure]'),
+      expect.anything()
+    );
+  });
+
+  test('mengembalikan kabinet aktif + allCabinets pada sukses', async () => {
+    const cabinets = [
+      {
+        id: 'c1',
+        name: 'Kabinet A',
+        is_active: true,
+        groups: [{ id: 'g1', title: 'Inti', members: [] }],
+      },
+      {
+        id: 'c2',
+        name: 'Kabinet B',
+        is_active: false,
+        groups: [],
+      },
+    ];
+    prismaMock.publicStructureCabinet.findMany.mockResolvedValue(cabinets);
+
+    const res = createRes();
+    await getPublicStructure({} as any, res);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({
+      success: true,
+      data: cabinets[0].groups,
+      cabinet: cabinets[0],
+      allCabinets: cabinets,
+    });
   });
 });
