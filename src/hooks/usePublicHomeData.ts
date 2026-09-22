@@ -55,8 +55,9 @@ const extract = <T>(hook: {
 /** Data fetching beranda publik — profil + section below-fold.
  *  If VITE_USE_MOCK_LANDING truthy: returns static MOCK DATA, 0 real API calls.
  */
-export function usePublicHomeData() {
+export function usePublicHomeData(opts?: { cabinetId?: string | null }) {
   const [loadBelowFold, setLoadBelowFold] = useState(false);
+  const cabinetId = opts?.cabinetId?.trim() || '';
 
   const profile = useMockOrSwr<PublicProfile | null>({
     swrKey: '/public-site/profile',
@@ -98,7 +99,10 @@ export function usePublicHomeData() {
   const structure = useMockOrSwr<StructureResp>({
     // ?v=2 busts a CDN-cached 503 that was wrongly stored before error responses
     // stopped being edge-cached (publicSiteCache middleware).
-    swrKey: belowFoldKey ? '/public-site/structure?v=2' : null,
+    // cabinetId loads one cabinet tree; allCabinets stays metadata-only.
+    swrKey: belowFoldKey
+      ? `/public-site/structure?v=2${cabinetId ? `&cabinetId=${encodeURIComponent(cabinetId)}` : ''}`
+      : null,
     fetcher,
     swrConfig: {
       // Avoid retry storms against a failing/cold structure endpoint (logs showed 5× 500).

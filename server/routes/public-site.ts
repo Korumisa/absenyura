@@ -29,6 +29,7 @@ import {
   getPublicPostBySlug,
   listPublicCategories,
   getPublicGalleries,
+  getPublicGalleryById,
   getPublicRecruitments,
   getPublicStructure,
   upsertAdminProfile,
@@ -68,6 +69,7 @@ router.get('/categories', ...publicRead, listPublicCategories);
 router.get('/posts', ...publicRead, listPublicPosts);
 router.get('/posts/:slug', ...publicRead, getPublicPostBySlug);
 router.get('/galleries', ...publicRead, getPublicGalleries);
+router.get('/galleries/:id', ...publicRead, validateParams(GalleryParams), getPublicGalleryById);
 router.get('/recruitments', ...publicRead, getPublicRecruitments);
 router.get('/structure', ...publicRead, getPublicStructure);
 

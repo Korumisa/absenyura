@@ -17,6 +17,8 @@ import { requestTiming } from './middlewares/requestTiming.middleware.js';
 import { guardInternal, guardCron } from './middlewares/guardInternal.js';
 import prisma from './utils/prisma.js';
 import { AppError } from './utils/AppError.js';
+import { isPrismaConnectionError } from './utils/prismaTransient.js';
+import { sendServiceUnavailable } from './utils/errorResponse.js';
 
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
@@ -316,6 +318,22 @@ app.get('/api/health/db', async (_req: Request, res: Response): Promise<void> =>
  * error handler middleware
  */
 app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
+  if (isPrismaConnectionError(err)) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.error(
+        '[ERROR]',
+        req.method,
+        req.path,
+        err instanceof Error ? (err.stack ?? err) : err
+      );
+    }
+    sendServiceUnavailable(res, {
+      error: 'Database unavailable',
+      reason: 'prisma_connection',
+    });
+    return;
+  }
+
   const maybe = err as {
     statusCode?: unknown;
     status?: unknown;

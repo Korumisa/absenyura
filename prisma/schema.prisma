@@ -309,6 +309,8 @@ model PublicStructureGroup {
   updated_at  DateTime @updatedAt
 
   members PublicStructureMember[]
+
+  @@index([cabinet_id])
 }
 
 model PublicStructureMember {
@@ -322,6 +324,8 @@ model PublicStructureMember {
   sort_order Int      @default(0)
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
+
+  @@index([group_id])
 }
 
 model PublicCategory {
@@ -352,6 +356,9 @@ model PublicPost {
   created_by      String?
   created_at      DateTime       @default(now())
   updated_at      DateTime       @updatedAt
+
+  @@index([is_published, type, published_at])
+  @@index([category_id])
 }
 
 model PublicProgram {
@@ -362,6 +369,8 @@ model PublicProgram {
   is_published Boolean  @default(false)
   created_at   DateTime @default(now())
   updated_at   DateTime @updatedAt
+
+  @@index([is_published])
 }
 
 model PublicGalleryAlbum {
@@ -373,6 +382,8 @@ model PublicGalleryAlbum {
   updated_at   DateTime @updatedAt
 
   items PublicGalleryItem[]
+
+  @@index([is_published])
 }
 
 model PublicGalleryItem {
@@ -383,6 +394,8 @@ model PublicGalleryItem {
   caption    String?
   sort_order Int      @default(0)
   created_at DateTime @default(now())
+
+  @@index([album_id, sort_order])
 }
 
 model PublicRecruitment {
@@ -398,6 +411,8 @@ model PublicRecruitment {
 
   committee PublicRecruitmentCommittee[]
   contacts  PublicRecruitmentContact[]
+
+  @@index([is_published])
 }
 
 model PublicRecruitmentCommittee {
@@ -407,6 +422,8 @@ model PublicRecruitmentCommittee {
   name           String
   role           String
   sort_order     Int      @default(0)
+
+  @@index([recruitment_id])
 }
 
 model PublicRecruitmentContact {
@@ -417,6 +434,8 @@ model PublicRecruitmentContact {
   contact        String
   sort_order     Int      @default(0)
   created_at     DateTime @default(now())
+
+  @@index([recruitment_id])
 }
 
 model IdempotencyKey {

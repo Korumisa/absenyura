@@ -8,9 +8,13 @@ import { saveTarget } from '../lib/auth/postLoginTarget';
 
 const apiBaseUrl = (import.meta as any)?.env?.VITE_API_BASE_URL || '/api';
 
+const API_TIMEOUT_MS = 20_000;
+const TRANSIENT_RETRY_DEFAULT_MS = 800;
+
 const api = axios.create({
   baseURL: apiBaseUrl,
   withCredentials: true,
+  timeout: API_TIMEOUT_MS,
 });
 
 function getCookie(name: string): string | undefined {
@@ -152,7 +156,13 @@ api.interceptors.response.use(
     return response;
   },
   async (error) => {
-    const originalRequest = error.config;
+    const originalRequest = error.config as
+      | (typeof error.config & {
+          _transientRetry?: boolean;
+          _csrfRetry?: boolean;
+          _retry?: boolean;
+        })
+      | undefined;
 
     const url = String(originalRequest?.url || '');
     let pathname = url;
@@ -165,6 +175,35 @@ api.interceptors.response.use(
     const isPublicSiteRequest = pathname.includes('/public-site/');
     const isAdminPublicSiteRequest = pathname.includes('/public-site/admin');
     const isPublicRequest = isPublicSiteRequest && !isAdminPublicSiteRequest;
+    const method = String(originalRequest?.method || 'get').toUpperCase();
+    const isIdempotent = method === 'GET' || method === 'HEAD' || method === 'OPTIONS';
+    const status = error.response?.status as number | undefined;
+    const errCode = String((error as { code?: string })?.code || '');
+    const isTransientNetwork =
+      !error?.response &&
+      (errCode === 'ECONNABORTED' ||
+        errCode === 'ERR_NETWORK' ||
+        errCode === 'ETIMEDOUT' ||
+        /timeout/i.test(String(error?.message || '')));
+    const isTransientHttp = status === 502 || status === 503 || status === 504;
+
+    // One automatic retry for safe methods on pooler blips / gateway 5xx.
+    if (
+      originalRequest &&
+      isIdempotent &&
+      (isTransientHttp || isTransientNetwork) &&
+      !originalRequest._transientRetry &&
+      !originalRequest.url?.includes('/auth/refresh')
+    ) {
+      originalRequest._transientRetry = true;
+      const retryAfterRaw = error.response?.data?.retry_after_ms;
+      const retryAfter =
+        typeof retryAfterRaw === 'number' && retryAfterRaw > 0
+          ? retryAfterRaw
+          : TRANSIENT_RETRY_DEFAULT_MS;
+      await new Promise((r) => setTimeout(r, retryAfter));
+      return api.request(originalRequest);
+    }
 
     if (error?.response) {
       clearPendingMaintenance();

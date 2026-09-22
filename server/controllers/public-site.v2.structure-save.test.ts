@@ -4,6 +4,7 @@ const prismaMock = vi.hoisted(() => ({
   $transaction: vi.fn(),
   publicStructureCabinet: {
     findMany: vi.fn(),
+    findUnique: vi.fn(),
     updateMany: vi.fn(),
     create: vi.fn(),
   },
@@ -267,32 +268,69 @@ describe('getPublicStructure', () => {
     );
   });
 
-  test('mengembalikan kabinet aktif + allCabinets pada sukses', async () => {
-    const cabinets = [
+  test('mengembalikan kabinet aktif + allCabinets metadata pada sukses', async () => {
+    const meta = [
       {
         id: 'c1',
         name: 'Kabinet A',
+        period: '2024',
         is_active: true,
-        groups: [{ id: 'g1', title: 'Inti', members: [] }],
+        sort_order: 0,
       },
       {
         id: 'c2',
         name: 'Kabinet B',
+        period: '2023',
         is_active: false,
-        groups: [],
+        sort_order: 1,
       },
     ];
-    prismaMock.publicStructureCabinet.findMany.mockResolvedValue(cabinets);
+    const active = {
+      ...meta[0],
+      groups: [{ id: 'g1', title: 'Inti', members: [] }],
+    };
+    prismaMock.publicStructureCabinet.findMany.mockResolvedValue(meta);
+    prismaMock.publicStructureCabinet.findUnique.mockResolvedValue(active);
 
     const res = createRes();
-    await getPublicStructure({} as any, res);
+    await getPublicStructure({ query: {} } as any, res);
 
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({
       success: true,
-      data: cabinets[0].groups,
-      cabinet: cabinets[0],
-      allCabinets: cabinets,
+      data: active.groups,
+      cabinet: active,
+      allCabinets: meta,
     });
+    expect(prismaMock.publicStructureCabinet.findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'c1' } })
+    );
+  });
+
+  test('memuat kabinet spesifik lewat ?cabinetId=', async () => {
+    const meta = [
+      { id: 'c1', name: 'A', period: '2024', is_active: true, sort_order: 0 },
+      { id: 'c2', name: 'B', period: '2023', is_active: false, sort_order: 1 },
+    ];
+    const selected = {
+      ...meta[1],
+      groups: [{ id: 'g2', title: 'Bidang', members: [] }],
+    };
+    prismaMock.publicStructureCabinet.findMany.mockResolvedValue(meta);
+    prismaMock.publicStructureCabinet.findUnique.mockResolvedValue(selected);
+
+    const res = createRes();
+    await getPublicStructure({ query: { cabinetId: 'c2' } } as any, res);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({
+      success: true,
+      data: selected.groups,
+      cabinet: selected,
+      allCabinets: meta,
+    });
+    expect(prismaMock.publicStructureCabinet.findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'c2' } })
+    );
   });
 });

@@ -4,6 +4,7 @@ import prisma from '../utils/prisma.js';
 import { upload, validateUploadedFileContent } from '../utils/upload.js';
 import { v2 as cloudinary } from 'cloudinary';
 import { sendInternalServerError, sendServiceUnavailable } from '../utils/errorResponse.js';
+import { isPrismaConnectionError } from '../utils/prismaTransient.js';
 import { sanitizeWebUrl } from '../utils/sanitizeUrl.js';
 import fs from 'fs';
 
@@ -90,53 +91,7 @@ function normalizeYoutubeEmbedUrl(input: string): string | null {
   }
 }
 
-const PRISMA_CONNECTION_ERROR_CODES = new Set([
-  'P1000',
-  'P1001',
-  'P1002',
-  'P1003',
-  'P1008',
-  'P1009',
-  'P1010',
-  'P1011',
-  'P1012',
-  'P1013',
-  'P1014',
-  'P1015',
-  'P1016',
-  'P1017',
-  'P2024',
-]);
-
-function isPrismaConnectionError(err: unknown): boolean {
-  const e = err as { code?: unknown; name?: unknown; message?: unknown };
-  if (typeof e.code === 'string' && PRISMA_CONNECTION_ERROR_CODES.has(e.code)) return true;
-  const name = typeof e.name === 'string' ? e.name : '';
-  const msg = typeof e.message === 'string' ? e.message : '';
-  // Avoid matching schema messages like "does not exist in the current database".
-  if (
-    /(?:can't reach|cannot reach|connection (?:timed out|refused|reset)|econnrefused|etimedout|epipe|connection pool|timed out fetching|server has closed the connection)/i.test(
-      name + ' ' + msg
-    )
-  ) {
-    return true;
-  }
-  return false;
-}
-
 const STRUCTURE_FALLBACK = { cabinets: [], activeCabinetId: null, activeGroups: [] } as const;
-
-async function withTransientRetry<T>(fn: () => Promise<T>, retries = 1, delayMs = 250): Promise<T> {
-  try {
-    return await fn();
-  } catch (err) {
-    if (retries > 0 && isPrismaConnectionError(err)) {
-      await new Promise((r) => setTimeout(r, delayMs));
-      return withTransientRetry(fn, retries - 1, delayMs * 2);
-    }
-    throw err;
-  }
-}
 
 async function ensureUniquePostSlug(base: string) {
   const clean = base || 'post';
@@ -245,26 +200,64 @@ const PUBLIC_STRUCTURE_EMPTY = {
   allCabinets: [] as unknown[],
 };
 
+/** Lean nested select for structure reads (omit unused timestamps). */
+const structureGroupsSelect = {
+  orderBy: [{ sort_order: 'asc' as const }],
+  select: {
+    id: true,
+    title: true,
+    description: true,
+    sort_order: true,
+    is_core: true,
+    members: {
+      orderBy: [{ sort_order: 'asc' as const }, { created_at: 'asc' as const }],
+      select: {
+        id: true,
+        name: true,
+        role: true,
+        photo_url: true,
+        is_spotlight: true,
+        sort_order: true,
+      },
+    },
+  },
+};
+
 export const getPublicStructure = async (req: Request, res: Response): Promise<void> => {
   try {
-    const allCabinets = await withTransientRetry(
-      () =>
-        prisma.publicStructureCabinet.findMany({
-          orderBy: [{ is_active: 'desc' }, { sort_order: 'asc' }, { created_at: 'desc' }],
-          include: {
-            groups: {
-              orderBy: [{ sort_order: 'asc' }],
-              include: {
-                members: { orderBy: [{ sort_order: 'asc' }, { created_at: 'asc' }] },
-              },
-            },
-          },
-        }),
-      1,
-      250
-    );
+    const requestedId = typeof req.query?.cabinetId === 'string' ? req.query.cabinetId.trim() : '';
 
-    const activeCabinet = allCabinets.find((c) => c.is_active) || allCabinets[0] || null;
+    // Metadata only — cabinet switcher does not need every group's members.
+    const allCabinets = await prisma.publicStructureCabinet.findMany({
+      orderBy: [{ is_active: 'desc' }, { sort_order: 'asc' }, { created_at: 'desc' }],
+      select: {
+        id: true,
+        name: true,
+        period: true,
+        is_active: true,
+        sort_order: true,
+      },
+    });
+
+    const targetId =
+      (requestedId && allCabinets.some((c) => c.id === requestedId) ? requestedId : null) ||
+      allCabinets.find((c) => c.is_active)?.id ||
+      allCabinets[0]?.id ||
+      null;
+
+    const activeCabinet = targetId
+      ? await prisma.publicStructureCabinet.findUnique({
+          where: { id: targetId },
+          select: {
+            id: true,
+            name: true,
+            period: true,
+            is_active: true,
+            sort_order: true,
+            groups: structureGroupsSelect,
+          },
+        })
+      : null;
 
     res.status(200).json({
       success: true,
@@ -310,24 +303,21 @@ export const getPublicStructure = async (req: Request, res: Response): Promise<v
 
 export const getAdminStructure = async (req: Request, res: Response): Promise<void> => {
   try {
-    const cabinets = await withTransientRetry(
-      () =>
-        prisma.publicStructureCabinet.findMany({
-          orderBy: [{ sort_order: 'asc' }, { created_at: 'desc' }],
-          include: {
-            groups: {
-              orderBy: [{ sort_order: 'asc' }],
-              include: {
-                members: { orderBy: [{ sort_order: 'asc' }, { created_at: 'asc' }] },
-              },
-            },
-          },
-        }),
-      1,
-      250
-    );
+    const cabinets = await prisma.publicStructureCabinet.findMany({
+      orderBy: [{ sort_order: 'asc' }, { created_at: 'desc' }],
+      select: {
+        id: true,
+        name: true,
+        period: true,
+        is_active: true,
+        sort_order: true,
+        created_at: true,
+        updated_at: true,
+        groups: structureGroupsSelect,
+      },
+    });
 
-    const activeCabinet = cabinets.find((c: any) => c.is_active) || cabinets[0] || null;
+    const activeCabinet = cabinets.find((c) => c.is_active) || cabinets[0] || null;
     const activeGroups = activeCabinet ? activeCabinet.groups : [];
 
     res.status(200).json({
@@ -371,86 +361,81 @@ export const replaceAdminStructure = async (req: AuthRequest, res: Response): Pr
   }
 
   try {
-    await withTransientRetry(
-      () =>
-        prisma.$transaction(async (tx) => {
-          // First deactivate all other cabinets
-          await tx.publicStructureCabinet.updateMany({
-            where: { is_active: true },
-            data: { is_active: false },
-          });
+    await prisma.$transaction(async (tx) => {
+      // First deactivate all other cabinets
+      await tx.publicStructureCabinet.updateMany({
+        where: { is_active: true },
+        data: { is_active: false },
+      });
 
-          // Create new cabinet
-          const cabinet = await tx.publicStructureCabinet.create({
+      // Create new cabinet
+      const cabinet = await tx.publicStructureCabinet.create({
+        data: {
+          name: String(cabinetName).trim(),
+          period: String(cabinetPeriod).trim(),
+          is_active: true,
+          sort_order: 0,
+        },
+      });
+
+      // Create groups and members
+      for (let gi = 0; gi < data.length; gi += 1) {
+        const g = data[gi] ?? {};
+        const title = String(g.title ?? '').trim();
+        if (!title) continue;
+        const is_core = Boolean((g as any).isCore ?? (g as any).is_core ?? false);
+        const description =
+          typeof (g as any).description === 'string'
+            ? String((g as any).description).trim() || null
+            : null;
+        const group = await tx.publicStructureGroup.create({
+          data: {
+            cabinet_id: cabinet.id,
+            title,
+            description,
+            sort_order: toInt(g.sortOrder, gi),
+            is_core,
+          } as any,
+        });
+        const people = Array.isArray(g.people) ? g.people : [];
+        let usedSpotlight = false;
+        for (let pi = 0; pi < people.length; pi += 1) {
+          const p = people[pi] ?? {};
+          const name = String(p.name ?? '').trim();
+          const role = String(p.role ?? '').trim();
+          if (!name || !role) continue;
+          const photo_url = String(p.photoUrl ?? '').trim() || null;
+          const wantsSpotlight = Boolean(
+            (p as any).isSpotlight ?? (p as any).is_spotlight ?? false
+          );
+          const is_spotlight = wantsSpotlight && !usedSpotlight;
+          if (is_spotlight) usedSpotlight = true;
+          await tx.publicStructureMember.create({
             data: {
-              name: String(cabinetName).trim(),
-              period: String(cabinetPeriod).trim(),
-              is_active: true,
-              sort_order: 0,
-            },
+              group_id: group.id,
+              name,
+              role,
+              photo_url,
+              is_spotlight,
+              sort_order: toInt(p.sortOrder, pi),
+            } as any,
           });
+        }
+      }
 
-          // Create groups and members
-          for (let gi = 0; gi < data.length; gi += 1) {
-            const g = data[gi] ?? {};
-            const title = String(g.title ?? '').trim();
-            if (!title) continue;
-            const is_core = Boolean((g as any).isCore ?? (g as any).is_core ?? false);
-            const description =
-              typeof (g as any).description === 'string'
-                ? String((g as any).description).trim() || null
-                : null;
-            const group = await tx.publicStructureGroup.create({
-              data: {
-                cabinet_id: cabinet.id,
-                title,
-                description,
-                sort_order: toInt(g.sortOrder, gi),
-                is_core,
-              } as any,
-            });
-            const people = Array.isArray(g.people) ? g.people : [];
-            let usedSpotlight = false;
-            for (let pi = 0; pi < people.length; pi += 1) {
-              const p = people[pi] ?? {};
-              const name = String(p.name ?? '').trim();
-              const role = String(p.role ?? '').trim();
-              if (!name || !role) continue;
-              const photo_url = String(p.photoUrl ?? '').trim() || null;
-              const wantsSpotlight = Boolean(
-                (p as any).isSpotlight ?? (p as any).is_spotlight ?? false
-              );
-              const is_spotlight = wantsSpotlight && !usedSpotlight;
-              if (is_spotlight) usedSpotlight = true;
-              await tx.publicStructureMember.create({
-                data: {
-                  group_id: group.id,
-                  name,
-                  role,
-                  photo_url,
-                  is_spotlight,
-                  sort_order: toInt(p.sortOrder, pi),
-                } as any,
-              });
-            }
-          }
-
-          // Audit must be atomic with structure write to avoid phantom-save
-          // (data committed, client still gets 5xx → duplicate cabinets on retry).
-          await tx.auditLog.create({
-            data: {
-              actor_id: actorId,
-              action: 'REPLACE_PUBLIC_STRUCTURE',
-              target_table: 'PublicStructure',
-              target_id: 'ALL',
-              new_value: JSON.stringify({ cabinetName, cabinetPeriod, data }),
-              ip_address: req.ip,
-            },
-          });
-        }),
-      2,
-      300
-    );
+      // Audit must be atomic with structure write to avoid phantom-save
+      // (data committed, client still gets 5xx → duplicate cabinets on retry).
+      await tx.auditLog.create({
+        data: {
+          actor_id: actorId,
+          action: 'REPLACE_PUBLIC_STRUCTURE',
+          target_table: 'PublicStructure',
+          target_id: 'ALL',
+          new_value: JSON.stringify({ cabinetName, cabinetPeriod, data }),
+          ip_address: req.ip,
+        },
+      });
+    });
 
     res.status(200).json({ success: true, message: 'Struktur organisasi berhasil disimpan' });
   } catch (error) {
@@ -482,31 +467,26 @@ export const replaceAdminStructure = async (req: AuthRequest, res: Response): Pr
 export const setActiveCabinet = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    await withTransientRetry(
-      () =>
-        prisma.$transaction(async (tx) => {
-          await tx.publicStructureCabinet.updateMany({
-            where: { is_active: true },
-            data: { is_active: false },
-          });
-          await tx.publicStructureCabinet.update({
-            where: { id },
-            data: { is_active: true },
-          });
-          await tx.auditLog.create({
-            data: {
-              actor_id: req.user?.id ?? null,
-              action: 'SET_ACTIVE_CABINET',
-              target_table: 'PublicStructureCabinet',
-              target_id: id,
-              new_value: JSON.stringify({ is_active: true }),
-              ip_address: req.ip,
-            },
-          });
-        }),
-      2,
-      300
-    );
+    await prisma.$transaction(async (tx) => {
+      await tx.publicStructureCabinet.updateMany({
+        where: { is_active: true },
+        data: { is_active: false },
+      });
+      await tx.publicStructureCabinet.update({
+        where: { id },
+        data: { is_active: true },
+      });
+      await tx.auditLog.create({
+        data: {
+          actor_id: req.user?.id ?? null,
+          action: 'SET_ACTIVE_CABINET',
+          target_table: 'PublicStructureCabinet',
+          target_id: id,
+          new_value: JSON.stringify({ is_active: true }),
+          ip_address: req.ip,
+        },
+      });
+    });
 
     res.status(200).json({ success: true, message: 'Kabinet aktif diubah' });
   } catch (error) {
@@ -710,7 +690,24 @@ export const listPublicPosts = async (req: Request, res: Response): Promise<void
       prisma.publicPost.count({ where }),
       prisma.publicPost.findMany({
         where,
-        include: { category: true },
+        // List cards never render full body — omit `content` to cut payload.
+        select: {
+          id: true,
+          type: true,
+          title: true,
+          slug: true,
+          date_label: true,
+          status: true,
+          form_url: true,
+          excerpt: true,
+          cover_image_url: true,
+          category_id: true,
+          is_published: true,
+          published_at: true,
+          created_at: true,
+          updated_at: true,
+          category: { select: { id: true, name: true, slug: true } },
+        },
         orderBy: [{ published_at: 'desc' }, { updated_at: 'desc' }],
         skip: (page - 1) * pageSize,
         take: pageSize,
@@ -882,11 +879,63 @@ export const getPublicGalleries = async (req: Request, res: Response): Promise<v
     const albums = await prisma.publicGalleryAlbum.findMany({
       where: { is_published: true },
       orderBy: [{ updated_at: 'desc' }],
-      include: { items: { orderBy: [{ sort_order: 'asc' }, { created_at: 'asc' }] } },
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        is_published: true,
+        created_at: true,
+        updated_at: true,
+        // Cover only on list — full items via GET /galleries/:id
+        items: {
+          take: 1,
+          orderBy: [{ sort_order: 'asc' }, { created_at: 'asc' }],
+          select: { id: true, image_url: true, caption: true, sort_order: true },
+        },
+        _count: { select: { items: true } },
+      },
     });
-    res.status(200).json({ success: true, data: albums });
+
+    const data = albums.map(({ _count, ...album }) => ({
+      ...album,
+      item_count: _count.items,
+    }));
+
+    res.status(200).json({ success: true, data });
   } catch (error) {
     console.error('Error fetching public galleries:', error);
+    sendInternalServerError(res, error);
+  }
+};
+
+export const getPublicGalleryById = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const album = await prisma.publicGalleryAlbum.findFirst({
+      where: { id, is_published: true },
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        is_published: true,
+        created_at: true,
+        updated_at: true,
+        items: {
+          orderBy: [{ sort_order: 'asc' }, { created_at: 'asc' }],
+          select: { id: true, image_url: true, caption: true, sort_order: true },
+        },
+      },
+    });
+    if (!album) {
+      res.status(404).json({ success: false, error: 'Album tidak ditemukan' });
+      return;
+    }
+    res.status(200).json({
+      success: true,
+      data: { ...album, item_count: album.items.length },
+    });
+  } catch (error) {
+    console.error('Error fetching public gallery:', error);
     sendInternalServerError(res, error);
   }
 };

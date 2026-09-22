@@ -1,4 +1,5 @@
 import type { Response } from 'express';
+import { isPrismaConnectionError } from './prismaTransient.js';
 
 function safeText(input: unknown, maxLen = 360) {
   const text =
@@ -12,6 +13,15 @@ function safeText(input: unknown, maxLen = 360) {
 }
 
 export function sendInternalServerError(res: Response, err: unknown, fallbackData: any = []) {
+  if (isPrismaConnectionError(err)) {
+    sendServiceUnavailable(res, {
+      error: 'Database unavailable',
+      fallbackData,
+      reason: 'prisma_connection',
+    });
+    return;
+  }
+
   const expose = process.env.EXPOSE_ERROR_DETAILS === '1' || process.env.NODE_ENV !== 'production';
   const anyErr = err as any;
   const code = typeof anyErr?.code === 'string' ? anyErr.code : undefined;

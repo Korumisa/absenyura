@@ -67,7 +67,8 @@ export type PublicPost = {
   status: string | null;
   form_url?: string | null;
   excerpt: string | null;
-  content: string | null;
+  /** Omitted on list endpoints to keep payloads small; present on detail. */
+  content?: string | null;
   cover_image_url: string | null;
   category: PublicCategory | null;
   category_id: string | null;
@@ -83,6 +84,8 @@ export type PublicGalleryAlbum = {
   description: string | null;
   is_published: boolean;
   items: { id: string; image_url: string; caption: string | null; sort_order?: number }[];
+  /** Total photos in album (list endpoints may return cover-only `items`). */
+  item_count?: number;
   created_at: string;
   updated_at: string;
 };
