@@ -12,7 +12,6 @@ import api from '@/services/api';
 import { useAuthStore } from '@/stores/authStore';
 import { Plus, Search, BookOpen, Pencil, Trash2 } from 'lucide-react';
 import ClassCard from '@/components/classes/ClassCard';
-import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { Input } from '@/components/ui/input';
@@ -26,7 +25,7 @@ import {
 } from '@/components/ui/select';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import ActionLoadingOverlay from '@/components/ActionLoadingOverlay';
-import { toastErrorMessage } from '@/lib/utils/toastMessage';
+import { toastErrorMessage, toastWarning } from '@/lib/utils/toastMessage';
 import { useMutationToast } from '@/hooks/useMutationToast';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -185,7 +184,7 @@ export default function Classes() {
     e.preventDefault();
     if (saving) return;
     if (!formData.lecturer_id) {
-      toast.error('Silakan pilih dosen pengampu');
+      toastWarning('Silakan pilih dosen pengampu');
       return;
     }
     setSaving(true);
@@ -446,7 +445,7 @@ export default function Classes() {
                               type="button"
                               variant="ghost"
                               size="icon"
-                              className="size-9"
+                              className="min-h-11 min-w-11"
                               onClick={() => handleOpenModal(c)}
                               title="Edit kelas"
                             >
@@ -456,9 +455,9 @@ export default function Classes() {
                           {isSuperAdmin ? (
                             <Button
                               type="button"
-                              variant="ghost"
+                              variant="destructive"
                               size="icon"
-                              className="size-9 text-destructive hover:text-destructive"
+                              className="min-h-11 min-w-11"
                               onClick={() => openDeleteConfirm(c.id)}
                               title="Hapus kelas"
                             >

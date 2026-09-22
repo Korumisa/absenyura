@@ -6,8 +6,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { Plus, Search, Edit2, Trash2, X, QrCode, MapPin, Clock, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
-import { toast } from 'sonner';
-import { toastErrorMessage } from '@/lib/utils/toastMessage';
+import { toastErrorMessage, toastWarning } from '@/lib/utils/toastMessage';
 import { useMutationToast } from '@/hooks/useMutationToast';
 import { sessionStatusLabel } from '@/lib/utils/statusLabel';
 import { Button } from '@/components/ui/button';
@@ -380,7 +379,7 @@ export default function Sessions() {
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
       focusWizardStepForErrors(errors);
-      toast.error(Object.values(errors)[0]);
+      toastWarning(Object.values(errors)[0]);
       return;
     }
     setIsSaveConfirmOpen(true);
@@ -396,7 +395,7 @@ export default function Sessions() {
       if (Object.keys(errors).length > 0) {
         setFormErrors(errors);
         focusWizardStepForErrors(errors);
-        toast.error(Object.values(errors)[0]);
+        toastWarning(Object.values(errors)[0]);
         setIsSaveConfirmOpen(false);
         return;
       }
@@ -683,7 +682,8 @@ export default function Sessions() {
                                 </Badge>
                               ) : (
                                 <Button
-                                  className="min-h-11 flex-1 bg-amber-500 hover:bg-amber-600"
+                                  variant="warning"
+                                  className="min-h-11 flex-1"
                                   onClick={() =>
                                     navigate(
                                       `/attend?session=${session.id}&checkout=true&attendance=${attendances[0].id}`
@@ -833,7 +833,7 @@ export default function Sessions() {
                                   onClick={() =>
                                     window.open(`/sessions/${session.id}/qr`, '_blank')
                                   }
-                                  className="text-brand hover:text-indigo-700 hover:bg-indigo-50 text-brand dark:hover:bg-indigo-900/50"
+                                  className="min-h-11 min-w-11 text-brand hover:text-indigo-700 hover:bg-indigo-50 text-brand dark:hover:bg-indigo-900/50"
                                   aria-label={`Tampilkan QR untuk ${session.title}`}
                                 >
                                   <QrCode className="size-4" />
@@ -843,16 +843,16 @@ export default function Sessions() {
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => handleOpenModal(session)}
-                                className="text-muted-foreground hover:text-brand hover:bg-indigo-50 dark:text-slate-400 dark:hover:bg-indigo-900/30"
+                                className="min-h-11 min-w-11 text-muted-foreground hover:text-brand hover:bg-indigo-50 dark:text-slate-400 dark:hover:bg-indigo-900/30"
                                 aria-label={`Edit sesi ${session.title}`}
                               >
                                 <Edit2 className="size-4" />
                               </Button>
                               <Button
-                                variant="ghost"
+                                variant="destructive"
                                 size="icon"
                                 onClick={() => openDeleteConfirm(session.id)}
-                                className="text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:text-slate-400 dark:hover:bg-red-900/30"
+                                className="min-h-11 min-w-11"
                                 aria-label={`Hapus sesi ${session.title}`}
                               >
                                 <Trash2 className="size-4" />
@@ -871,12 +871,13 @@ export default function Sessions() {
                                     <Badge variant="success">Sudah Absen</Badge>
                                   ) : (
                                     <Button
+                                      variant="warning"
+                                      className="min-h-11 text-xs px-3"
                                       onClick={() =>
                                         navigate(
                                           `/attend?session=${session.id}&checkout=true&attendance=${(session as any).attendances[0].id}`
                                         )
                                       }
-                                      className="shadow-lg shadow-amber-600/20 bg-amber-500 hover:bg-amber-600 text-white text-xs px-3 py-1.5 h-auto"
                                     >
                                       Check-out
                                     </Button>
@@ -1250,13 +1251,8 @@ export default function Sessions() {
                               <div className="space-y-1.5">
                                 <Button
                                   type="button"
-                                  variant="ghost"
-                                  className={[
-                                    'h-auto w-full justify-between rounded-lg px-3 py-2.5 text-left',
-                                    formData.class_ids.length === 0
-                                      ? 'bg-emerald-50 text-emerald-900 hover:bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-100 dark:hover:bg-emerald-950/30'
-                                      : 'hover:bg-slate-50 dark:hover:bg-zinc-900',
-                                  ].join(' ')}
+                                  variant={formData.class_ids.length === 0 ? 'secondary' : 'ghost'}
+                                  className="h-auto min-h-11 w-full justify-between rounded-lg px-3 py-2.5 text-left"
                                   onClick={() => setFormData((p) => ({ ...p, class_ids: [] }))}
                                 >
                                   <span className="font-medium">Semua Mahasiswa (Umum)</span>
@@ -1275,13 +1271,8 @@ export default function Sessions() {
                                       <Button
                                         key={c.id}
                                         type="button"
-                                        variant="ghost"
-                                        className={[
-                                          'h-auto w-full justify-between rounded-lg px-3 py-2.5 text-left',
-                                          selected
-                                            ? 'bg-emerald-50 text-emerald-900 hover:bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-100 dark:hover:bg-emerald-950/30'
-                                            : 'hover:bg-slate-50 dark:hover:bg-zinc-900',
-                                        ].join(' ')}
+                                        variant={selected ? 'secondary' : 'ghost'}
+                                        className="h-auto min-h-11 w-full justify-between rounded-lg px-3 py-2.5 text-left"
                                         onClick={() => {
                                           setFormData((p) => {
                                             const set = new Set(p.class_ids);
@@ -1289,6 +1280,7 @@ export default function Sessions() {
                                             else set.add(c.id);
                                             return { ...p, class_ids: Array.from(set) };
                                           });
+                                          clearFieldError('class_ids');
                                         }}
                                       >
                                         <span className="font-medium">{formatClassLabel(c)}</span>

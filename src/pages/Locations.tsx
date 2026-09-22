@@ -46,7 +46,7 @@ import AdminPageShell from '@/components/AdminPageShell';
 import type { Location } from '@/types/location';
 import { fixLeafletDefaultIcons } from '@/lib/media/leafletIcon';
 import { useAuthStore } from '@/stores/authStore';
-import { toastErrorMessage } from '@/lib/utils/toastMessage';
+import { toastError, toastErrorMessage, toastSuccess } from '@/lib/utils/toastMessage';
 import { useMutationToast } from '@/hooks/useMutationToast';
 import { LastSavedIndicator } from '@/components/admin/LastSavedIndicator';
 import { useFormDirtyGuard } from '@/hooks/useFormDirtyGuard';
@@ -427,7 +427,7 @@ export default function Locations() {
     }
     if (location) {
       if (!canManageLocation(location)) {
-        toast.error('Lokasi ini hanya bisa dikelola oleh pembuatnya (Super Admin).');
+        toastError(null, 'Lokasi ini hanya bisa dikelola oleh pembuatnya (Super Admin).');
         return;
       }
       const initial = {
@@ -491,7 +491,7 @@ export default function Locations() {
 
   const openDeleteConfirm = (location: Location) => {
     if (!canManageLocation(location)) {
-      toast.error('Lokasi ini hanya bisa dikelola oleh pembuatnya (Super Admin).');
+      toastError(null, 'Lokasi ini hanya bisa dikelola oleh pembuatnya (Super Admin).');
       return;
     }
     setLocationToDelete(location.id);
@@ -515,7 +515,7 @@ export default function Locations() {
 
   const handleGetMyLocation = () => {
     if (!navigator.geolocation) {
-      toast.error('Browser Anda tidak mendukung fitur geolokasi');
+      toastError(null, 'Browser Anda tidak mendukung fitur geolokasi');
       return;
     }
 
@@ -532,7 +532,8 @@ export default function Locations() {
           latitude: lat,
           longitude: lng,
         });
-        toast.success('Lokasi ditemukan!', { id: 'geolocation' });
+        toast.dismiss('geolocation');
+        toastSuccess('Lokasi ditemukan!');
         setIsLocating(false);
       },
       (error) => {
@@ -541,7 +542,8 @@ export default function Locations() {
         else if (error.code === 2) msg = 'Sinyal GPS tidak tersedia.';
         else if (error.code === 3) msg = 'Waktu pencarian lokasi habis.';
 
-        toast.error(msg, { id: 'geolocation' });
+        toast.dismiss('geolocation');
+        toastError(null, msg);
         setIsLocating(false);
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
@@ -576,7 +578,7 @@ export default function Locations() {
               longitude: lon,
             }));
             setMapCenter([lat, lon]);
-            toast.success('Lokasi ditemukan dari alamat');
+            toastSuccess('Lokasi ditemukan dari alamat');
           }
         } catch (error) {
           console.error('Geocoding error:', error);
@@ -669,7 +671,7 @@ export default function Locations() {
             <ul className="space-y-3 p-5 md:hidden" aria-label="Daftar lokasi">
               {loading ? (
                 Array.from({ length: 3 }).map((_, i) => (
-                  <li key={i} className="rounded-2xl border border-border p-4">
+                  <li key={i} className="rounded-lg border border-border p-4">
                     <Skeleton className="mb-2 h-5 w-40" />
                     <Skeleton className="h-4 w-full" />
                   </li>
@@ -689,7 +691,7 @@ export default function Locations() {
                 </li>
               ) : (
                 paginatedLocations.map((loc) => (
-                  <li key={loc.id} className="rounded-2xl border border-border bg-card p-4">
+                  <li key={loc.id} className="rounded-lg border border-border bg-card p-4">
                     <div className="flex items-start gap-2">
                       <MapPin size={18} className="mt-0.5 shrink-0 text-indigo-500" />
                       <div className="min-w-0 flex-1">
@@ -724,8 +726,8 @@ export default function Locations() {
                         Edit
                       </Button>
                       <Button
-                        variant="outline"
-                        className="min-h-11 flex-1 text-red-600 hover:text-red-700"
+                        variant="destructive"
+                        className="min-h-11 flex-1"
                         onClick={() => openDeleteConfirm(loc)}
                         disabled={!canManageLocation(loc)}
                       >
@@ -821,17 +823,17 @@ export default function Locations() {
                               variant="ghost"
                               size="icon"
                               onClick={() => handleOpenModal(loc)}
-                              className="text-muted-foreground hover:text-brand hover:bg-indigo-50 dark:text-slate-400 dark:hover:bg-indigo-900/30"
+                              className="min-h-11 min-w-11 text-muted-foreground hover:text-brand hover:bg-indigo-50 dark:text-slate-400 dark:hover:bg-indigo-900/30"
                               title="Edit"
                               disabled={!canManageLocation(loc)}
                             >
                               <Edit2 className="size-4" />
                             </Button>
                             <Button
-                              variant="ghost"
+                              variant="destructive"
                               size="icon"
                               onClick={() => openDeleteConfirm(loc)}
-                              className="text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:text-slate-400 dark:hover:bg-red-900/30"
+                              className="min-h-11 min-w-11"
                               title="Hapus"
                               disabled={!canManageLocation(loc)}
                             >
@@ -1070,7 +1072,7 @@ export default function Locations() {
                     size="icon"
                     onClick={handleGetMyLocation}
                     disabled={isLocating}
-                    className="absolute top-4 right-4 z-[1000] shadow-lg rounded-xl"
+                    className="absolute top-4 right-4 z-[1000] min-h-11 min-w-11 shadow-lg rounded-xl"
                     title="Deteksi Lokasi Saya"
                     aria-label="Deteksi lokasi saya"
                   >
