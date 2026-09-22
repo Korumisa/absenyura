@@ -155,7 +155,7 @@ export default function PublicNavbar() {
                 </button>
 
                 {isOpen ? (
-                  <div className="absolute left-1/2 top-full z-50 -translate-x-1/2 pt-5">
+                  <div className="absolute left-1/2 top-full z-50 -translate-x-1/2 pt-2">
                     <div className="w-[260px] rounded-2xl border border-black/10 bg-white p-2 shadow-[0_22px_60px_-45px_rgba(15,23,42,0.5)]">
                       {g.items.map((it) => {
                         const active = activePath === it.to;

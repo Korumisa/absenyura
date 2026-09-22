@@ -15,6 +15,7 @@ import { publicSiteFetcher } from '@/lib/utils/publicSiteFetcher';
 import { safeRelation } from '@/lib/utils/publicContent';
 import { PublicPageError } from '@/components/public/PublicPageError';
 import { PublicEmptyState } from '@/components/public/PublicEmptyState';
+import { PublicSectionOrnament } from '@/components/public/PublicSectionOrnament';
 import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 
 type StructureResp = { data: PublicStructureGroup[]; cabinet: any; allCabinets: any[] };
@@ -172,7 +173,7 @@ export default function Fungsionaris() {
         <PublicPageHero
           top="Susunan"
           bottom="Fungsionaris"
-          subtitle={subtitleBits.length ? subtitleBits.join(' • ') : 'Susunan fungsionaris yang dapat dikelola dari menu Konten Website.'}
+          subtitle="Struktur kepengurusan organisasi periode aktif."
           compact
         />
       </PublicEnter>
@@ -180,7 +181,7 @@ export default function Fungsionaris() {
       {/* Cabinet Switcher */}
       {allCabinets.length > 1 && (
         <PublicEnter>
-          <div className="mx-auto -mt-4 max-w-7xl px-4 pb-4 pt-8 sm:px-6 sm:pt-10">
+          <div className="mx-auto max-w-7xl px-4 pb-2 pt-2 sm:px-6">
             <div
               role="tablist"
               className="flex flex-wrap items-center justify-center gap-2"
@@ -198,14 +199,17 @@ export default function Fungsionaris() {
                     onClick={() => setSelectedCabinetId(isSelected ? null : cab.id)}
                     className={
                       (isSelected
-                        ? "bg-[var(--public-primary)] text-white shadow-[0_10px_22px_rgba(37,99,235,0.35)]"
-                        : "bg-white text-slate-900 border border-black/10 hover:border-[var(--public-primary)]/40"
-                      ) + " inline-flex min-h-10 items-center gap-2 rounded-xl px-5 py-2.5 text-xs font-semibold uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500 dark:focus-visible:ring-indigo-400"
+                        ? 'bg-[var(--public-primary)] text-white'
+                        : 'border border-black/10 bg-white text-slate-900 hover:border-[var(--public-primary)]/40'
+                      ) +
+                      ' inline-flex min-h-10 items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2'
                     }
                   >
                     {cab.name}
                     <span className="text-[10px] opacity-75">{cab.period}</span>
-                    {cab.is_active && !isSelected && <span className="ml-1 h-2 w-2 rounded-full bg-green-500" />}
+                    {cab.is_active && !isSelected ? (
+                      <span className="ml-1 h-2 w-2 rounded-full bg-green-500" />
+                    ) : null}
                   </button>
                 );
               })}
@@ -214,10 +218,10 @@ export default function Fungsionaris() {
         </PublicEnter>
       )}
 
-      <PublicReveal className="mx-auto -mt-6 w-full max-w-full overflow-x-hidden px-4 pb-24 sm:px-6 lg:px-8">
+      <PublicReveal className="mx-auto w-full max-w-full overflow-x-hidden px-4 pb-24 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl overflow-x-hidden">
         {isLoading ? (
-          <div className="mt-6 space-y-10">
+          <div className="mt-8 space-y-10">
             {Array.from({ length: 2 }).map((_, gi) => (
               <div key={gi}>
                 <div className="mb-6 flex justify-center">
@@ -240,7 +244,7 @@ export default function Fungsionaris() {
             ))}
           </div>
         ) : groups.length === 0 ? (
-          <div className="mt-6">
+          <div className="mt-8">
             <PublicEmptyState
               variant="global"
               title="Struktur organisasi belum diatur"
@@ -248,49 +252,44 @@ export default function Fungsionaris() {
             />
           </div>
         ) : (
-          <div className="mt-6">
+          <div className="mt-8">
             {subtitleBits.length ? (
-              <div className="flex justify-center">
-                <div className="relative flex w-full max-w-5xl items-center justify-center gap-4 overflow-x-auto pb-2 scrollbar-hide">
-                  <span aria-hidden="true" className="hidden items-center gap-1.5 sm:flex">
-                    <span className="h-px w-8 bg-gradient-to-r from-transparent to-[var(--public-primary)]/60" />
-                    <span className="size-1.5 rotate-45 bg-[var(--public-primary)]/70" />
+              <div className="flex justify-center px-1 pt-2 sm:pt-4">
+                <div className="flex max-w-full flex-wrap items-center justify-center gap-2 sm:gap-3">
+                  <span aria-hidden="true" className="flex items-center gap-1">
+                    <span className="h-px w-5 bg-gradient-to-r from-transparent to-[var(--public-primary)]/55 sm:w-10" />
                     <span className="size-1 rotate-45 bg-[var(--public-primary)]/40" />
+                    <span className="size-1.5 rotate-45 bg-[var(--public-primary)]/70" />
                   </span>
-                  <span className="relative flex-none rounded-full bg-[var(--public-primary)] px-7 py-2.5 text-white ring-2 ring-[var(--public-primary)]/25 ring-offset-2 ring-offset-white">
+                  <span className="relative inline-flex max-w-full items-center gap-2 rounded-full bg-[var(--public-primary)] px-4 py-2 text-white sm:gap-2.5 sm:px-6 sm:py-2.5">
                     <span
                       aria-hidden="true"
-                      className="pointer-events-none absolute inset-[3px] rounded-full border border-white/25"
+                      className="pointer-events-none absolute inset-[2px] rounded-full border border-white/20"
                     />
-                    <span
-                      aria-hidden="true"
-                      className="pointer-events-none absolute inset-x-5 top-[5px] h-px bg-gradient-to-r from-transparent via-white/70 to-transparent"
-                    />
-                    <span className="relative inline-flex items-baseline gap-2.5">
-                      <span className="font-display text-[15px] font-semibold italic tracking-wide normal-case">
-                        {subtitleBits[0]}
-                      </span>
-                      {subtitleBits[1] ? (
-                        <span className="rounded-full border border-white/30 bg-white/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/95">
-                          {subtitleBits[1]}
-                        </span>
-                      ) : null}
+                    <span className="relative truncate font-display text-sm font-semibold italic tracking-wide sm:text-[15px]">
+                      {subtitleBits[0]}
                     </span>
+                    {subtitleBits[1] ? (
+                      <span className="relative shrink-0 rounded-full border border-white/25 bg-white/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/95">
+                        {subtitleBits[1]}
+                      </span>
+                    ) : null}
                   </span>
-                  <span aria-hidden="true" className="hidden items-center gap-1.5 sm:flex">
-                    <span className="size-1 rotate-45 bg-[var(--public-primary)]/40" />
+                  <span aria-hidden="true" className="flex items-center gap-1">
                     <span className="size-1.5 rotate-45 bg-[var(--public-primary)]/70" />
-                    <span className="h-px w-8 bg-gradient-to-l from-transparent to-[var(--public-primary)]/60" />
+                    <span className="size-1 rotate-45 bg-[var(--public-primary)]/40" />
+                    <span className="h-px w-5 bg-gradient-to-l from-transparent to-[var(--public-primary)]/55 sm:w-10" />
                   </span>
                 </div>
               </div>
             ) : null}
 
             {advisorPeople.length ? (
-              <div className="mt-10">
+              <div className="mt-12 sm:mt-14">
                 <div className="text-center">
+                  <PublicSectionOrnament compact className="mb-3" />
                   <div className="text-3xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] sm:text-4xl">
-                    DOSEN PEMBIMBING
+                    Dosen Pembimbing
                   </div>
                 </div>
                 <div className="mt-8 flex flex-wrap justify-center gap-x-8 gap-y-12">
@@ -299,8 +298,11 @@ export default function Fungsionaris() {
               </div>
             ) : null}
 
-            <div className="mt-10 text-center">
-              <div className="text-5xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] sm:text-6xl">INTI</div>
+            <div className="mt-12 text-center sm:mt-14">
+              <PublicSectionOrnament compact className="mb-3" />
+              <div className="text-4xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] sm:text-5xl">
+                Inti
+              </div>
             </div>
 
             {corePeople.length ? (
@@ -351,8 +353,11 @@ export default function Fungsionaris() {
               />
             )}
 
-            <div className="mt-16 text-center">
-              <div className="text-5xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] sm:text-6xl">BIDANG</div>
+            <div className="mt-14 text-center sm:mt-16">
+              <PublicSectionOrnament compact className="mb-3" />
+              <div className="text-4xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] sm:text-5xl">
+                Bidang
+              </div>
               <p className="mx-auto mt-3 max-w-2xl text-center text-sm font-medium text-muted-foreground">
                 Divisi dan bidang pendukung untuk eksekusi program kerja.
               </p>
@@ -360,7 +365,7 @@ export default function Fungsionaris() {
 
             {bidangGroups.length ? (
               <div className="mt-8">
-                <div className="mx-auto flex w-full max-w-5xl items-center gap-2 overflow-x-auto pb-2 scrollbar-hide sm:flex-wrap sm:justify-center sm:overflow-visible">
+                <div className="mx-auto flex w-full max-w-5xl items-center justify-start gap-2 overflow-x-auto pb-2 scrollbar-hide sm:flex-wrap sm:justify-center sm:overflow-visible">
                   {bidangGroups.map((g: any) => {
                     const active = g.id === activeId;
                     return (
@@ -369,9 +374,9 @@ export default function Fungsionaris() {
                         type="button"
                         onClick={() => setActiveId(g.id)}
                         className={[
-                          'flex-none rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-widest transition ring-1 ring-inset',
+                          'flex-none rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-widest transition ring-1 ring-inset sm:px-5',
                           active
-                            ? 'bg-[var(--public-primary)] text-white ring-[var(--public-primary)] shadow-[0_12px_22px_rgba(37,99,235,0.28)]'
+                            ? 'bg-[var(--public-primary)] text-white ring-[var(--public-primary)]'
                             : 'bg-white text-[var(--public-primary)] ring-[var(--public-primary)]/25 hover:ring-[var(--public-primary)]/55',
                         ].join(' ')}
                       >
@@ -398,9 +403,12 @@ export default function Fungsionaris() {
                         <div className="flex justify-center">{leader ? renderAvatar(leader, 'xl') : null}</div>
 
                         {divisiHeads.length ? (
-                          <div className="mt-14 text-center">
-                            <div className="text-5xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] sm:text-6xl">DIVISI</div>
-                            <div className="mt-8 flex flex-wrap justify-center gap-10">
+                          <div className="mt-12 text-center sm:mt-14">
+                            <PublicSectionOrnament compact className="mb-3" />
+                            <div className="text-3xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] sm:text-4xl">
+                              Divisi
+                            </div>
+                            <div className="mt-8 flex flex-wrap justify-center gap-8 sm:gap-10">
                               {divisiHeads.map((p) => renderAvatar(p, 'lg'))}
                             </div>
                           </div>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { m } from 'framer-motion';
 import { useReducedMotion } from '@/lib/a11y/useReducedMotion';
+import { PublicSectionOrnament } from '@/components/public/PublicSectionOrnament';
 
 export default function PublicPageHero({
   top,
@@ -23,7 +24,7 @@ export default function PublicPageHero({
 
   return (
     <section
-      className={`relative overflow-hidden bg-white ${compact ? 'py-7 sm:py-8' : 'py-12 sm:py-14'}`}
+      className={`relative overflow-hidden bg-white ${compact ? 'pb-2 pt-7 sm:pb-3 sm:pt-8' : 'pb-4 pt-12 sm:pb-5 sm:pt-14'}`}
     >
       <div className="pointer-events-none absolute inset-0 opacity-70 [background:radial-gradient(circle_at_18%_15%,rgba(37,99,235,0.14),transparent_56%),radial-gradient(circle_at_78%_10%,rgba(56,189,248,0.10),transparent_60%)]" />
       {reducedMotion ? (
@@ -87,15 +88,7 @@ export default function PublicPageHero({
             </div>
           ) : null}
         </div>
-        <div className={`relative mx-auto max-w-3xl ${compact ? 'mt-5 h-7' : 'mt-8 h-10'}`}>
-          <div
-            className={`pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--public-primary)]/14 blur-2xl ${
-              compact ? 'h-8 w-44' : 'h-10 w-56'
-            }`}
-          />
-          <div className="pointer-events-none absolute left-1/2 top-1/2 h-px w-full -translate-x-1/2 -translate-y-1/2 bg-gradient-to-r from-transparent via-[var(--public-primary)]/35 to-transparent" />
-          <div className="pointer-events-none absolute left-1/2 top-1/2 size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--public-primary)]/70" />
-        </div>
+        <PublicSectionOrnament className={compact ? 'mt-5' : 'mt-8'} />
       </div>
     </section>
   );
