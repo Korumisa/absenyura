@@ -1,9 +1,7 @@
-import React, { useState, useEffect, lazy, Suspense, useMemo } from 'react';
-import { flushSync } from 'react-dom';
+import React, { useState, lazy, Suspense, useMemo } from 'react';
 import api from '@/services/api';
-import { Plus, Edit2, Trash2, Search, MapPin, LocateFixed } from 'lucide-react';
+import { Plus, Edit2, Trash2, Search, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
-import { MapResizeOnOpen } from '@/components/MapResizeOnOpen';
 import useSWR from 'swr';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { useClientPagination } from '@/hooks/useClientPagination';
@@ -44,228 +42,14 @@ import {
 } from '@/components/ui/dialog';
 import AdminPageShell from '@/components/AdminPageShell';
 import type { Location } from '@/types/location';
-import { fixLeafletDefaultIcons } from '@/lib/media/leafletIcon';
 import { useAuthStore } from '@/stores/authStore';
 import { toastError, toastErrorMessage, toastSuccess } from '@/lib/utils/toastMessage';
 import { useMutationToast } from '@/hooks/useMutationToast';
 import { LastSavedIndicator } from '@/components/admin/LastSavedIndicator';
 import { useFormDirtyGuard } from '@/hooks/useFormDirtyGuard';
-// ── Leaflet systemic hardening (shared pattern) ──────────────────────────
-// Leaflet marks DOM elements with a custom `_leaflet_id` property when a map
-// is initialised on them. If React reuses that DOM node without Leaflet
-// properly tearing down first (fast remount / StrictMode double-invoke),
-// Leaflet throws "Map container is already initialized".
-// We therefore (1) strip every `_leaflet_id` property from the subtree
-// before a MapContainer mounts, (2) key the tree with a random UUID so the
-// identity is globally unique across mounts, and (3) destroy any ref-held
-// raw instance on unmount.
-function stripLeafletDomSignatures(root: HTMLElement | null) {
-  if (!root) return;
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT);
-  let node: Node | null = walker.currentNode;
-  while (node) {
-    if (node instanceof HTMLElement) {
-      try {
-        // @ts-expect-error — Leaflet internal expando; we intentionally wipe it
-        if (node._leaflet_id !== undefined) delete node._leaflet_id;
-        // @ts-expect-error — same internal expando reason
-        if (node._leaflet_events !== undefined) delete node._leaflet_events;
-        // @ts-expect-error — same internal expando reason
-        if (node._leaflet_tile_loaded !== undefined) delete node._leaflet_tile_loaded;
-      } catch {
-        /* defensive — older engines can throw on delete of non-configurable */
-      }
-    }
-    node = walker.nextNode();
-  }
-}
-
-/** Safe Leaflet panel sanitizer — **never wipes innerHTML**, and MUST NEVER
- *  sweep global L registries when a MapContainer is still mounted in the DOM.
- *  The global `pruneLeafletGlobals` helper deletes entries from `window.L.*`
- *  caches that the LIVE map instance still needs. Calling it during a normal
- *  form update caused the same production crash that hit Attend page:
- *    "Map container is being reused by another instance at e.remove"
- *    bubbled all the way to the route-level error boundary.
- *
- *  This local helper therefore ONLY strips per-DOM-node expandos
- *  (`_leaflet_id`, `_leaflet_events`, `_leaflet_tile_loaded`) via the local
- *  TreeWalker helper. Global registry cleanup is reserved EXCLUSIVELY for the
- *  MapSelfHealingBoundary error-recovery code path and the unmount effect
- *  (both of which are guaranteed to run AFTER the old <MapContainer> has
- *  been fully torn down from the DOM).
- */
-function pruneLeafletPanel(root: HTMLElement | null) {
-  if (!root) return;
-  stripLeafletDomSignatures(root);
-}
-
-const MapContainer = lazy(() => import('react-leaflet').then((m) => ({ default: m.MapContainer })));
-const TileLayer = lazy(() => import('react-leaflet').then((m) => ({ default: m.TileLayer })));
-const Marker = lazy(() => import('react-leaflet').then((m) => ({ default: m.Marker })));
-const Circle = lazy(() => import('react-leaflet').then((m) => ({ default: m.Circle })));
-import { useMapEvents } from 'react-leaflet';
-
-// ── Self-healing error boundary for Leaflet ────────────────────────────────
-// Final safety net: IF Leaflet ever throws during render (e.g. "already
-// initialized", "being reused"), this boundary catches it, renders a short
-// "loading…" placeholder, then forces a key-change remount ONCE via the callback.
-// This guarantees the user never sees a route-level error boundary (the
-// "Konten mengalami kendala" card with the retry buttons anymore) for map
-// issues.
-interface MapSelfHealingBoundaryProps {
-  children: React.ReactNode;
-  onRemount: () => void;
-}
-interface MapSelfHealingBoundaryState {
-  hasError: boolean;
-  remountSeq: number;
-}
-// Leaflet's global cache sweep is installed ONLY once per page lifecycle.
-// Kept separate from the module-level helper so we can guarantee it never
-// fires while a MapContainer is still mounted.
-function ensureGlobalPruneHelperInstalled() {
-  const w = window as any;
-  if (typeof w.pruneLeafletGlobals === 'function') return;
-  w.pruneLeafletGlobals = function () {
-    try {
-      const L = w.L;
-      if (L && L.DomUtil) {
-        const cacheObj =
-          L.DomUtil._cache ||
-          L.DomUtil._elementCache ||
-          L.DomUtil.cache ||
-          (L.DomUtil.get && L.DomUtil.get._cache);
-        if (cacheObj && typeof cacheObj === 'object') {
-          for (const k of Object.keys(cacheObj)) {
-            try {
-              delete cacheObj[k];
-            } catch {
-              void 0;
-            }
-          }
-        }
-      }
-      if (L && L.Map) {
-        for (const k of Object.getOwnPropertyNames(L.Map)) {
-          const candidate = (L.Map as any)[k];
-          if (candidate && typeof candidate === 'object' && candidate.constructor === Object) {
-            try {
-              const inner = Object.keys(candidate);
-              if (inner.length > 0 && inner.length < 2000) {
-                for (const ik of inner) delete candidate[ik];
-              }
-            } catch {
-              void 0;
-            }
-          }
-        }
-        if (Array.isArray(L._instances)) L._instances.length = 0;
-        if (L.__maps && typeof L.__maps === 'object') {
-          for (const k of Object.keys(L.__maps)) delete L.__maps[k];
-        }
-      }
-    } catch {
-      void 0;
-    }
-  };
-}
-class MapSelfHealingBoundary extends React.Component<
-  MapSelfHealingBoundaryProps,
-  MapSelfHealingBoundaryState
-> {
-  constructor(props: MapSelfHealingBoundaryProps) {
-    super(props);
-    ensureGlobalPruneHelperInstalled();
-    this.state = { hasError: false, remountSeq: 0 };
-  }
-
-  // Flip hasError during render so the route ErrorBoundary does not steal
-  // this Leaflet init failure ("Konten mengalami kendala"). Remount is
-  // orchestrated in componentDidCatch after the fallback is on screen.
-  static getDerivedStateFromError(): Partial<MapSelfHealingBoundaryState> {
-    return { hasError: true };
-  }
-
-  componentDidCatch(error: any) {
-    const msg: string = String(error?.message ?? '');
-    if (/Map container (is already initialized|is being reused)/i.test(msg)) {
-      window.setTimeout(() => {
-        window.requestAnimationFrame(() => {
-          window.requestAnimationFrame(() => {
-            try {
-              (window as any).pruneLeafletGlobals?.();
-            } catch {
-              void 0;
-            }
-            pruneLeafletPanel(document.querySelector('.location-map-panel') as HTMLElement | null);
-            flushSync(() => {
-              this.props.onRemount();
-              this.setState((s) => ({ hasError: false, remountSeq: s.remountSeq + 1 }));
-            });
-          });
-        });
-      }, 120);
-    } else {
-      throw error;
-    }
-  }
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="flex h-full w-full items-center justify-center bg-muted text-sm text-muted-foreground">
-          Memuat ulang peta…
-        </div>
-      );
-    }
-    // Wrapping children in a React.Fragment with an incrementing `key` forces
-    // React to throw away the entire child fiber tree on every remount, so
-    // even if the parent somehow fails to regenerate its unique map id we
-    // still build brand new DOM nodes with no reused state.
-    return <React.Fragment key={this.state.remountSeq}>{this.props.children}</React.Fragment>;
-  }
-}
-
-interface MapEventsProps {
-  formData: {
-    latitude: number;
-    longitude: number;
-  };
-  setFormData: React.Dispatch<
-    React.SetStateAction<{
-      name: string;
-      address: string;
-      latitude: number;
-      longitude: number;
-      radius: number;
-      wifi_bssid: string;
-    }>
-  >;
-}
-
-const MapEvents: React.FC<MapEventsProps> = ({ formData, setFormData }) => {
-  const map = useMapEvents({
-    click(e) {
-      setFormData((prev) => ({
-        ...prev,
-        latitude: e.latlng.lat,
-        longitude: e.latlng.lng,
-      }));
-    },
-  });
-
-  useEffect(() => {
-    map.setView([formData.latitude, formData.longitude], map.getZoom(), {
-      animate: true,
-      duration: 1,
-    });
-  }, [formData.latitude, formData.longitude, map]);
-
-  return null;
-};
+const LocationsFormMap = lazy(() => import('@/components/locations/LocationsFormMap'));
 
 export default function Locations() {
-  const [leafletLoaded, setLeafletLoaded] = useState(false);
   const currentUser = useAuthStore((s) => s.user);
   const [searchTerm, setSearchTerm] = useState('');
   const [wifiFilter, setWifiFilter] = useState('ALL');
@@ -273,26 +57,6 @@ export default function Locations() {
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingLocation, setEditingLocation] = useState<Location | null>(null);
-
-  // Lazy-load Leaflet only when the user opens the form dialog, then apply
-  // the default icon fix. Guard with the SAME __attendLeafletIconsInstalled__
-  // window flag used by AttendLocationMap so StrictMode double-mount and
-  // HMR re-evaluation never re-patch L.Icon.Default.prototype more than once.
-  useEffect(() => {
-    let cancelled = false;
-    Promise.all([import('leaflet'), import('leaflet/dist/leaflet.css')]).then(() => {
-      if (cancelled) return;
-      const w = window as any;
-      if (!w.__attendLeafletIconsInstalled__) {
-        w.__attendLeafletIconsInstalled__ = true;
-        fixLeafletDefaultIcons();
-      }
-      setLeafletLoaded(true);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   // Delete Confirmation Modal state
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -303,49 +67,10 @@ export default function Locations() {
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [formBaseline, setFormBaseline] = useState<string>('');
 
-  // Custom Map hook state to force re-render map center
-  const [mapCenter, setMapCenter] = useState<[number, number]>([-8.11475, 115.08865]);
   const [isLocating, setIsLocating] = useState(false);
-
-  // Bumped every time the modal opens so MapContainer always gets a brand-new
-  // key. Prevents "Map container is already initialized" errors from Leaflet
-  // when the dialog is closed and reopened (for the same location, or for a
-  // new location) faster than the previous map instance can be torn down.
-  // Uses crypto.randomUUID() — identity is globally unique across mounts.
-  const [mapInstanceKey, setMapInstanceKey] = useState<string>(() => crypto.randomUUID());
-  // Holds the map panel wrapper DOM so we can strip Leaflet's custom DOM
-  // expandos (`_leaflet_id` etc.) before every fresh mount.
-  const mapPanelRef = React.useRef<HTMLDivElement | null>(null);
-
-  // ── Cleanup on unmount ──────────────────────────────────────────────────
-  // ONLY HERE, AFTER React reconciler has confirmed the full component tree
-  // (including its lazy <MapContainer>) is being torn down, do we call the
-  // global Leaflet registry sweep. This is the ONLY normal-lifecycle call
-  // site that touches window.pruneLeafletGlobals; all others are gated
-  // inside MapSelfHealingBoundary.componentDidCatch (which similarly waits
-  // for flushSync unmount commit before sweeping).
-  useEffect(() => {
-    const panelSnapshot = mapPanelRef.current;
-    return () => {
-      try {
-        (window as any).pruneLeafletGlobals?.();
-      } catch {
-        void 0;
-      }
-      pruneLeafletPanel(panelSnapshot);
-    };
-  }, []);
-
-  // Pre-mount strip: every time the mapInstanceKey changes (fresh mount
-  // attempt after error / dialog close/reopen), strip residual Leaflet DOM
-  // expandos BEFORE React commits the new MapContainer. Deliberately a
-  // LIGHTWEIGHT operation — we never sweep window.L.* registries here,
-  // doing so would wipe the caches of a concurrently-mounted map instance
-  // and produce the "being reused by another instance" crash.
-  useEffect(() => {
-    pruneLeafletPanel(mapPanelRef.current);
-    // Depends on mapInstanceKey only — run once per remount cycle.
-  }, [mapInstanceKey]);
+  // Fresh host key when (re)opening the dialog so LocationsFormMap never
+  // reuses a previous Leaflet container node.
+  const [mapHostKey, setMapHostKey] = useState(() => crypto.randomUUID());
 
   // Form state
   const [formData, setFormData] = useState({
@@ -439,7 +164,6 @@ export default function Locations() {
         wifi_bssid: location.wifi_bssid.join(', '),
       };
       setEditingLocation(location);
-      setMapCenter([location.latitude, location.longitude]);
       setFormData(initial);
       setFormBaseline(JSON.stringify(initial));
     } else {
@@ -452,22 +176,19 @@ export default function Locations() {
         wifi_bssid: '',
       };
       setEditingLocation(null);
-      // Center map to Undiksha coordinate by default
-      setMapCenter([-8.11475, 115.08865]);
       setFormData(initial);
       setFormBaseline(JSON.stringify(initial));
     }
     setDirty(false);
     setLastSavedAt(null);
-    stripLeafletDomSignatures(mapPanelRef.current);
     const reopen = () => {
-      setMapInstanceKey(crypto.randomUUID());
+      setMapHostKey(crypto.randomUUID());
       setIsModalOpen(true);
     };
     if (isModalOpen) {
-      // Close first so the previous MapContainer fully unmounts, then reopen.
+      // Close first so the previous map host fully unmounts, then reopen.
       setIsModalOpen(false);
-      window.setTimeout(reopen, 50);
+      window.setTimeout(reopen, 80);
     } else {
       reopen();
     }
@@ -526,7 +247,6 @@ export default function Locations() {
       (position) => {
         const lat = position.coords.latitude;
         const lng = position.coords.longitude;
-        setMapCenter([lat, lng]);
         setFormDataDirty({
           ...formData,
           latitude: lat,
@@ -577,7 +297,6 @@ export default function Locations() {
               latitude: lat,
               longitude: lon,
             }));
-            setMapCenter([lat, lon]);
             toastSuccess('Lokasi ditemukan dari alamat');
           }
         } catch (error) {
@@ -1013,80 +732,33 @@ export default function Locations() {
               </div>
 
               <div className="flex min-h-[360px] flex-1 flex-col md:w-1/2">
-                <div
-                  ref={mapPanelRef}
-                  id={`locations-map-panel-${mapInstanceKey}`}
-                  className="location-map-panel relative isolate z-0 min-h-[320px] flex-1 overflow-hidden bg-slate-100 bg-background md:min-h-[480px]"
-                >
-                  {isModalOpen && leafletLoaded ? (
-                    <MapSelfHealingBoundary
-                      key={mapInstanceKey}
-                      onRemount={() => setMapInstanceKey(crypto.randomUUID())}
-                    >
-                      <Suspense
-                        fallback={
-                          <div className="flex h-full w-full items-center justify-center bg-muted">
-                            <span className="text-sm text-muted-foreground">Memuat peta…</span>
-                          </div>
-                        }
-                      >
-                        {/* Dedicated keyed host so Leaflet never reuses a prior container node. */}
-                        <div key={mapInstanceKey} className="h-full w-full min-h-[320px]">
-                          <MapContainer
-                            key={mapInstanceKey}
-                            center={mapCenter}
-                            zoom={16}
-                            style={{ height: '100%', width: '100%', minHeight: 320 }}
-                            scrollWheelZoom={true}
-                          >
-                            <TileLayer
-                              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                            />
-                            <Marker position={[formData.latitude, formData.longitude]} />
-                            <Circle
-                              center={[formData.latitude, formData.longitude]}
-                              radius={formData.radius}
-                              pathOptions={{
-                                color: 'indigo',
-                                fillColor: 'indigo',
-                                fillOpacity: 0.2,
-                              }}
-                            />
-                            <MapEvents formData={formData} setFormData={setFormData} />
-                            <MapResizeOnOpen when={isModalOpen} />
-                          </MapContainer>
-                        </div>
-                      </Suspense>
-                    </MapSelfHealingBoundary>
-                  ) : isModalOpen ? (
-                    <div className="flex h-full w-full items-center justify-center bg-muted">
-                      <span className="text-sm text-muted-foreground">Memuat peta…</span>
-                    </div>
-                  ) : null}
-
-                  {/* Geolocation Button overlay */}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    onClick={handleGetMyLocation}
-                    disabled={isLocating}
-                    className="absolute top-4 right-4 z-[1000] min-h-11 min-w-11 shadow-lg rounded-xl"
-                    title="Deteksi Lokasi Saya"
-                    aria-label="Deteksi lokasi saya"
+                {isModalOpen ? (
+                  <Suspense
+                    fallback={
+                      <div className="flex min-h-[320px] flex-1 items-center justify-center bg-muted md:min-h-[480px]">
+                        <span className="text-sm text-muted-foreground">Memuat peta…</span>
+                      </div>
+                    }
                   >
-                    <LocateFixed
-                      className={`w-5 h-5 ${isLocating ? 'animate-pulse text-indigo-500' : ''}`}
+                    <LocationsFormMap
+                      key={mapHostKey}
+                      latitude={formData.latitude}
+                      longitude={formData.longitude}
+                      radius={formData.radius}
+                      onPositionChange={(lat, lng) =>
+                        setFormDataDirty((prev) => ({
+                          ...prev,
+                          latitude: lat,
+                          longitude: lng,
+                        }))
+                      }
+                      onLocateClick={handleGetMyLocation}
+                      isLocating={isLocating}
                     />
-                  </Button>
-
-                  <div className="absolute bottom-2 left-2 right-2 z-[1000] pointer-events-none">
-                    <div className="pointer-events-auto rounded bg-card/95 px-3 py-2 text-xs text-foreground shadow backdrop-blur">
-                      Klik pada peta untuk mengubah koordinat secara otomatis.
-                    </div>
-                  </div>
-                </div>
+                  </Suspense>
+                ) : (
+                  <div className="min-h-[320px] flex-1 bg-muted md:min-h-[480px]" />
+                )}
                 <div className="flex shrink-0 justify-end gap-3 p-5">
                   <Button
                     type="button"
