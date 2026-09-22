@@ -247,10 +247,10 @@ export default function Fungsionaris() {
         </PublicEnter>
       )}
 
-      <PublicReveal className="mx-auto w-full max-w-full overflow-x-hidden px-4 pb-24 sm:px-6 lg:px-8">
+      <PublicReveal eager className="mx-auto w-full max-w-full overflow-x-hidden px-4 pb-24 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl overflow-x-hidden">
         {isLoading ? (
-          <div className="mt-4 space-y-10">
+          <div className="mt-2 space-y-10">
             {Array.from({ length: 2 }).map((_, gi) => (
               <div key={gi}>
                 <div className="mb-6 flex justify-center">
@@ -273,7 +273,7 @@ export default function Fungsionaris() {
             ))}
           </div>
         ) : groups.length === 0 ? (
-          <div className="mt-4">
+          <div className="mt-2">
             <PublicEmptyState
               variant="global"
               title="Struktur organisasi belum diatur"
@@ -281,11 +281,11 @@ export default function Fungsionaris() {
             />
           </div>
         ) : (
-          <div className="mt-2 sm:mt-3">
+          <div className="mt-1">
             {advisorPeople.length ? (
-              <div className="mt-6 sm:mt-8">
+              <div className="mt-4 sm:mt-5">
                 <div className="text-center">
-                  <PublicSectionOrnament compact className="mb-3" />
+                  <PublicSectionOrnament wide compact className="mb-3" />
                   <div className="text-3xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] sm:text-4xl">
                     Dosen Pembimbing
                   </div>
@@ -296,8 +296,8 @@ export default function Fungsionaris() {
               </div>
             ) : null}
 
-            <div className={`${advisorPeople.length ? 'mt-12 sm:mt-14' : 'mt-6 sm:mt-8'} text-center`}>
-              <PublicSectionOrnament compact className="mb-3" />
+            <div className={`${advisorPeople.length ? 'mt-10 sm:mt-12' : 'mt-4 sm:mt-5'} text-center`}>
+              <PublicSectionOrnament wide compact className="mb-3" />
               <div className="text-4xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] sm:text-5xl">
                 Inti
               </div>
@@ -351,8 +351,8 @@ export default function Fungsionaris() {
               />
             )}
 
-            <div className="mt-14 text-center sm:mt-16">
-              <PublicSectionOrnament compact className="mb-3" />
+            <div className="mt-12 text-center sm:mt-14">
+              <PublicSectionOrnament wide compact className="mb-3" />
               <div className="text-4xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] sm:text-5xl">
                 Bidang
               </div>
@@ -402,7 +402,7 @@ export default function Fungsionaris() {
 
                         {divisiHeads.length ? (
                           <div className="mt-12 text-center sm:mt-14">
-                            <PublicSectionOrnament compact className="mb-3" />
+                            <PublicSectionOrnament wide compact className="mb-3" />
                             <div className="text-3xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] sm:text-4xl">
                               Divisi
                             </div>

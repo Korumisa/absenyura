@@ -4,6 +4,7 @@ import PublicCoverImage from '@/components/PublicCoverImage';
 import type { PublicStructureGroup } from '@/types/publicSite';
 import { HorizontalSnapRail } from './HorizontalSnapRail';
 import { getDivisionDisplayTitle, getDivisionTagline } from './divisionUtils';
+import { PublicSectionOrnament } from '@/components/public/PublicSectionOrnament';
 
 export function DivisionRail({
   label,
@@ -101,7 +102,7 @@ export function DivisionRail({
             {label}
           </div>
         ) : null}
-        <div className={showLabel ? 'mt-5' : ''}>
+        <div className={showLabel ? 'mt-4' : ''}>
           <div className="rail-title-swap">
             {ordered.map((g, i) => {
               const t = getDivisionDisplayTitle(g.title ?? '');
@@ -121,8 +122,8 @@ export function DivisionRail({
               );
             })}
           </div>
-          <div className="relative mx-auto mt-4 h-px w-full max-w-5xl bg-gradient-to-r from-transparent via-[var(--public-primary)]/35 to-transparent" />
-          <div className="relative mt-3 min-h-[1.75rem]">
+          <PublicSectionOrnament wide compact className="mt-3" />
+          <div className="relative mt-3 min-h-[1.5rem]">
             {ordered.map((g, i) => {
               const t = getDivisionDisplayTitle(g.title ?? '');
               const fromCms = String(g.description ?? '').trim();
@@ -146,7 +147,7 @@ export function DivisionRail({
         </div>
       </div>
 
-      <div className="mt-6 relative w-full overflow-x-clip sm:mt-7">
+      <div className="mt-5 relative w-full overflow-x-clip sm:mt-6">
         <div className="pointer-events-none absolute inset-y-0 left-0 w-12 bg-gradient-to-r from-slate-50/95 to-transparent z-10" />
         <div className="pointer-events-none absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-slate-50/95 to-transparent z-10" />
         <HorizontalSnapRail

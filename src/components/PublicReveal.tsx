@@ -7,18 +7,21 @@ export default function PublicReveal({
   className,
   delay = 0,
   shiftY = 18,
+  /** When true, content is visible immediately (use for above-the-fold blocks). */
+  eager = false,
 }: {
   children: React.ReactNode;
   className?: string;
   delay?: number;
   shiftY?: number;
+  eager?: boolean;
 }) {
   const reducedMotion = useReducedMotion();
   const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(reducedMotion);
+  const [visible, setVisible] = useState(reducedMotion || eager);
 
   useEffect(() => {
-    if (reducedMotion) return;
+    if (reducedMotion || eager) return;
     const el = ref.current;
     if (!el) return;
     const observer = new IntersectionObserver(
@@ -28,13 +31,13 @@ export default function PublicReveal({
           observer.disconnect();
         }
       },
-      { rootMargin: '0px 0px -8% 0px', threshold: 0.08 }
+      { rootMargin: '0px 0px -4% 0px', threshold: 0.01 }
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, [reducedMotion]);
+  }, [reducedMotion, eager]);
 
-  if (reducedMotion) {
+  if (reducedMotion || eager) {
     return <div className={className}>{children}</div>;
   }
 

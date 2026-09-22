@@ -830,18 +830,18 @@ export default function PublicHome() {
       </section>
 
       {(isLoadingStructure || structure.length > 0) ? (
-      <section className="relative bg-slate-50/55 py-12 sm:py-14">
-        <PublicReveal className="mx-auto max-w-7xl px-4 sm:px-6">
+      <section className="relative bg-slate-50/55 py-10 sm:py-12">
+        <PublicReveal eager className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="text-center">
             <div className="font-display text-5xl italic tracking-tight text-slate-900 sm:text-6xl md:text-7xl">Susunan</div>
             <div className="-mt-2 text-5xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] sm:-mt-3 sm:text-6xl md:text-7xl">
               Fungsionaris
             </div>
-            <PublicSectionOrnament className="mt-5" />
+            <PublicSectionOrnament wide className="mt-4" />
           </div>
 
           {isLoadingStructure ? (
-            <div className="mt-6 h-40" aria-busy="true" />
+            <div className="mt-5 h-40" aria-busy="true" />
           ) : (
             (() => {
               const ordered = structure
@@ -853,7 +853,7 @@ export default function PublicHome() {
               const coreIds = new Set(core.map((g: any) => g.id));
               const support = ordered.filter((g: any) => !coreIds.has(g.id));
               return (
-                <div className="mt-6 space-y-10 sm:mt-8 sm:space-y-12">
+                <div className="mt-4 space-y-8 sm:mt-5 sm:space-y-10">
                   {/* No "Divisi Inti" eyebrow — it duplicated CMS titles like "Inti". */}
                   {core.length ? <DivisionRail groups={core} /> : null}
                   {support.length ? <DivisionRail label="Divisi Pendukung" groups={support} /> : null}

@@ -270,7 +270,7 @@
    *    reflow dengan position absolute stacking + opacity swap. */
   .rail-title-swap {
     position: relative;
-    min-height: 4.5rem;
+    min-height: 3.25rem;
   }
   .rail-title-swap > * {
     position: absolute;

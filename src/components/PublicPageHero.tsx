@@ -82,13 +82,13 @@ export default function PublicPageHero({
           ) : null}
           {children ? (
             <div
-              className={`mx-auto flex flex-wrap justify-center gap-3 ${compact ? 'mt-5' : 'mt-7'}`}
+              className={`mx-auto flex flex-wrap justify-center gap-3 ${compact ? 'mt-4' : 'mt-6'}`}
             >
               {children}
             </div>
           ) : null}
         </div>
-        <PublicSectionOrnament className={compact ? 'mt-4' : 'mt-6'} />
+        <PublicSectionOrnament wide className={compact ? 'mt-3' : 'mt-5'} />
       </div>
     </section>
   );
