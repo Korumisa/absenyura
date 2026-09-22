@@ -24,7 +24,7 @@ export default function PublicPageHero({
 
   return (
     <section
-      className={`relative overflow-hidden bg-white ${compact ? 'pb-2 pt-7 sm:pb-3 sm:pt-8' : 'pb-4 pt-12 sm:pb-5 sm:pt-14'}`}
+      className={`relative overflow-hidden bg-white ${compact ? 'pb-1 pt-5 sm:pb-2 sm:pt-6' : 'pb-3 pt-10 sm:pb-4 sm:pt-12'}`}
     >
       <div className="pointer-events-none absolute inset-0 opacity-70 [background:radial-gradient(circle_at_18%_15%,rgba(37,99,235,0.14),transparent_56%),radial-gradient(circle_at_78%_10%,rgba(56,189,248,0.10),transparent_60%)]" />
       {reducedMotion ? (
@@ -88,7 +88,7 @@ export default function PublicPageHero({
             </div>
           ) : null}
         </div>
-        <PublicSectionOrnament className={compact ? 'mt-5' : 'mt-8'} />
+        <PublicSectionOrnament className={compact ? 'mt-4' : 'mt-6'} />
       </div>
     </section>
   );

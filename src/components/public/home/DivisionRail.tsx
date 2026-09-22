@@ -146,7 +146,7 @@ export function DivisionRail({
         </div>
       </div>
 
-      <div className="mt-8 relative w-full overflow-x-clip">
+      <div className="mt-6 relative w-full overflow-x-clip sm:mt-7">
         <div className="pointer-events-none absolute inset-y-0 left-0 w-12 bg-gradient-to-r from-slate-50/95 to-transparent z-10" />
         <div className="pointer-events-none absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-slate-50/95 to-transparent z-10" />
         <HorizontalSnapRail

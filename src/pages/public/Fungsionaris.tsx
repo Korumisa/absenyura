@@ -175,13 +175,42 @@ export default function Fungsionaris() {
           bottom="Fungsionaris"
           subtitle="Struktur kepengurusan organisasi periode aktif."
           compact
-        />
+        >
+          {subtitleBits.length ? (
+            <div className="flex w-full max-w-full flex-wrap items-center justify-center gap-2 pt-1 sm:gap-3">
+              <span aria-hidden="true" className="flex items-center gap-1">
+                <span className="h-px w-4 bg-gradient-to-r from-transparent to-[var(--public-primary)]/50 sm:w-8" />
+                <span className="size-1 rotate-45 bg-[var(--public-primary)]/45" />
+                <span className="size-1.5 rotate-45 bg-[var(--public-primary)]/75" />
+              </span>
+              <span className="relative inline-flex max-w-full items-center gap-2 rounded-full bg-[var(--public-primary)] px-4 py-2 text-white sm:gap-2.5 sm:px-5">
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-[2px] rounded-full border border-white/20"
+                />
+                <span className="relative truncate font-display text-sm font-semibold italic tracking-wide">
+                  {subtitleBits[0]}
+                </span>
+                {subtitleBits[1] ? (
+                  <span className="relative shrink-0 rounded-full border border-white/25 bg-white/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/95">
+                    {subtitleBits[1]}
+                  </span>
+                ) : null}
+              </span>
+              <span aria-hidden="true" className="flex items-center gap-1">
+                <span className="size-1.5 rotate-45 bg-[var(--public-primary)]/75" />
+                <span className="size-1 rotate-45 bg-[var(--public-primary)]/45" />
+                <span className="h-px w-4 bg-gradient-to-l from-transparent to-[var(--public-primary)]/50 sm:w-8" />
+              </span>
+            </div>
+          ) : null}
+        </PublicPageHero>
       </PublicEnter>
 
       {/* Cabinet Switcher */}
       {allCabinets.length > 1 && (
         <PublicEnter>
-          <div className="mx-auto max-w-7xl px-4 pb-2 pt-2 sm:px-6">
+          <div className="mx-auto max-w-7xl px-4 pb-1 pt-1 sm:px-6">
             <div
               role="tablist"
               className="flex flex-wrap items-center justify-center gap-2"
@@ -221,7 +250,7 @@ export default function Fungsionaris() {
       <PublicReveal className="mx-auto w-full max-w-full overflow-x-hidden px-4 pb-24 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl overflow-x-hidden">
         {isLoading ? (
-          <div className="mt-8 space-y-10">
+          <div className="mt-4 space-y-10">
             {Array.from({ length: 2 }).map((_, gi) => (
               <div key={gi}>
                 <div className="mb-6 flex justify-center">
@@ -244,7 +273,7 @@ export default function Fungsionaris() {
             ))}
           </div>
         ) : groups.length === 0 ? (
-          <div className="mt-8">
+          <div className="mt-4">
             <PublicEmptyState
               variant="global"
               title="Struktur organisasi belum diatur"
@@ -252,40 +281,9 @@ export default function Fungsionaris() {
             />
           </div>
         ) : (
-          <div className="mt-8">
-            {subtitleBits.length ? (
-              <div className="flex justify-center px-1 pt-2 sm:pt-4">
-                <div className="flex max-w-full flex-wrap items-center justify-center gap-2 sm:gap-3">
-                  <span aria-hidden="true" className="flex items-center gap-1">
-                    <span className="h-px w-5 bg-gradient-to-r from-transparent to-[var(--public-primary)]/55 sm:w-10" />
-                    <span className="size-1 rotate-45 bg-[var(--public-primary)]/40" />
-                    <span className="size-1.5 rotate-45 bg-[var(--public-primary)]/70" />
-                  </span>
-                  <span className="relative inline-flex max-w-full items-center gap-2 rounded-full bg-[var(--public-primary)] px-4 py-2 text-white sm:gap-2.5 sm:px-6 sm:py-2.5">
-                    <span
-                      aria-hidden="true"
-                      className="pointer-events-none absolute inset-[2px] rounded-full border border-white/20"
-                    />
-                    <span className="relative truncate font-display text-sm font-semibold italic tracking-wide sm:text-[15px]">
-                      {subtitleBits[0]}
-                    </span>
-                    {subtitleBits[1] ? (
-                      <span className="relative shrink-0 rounded-full border border-white/25 bg-white/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/95">
-                        {subtitleBits[1]}
-                      </span>
-                    ) : null}
-                  </span>
-                  <span aria-hidden="true" className="flex items-center gap-1">
-                    <span className="size-1.5 rotate-45 bg-[var(--public-primary)]/70" />
-                    <span className="size-1 rotate-45 bg-[var(--public-primary)]/40" />
-                    <span className="h-px w-5 bg-gradient-to-l from-transparent to-[var(--public-primary)]/55 sm:w-10" />
-                  </span>
-                </div>
-              </div>
-            ) : null}
-
+          <div className="mt-2 sm:mt-3">
             {advisorPeople.length ? (
-              <div className="mt-12 sm:mt-14">
+              <div className="mt-6 sm:mt-8">
                 <div className="text-center">
                   <PublicSectionOrnament compact className="mb-3" />
                   <div className="text-3xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] sm:text-4xl">
@@ -298,7 +296,7 @@ export default function Fungsionaris() {
               </div>
             ) : null}
 
-            <div className="mt-12 text-center sm:mt-14">
+            <div className={`${advisorPeople.length ? 'mt-12 sm:mt-14' : 'mt-6 sm:mt-8'} text-center`}>
               <PublicSectionOrnament compact className="mb-3" />
               <div className="text-4xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] sm:text-5xl">
                 Inti
