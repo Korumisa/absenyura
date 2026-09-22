@@ -238,11 +238,32 @@ describe('getPublicStructure', () => {
         cabinet: null,
         allCabinets: [],
         retry_after_ms: 2000,
+        details: expect.objectContaining({ code: 'P1001' }),
       })
     );
     expect(consoleErrorSpy).toHaveBeenCalledWith(
       expect.stringContaining('[public-structure]'),
       expect.anything()
+    );
+  });
+
+  test('mengembalikan 500 (bukan 503) untuk schema/table missing', async () => {
+    prismaMock.publicStructureCabinet.findMany.mockRejectedValue({
+      code: 'P2021',
+      name: 'PrismaClientKnownRequestError',
+      message: 'The table `public.PublicStructureCabinet` does not exist in the current database.',
+    });
+
+    const res = createRes();
+    await getPublicStructure({} as any, res);
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: false,
+        error: 'Internal server error',
+        details: expect.objectContaining({ code: 'P2021' }),
+      })
     );
   });
 

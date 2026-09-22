@@ -96,7 +96,9 @@ export function usePublicHomeData() {
   });
 
   const structure = useMockOrSwr<StructureResp>({
-    swrKey: belowFoldKey ? '/public-site/structure' : null,
+    // ?v=2 busts a CDN-cached 503 that was wrongly stored before error responses
+    // stopped being edge-cached (publicSiteCache middleware).
+    swrKey: belowFoldKey ? '/public-site/structure?v=2' : null,
     fetcher,
     swrConfig: {
       // Avoid retry storms against a failing/cold structure endpoint (logs showed 5× 500).

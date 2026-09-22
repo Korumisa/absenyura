@@ -113,8 +113,11 @@ function isPrismaConnectionError(err: unknown): boolean {
   if (typeof e.code === 'string' && PRISMA_CONNECTION_ERROR_CODES.has(e.code)) return true;
   const name = typeof e.name === 'string' ? e.name : '';
   const msg = typeof e.message === 'string' ? e.message : '';
+  // Avoid matching schema messages like "does not exist in the current database".
   if (
-    /connection|database|timeout|pool|epipe|econnrefused|etimedout|enoent/i.test(name + ' ' + msg)
+    /(?:can't reach|cannot reach|connection (?:timed out|refused|reset)|econnrefused|etimedout|epipe|connection pool|timed out fetching|server has closed the connection)/i.test(
+      name + ' ' + msg
+    )
   ) {
     return true;
   }
@@ -288,7 +291,7 @@ export const getPublicStructure = async (req: Request, res: Response): Promise<v
         error: 'Database unavailable',
         ...PUBLIC_STRUCTURE_EMPTY,
         retry_after_ms: 2000,
-        ...(expose && reason ? { details: { reason } } : {}),
+        details: { code: errCode || errName, ...(expose && reason ? { reason } : {}) },
       });
       return;
     }
@@ -297,7 +300,10 @@ export const getPublicStructure = async (req: Request, res: Response): Promise<v
       success: false,
       error: 'Internal server error',
       ...PUBLIC_STRUCTURE_EMPTY,
-      ...(expose && reason ? { details: { message: String(reason).slice(0, 360) } } : {}),
+      details: {
+        code: errCode || errName,
+        ...(expose && reason ? { message: String(reason).slice(0, 360) } : {}),
+      },
     });
   }
 };

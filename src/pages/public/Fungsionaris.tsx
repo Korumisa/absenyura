@@ -21,7 +21,7 @@ type StructureResp = { data: PublicStructureGroup[]; cabinet: any; allCabinets: 
 
 export default function Fungsionaris() {
   const structureResult = useMockOrSwr<StructureResp>({
-    swrKey: '/public-site/structure',
+    swrKey: '/public-site/structure?v=2',
     fetcher: (u) => publicSiteFetcher<StructureResp>(u, { kind: 'top' }),
     swrConfig: {
       errorRetryCount: 2,
