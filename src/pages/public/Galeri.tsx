@@ -18,6 +18,11 @@ import { PublicEmptyState } from '@/components/public/PublicEmptyState';
 import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 import { publicSiteFetcher, safeArray } from '@/lib/utils/publicSiteFetcher';
 
+function albumPhotoCount(a: PublicGalleryAlbum | null | undefined) {
+  if (!a) return 0;
+  return a.item_count ?? a.items?.length ?? 0;
+}
+
 export default function Galeri() {
   const profileResult = useMockOrSwr<PublicProfile | null>({
     swrKey: '/public-site/profile',
@@ -43,8 +48,23 @@ export default function Galeri() {
     if (!activeAlbumId && albums.length > 0) setActiveAlbumId(albums[0].id);
   }, [activeAlbumId, albums]);
 
-  const activeAlbum = useMemo(() => albums.find((a) => a.id === activeAlbumId) ?? null, [albums, activeAlbumId]);
-  const lightboxAlbum = useMemo(() => (lightbox ? albums.find((a) => a.id === lightbox.albumId) ?? null : null), [albums, lightbox]);
+  const albumSummary = useMemo(
+    () => albums.find((a) => a.id === activeAlbumId) ?? null,
+    [albums, activeAlbumId]
+  );
+
+  const albumDetailResult = useMockOrSwr<PublicGalleryAlbum | null>({
+    swrKey: activeAlbumId ? `/public-site/galleries/${activeAlbumId}` : null,
+    fetcher: publicSiteFetcher<PublicGalleryAlbum | null>,
+    mockStatic: () =>
+      (mockGalleries.find((a) => a.id === activeAlbumId) ?? mockGalleries[0] ?? null) as PublicGalleryAlbum | null,
+  });
+
+  const activeAlbum = albumDetailResult.data ?? albumSummary;
+  const isLoadingAlbum =
+    Boolean(activeAlbumId) && (albumDetailResult.isInitialLoading || albumDetailResult.isPending);
+
+  const lightboxAlbum = activeAlbum?.id === lightbox?.albumId ? activeAlbum : null;
   const lightboxItem = useMemo(() => {
     if (!lightboxAlbum || !lightbox) return null;
     return lightboxAlbum.items?.[lightbox.index] ?? null;
@@ -104,7 +124,7 @@ export default function Galeri() {
                           {a.description ? <div className="mt-1 line-clamp-1 text-xs text-muted-foreground">{a.description}</div> : null}
                         </div>
                         <div className="inline-flex shrink-0 items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
-                          {a.items?.length ?? 0}
+                          {albumPhotoCount(a)}
                         </div>
                       </button>
                     );
@@ -126,29 +146,35 @@ export default function Galeri() {
                       ) : null}
                     </div>
                     <div className="inline-flex items-center rounded-full bg-[var(--public-primary)]/10 px-4 py-2 text-sm font-semibold text-[var(--public-primary)]">
-                      {activeAlbum?.items?.length ?? 0} foto
+                      {albumPhotoCount(activeAlbum)} foto
                     </div>
                   </div>
 
-                  {!activeAlbum ? (
+                  {!activeAlbumId ? (
                     <div className="mt-8 rounded-2xl border border-dashed border-black/15 bg-slate-50/80 p-6 text-sm text-muted-foreground">
                       Pilih album di sebelah kiri untuk melihat semua foto.
                     </div>
-                  ) : safeRelation(activeAlbum.items).length === 0 ? (
+                  ) : isLoadingAlbum ? (
+                    <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                      {Array.from({ length: 6 }).map((_, idx) => (
+                        <Skeleton key={idx} className="aspect-[4/3] w-full rounded-2xl" />
+                      ))}
+                    </div>
+                  ) : safeRelation(activeAlbum?.items).length === 0 ? (
                     <div className="mt-8 rounded-2xl border border-dashed border-black/15 bg-slate-50/80 p-6 text-sm text-muted-foreground">
                       Belum ada foto di album ini.
                     </div>
                   ) : (
                     <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                      {safeRelation(activeAlbum.items).map((it, idx) => (
+                      {safeRelation(activeAlbum?.items).map((it, idx) => (
                         <button
                           key={it.id}
                           type="button"
-                          onClick={() => setLightbox({ albumId: activeAlbum.id, index: idx })}
+                          onClick={() => setLightbox({ albumId: activeAlbum!.id, index: idx })}
                           className="group overflow-hidden rounded-2xl border border-black/10 bg-white text-left shadow-[0_18px_45px_-42px_rgba(15,23,42,0.25)] transition hover:-translate-y-0.5 hover:border-[var(--public-primary)]/25"
                         >
                           <PublicPhotoFrame className="aspect-[4/3] w-full" inset={10}>
-                            <PublicCoverImage url={it.image_url} alt={it.caption || activeAlbum.title} imgClassName="transition duration-500 group-hover:scale-[1.02]" />
+                            <PublicCoverImage url={it.image_url} alt={it.caption || activeAlbum!.title} imgClassName="transition duration-500 group-hover:scale-[1.02]" />
                           </PublicPhotoFrame>
                           {it.caption ? <div className="p-4 text-sm font-medium text-slate-700">{it.caption}</div> : <div className="p-4 text-sm text-muted-foreground">Klik untuk memperbesar</div>}
                         </button>
@@ -229,4 +255,3 @@ export default function Galeri() {
     </PublicLayout>
   );
 }
-

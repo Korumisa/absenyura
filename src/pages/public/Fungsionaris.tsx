@@ -21,8 +21,11 @@ import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 type StructureResp = { data: PublicStructureGroup[]; cabinet: any; allCabinets: any[] };
 
 export default function Fungsionaris() {
+  const [selectedCabinetId, setSelectedCabinetId] = useState<string | null>(null);
   const structureResult = useMockOrSwr<StructureResp>({
-    swrKey: '/public-site/structure?v=2',
+    swrKey: `/public-site/structure?v=2${
+      selectedCabinetId ? `&cabinetId=${encodeURIComponent(selectedCabinetId)}` : ''
+    }`,
     fetcher: (u) => publicSiteFetcher<StructureResp>(u, { kind: 'top' }),
     swrConfig: {
       errorRetryCount: 2,
@@ -38,16 +41,9 @@ export default function Fungsionaris() {
     mockStatic: mockProfile,
   });
   const profile = profileResult.data ?? null;
-  const [selectedCabinetId, setSelectedCabinetId] = useState<string | null>(null);
-  
+
   const allCabinets = useMemo(() => structureData?.allCabinets ?? [], [structureData]);
-  const activeCabinet = structureData?.cabinet;
-  const selectedCabinet = useMemo(() => {
-    if (selectedCabinetId) {
-      return allCabinets.find(c => c.id === selectedCabinetId);
-    }
-    return activeCabinet;
-  }, [allCabinets, selectedCabinetId, activeCabinet]);
+  const selectedCabinet = structureData?.cabinet ?? null;
   
   const groups = useMemo(() => safeRelation(selectedCabinet?.groups), [selectedCabinet]);
   const cabinet = selectedCabinet ?? null;

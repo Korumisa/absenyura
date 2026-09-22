@@ -3,37 +3,43 @@
  */
 export function normalizeDatabaseUrl(raw: string): string {
   try {
-    const url = new URL(raw)
-    const isPooler =
-      url.port === '6543' || url.hostname.includes('.pooler.supabase.com')
+    const url = new URL(raw);
+    const isPooler = url.port === '6543' || url.hostname.includes('.pooler.supabase.com');
 
-    if (!isPooler) return raw
+    if (!isPooler) return raw;
 
     if (!url.searchParams.has('pgbouncer')) {
-      url.searchParams.set('pgbouncer', 'true')
+      url.searchParams.set('pgbouncer', 'true');
     }
     if (!url.searchParams.has('connection_limit')) {
-      url.searchParams.set('connection_limit', '1')
+      url.searchParams.set('connection_limit', '1');
     }
     if (!url.searchParams.has('statement_cache_size')) {
-      url.searchParams.set('statement_cache_size', '0')
+      url.searchParams.set('statement_cache_size', '0');
+    }
+    // Fail fast so withTransientDbRetry can reconnect instead of hanging the request.
+    if (!url.searchParams.has('connect_timeout')) {
+      url.searchParams.set('connect_timeout', '10');
+    }
+    if (!url.searchParams.has('pool_timeout')) {
+      url.searchParams.set('pool_timeout', '10');
     }
 
-    return url.toString()
+    return url.toString();
   } catch {
-    return raw
+    return raw;
   }
 }
 
 export function resolveDatabaseUrl(): string | undefined {
-  const direct = process.env.DIRECT_URL?.trim()
-  let database = process.env.DATABASE_URL?.trim()
+  const direct = process.env.DIRECT_URL?.trim();
+  let database = process.env.DATABASE_URL?.trim();
 
   if (!database && direct && process.env.NODE_ENV !== 'production') {
-    database = direct
+    database = direct;
   }
 
-  if (!database) return undefined
+  if (!database) return undefined;
 
-  return normalizeDatabaseUrl(database)
+  return normalizeDatabaseUrl(database);
 }

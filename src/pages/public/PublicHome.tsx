@@ -147,6 +147,7 @@ function PublicHomeSkeleton({
 }
 
 export default function PublicHome() {
+  const [selectedCabinetId, setSelectedCabinetId] = useState<string | null>(null);
   const {
     profile: profileState,
     programs: programsState,
@@ -155,7 +156,7 @@ export default function PublicHome() {
     recruitments: recruitmentsState,
     galleries: galleriesState,
     lombaPaged: lombaState,
-  } = usePublicHomeData();
+  } = usePublicHomeData({ cabinetId: selectedCabinetId });
 
   const profile = profileState.data;
   const isLoadingProfile = profileState.isPending;
@@ -189,20 +190,15 @@ export default function PublicHome() {
       link.remove();
     };
   }, [profile?.home_image_url]);
-  
-  const [selectedCabinetId, setSelectedCabinetId] = useState<string | null>(null);
+
   const structureData = structureState.data;
   const allCabinets = useMemo(() => structureData?.allCabinets ?? [], [structureData]);
-  const activeCabinet = structureData?.cabinet;
-  
-  const selectedCabinet = useMemo(() => {
-    if (selectedCabinetId) {
-      return allCabinets.find(c => c.id === selectedCabinetId);
-    }
-    return activeCabinet;
-  }, [allCabinets, selectedCabinetId, activeCabinet]);
-  
-  const structure = useMemo(() => selectedCabinet?.groups ?? [], [selectedCabinet]);
+  // API returns the requested (or active) cabinet tree in `cabinet`.
+  const selectedCabinet = structureData?.cabinet ?? null;
+  const structure = useMemo(
+    () => selectedCabinet?.groups ?? structureData?.data ?? [],
+    [selectedCabinet, structureData]
+  );
   const isLoadingStructure = structureState.isPending;
   const latest = latestState.data;
   const isLoadingLatest = latestState.isPending;
@@ -1000,7 +996,7 @@ export default function PublicHome() {
                             )}
                           </div>
                           <div className="inline-flex shrink-0 items-center gap-2 rounded-full bg-[var(--public-primary)]/10 px-3 py-1 text-xs font-semibold text-[var(--public-primary)]">
-                            {a.items?.length ?? 0} foto
+                            {a.item_count ?? a.items?.length ?? 0} foto
                           </div>
                         </div>
                       </div>

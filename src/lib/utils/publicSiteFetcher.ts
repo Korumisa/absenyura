@@ -70,6 +70,12 @@ export function publicSiteFetcher<T = unknown>(
     if (u.endsWith('/public-site/recruitments'))
       return mockPromise(mockRecruitments as unknown as T);
     if (u.endsWith('/public-site/galleries')) return mockPromise(mockGalleries as unknown as T);
+    const galleryDetailMatch = /\/public-site\/galleries\/([^/]+)$/.exec(u);
+    if (galleryDetailMatch) {
+      const id = decodeURIComponent(galleryDetailMatch[1]);
+      const album = mockGalleries.find((a) => a.id === id) ?? mockGalleries[0] ?? null;
+      return mockPromise(album as unknown as T);
+    }
     // posts list paged: /public-site/posts?type=XXX&page=1&pageSize=...
     if (u.endsWith('/public-site/posts')) {
       const type = qs.get('type');
