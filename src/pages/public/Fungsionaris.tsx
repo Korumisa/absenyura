@@ -107,15 +107,6 @@ export default function Fungsionaris() {
   const corePeople = useMemo(() => sortedMembers(coreGroups.flatMap((g: any) => safeRelation(g.members))), [coreGroups]);
   const advisorPeopleRaw = useMemo(() => sortedMembers(advisorGroups.flatMap((g: any) => safeRelation(g.members))), [advisorGroups]);
   const advisorPeople = advisorPeopleRaw;
-  const intiDescription = useMemo(() => {
-    const fromGroups = coreGroups
-      .map((g: any) => String(g.description ?? '').trim())
-      .filter(Boolean);
-    if (fromGroups.length) return fromGroups[0];
-    return kabinetPeriod
-      ? `Pengurus inti periode ${kabinetPeriod} — arah strategis dan koordinasi organisasi.`
-      : 'Pengurus inti — arah strategis dan koordinasi organisasi.';
-  }, [coreGroups, kabinetPeriod]);
   const activeBidangDescription = String(activeGroup?.description ?? '').trim();
   const pickLeader = (people: PublicStructureGroup['members']) => {
     const safe = safeRelation(people);
@@ -260,35 +251,37 @@ export default function Fungsionaris() {
           <div className="mt-6">
             {subtitleBits.length ? (
               <div className="flex justify-center">
-                <div className="relative flex w-full max-w-5xl items-center justify-center gap-3 overflow-x-auto pb-2 scrollbar-hide">
-                  <span
-                    aria-hidden="true"
-                    className="hidden h-px w-10 bg-gradient-to-r from-transparent to-[var(--public-primary)]/55 sm:block"
-                  />
-                  <span className="relative flex-none overflow-hidden rounded-full bg-[var(--public-primary)] px-8 py-2.5 text-xs font-semibold uppercase tracking-[0.22em] text-white shadow-[0_16px_32px_rgba(37,99,235,0.30)] ring-1 ring-white/25">
-                    <span
-                      aria-hidden="true"
-                      className="pointer-events-none absolute inset-x-3 top-1 h-px bg-gradient-to-r from-transparent via-white/55 to-transparent"
-                    />
-                    <span
-                      aria-hidden="true"
-                      className="pointer-events-none absolute -left-1 top-1/2 h-2 w-2 -translate-y-1/2 rotate-45 rounded-[2px] bg-white/70"
-                    />
-                    <span
-                      aria-hidden="true"
-                      className="pointer-events-none absolute -right-1 top-1/2 h-2 w-2 -translate-y-1/2 rotate-45 rounded-[2px] bg-white/70"
-                    />
-                    {subtitleBits[0]}
-                    {subtitleBits[1] ? (
-                      <span className="ml-2 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-medium tracking-widest text-white/90">
-                        {subtitleBits[1]}
-                      </span>
-                    ) : null}
+                <div className="relative flex w-full max-w-5xl items-center justify-center gap-4 overflow-x-auto pb-2 scrollbar-hide">
+                  <span aria-hidden="true" className="hidden items-center gap-1.5 sm:flex">
+                    <span className="h-px w-8 bg-gradient-to-r from-transparent to-[var(--public-primary)]/60" />
+                    <span className="size-1.5 rotate-45 bg-[var(--public-primary)]/70" />
+                    <span className="size-1 rotate-45 bg-[var(--public-primary)]/40" />
                   </span>
-                  <span
-                    aria-hidden="true"
-                    className="hidden h-px w-10 bg-gradient-to-l from-transparent to-[var(--public-primary)]/55 sm:block"
-                  />
+                  <span className="relative flex-none rounded-full bg-[var(--public-primary)] px-7 py-2.5 text-white ring-2 ring-[var(--public-primary)]/25 ring-offset-2 ring-offset-white">
+                    <span
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-[3px] rounded-full border border-white/25"
+                    />
+                    <span
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-x-5 top-[5px] h-px bg-gradient-to-r from-transparent via-white/70 to-transparent"
+                    />
+                    <span className="relative inline-flex items-baseline gap-2.5">
+                      <span className="font-display text-[15px] font-semibold italic tracking-wide normal-case">
+                        {subtitleBits[0]}
+                      </span>
+                      {subtitleBits[1] ? (
+                        <span className="rounded-full border border-white/30 bg-white/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/95">
+                          {subtitleBits[1]}
+                        </span>
+                      ) : null}
+                    </span>
+                  </span>
+                  <span aria-hidden="true" className="hidden items-center gap-1.5 sm:flex">
+                    <span className="size-1 rotate-45 bg-[var(--public-primary)]/40" />
+                    <span className="size-1.5 rotate-45 bg-[var(--public-primary)]/70" />
+                    <span className="h-px w-8 bg-gradient-to-l from-transparent to-[var(--public-primary)]/60" />
+                  </span>
                 </div>
               </div>
             ) : null}
@@ -308,9 +301,6 @@ export default function Fungsionaris() {
 
             <div className="mt-10 text-center">
               <div className="text-5xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] sm:text-6xl">INTI</div>
-                <p className="mx-auto mt-3 max-w-2xl text-center text-sm font-medium text-muted-foreground">
-                  {intiDescription}
-                </p>
             </div>
 
             {corePeople.length ? (

@@ -9,7 +9,8 @@ export function DivisionRail({
   label,
   groups,
 }: {
-  label: string;
+  /** Optional section eyebrow; omit when it would duplicate the group title. */
+  label?: string;
   groups: PublicStructureGroup[];
 }) {
   const ordered = useMemo(
@@ -90,13 +91,17 @@ export function DivisionRail({
 
   if (!ordered.length) return null;
 
+  const showLabel = Boolean(label?.trim());
+
   return (
     <div>
       <div className="mx-auto max-w-3xl text-center">
-        <div className="inline-flex items-center rounded-full bg-[var(--public-primary)]/10 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-[var(--public-primary)]">
-          {label}
-        </div>
-        <div className="mt-5">
+        {showLabel ? (
+          <div className="inline-flex items-center rounded-full bg-[var(--public-primary)]/10 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-[var(--public-primary)]">
+            {label}
+          </div>
+        ) : null}
+        <div className={showLabel ? 'mt-5' : ''}>
           <div className="rail-title-swap">
             {ordered.map((g, i) => {
               const t = getDivisionDisplayTitle(g.title ?? '');
@@ -120,7 +125,8 @@ export function DivisionRail({
           <div className="relative mt-3 min-h-[1.75rem]">
             {ordered.map((g, i) => {
               const t = getDivisionDisplayTitle(g.title ?? '');
-              const tg = getDivisionTagline(t);
+              const fromCms = String(g.description ?? '').trim();
+              const tg = fromCms || getDivisionTagline(t);
               const isActive = i === activeIdx;
               return (
                 <p
@@ -144,7 +150,7 @@ export function DivisionRail({
         <div className="pointer-events-none absolute inset-y-0 left-0 w-12 bg-gradient-to-r from-slate-50/95 to-transparent z-10" />
         <div className="pointer-events-none absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-slate-50/95 to-transparent z-10" />
         <HorizontalSnapRail
-          ariaLabel={label}
+          ariaLabel={label || 'Struktur fungsionaris'}
           setScroller={(el) => {
             scrollerRef.current = el;
           }}

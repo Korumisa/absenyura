@@ -417,7 +417,7 @@ export default function PublicSiteStructure() {
                             )
                           )
                         }
-                        placeholder="Tampil di bawah judul grup di halaman publik"
+                        placeholder="Tampil di bawah nama bidang (bukan di bagian INTI)"
                         rows={2}
                         maxLength={500}
                       />

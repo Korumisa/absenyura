@@ -852,8 +852,8 @@ export default function PublicHome() {
               const support = ordered.filter((g: any) => !coreIds.has(g.id));
               return (
                 <div className="mt-12 space-y-12">
-                  {core.length ? <DivisionRail label="Divisi Inti" groups={core} /> : null}
-                  
+                  {/* No "Divisi Inti" eyebrow — it duplicated CMS titles like "Inti". */}
+                  {core.length ? <DivisionRail groups={core} /> : null}
                   {support.length ? <DivisionRail label="Divisi Pendukung" groups={support} /> : null}
                 </div>
               );
