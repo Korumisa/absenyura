@@ -486,7 +486,7 @@ export default function Sessions() {
     resetDeps: [searchTerm, filterDate, filterLocation, filterClass],
   });
 
-  const formIsDirty = JSON.stringify(formData) !== formBaseline;
+  const formIsDirty = isModalOpen && JSON.stringify(formData) !== formBaseline;
   const { confirmIfDirty } = useFormDirtyGuard(formIsDirty);
 
   const actionOverlayLabel = saving

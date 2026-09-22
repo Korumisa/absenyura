@@ -111,15 +111,8 @@ class MapSelfHealingBoundary extends React.Component<
     this.state = { hasError: false, remountSeq: 0 };
   }
 
-  // We intentionally do NOT mutate state here. `getDerivedStateFromError` runs
-  // during the "render phase" and bails us out before `componentDidCatch` has
-  // a chance to orchestrate the strict 3-step flushSync unmount → wait →
-  // remount sequence below. Leave state transitions to componentDidCatch.
-  static getDerivedStateFromError(
-    _: unknown,
-    state: MapSelfHealingBoundaryState
-  ): MapSelfHealingBoundaryState {
-    return state;
+  static getDerivedStateFromError(): Partial<MapSelfHealingBoundaryState> {
+    return { hasError: true };
   }
 
   componentDidCatch(error: any) {

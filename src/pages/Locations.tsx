@@ -180,40 +180,16 @@ class MapSelfHealingBoundary extends React.Component<
     this.state = { hasError: false, remountSeq: 0 };
   }
 
-  // We intentionally do NOT mutate state here. `getDerivedStateFromError` runs
-  // during the "render phase" and bails us out before `componentDidCatch` has
-  // a chance to orchestrate the strict 3-step flushSync unmount → wait →
-  // remount sequence below. Leave all state transitions to componentDidCatch.
-  static getDerivedStateFromError(
-    _: unknown,
-    state: MapSelfHealingBoundaryState
-  ): MapSelfHealingBoundaryState {
-    return state;
+  // Flip hasError during render so the route ErrorBoundary does not steal
+  // this Leaflet init failure ("Konten mengalami kendala"). Remount is
+  // orchestrated in componentDidCatch after the fallback is on screen.
+  static getDerivedStateFromError(): Partial<MapSelfHealingBoundaryState> {
+    return { hasError: true };
   }
 
   componentDidCatch(error: any) {
-    // Only remap the specific map errors — ignore other unrelated errors
-    // to the parent boundary that should bubble up to the route boundary.
     const msg: string = String(error?.message ?? '');
     if (/Map container (is already initialized|is being reused)/i.test(msg)) {
-      // ── STEP 1 ──────────────────────────────────────────────────────────
-      // Force a SYNCHRONOUS React commit that swaps the tree to the skeleton
-      // panel. This unmounts <MapContainer> right now, which triggers React-
-      // leaflet's native L.Map.remove() + our cleanup effect that calls
-      // pruneLeafletPanel (strip _leaflet_id expandos). Without flushSync
-      // here React would batch this update together with step 3 and the old
-      // map instance would still be attached to the DOM when the new one
-      // tries to initialize.
-      flushSync(() => {
-        this.setState((s) => ({ hasError: true, remountSeq: s.remountSeq + 1 }));
-      });
-
-      // ── STEP 2 ──────────────────────────────────────────────────────────
-      // Wait one macrotask + 2 animation frames so React's commit queue is
-      // 100% flushed, the browser has a chance to fire MutationObserver /
-      // ResizeObserver callbacks, and React-leaflet has finished its async
-      // tile worker teardown. THEN (and only then) sweep global Leaflet
-      // registries — now guaranteed to not affect a live map instance.
       window.setTimeout(() => {
         window.requestAnimationFrame(() => {
           window.requestAnimationFrame(() => {
@@ -222,20 +198,15 @@ class MapSelfHealingBoundary extends React.Component<
             } catch {
               void 0;
             }
-
-            // ── STEP 3 ──────────────────────────────────────────────────
-            // Now ask the parent to regenerate its `mapInstanceKey` random
-            // UUID then flip hasError off synchronously so React builds a
-            // FRESH <MapContainer> subtree into a truly clean container.
+            pruneLeafletPanel(document.querySelector('.location-map-panel') as HTMLElement | null);
             flushSync(() => {
               this.props.onRemount();
-              this.setState({ hasError: false });
+              this.setState((s) => ({ hasError: false, remountSeq: s.remountSeq + 1 }));
             });
           });
         });
       }, 120);
     } else {
-      // Re-throw non-Leaflet-initialization errors up the chain.
       throw error;
     }
   }
@@ -488,24 +459,18 @@ export default function Locations() {
     }
     setDirty(false);
     setLastSavedAt(null);
-    // ── Robust Leaflet re-init sequence ────────────────────────────────
-    // 0) Nuke every `_leaflet_id` / internal expando from the map panel
-    //    DOM subtree. Leaflet throws "Map container is already initialized"
-    //    when it sees a node with this signature already on it.
     stripLeafletDomSignatures(mapPanelRef.current);
-    // 1) Close the dialog first so React can fully flush the unmount of the
-    //    old MapContainer (and its DOM div). We then wait **two animation
-    //    frames** (~32 ms) instead of a microtask — this guarantees the
-    //    browser's layout engine has finished detaching the previous DOM
-    //    node (including React-leaflet's native `remove()` on unmount).
-    //    Using a microtask caused double-cleanup races under React
-    //    StrictMode, leading to the brand-new "being reused by another
-    //    instance" Leaflet 1.9 error.
-    setIsModalOpen(false);
-    window.setTimeout(() => {
+    const reopen = () => {
       setMapInstanceKey(crypto.randomUUID());
       setIsModalOpen(true);
-    }, 32);
+    };
+    if (isModalOpen) {
+      // Close first so the previous MapContainer fully unmounts, then reopen.
+      setIsModalOpen(false);
+      window.setTimeout(reopen, 50);
+    } else {
+      reopen();
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -1063,25 +1028,33 @@ export default function Locations() {
                           </div>
                         }
                       >
-                        <MapContainer
-                          center={mapCenter}
-                          zoom={16}
-                          style={{ height: '100%', width: '100%', minHeight: 320 }}
-                          scrollWheelZoom={true}
-                        >
-                          <TileLayer
-                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                          />
-                          <Marker position={[formData.latitude, formData.longitude]} />
-                          <Circle
-                            center={[formData.latitude, formData.longitude]}
-                            radius={formData.radius}
-                            pathOptions={{ color: 'indigo', fillColor: 'indigo', fillOpacity: 0.2 }}
-                          />
-                          <MapEvents formData={formData} setFormData={setFormData} />
-                          <MapResizeOnOpen when={isModalOpen} />
-                        </MapContainer>
+                        {/* Dedicated keyed host so Leaflet never reuses a prior container node. */}
+                        <div key={mapInstanceKey} className="h-full w-full min-h-[320px]">
+                          <MapContainer
+                            key={mapInstanceKey}
+                            center={mapCenter}
+                            zoom={16}
+                            style={{ height: '100%', width: '100%', minHeight: 320 }}
+                            scrollWheelZoom={true}
+                          >
+                            <TileLayer
+                              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                            />
+                            <Marker position={[formData.latitude, formData.longitude]} />
+                            <Circle
+                              center={[formData.latitude, formData.longitude]}
+                              radius={formData.radius}
+                              pathOptions={{
+                                color: 'indigo',
+                                fillColor: 'indigo',
+                                fillOpacity: 0.2,
+                              }}
+                            />
+                            <MapEvents formData={formData} setFormData={setFormData} />
+                            <MapResizeOnOpen when={isModalOpen} />
+                          </MapContainer>
+                        </div>
                       </Suspense>
                     </MapSelfHealingBoundary>
                   ) : isModalOpen ? (

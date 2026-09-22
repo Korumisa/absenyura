@@ -102,10 +102,47 @@ export const getDepartments = async (req: Request, res: Response): Promise<void>
     const facultySetting = await prisma.setting.findUnique({
       where: { key: 'FACULTIES_AND_DEPARTMENTS' },
     });
-    let data = [];
+    type FacultyRow = { name: string; departments: string[] };
+    let data: FacultyRow[] = [];
     if (facultySetting) {
-      data = JSON.parse(facultySetting.value);
+      try {
+        const parsed = JSON.parse(facultySetting.value);
+        data = Array.isArray(parsed) ? parsed : [];
+      } catch {
+        data = [];
+      }
     }
+
+    // Surface fakultas/prodi that exist on User.department (e.g. from Excel import)
+    // but were never written into Master Data settings.
+    const userDepartments = await prisma.user.findMany({
+      where: {
+        department: { not: null },
+      },
+      select: { department: true },
+      distinct: ['department'],
+    });
+    const normalize = (value: string) => value.trim().toLowerCase();
+    for (const row of userDepartments) {
+      const raw = String(row.department ?? '').trim();
+      if (!raw) continue;
+      const parts = raw
+        .split(/\s*[|/]\s*/)
+        .map((p) => p.trim())
+        .filter(Boolean);
+      const facultyName = parts.length >= 2 ? parts[0] : raw;
+      const prodiName = parts.length >= 2 ? parts[parts.length - 1] : raw;
+      let faculty = data.find((f) => normalize(String(f?.name ?? '')) === normalize(facultyName));
+      if (!faculty) {
+        faculty = { name: facultyName, departments: [] };
+        data.push(faculty);
+      }
+      if (!Array.isArray(faculty.departments)) faculty.departments = [];
+      if (!faculty.departments.some((d) => normalize(String(d)) === normalize(prodiName))) {
+        faculty.departments.push(prodiName);
+      }
+    }
+
     res.status(200).json({ success: true, data });
   } catch (error) {
     console.error('Error fetching departments:', error);

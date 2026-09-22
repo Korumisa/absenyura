@@ -178,7 +178,7 @@ export default function Classes() {
     setIsModalOpen(true);
   };
 
-  const formIsDirty = JSON.stringify(formData) !== formBaseline;
+  const formIsDirty = isModalOpen && JSON.stringify(formData) !== formBaseline;
   const { confirmIfDirty } = useFormDirtyGuard(formIsDirty);
 
   const handleSubmit = async (e: React.FormEvent) => {

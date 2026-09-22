@@ -833,6 +833,70 @@ export const importUsers = async (req: AuthRequest, res: Response): Promise<void
           })
         : { count: 0 };
 
+    // Sync unique faculty/prodi values from import column D into Master Data
+    // (FACULTIES_AND_DEPARTMENTS) so they appear on /master-data and in user forms.
+    const importedDepartments = Array.from(
+      new Set(
+        rowsToCreate
+          .map((row) => String(row.department ?? '').trim())
+          .filter((value) => value.length > 0)
+      )
+    );
+    let facultiesSynced = 0;
+    if (importedDepartments.length > 0) {
+      const facultySetting = await prisma.setting.findUnique({
+        where: { key: 'FACULTIES_AND_DEPARTMENTS' },
+      });
+      type FacultyRow = { name: string; departments: string[] };
+      let faculties: FacultyRow[] = [];
+      try {
+        const parsed = facultySetting?.value ? JSON.parse(facultySetting.value) : [];
+        faculties = Array.isArray(parsed) ? parsed : [];
+      } catch {
+        faculties = [];
+      }
+
+      const normalize = (value: string) => value.trim().toLowerCase();
+      let changed = false;
+      for (const raw of importedDepartments) {
+        // Support "Fakultas|Prodi" or "Fakultas / Prodi" in a single cell.
+        const parts = raw
+          .split(/\s*[|/]\s*/)
+          .map((p) => p.trim())
+          .filter(Boolean);
+        const facultyName = parts.length >= 2 ? parts[0] : raw;
+        const prodiName = parts.length >= 2 ? parts[parts.length - 1] : raw;
+
+        let faculty = faculties.find(
+          (f) => normalize(String(f?.name ?? '')) === normalize(facultyName)
+        );
+        if (!faculty) {
+          faculty = { name: facultyName, departments: [] };
+          faculties.push(faculty);
+          changed = true;
+          facultiesSynced++;
+        }
+        const depts = Array.isArray(faculty.departments) ? faculty.departments : [];
+        faculty.departments = depts;
+        if (!depts.some((d) => normalize(String(d)) === normalize(prodiName))) {
+          faculty.departments.push(prodiName);
+          changed = true;
+        }
+      }
+
+      if (changed) {
+        await prisma.setting.upsert({
+          where: { key: 'FACULTIES_AND_DEPARTMENTS' },
+          update: { value: JSON.stringify(faculties), updated_by: actor.id },
+          create: {
+            key: 'FACULTIES_AND_DEPARTMENTS',
+            value: JSON.stringify(faculties),
+            updated_by: actor.id,
+          },
+        });
+      }
+    }
+
     await prisma.auditLog.create({
       data: {
         actor_id: actor.id,
@@ -843,6 +907,7 @@ export const importUsers = async (req: AuthRequest, res: Response): Promise<void
           imported_users: createdUsers.count,
           created_classes: createdClassCount,
           created_enrollments: createdEnrollments.count,
+          faculties_synced: facultiesSynced,
           skipped_existing_users: parsedRows.length - rowsToCreate.length,
           skipped_duplicate_rows: duplicateRowCount,
           skipped_missing_nim_nip_rows: missingNimNipRowCount,
@@ -859,6 +924,7 @@ export const importUsers = async (req: AuthRequest, res: Response): Promise<void
         enrollment_date: importEnrollmentDate.toISOString(),
         classes_created: createdClassCount,
         class_enrollments_created: createdEnrollments.count,
+        faculties_synced: facultiesSynced,
         skipped_existing_users: parsedRows.length - rowsToCreate.length,
         skipped_duplicate_rows: duplicateRowCount,
         skipped_missing_nim_nip_rows: missingNimNipRowCount,
