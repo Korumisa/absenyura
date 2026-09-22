@@ -2,11 +2,19 @@ import { Response, NextFunction } from 'express';
 import { verifyAccessToken } from '../utils/jwt.js';
 import type { AuthRequest } from '../types/index.js';
 
+const DEV_BYPASS_AUTH_ACTIVE =
+  (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') &&
+  (process.env.DEV_BYPASS_AUTH === 'true' || process.env.DEV_BYPASS_AUTH === '1');
+
+if (DEV_BYPASS_AUTH_ACTIVE) {
+  console.warn(
+    '[SECURITY] DEV_BYPASS_AUTH is ACTIVE — all requests auto-authenticated as',
+    process.env.DEV_BYPASS_ROLE || 'SUPER_ADMIN'
+  );
+}
+
 export const authenticate = (req: AuthRequest, res: Response, next: NextFunction): void => {
-  const bypass =
-    (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') &&
-    (process.env.DEV_BYPASS_AUTH === 'true' || process.env.DEV_BYPASS_AUTH === '1');
-  if (bypass) {
+  if (DEV_BYPASS_AUTH_ACTIVE) {
     req.user = {
       id: process.env.DEV_BYPASS_USER_ID || 'dev-preview',
       role: process.env.DEV_BYPASS_ROLE || 'SUPER_ADMIN',
@@ -36,7 +44,7 @@ export const authenticate = (req: AuthRequest, res: Response, next: NextFunction
     const decoded = verifyAccessToken(token);
     req.user = decoded;
     next();
-  } catch (error) {
+  } catch {
     res.status(401).json({ success: false, error: 'Unauthorized: Invalid or expired token' });
     return;
   }
@@ -44,10 +52,7 @@ export const authenticate = (req: AuthRequest, res: Response, next: NextFunction
 
 export const authorize = (roles: string[]) => {
   return (req: AuthRequest, res: Response, next: NextFunction): void => {
-    const bypass =
-      (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') &&
-      (process.env.DEV_BYPASS_AUTH === 'true' || process.env.DEV_BYPASS_AUTH === '1');
-    if (bypass) {
+    if (DEV_BYPASS_AUTH_ACTIVE) {
       next();
       return;
     }

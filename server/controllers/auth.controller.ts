@@ -78,6 +78,7 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
 
     const newAccessToken = result.data.accessToken;
     const newRefreshToken = result.data.refreshToken;
+    const staleTab = Boolean(result.data.stale_tab);
 
     const isProduction = process.env.NODE_ENV === 'production';
     const cookieOptions = {
@@ -92,10 +93,14 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
       maxAge: 15 * 60 * 1000,
     });
 
-    res.cookie('refreshToken', newRefreshToken, {
-      ...cookieOptions,
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+    // Never Set-Cookie refreshToken on grace/stale paths — that would
+    // overwrite a newer token already written by a winning concurrent refresh.
+    if (newRefreshToken) {
+      res.cookie('refreshToken', newRefreshToken, {
+        ...cookieOptions,
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
+    }
 
     setCsrfCookie(res, isProduction);
 
@@ -103,6 +108,7 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
       success: true,
       data: {
         message: 'Sesi diperbarui.',
+        ...(staleTab ? { stale_tab: true } : {}),
       },
     });
   } catch (error: any) {

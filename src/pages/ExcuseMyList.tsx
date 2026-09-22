@@ -62,7 +62,7 @@ export default function ExcuseMyList() {
     const apiBase = String(import.meta.env.VITE_API_BASE_URL || '/api');
     const assetBase = apiBase.startsWith('http')
       ? new URL(apiBase).origin
-      : apiBase.replace(/\/api\/?$/, '');
+      : apiBase.replace(/\/api\/?$/, '') || window.location.origin;
     return `${assetBase}${proofUrl}`;
   };
 

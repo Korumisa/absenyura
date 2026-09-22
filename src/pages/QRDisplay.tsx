@@ -16,7 +16,6 @@ import { Badge } from '@/components/ui/badge';
 import { FadeIn } from '@/components/admin/FadeIn';
 
 const QR_ROTATE_MS = 15_000;
-const QR_PREFETCH_AT_MS = 12_000;
 const QR_SIZE = 380;
 
 export default function QRDisplay() {
@@ -120,12 +119,6 @@ export default function QRDisplay() {
       }
     }
   }, [session, fetchQR]);
-
-  useEffect(() => {
-    if (!session || session.qr_mode !== 'DYNAMIC' || session.status !== 'ACTIVE' || !qrData) return;
-    const timeoutId = setTimeout(() => fetchQR(), QR_PREFETCH_AT_MS);
-    return () => clearTimeout(timeoutId);
-  }, [qrData, session, fetchQR]);
 
   useEffect(() => {
     if (!qrData || !canvasRef.current) return;

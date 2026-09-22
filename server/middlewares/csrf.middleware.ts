@@ -1,20 +1,9 @@
 import type { Request, Response, NextFunction } from 'express';
+import { shouldSkipCsrfPath } from '../constants/internalRoutes.js';
 
 function isSafeMethod(method: string): boolean {
   const m = method.toUpperCase();
   return m === 'GET' || m === 'HEAD' || m === 'OPTIONS';
-}
-
-function shouldSkipPath(pathname: string): boolean {
-  if (pathname === '/api/auth/login') return true;
-  if (pathname === '/api/auth/refresh') return true;
-  if (pathname === '/api/auth/seed') return true;
-  if (pathname === '/api/auth/flush-db') return true;
-  if (pathname === '/api/health') return true;
-  if (pathname === '/api/health/db') return true;
-  if (pathname === '/api/status') return true;
-  if (pathname.startsWith('/api/cron')) return true;
-  return false;
 }
 
 export function csrfProtect(req: Request, res: Response, next: NextFunction): void {
@@ -24,7 +13,7 @@ export function csrfProtect(req: Request, res: Response, next: NextFunction): vo
   }
 
   const pathname = req.path || '';
-  if (shouldSkipPath(pathname)) {
+  if (shouldSkipCsrfPath(pathname)) {
     next();
     return;
   }
@@ -39,4 +28,3 @@ export function csrfProtect(req: Request, res: Response, next: NextFunction): vo
 
   next();
 }
-

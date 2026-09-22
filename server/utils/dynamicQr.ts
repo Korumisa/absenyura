@@ -3,7 +3,12 @@ import crypto from 'crypto';
 /** Rotasi QR dinamis — selaras dengan interval tampilan (15 detik) */
 export const QR_WINDOW_MS = 15_000;
 
-/** Grace check-in: cold start Vercel + upload selfie */
+/**
+ * Grace check-in: cold start Vercel + upload selfie.
+ * Age is measured from the bucket start (not capture instant), so usable
+ * wall-clock time varies ±QR_WINDOW_MS (~15s) by design — intentional
+ * anti-replay bound; do not "fix" by anchoring to capture time.
+ */
 export const QR_GRACE_MS = 90_000;
 
 export function getQrBucketTimestamp(nowMs: number = Date.now()): number {
@@ -18,16 +23,18 @@ export function signDynamicQrPayload(payload: string, secret: string): string {
   return crypto.createHmac('sha256', secret).update(payload).digest('hex');
 }
 
-export function buildDynamicQrToken(sessionId: string, secret: string, nowMs: number = Date.now()): string {
+export function buildDynamicQrToken(
+  sessionId: string,
+  secret: string,
+  nowMs: number = Date.now()
+): string {
   const bucketTimestamp = getQrBucketTimestamp(nowMs);
   const payload = buildDynamicQrPayload(sessionId, bucketTimestamp);
   const signature = signDynamicQrPayload(payload, secret);
   return `${payload}:${signature}`;
 }
 
-export type DynamicQrValidationResult =
-  | { ok: true }
-  | { ok: false; error: string; status: number };
+export type DynamicQrValidationResult = { ok: true } | { ok: false; error: string; status: number };
 
 /**
  * Validasi token dinamis: HMAC + bucket saat ini/sebelumnya + batas umur.
@@ -55,7 +62,11 @@ export function validateDynamicQrToken(
 
   const scannedTimestamp = parseInt(scannedTimestampStr, 10);
   if (!Number.isFinite(scannedTimestamp) || scannedTimestamp < 0) {
-    return { ok: false, status: 400, error: 'Format QR tidak valid. Pastikan Anda men-scan QR Dinamis yang benar.' };
+    return {
+      ok: false,
+      status: 400,
+      error: 'Format QR tidak valid. Pastikan Anda men-scan QR Dinamis yang benar.',
+    };
   }
 
   const payload = buildDynamicQrPayload(scannedSessionId, scannedTimestamp);
@@ -90,8 +101,7 @@ export function validateDynamicQrToken(
   // Toleransi satu window mundur: token dari bucket sebelumnya masih sah di awal window baru
   const bucketAligned = scannedTimestamp % QR_WINDOW_MS === 0;
   const inAllowedWindow =
-    bucketAligned &&
-    (scannedTimestamp === serverBucket || scannedTimestamp === serverPrevBucket);
+    bucketAligned && (scannedTimestamp === serverBucket || scannedTimestamp === serverPrevBucket);
 
   if (!inAllowedWindow) {
     return { ok: false, status: 400, error: 'QR Code sudah kedaluwarsa. Silakan scan ulang' };

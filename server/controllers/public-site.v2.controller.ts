@@ -325,120 +325,159 @@ export const getAdminStructure = async (req: Request, res: Response): Promise<vo
 };
 
 export const replaceAdminStructure = async (req: AuthRequest, res: Response): Promise<void> => {
+  const { cabinetName, cabinetPeriod, data } = req.body ?? ({} as any);
+  const actorId = req.user?.id ?? null;
+  const cabinetNameTrunc = String(cabinetName || '').slice(0, 60);
+
+  if (!Array.isArray(data) || !cabinetName || !cabinetPeriod) {
+    res.status(400).json({ success: false, error: 'Data, nama kabinet, dan periode tidak valid' });
+    return;
+  }
+
   try {
-    const { cabinetName, cabinetPeriod, data } = req.body;
-    if (!Array.isArray(data) || !cabinetName || !cabinetPeriod) {
-      res
-        .status(400)
-        .json({ success: false, error: 'Data, nama kabinet, dan periode tidak valid' });
-      return;
-    }
-
-    await prisma.$transaction(async (tx) => {
-      // First deactivate all other cabinets
-      await tx.publicStructureCabinet.updateMany({
-        where: { is_active: true },
-        data: { is_active: false },
-      });
-
-      // Create new cabinet
-      const cabinet = await tx.publicStructureCabinet.create({
-        data: {
-          name: String(cabinetName).trim(),
-          period: String(cabinetPeriod).trim(),
-          is_active: true,
-          sort_order: 0,
-        },
-      });
-
-      // Create groups and members
-      for (let gi = 0; gi < data.length; gi += 1) {
-        const g = data[gi] ?? {};
-        const title = String(g.title ?? '').trim();
-        if (!title) continue;
-        const is_core = Boolean((g as any).isCore ?? (g as any).is_core ?? false);
-        const group = await tx.publicStructureGroup.create({
-          data: {
-            cabinet_id: cabinet.id,
-            title,
-            sort_order: toInt(g.sortOrder, gi),
-            is_core,
-          } as any,
-        });
-        const people = Array.isArray(g.people) ? g.people : [];
-        let usedSpotlight = false;
-        for (let pi = 0; pi < people.length; pi += 1) {
-          const p = people[pi] ?? {};
-          const name = String(p.name ?? '').trim();
-          const role = String(p.role ?? '').trim();
-          if (!name || !role) continue;
-          const photo_url = String(p.photoUrl ?? '').trim() || null;
-          const wantsSpotlight = Boolean(
-            (p as any).isSpotlight ?? (p as any).is_spotlight ?? false
-          );
-          const is_spotlight = wantsSpotlight && !usedSpotlight;
-          if (is_spotlight) usedSpotlight = true;
-          await tx.publicStructureMember.create({
-            data: {
-              group_id: group.id,
-              name,
-              role,
-              photo_url,
-              is_spotlight,
-              sort_order: toInt(p.sortOrder, pi),
-            } as any,
+    await withTransientRetry(
+      () =>
+        prisma.$transaction(async (tx) => {
+          // First deactivate all other cabinets
+          await tx.publicStructureCabinet.updateMany({
+            where: { is_active: true },
+            data: { is_active: false },
           });
-        }
-      }
-    });
 
-    await prisma.auditLog.create({
-      data: {
-        actor_id: req.user?.id ?? null,
-        action: 'REPLACE_PUBLIC_STRUCTURE',
-        target_table: 'PublicStructure',
-        target_id: 'ALL',
-        new_value: JSON.stringify({ cabinetName, cabinetPeriod, data }),
-        ip_address: req.ip,
-      },
-    });
+          // Create new cabinet
+          const cabinet = await tx.publicStructureCabinet.create({
+            data: {
+              name: String(cabinetName).trim(),
+              period: String(cabinetPeriod).trim(),
+              is_active: true,
+              sort_order: 0,
+            },
+          });
+
+          // Create groups and members
+          for (let gi = 0; gi < data.length; gi += 1) {
+            const g = data[gi] ?? {};
+            const title = String(g.title ?? '').trim();
+            if (!title) continue;
+            const is_core = Boolean((g as any).isCore ?? (g as any).is_core ?? false);
+            const group = await tx.publicStructureGroup.create({
+              data: {
+                cabinet_id: cabinet.id,
+                title,
+                sort_order: toInt(g.sortOrder, gi),
+                is_core,
+              } as any,
+            });
+            const people = Array.isArray(g.people) ? g.people : [];
+            let usedSpotlight = false;
+            for (let pi = 0; pi < people.length; pi += 1) {
+              const p = people[pi] ?? {};
+              const name = String(p.name ?? '').trim();
+              const role = String(p.role ?? '').trim();
+              if (!name || !role) continue;
+              const photo_url = String(p.photoUrl ?? '').trim() || null;
+              const wantsSpotlight = Boolean(
+                (p as any).isSpotlight ?? (p as any).is_spotlight ?? false
+              );
+              const is_spotlight = wantsSpotlight && !usedSpotlight;
+              if (is_spotlight) usedSpotlight = true;
+              await tx.publicStructureMember.create({
+                data: {
+                  group_id: group.id,
+                  name,
+                  role,
+                  photo_url,
+                  is_spotlight,
+                  sort_order: toInt(p.sortOrder, pi),
+                } as any,
+              });
+            }
+          }
+
+          // Audit must be atomic with structure write to avoid phantom-save
+          // (data committed, client still gets 5xx → duplicate cabinets on retry).
+          await tx.auditLog.create({
+            data: {
+              actor_id: actorId,
+              action: 'REPLACE_PUBLIC_STRUCTURE',
+              target_table: 'PublicStructure',
+              target_id: 'ALL',
+              new_value: JSON.stringify({ cabinetName, cabinetPeriod, data }),
+              ip_address: req.ip,
+            },
+          });
+        }),
+      2,
+      300
+    );
 
     res.status(200).json({ success: true, message: 'Struktur organisasi berhasil disimpan' });
   } catch (error) {
-    console.error('Error replacing structure:', error);
-    sendInternalServerError(res, error);
+    const e = error as { code?: unknown; name?: unknown; message?: unknown };
+    const errCode = typeof e.code === 'string' ? e.code : '';
+    const errName = typeof e.name === 'string' ? e.name : 'Error';
+    const errMsg = String(
+      e.message ?? (error instanceof Error ? error.message : error) ?? ''
+    ).slice(0, 360);
+    console.error(
+      `[admin-structure:save] actor=${actorId || 'anon'} cabinet=${cabinetNameTrunc} code=${
+        errCode || 'n/a'
+      } name=${errName} msg=${errMsg}`
+    );
+
+    if (isPrismaConnectionError(error)) {
+      sendServiceUnavailable(res, {
+        error: 'Database unavailable',
+        fallbackData: STRUCTURE_FALLBACK,
+        reason: errMsg || errCode || errName,
+      });
+      return;
+    }
+
+    sendInternalServerError(res, error, STRUCTURE_FALLBACK);
   }
 };
 
 export const setActiveCabinet = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    await prisma.$transaction(async (tx) => {
-      await tx.publicStructureCabinet.updateMany({
-        where: { is_active: true },
-        data: { is_active: false },
-      });
-      await tx.publicStructureCabinet.update({
-        where: { id },
-        data: { is_active: true },
-      });
-    });
-
-    await prisma.auditLog.create({
-      data: {
-        actor_id: req.user?.id ?? null,
-        action: 'SET_ACTIVE_CABINET',
-        target_table: 'PublicStructureCabinet',
-        target_id: id,
-        new_value: JSON.stringify({ is_active: true }),
-        ip_address: req.ip,
-      },
-    });
+    await withTransientRetry(
+      () =>
+        prisma.$transaction(async (tx) => {
+          await tx.publicStructureCabinet.updateMany({
+            where: { is_active: true },
+            data: { is_active: false },
+          });
+          await tx.publicStructureCabinet.update({
+            where: { id },
+            data: { is_active: true },
+          });
+          await tx.auditLog.create({
+            data: {
+              actor_id: req.user?.id ?? null,
+              action: 'SET_ACTIVE_CABINET',
+              target_table: 'PublicStructureCabinet',
+              target_id: id,
+              new_value: JSON.stringify({ is_active: true }),
+              ip_address: req.ip,
+            },
+          });
+        }),
+      2,
+      300
+    );
 
     res.status(200).json({ success: true, message: 'Kabinet aktif diubah' });
   } catch (error) {
-    console.error('Error setting active cabinet:', error);
-    sendInternalServerError(res, error);
+    console.error('[admin-structure:set-active]', error);
+    if (isPrismaConnectionError(error)) {
+      sendServiceUnavailable(res, {
+        error: 'Database unavailable',
+        fallbackData: STRUCTURE_FALLBACK,
+      });
+      return;
+    }
+    sendInternalServerError(res, error, STRUCTURE_FALLBACK);
   }
 };
 

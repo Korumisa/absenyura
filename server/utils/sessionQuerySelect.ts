@@ -78,9 +78,6 @@ export const locationCheckInSelect = {
   wifi_bssid: true,
 } as const;
 
-/** @deprecated use locationCheckInSelect */
-export const locationAttendSelect = locationCheckInSelect;
-
 /** check-in handler — session fields only (server-side validation) */
 export const sessionCheckInSelect = {
   id: true,

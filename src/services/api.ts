@@ -84,6 +84,26 @@ export const verifySession = async () => {
     const res = await api.post('/auth/refresh', { device_fingerprint });
     lastSuccessfulRefreshAt = Date.now(); // ← catat waktu berhasil
     processQueue(null);
+
+    // Grace path: access cookie refreshed; refresh cookie left untouched so a
+    // newer token from another tab is not overwritten. Toast once per tab —
+    // do NOT auto-reload (that caused a grace→reload loop).
+    if (res?.data?.data?.stale_tab === true) {
+      const toastKey = 'absenyura:stale-tab-toast';
+      try {
+        if (!sessionStorage.getItem(toastKey)) {
+          sessionStorage.setItem(toastKey, '1');
+          toast.info(
+            'Tab ini sempat tidak sinkron. Jika ada masalah, refresh halaman secara manual.'
+          );
+        }
+      } catch {
+        toast.info(
+          'Tab ini sempat tidak sinkron. Jika ada masalah, refresh halaman secara manual.'
+        );
+      }
+    }
+
     return res;
   } catch (refreshError) {
     processQueue(refreshError);

@@ -2,12 +2,19 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../utils/jwt.js';
 import { safeCompare } from '../utils/security.js';
+import { isBlockedInProduction } from '../constants/internalRoutes.js';
 import * as maintenanceRepository from '../repositories/maintenanceRepository.js';
 import * as userRepository from '../repositories/userRepository.js';
 
 type ServiceFailure = { ok: false; status: number; body: unknown };
 type ServiceSuccess<T> = { ok: true; data: T };
 type ServiceResult<T> = ServiceFailure | ServiceSuccess<T>;
+type RefreshSuccessData = {
+  accessToken: string;
+  /** null on grace/stale-tab paths so the controller does not overwrite a newer cookie */
+  refreshToken: string | null;
+  stale_tab?: boolean;
+};
 
 const authUserSelect = {
   id: true,
@@ -193,7 +200,7 @@ function isWithinGrace(row: {
 export async function refresh(params: {
   refreshToken: unknown;
   device_fingerprint?: unknown;
-}): Promise<ServiceResult<{ accessToken: string; refreshToken: string }>> {
+}): Promise<ServiceResult<RefreshSuccessData>> {
   const refreshToken = typeof params.refreshToken === 'string' ? params.refreshToken : '';
   const device_fingerprint =
     typeof params.device_fingerprint === 'string' ? params.device_fingerprint : undefined;
@@ -301,11 +308,15 @@ export async function refresh(params: {
       };
     }
 
-    // Don't rotate again — just hand back a fresh access token and the same
-    // refresh token the client already has, so it keeps matching "previous"
-    // until it naturally picks up the real current token via a later call.
+    // Don't rotate again and do NOT re-issue the presented (stale) refresh
+    // token — returning it would let this response overwrite a newer cookie
+    // already set by the winning tab. Issue a fresh access token only and
+    // flag stale_tab so the client can warn without forcing a reload loop.
     const currentAccessToken = generateAccessToken(user.id, user.role);
-    return { ok: true, data: { accessToken: currentAccessToken, refreshToken } };
+    return {
+      ok: true,
+      data: { accessToken: currentAccessToken, refreshToken: null, stale_tab: true },
+    };
   }
 
   // Normal rotation path. Generate the new pair first, then attempt an
@@ -351,7 +362,10 @@ export async function refresh(params: {
     isWithinGrace(latest) &&
     safeCompare(latest.previous_refresh_token_hash as string, presentedHash)
   ) {
-    return { ok: true, data: { accessToken: newAccessToken, refreshToken } };
+    return {
+      ok: true,
+      data: { accessToken: newAccessToken, refreshToken: null, stale_tab: true },
+    };
   }
 
   // Shouldn't normally happen (would mean a third actor — e.g. a concurrent
@@ -419,7 +433,7 @@ export async function seedAdmin(params: {
     updated_at: Date;
   }>
 > {
-  if (params.nodeEnv === 'production') {
+  if (isBlockedInProduction('/api/auth/seed', params.nodeEnv)) {
     return { ok: false, status: 404, body: { success: false, error: 'Not found' } };
   }
 
@@ -485,7 +499,7 @@ export async function flushDb(params: {
   incomingSeedSecret: unknown;
   expectedSeedSecret: string | undefined;
 }): Promise<ServiceResult<{ message: string }>> {
-  if (params.nodeEnv === 'production') {
+  if (isBlockedInProduction('/api/auth/flush-db', params.nodeEnv)) {
     return { ok: false, status: 404, body: { success: false, error: 'Not found' } };
   }
 

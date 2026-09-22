@@ -14,10 +14,11 @@ import AdminCard from '@/components/AdminCard';
 import { AdminCardActions } from '@/components/admin/AdminCardActions';
 import PublicSiteStructurePreview from '@/components/publicSiteAdmin/PublicSiteStructurePreview';
 import { CmsEditorLayout } from '@/components/cms/CmsEditorLayout';
-import { Layers, Plus as PlusIcon } from 'lucide-react';
+import { Layers, Plus as PlusIcon, AlertTriangle, AlertCircle } from 'lucide-react';
 import { useFormDirtyGuard } from '@/hooks/useFormDirtyGuard';
 import { LastSavedIndicator } from '@/components/admin/LastSavedIndicator';
 import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
+import { retryWithBackoff } from '@/lib/http/retryWithBackoff';
 
 export default function PublicSiteStructure() {
   const formId = React.useId();
@@ -85,6 +86,10 @@ export default function PublicSiteStructure() {
 
   const [saving, setSaving] = useState(false);
   const [uploadingKey, setUploadingKey] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<{
+    message: string;
+    variant: 'warning' | 'danger';
+  } | null>(null);
   const [confirm, setConfirm] = useState<{
     open: boolean;
     title: string;
@@ -131,19 +136,42 @@ export default function PublicSiteStructure() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const payload = groups.map((g, gi) => ({
-        title: g.title,
-        isCore: g.isCore,
-        sortOrder: gi,
-        people: (g.people ?? []).map((p, pi) => ({
-          name: p.name,
-          role: p.role,
-          photoUrl: p.photoUrl,
-          isSpotlight: p.isSpotlight,
-          sortOrder: pi,
-        })),
-      }));
-      await api.put('/public-site/admin/structure', { cabinetName, cabinetPeriod, data: payload });
+      // Drop empty draft rows before Zod — blank "Tambah Grup/Anggota" rows
+      // would otherwise fail min(1) validation with a hard 400.
+      const payload = groups
+        .map((g, gi) => ({
+          title: String(g.title ?? '').trim(),
+          isCore: g.isCore,
+          sortOrder: gi,
+          people: (g.people ?? [])
+            .map((p, pi) => ({
+              name: String(p.name ?? '').trim(),
+              role: String(p.role ?? '').trim(),
+              photoUrl: p.photoUrl,
+              isSpotlight: p.isSpotlight,
+              sortOrder: pi,
+            }))
+            .filter((p) => p.name && p.role),
+        }))
+        .filter((g) => g.title);
+
+      if (!String(cabinetName ?? '').trim() || !String(cabinetPeriod ?? '').trim()) {
+        setSaveError({
+          message: 'Nama kabinet dan periode wajib diisi sebelum menyimpan.',
+          variant: 'danger',
+        });
+        return;
+      }
+
+      await retryWithBackoff(
+        () =>
+          api.put('/public-site/admin/structure', { cabinetName, cabinetPeriod, data: payload }),
+        {
+          maxRetries: 3,
+          baseDelayMs: 400,
+        }
+      );
+      setSaveError(null);
       toastSuccess('Struktur organisasi tersimpan');
       setLastSavedAt(new Date());
       setViewingCabinetId(null); // Reset to new active cabinet after saving
@@ -151,6 +179,24 @@ export default function PublicSiteStructure() {
       setDirty(false);
       mutate();
     } catch (e: any) {
+      const status = e?.response?.status;
+      const rawMessage =
+        typeof e?.response?.data?.error === 'string' ? e.response.data.error : null;
+      let message = 'Terjadi kesalahan internal. Periksa koneksi lalu coba lagi nanti.';
+      let variant: 'warning' | 'danger' = 'danger';
+      if (status === 400) {
+        message = rawMessage ?? 'Data tidak valid. Periksa isian lalu coba lagi.';
+        variant = 'danger';
+      } else if (status === 503) {
+        message =
+          'Server sedang sibuk atau koneksi database terganggu. Anda bisa klik Coba Lagi atau tunggu beberapa saat.';
+        variant = 'warning';
+      } else if (status === 500) {
+        message =
+          'Terjadi kesalahan saat menyimpan. Data Anda tetap tersimpan di form. Silakan coba beberapa saat lagi.';
+        variant = 'danger';
+      }
+      setSaveError({ message, variant });
       toastError(e, 'Gagal menyimpan');
     } finally {
       setSaving(false);
@@ -240,11 +286,7 @@ export default function PublicSiteStructure() {
             </Button>
           }
         >
-          <LastSavedIndicator
-            lastSavedAt={lastSavedAt}
-            isDirty={dirty}
-            isSaving={saving}
-          />
+          <LastSavedIndicator lastSavedAt={lastSavedAt} isDirty={dirty} isSaving={saving} />
           {/* Cabinet Info */}
           <div className="mb-6 flex flex-col gap-3">
             <div className="flex flex-col gap-2">
@@ -613,6 +655,38 @@ export default function PublicSiteStructure() {
               ))}
             </div>
           )}
+
+          {saveError ? (
+            <div
+              role="alert"
+              aria-live="polite"
+              className={
+                'mb-5 flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between ' +
+                (saveError.variant === 'warning'
+                  ? 'border-amber-200 bg-amber-50/60 text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-100'
+                  : 'border-red-200 bg-red-50/60 text-red-900 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-100')
+              }
+            >
+              <div className="flex items-start gap-3">
+                {saveError.variant === 'warning' ? (
+                  <AlertTriangle className="mt-0.5 size-5 shrink-0" aria-hidden="true" />
+                ) : (
+                  <AlertCircle className="mt-0.5 size-5 shrink-0" aria-hidden="true" />
+                )}
+                <p className="text-sm font-medium leading-relaxed">{saveError.message}</p>
+              </div>
+              <Button
+                type="button"
+                variant={saveError.variant === 'warning' ? 'default' : 'destructive'}
+                size="sm"
+                onClick={handleSave}
+                disabled={saving || !dirty}
+                className="shrink-0 sm:ml-4"
+              >
+                {saving ? 'Menyimpan...' : 'Coba Lagi'}
+              </Button>
+            </div>
+          ) : null}
 
           <AdminCardActions>
             <Button

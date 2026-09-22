@@ -13,7 +13,6 @@ export * from './perf/lazyWithRetry';
 export * from './perf/loadFonts';
 export * from './perf/motionPresets';
 export * from './perf/networkEvents';
-export { default as useFirstLoadOverlay } from './perf/useFirstLoadOverlay';
 
 export * from './storage/deviceFingerprint';
 export * from './storage/idb';

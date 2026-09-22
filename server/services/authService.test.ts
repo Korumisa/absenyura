@@ -213,7 +213,8 @@ describe('authService refresh token hash', () => {
     expect(second.ok).toBe(true);
     if (second.ok) {
       expect(second.data.accessToken).toBe('second-access-token');
-      expect(second.data.refreshToken).toBe(oldToken); // should not rotate, return old token
+      expect(second.data.refreshToken).toBeNull(); // do not re-issue stale refresh cookie
+      expect(second.data.stale_tab).toBe(true);
     }
     expect(userRepositoryMock.rotateRefreshTokenHash).toHaveBeenCalledTimes(1); // rotateRefreshTokenHash should not be called a second time
 

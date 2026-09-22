@@ -2,7 +2,13 @@ import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import api from '@/services/api';
 import { toast } from 'sonner';
-import { toastError, toastSuccess, toastSuccessMessage, toastInfo, toastWarning } from '@/lib/utils/toastMessage';
+import {
+  toastError,
+  toastSuccess,
+  toastSuccessMessage,
+  toastInfo,
+  toastWarning,
+} from '@/lib/utils/toastMessage';
 import {
   MapPin,
   QrCode,
@@ -39,6 +45,7 @@ import {
   releaseActiveVideoTracks,
   registerPendingCameraRelease,
 } from '@/lib/media/camera';
+import { drawCaptureWatermark } from '@/lib/media/drawCaptureWatermark';
 import ActionLoadingOverlay from '@/components/ActionLoadingOverlay';
 import { useAppStatusStore } from '@/stores/appStatusStore';
 
@@ -522,34 +529,14 @@ export default function Attend() {
       canvas.height = height;
       const ctx = canvas.getContext('2d');
       if (ctx) {
-        // Balik canvas secara horizontal jika menggunakan kamera depan agar hasil foto tidak mirror (sama dengan yang dilihat user)
-        if (facingMode === 'user') {
-          ctx.translate(canvas.width, 0);
-          ctx.scale(-1, 1);
-        }
-
+        // Unmirrored capture so proof matches reality; live preview uses CSS scaleX(-1).
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-        // Kembalikan transformasi sebelum menulis teks agar teks tidak terbalik
-        if (facingMode === 'user') {
-          ctx.translate(canvas.width, 0);
-          ctx.scale(-1, 1);
-        }
-
-        // Add watermark
-        ctx.font = '14px Arial';
-        ctx.fillStyle = 'yellow';
-        ctx.shadowColor = 'black';
-        ctx.shadowBlur = 4;
-        ctx.fillText(`${new Date().toLocaleString()}`, 10, canvas.height - 30);
+        const watermarkLines = [`${new Date().toLocaleString()}`];
         if (location) {
-          ctx.fillText(
-            `Lat: ${location.lat.toFixed(5)}, Lng: ${location.lng.toFixed(5)}`,
-            10,
-            canvas.height - 10
-          );
+          watermarkLines.push(`Lat: ${location.lat.toFixed(5)}, Lng: ${location.lng.toFixed(5)}`);
         }
-        ctx.shadowBlur = 0; // reset
+        drawCaptureWatermark(ctx, watermarkLines, { bottomY: canvas.height - 10 });
 
         canvas.toBlob(
           (blob) => {

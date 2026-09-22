@@ -47,6 +47,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { formatClassLabel, excuseBadgeVariant, excuseReasonLabel } from '@/lib/utils/classLabel';
+import { escapeCsv } from '@/lib/utils/csv';
+import { drawCaptureWatermark } from '@/lib/media/drawCaptureWatermark';
 import AdminPageShell from '@/components/AdminPageShell';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
@@ -113,10 +115,13 @@ export default function Excuses() {
   const { confirmIfDirty } = useFormDirtyGuard(dirty);
 
   const setFormDataDirty = useMemo(
-    () => (updater: React.SetStateAction<{ session_id: string; reason: string; description: string }>) => {
-      setDirty(true);
-      setFormData(updater);
-    },
+    () =>
+      (
+        updater: React.SetStateAction<{ session_id: string; reason: string; description: string }>
+      ) => {
+        setDirty(true);
+        setFormData(updater);
+      },
     []
   );
   const setPhotoBlobDirty = useMemo(
@@ -174,10 +179,21 @@ export default function Excuses() {
   // Camera: dilepas HANYA saat unmount — jangan gabungkan dengan photoPreviewUrl
   // sebab cleanup effect dengan deps [photoPreviewUrl] akan memanggil stopCamera()
   // setiap kali URL berubah, termasuk saat retakePhoto() sedang mengakuisisi stream baru.
-
+  // Inline cleanup (refs only) so this stays mount/unmount-stable for exhaustive-deps.
   useEffect(() => {
+    const videoEl = videoRef.current;
     return () => {
-      stopCamera();
+      if (pendingStreamRef.current) {
+        releaseMediaStream(pendingStreamRef.current);
+        pendingStreamRef.current = null;
+      }
+      const stream = videoEl?.srcObject as MediaStream | null;
+      if (stream) {
+        releaseMediaStream(stream);
+      }
+      if (videoEl) {
+        videoEl.srcObject = null;
+      }
       void releaseActiveVideoTracks();
     };
   }, []);
@@ -267,23 +283,9 @@ export default function Excuses() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    if (facingMode === 'user') {
-      ctx.translate(canvas.width, 0);
-      ctx.scale(-1, 1);
-    }
+    // Draw unmirrored so proof photos match reality; preview mirrors via CSS.
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    if (facingMode === 'user') {
-      ctx.translate(canvas.width, 0);
-      ctx.scale(-1, 1);
-    }
-
-    ctx.font = '14px Arial';
-    ctx.fillStyle = 'yellow';
-    ctx.shadowColor = 'black';
-    ctx.shadowBlur = 4;
-    ctx.fillText(`${new Date().toLocaleString()}`, 10, canvas.height - 10);
-    ctx.shadowBlur = 0;
+    drawCaptureWatermark(ctx, [`${new Date().toLocaleString()}`]);
 
     canvas.toBlob(
       (blob) => {
@@ -335,7 +337,7 @@ export default function Excuses() {
     const apiBase = String(import.meta.env.VITE_API_BASE_URL || '/api');
     const assetBase = apiBase.startsWith('http')
       ? new URL(apiBase).origin
-      : apiBase.replace(/\/api\/?$/, '');
+      : apiBase.replace(/\/api\/?$/, '') || window.location.origin;
     return `${assetBase}${proofUrl}`;
   };
 
@@ -459,13 +461,6 @@ export default function Excuses() {
   });
 
   const exportCsv = () => {
-    const escapeCsv = (value: unknown) => {
-      const raw = String(value ?? '');
-      const normalized = raw.replace(/\r?\n/g, ' ').trim();
-      if (/[",]/.test(normalized)) return `"${normalized.replace(/"/g, '""')}"`;
-      return normalized;
-    };
-
     const rows = filteredExcuses.map((ex) => {
       const proof =
         ex.proof_url && (ex.proof_url.startsWith('http') || ex.proof_url.startsWith('data:'))
@@ -485,7 +480,7 @@ export default function Excuses() {
               return result ? [result] : [];
             }) ?? [];
           if (labels.length) return labels.join(', ');
-          return ex.session?.class ? formatClassLabel(ex.session.class) : '';
+          return ex.session?.class ? formatClassLabel(ex.session.class) : '—';
         })(),
         ex.reason ?? '',
         ex.status ?? '',
@@ -1065,7 +1060,9 @@ export default function Excuses() {
                       <video
                         ref={videoRef}
                         autoPlay
-                        className="aspect-video w-full rounded-lg bg-black object-cover pointer-events-none"
+                        className={`aspect-video w-full rounded-lg bg-black object-cover pointer-events-none ${
+                          facingMode === 'user' ? 'scale-x-[-1]' : ''
+                        }`}
                         playsInline
                         muted
                         aria-hidden="true"
