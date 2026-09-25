@@ -13,7 +13,7 @@ model User {
   name                        String
   email                       String   @unique
   password                    String
-  role                        String   @default("USER") // SUPER_ADMIN, ADMIN, USER
+  role                        String   @default("USER") // SUPER_ADMIN | ADMIN | CONTENT_ADMIN | USER
   avatar_url                  String?
   nim_nip                     String?  @unique
   department                  String?
@@ -40,13 +40,8 @@ model User {
   @@index([role, is_active])
 }
 
-model Organization {
-  id         String   @id @default(uuid())
-  name       String
-  logo_url   String?
-  address    String?
-  created_at DateTime @default(now())
-}
+// TODO(2026-Q4): drop organization table (orphan model — approved for delete by PM 2026-09-24;
+//                  pending dedicated destructive migration PR with _confirmHost guard)
 
 model Class {
   id          String   @id @default(uuid())

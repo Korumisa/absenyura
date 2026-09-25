@@ -59,7 +59,7 @@ import { TablePagination } from '@/components/ui/TablePagination';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
 import { SlowLoadingHint } from '@/components/admin/SlowLoadingHint';
-import { attendanceStatusLabel } from '@/lib/utils/statusLabel';
+import { attendanceStatusLabel } from '@/lib/utils/classLabel';
 import { AttendanceStatusBadge } from '@/components/AttendanceStatusBadge';
 import { toastErrorMessage } from '@/lib/utils/toastMessage';
 import { useMutationToast } from '@/hooks/useMutationToast';

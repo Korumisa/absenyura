@@ -8,7 +8,7 @@ import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { toastErrorMessage, toastWarning } from '@/lib/utils/toastMessage';
 import { useMutationToast } from '@/hooks/useMutationToast';
-import { sessionStatusLabel } from '@/lib/utils/statusLabel';
+import { sessionStatusLabel } from '@/lib/utils/classLabel';
 import { Button } from '@/components/ui/button';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { Input } from '@/components/ui/input';

@@ -44,6 +44,7 @@ export {
 } from './utils/classLabel';
 export * from './utils/publicContent';
 export * from './utils/reportLabel';
-export { sessionStatusLabel, userRoleLabel, excuseStatusLabel } from './utils/statusLabel';
+// NOTE: attendanceStatusLabel, attendanceBadgeVariant imported directly by pages
+export { sessionStatusLabel, userRoleLabel, excuseStatusLabel } from './utils/classLabel';
 export * from './utils/toastMessage';
 export * from './utils/utils';

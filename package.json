@@ -17,8 +17,6 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",
-    "lhci": "echo '⚠️  LHCI server belum dikonfigurasi — jalankan: npm i -D @lhci/cli dan buat lighthouserc.js'",
-    "lighthouse": "echo '⚠️  Lighthouse CLI butuh global: npm i -g lighthouse, lalu lighthouse http://localhost:5173 --view'",
     "preview": "vite preview",
     "check": "tsc --noEmit",
     "test": "vitest run",
@@ -31,11 +29,14 @@
     "prepare": "husky"
   },
   "lint-staged": {
-    "{api,server,src,prisma,scripts,tests}/**/*.{ts,tsx,js,jsx,json,css,md}": [
+    "{api,server,src,prisma,scripts,tests,.trae}/**/*.{ts,tsx,js,jsx,json,css,md}": [
       "prettier --write",
       "eslint --fix"
     ],
-    "*.{json,md,css}": [
+    "*.{json,md,css,yml,yaml}": [
+      "prettier --write"
+    ],
+    ".trae/**/*.{json,md,yml,yaml}": [
       "prettier --write"
     ]
   },
