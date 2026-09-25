@@ -6,6 +6,11 @@ import { v2 as cloudinary } from 'cloudinary';
 import { sendInternalServerError, sendServiceUnavailable } from '../utils/errorResponse.js';
 import { isPrismaConnectionError } from '../utils/prismaTransient.js';
 import { sanitizeWebUrl } from '../utils/sanitizeUrl.js';
+import {
+  loadPublicHome,
+  loadPublicStructure,
+  PUBLIC_STRUCTURE_EMPTY,
+} from '../services/publicHome.js';
 import fs from 'fs';
 
 function toInt(value: unknown, fallback: number) {
@@ -127,6 +132,26 @@ export const getPublicProfile = async (req: Request, res: Response): Promise<voi
   }
 };
 
+/** Single-request beranda — one Prisma client / one pooler connection instead of 6–7 GETs. */
+export const getPublicHome = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const cabinetId = typeof req.query?.cabinetId === 'string' ? req.query.cabinetId.trim() : '';
+    const data = await loadPublicHome(cabinetId || undefined);
+    res.status(200).json({ success: true, data });
+  } catch (error) {
+    console.error('[public-home] Fetch failed:', error);
+    sendInternalServerError(res, error, {
+      profile: null,
+      programs: [],
+      structure: PUBLIC_STRUCTURE_EMPTY,
+      latest: { items: [], total: 0, page: 1, pageSize: 3, totalPages: 1 },
+      lomba: { items: [], total: 0, page: 1, pageSize: 6, totalPages: 1 },
+      galleries: [],
+      recruitments: [],
+    });
+  }
+};
+
 export const upsertAdminProfile = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const data = req.body?.data;
@@ -194,13 +219,7 @@ export const upsertAdminProfile = async (req: AuthRequest, res: Response): Promi
   }
 };
 
-const PUBLIC_STRUCTURE_EMPTY = {
-  data: [] as unknown[],
-  cabinet: null,
-  allCabinets: [] as unknown[],
-};
-
-/** Lean nested select for structure reads (omit unused timestamps). */
+/** Lean nested select for admin structure reads (omit unused timestamps). */
 const structureGroupsSelect = {
   orderBy: [{ sort_order: 'asc' as const }],
   select: {
@@ -226,44 +245,11 @@ const structureGroupsSelect = {
 export const getPublicStructure = async (req: Request, res: Response): Promise<void> => {
   try {
     const requestedId = typeof req.query?.cabinetId === 'string' ? req.query.cabinetId.trim() : '';
-
-    // Metadata only — cabinet switcher does not need every group's members.
-    const allCabinets = await prisma.publicStructureCabinet.findMany({
-      orderBy: [{ is_active: 'desc' }, { sort_order: 'asc' }, { created_at: 'desc' }],
-      select: {
-        id: true,
-        name: true,
-        period: true,
-        is_active: true,
-        sort_order: true,
-      },
-    });
-
-    const targetId =
-      (requestedId && allCabinets.some((c) => c.id === requestedId) ? requestedId : null) ||
-      allCabinets.find((c) => c.is_active)?.id ||
-      allCabinets[0]?.id ||
-      null;
-
-    const activeCabinet = targetId
-      ? await prisma.publicStructureCabinet.findUnique({
-          where: { id: targetId },
-          select: {
-            id: true,
-            name: true,
-            period: true,
-            is_active: true,
-            sort_order: true,
-            groups: structureGroupsSelect,
-          },
-        })
-      : null;
+    const payload = await loadPublicStructure(requestedId || undefined);
 
     res.status(200).json({
       success: true,
-      data: activeCabinet ? activeCabinet.groups : [],
-      cabinet: activeCabinet,
-      allCabinets,
+      ...payload,
     });
   } catch (error) {
     const e = error as { code?: unknown; name?: unknown; message?: unknown };
