@@ -1,3 +1,22 @@
+/**
+ * HMSDP E-Absensi — Prisma Seed Script
+ *
+ * Usage:  npm run seed  [-- --flags ...]
+ *         node prisma/seed.js  [...args]
+ *
+ * Creates 3 core admin roles by default (idempotent upsert):
+ *   • SUPER_ADMIN    → full system access
+ *   • ADMIN          → dosen / operator akademik (kelas, sesi, rekap)
+ *   • CONTENT_ADMIN  → pengelola CMS public site (profil, berita, oprec, dll.)
+ *
+ * Optional roles / data via flags OR environment variables:
+ *   • USER (mahasiswa) : --seed-user  or  SEED_USER=1
+ *   • Public Site Profile : --seed-public-site  or  SEED_PUBLIC_SITE=1
+ *   • Landing mock data   : --seed-landing-mock  or  SEED_LANDING_MOCK=1
+ *
+ * All accounts default to password: password123 (override via ENV/flags).
+ * See `usage()` function or run with --help for the complete flag list.
+ */
 import 'dotenv/config';
 import bcrypt from 'bcryptjs';
 import { PrismaClient } from '@prisma/client';

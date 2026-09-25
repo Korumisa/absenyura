@@ -5,7 +5,7 @@ import { Moon, Sun } from 'lucide-react';
 import api from '@/services/api';
 import { toast } from 'sonner';
 import { User, LogOut, Shield, Mail, Phone } from 'lucide-react';
-import { userRoleLabel } from '@/lib/utils/statusLabel';
+import { userRoleLabel } from '@/lib/utils/classLabel';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { SubmitButton } from '@/components/ui/submit-button';

@@ -20,12 +20,18 @@
     "noFallthroughCasesInSwitch": false,
     "noUncheckedSideEffectImports": false,
     "forceConsistentCasingInFileNames": true,
-    "ignoreDeprecations": "5.0",
-    "baseUrl": "./",
     "paths": {
       "@/*": ["./src/*"]
     },
     "types": ["node", "express", "vitest/globals"]
   },
-  "include": ["src", "api", "server", "vitest.config.ts"]
+  "include": [
+    "src",
+    "api",
+    "server",
+    "vitest.config.ts",
+    "tests/e2e/**/*.ts",
+    "playwright.config.ts",
+    "scripts/**/*.mjs"
+  ]
 }

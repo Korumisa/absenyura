@@ -1,6 +1,6 @@
 import { describe, expect, test, vi, beforeEach, afterEach } from 'vitest';
 import type { Request, Response, NextFunction } from 'express';
-import { guardCron } from './guardInternal.js';
+import { guardCron, guardHealth } from './guardInternal.js';
 
 const createRes = () => {
   const res: Partial<Response> = {};
@@ -82,6 +82,60 @@ describe('guardCron', () => {
     const req = createReq({ query: { key: process.env.CRON_SECRET } });
 
     guardCron(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(404);
+    expect(next).not.toHaveBeenCalled();
+  });
+});
+
+describe('guardHealth', () => {
+  const originalCron = process.env.CRON_SECRET;
+  const originalInternal = process.env.INTERNAL_SECRET;
+
+  beforeEach(() => {
+    process.env.CRON_SECRET = 'test-cron-secret-32chars-minimum!!';
+    process.env.INTERNAL_SECRET = 'test-internal-secret-32chars-min!!';
+  });
+
+  afterEach(() => {
+    if (originalCron === undefined) delete process.env.CRON_SECRET;
+    else process.env.CRON_SECRET = originalCron;
+    if (originalInternal === undefined) delete process.env.INTERNAL_SECRET;
+    else process.env.INTERNAL_SECRET = originalInternal;
+  });
+
+  test('accepts x-internal-token', () => {
+    const next = vi.fn() as NextFunction;
+    const res = createRes();
+    const req = createReq({
+      headers: { 'x-internal-token': process.env.INTERNAL_SECRET! },
+    });
+
+    guardHealth(req, res, next);
+
+    expect(next).toHaveBeenCalled();
+    expect(res.status).not.toHaveBeenCalled();
+  });
+
+  test('accepts Authorization Bearer CRON_SECRET for keep-warm', () => {
+    const next = vi.fn() as NextFunction;
+    const res = createRes();
+    const req = createReq({
+      headers: { authorization: `Bearer ${process.env.CRON_SECRET}` },
+    });
+
+    guardHealth(req, res, next);
+
+    expect(next).toHaveBeenCalled();
+    expect(res.status).not.toHaveBeenCalled();
+  });
+
+  test('rejects missing or wrong credentials', () => {
+    const next = vi.fn() as NextFunction;
+    const res = createRes();
+    const req = createReq({ headers: { 'x-cron-secret': 'nope' } });
+
+    guardHealth(req, res, next);
 
     expect(res.status).toHaveBeenCalledWith(404);
     expect(next).not.toHaveBeenCalled();

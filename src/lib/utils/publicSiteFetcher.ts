@@ -62,6 +62,17 @@ export function publicSiteFetcher<T = unknown>(
     const mockPromise = <U>(v: U): Promise<U> => Promise.resolve(v);
     // profile
     if (u.endsWith('/public-site/profile')) return mockPromise(mockProfile as unknown as T);
+    if (u.endsWith('/public-site/home')) {
+      return mockPromise({
+        profile: mockProfile,
+        programs: mockPrograms,
+        structure: mockStructure,
+        latest: mockPostsBeritaLatestPage1,
+        lomba: mockPostsLombaPage1,
+        galleries: mockGalleries,
+        recruitments: mockRecruitments,
+      } as unknown as T);
+    }
     // structure: shape { data, cabinet, allCabinets }
     if (u.endsWith('/public-site/structure')) return mockPromise(mockStructure as unknown as T);
     if (u.endsWith('/public-site/categories'))

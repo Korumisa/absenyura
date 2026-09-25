@@ -53,7 +53,7 @@ import AdminPageShell from '@/components/AdminPageShell';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
 import { SlowLoadingHint } from '@/components/admin/SlowLoadingHint';
-import { excuseStatusLabel } from '@/lib/utils/statusLabel';
+import { excuseStatusLabel } from '@/lib/utils/classLabel';
 import { toastErrorMessage } from '@/lib/utils/toastMessage';
 import { useMutationToast } from '@/hooks/useMutationToast';
 import { AdminEmptyState } from '@/components/admin/AdminEmptyState';

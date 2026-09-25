@@ -1,17 +1,12 @@
 import { Request, Response, NextFunction } from 'express';
 import { safeCompare } from '../utils/security.js';
 
-export const guardInternal = (req: Request, res: Response, next: NextFunction): void => {
+function getInternalTokenFromRequest(req: Request): string | null {
   const token = Array.isArray(req.headers['x-internal-token'])
     ? req.headers['x-internal-token'][0]
     : req.headers['x-internal-token'];
-  const expected = process.env.INTERNAL_SECRET;
-  if (!token || !expected || !safeCompare(String(token), expected)) {
-    res.status(404).json({ message: 'Not found' });
-    return;
-  }
-  next();
-};
+  return token ? String(token) : null;
+}
 
 function getCronSecretFromRequest(req: Request): string | null {
   const headerSecret = Array.isArray(req.headers['x-cron-secret'])
@@ -29,6 +24,38 @@ function getCronSecretFromRequest(req: Request): string | null {
 
   return null;
 }
+
+export const guardInternal = (req: Request, res: Response, next: NextFunction): void => {
+  const token = getInternalTokenFromRequest(req);
+  const expected = process.env.INTERNAL_SECRET;
+  if (!token || !expected || !safeCompare(token, expected)) {
+    res.status(404).json({ message: 'Not found' });
+    return;
+  }
+  next();
+};
+
+/**
+ * Keep-warm / ops health: accept INTERNAL_SECRET (x-internal-token) or
+ * CRON_SECRET (Bearer / X-Cron-Secret) so Vercel Cron + GitHub Actions can ping DB.
+ */
+export const guardHealth = (req: Request, res: Response, next: NextFunction): void => {
+  const internalExpected = process.env.INTERNAL_SECRET;
+  const internalToken = getInternalTokenFromRequest(req);
+  if (internalToken && internalExpected && safeCompare(internalToken, internalExpected)) {
+    next();
+    return;
+  }
+
+  const cronExpected = process.env.CRON_SECRET;
+  const cronProvided = getCronSecretFromRequest(req);
+  if (cronExpected && cronProvided && safeCompare(cronProvided, cronExpected)) {
+    next();
+    return;
+  }
+
+  res.status(404).json({ message: 'Not found' });
+};
 
 export const guardCron = (req: Request, res: Response, next: NextFunction): void => {
   const expected = process.env.CRON_SECRET;

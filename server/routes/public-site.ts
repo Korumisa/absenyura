@@ -24,6 +24,7 @@ import {
 } from '../zod-schemas/index.js';
 import {
   getPublicProfile,
+  getPublicHome,
   getPublicPrograms,
   listPublicPosts,
   getPublicPostBySlug,
@@ -64,6 +65,7 @@ const router = Router();
 const publicRead = [publicSiteCache];
 
 router.get('/profile', ...publicRead, getPublicProfile);
+router.get('/home', ...publicRead, getPublicHome);
 router.get('/programs', ...publicRead, getPublicPrograms);
 router.get('/categories', ...publicRead, listPublicCategories);
 router.get('/posts', ...publicRead, listPublicPosts);

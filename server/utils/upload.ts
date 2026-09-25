@@ -9,7 +9,19 @@ import { fileTypeFromBuffer } from 'file-type';
 
 const tempDir = os.tmpdir();
 
- 
+// Ensure runtime upload directories exist (VPS non-Cloudinary path)
+// Multer uses tempDir; but static mounts in app.ts read from ../uploads/*
+const UPLOAD_SUBDIRS = [
+  'uploads',
+  'uploads/public-site',
+  'uploads/attendance',
+  'uploads/excuses',
+] as const;
+for (const dir of UPLOAD_SUBDIRS) {
+  const full = path.resolve(process.cwd(), dir);
+  fs.promises.mkdir(full, { recursive: true }).catch(() => void 0);
+}
+
 const storage = multer.diskStorage({
   destination: (req: any, file: Express.Multer.File, cb: any) => {
     cb(null, tempDir);

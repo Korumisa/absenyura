@@ -148,4 +148,16 @@ export function excuseReasonLabel(reason: string): string {
   return reason || '-';
 }
 
+export function sessionStatusLabel(status: string): string {
+  return formatLabel('session-status', status);
+}
+
+export function userRoleLabel(role: string): string {
+  return formatLabel('user-role', role);
+}
+
+export function excuseStatusLabel(status: string): string {
+  return formatLabel('excuse-status', status);
+}
+
 export { SESSION_STATUS_LABELS, ATTENDANCE_STATUS_LABELS, USER_ROLE_LABELS, EXCUSE_STATUS_LABELS };

@@ -5,6 +5,9 @@ export async function countUsers(): Promise<number> {
 }
 
 export async function flushTransactionData(): Promise<void> {
+  // Organization model removed from schema (orphan, approved by PM 2026-09-24).
+  // If re-added in the future: include prisma.organization.deleteMany() here AFTER
+  // all FK-referencing tables are purged (or use CASCADE in schema).
   await prisma.$transaction([
     prisma.publicGalleryItem.deleteMany(),
     prisma.publicGalleryAlbum.deleteMany(),
