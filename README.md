@@ -238,6 +238,7 @@ Di **Vercel Hobby**, cron bawaan hanya bisa **1× per hari**. Status sesi (`UPCO
 | Lapisan          | Pemicu                               | Frekuensi                                          |
 | ---------------- | ------------------------------------ | -------------------------------------------------- |
 | Utama            | [cron-job.org](https://cron-job.org) | Tiap **5 menit** (`job=session`)                   |
+| Keep-warm        | GitHub Actions                       | Tiap **5 menit** (`GET /api/health`)               |
 | Backup terjadwal | GitHub Actions                       | Tiap **15 menit** (`job=session`)                  |
 | Backup harian    | Vercel Cron                          | **1×/hari** 01:00 UTC (`job=all` di `vercel.json`) |
 | Backup traffic   | Lazy sync API                        | Saat buka dashboard / sesi / QR / absen            |
@@ -278,6 +279,8 @@ Di **GitHub → Settings → Secrets and variables → Actions**, tambahkan:
 | `CRON_SECRET` | Sama dengan nilai di Vercel                          |
 
 Workflow berjalan tiap 15 menit. Tes manual: tab **Actions** → **Session cron backup** → **Run workflow**.
+
+Keep-warm (kurangi cold start): [`.github/workflows/keep-warm.yml`](.github/workflows/keep-warm.yml) memanggil `GET /api/health` tiap 5 menit dengan `Authorization: Bearer <CRON_SECRET>` (secret yang sama). Hobby Vercel hanya mengizinkan cron 1×/hari, jadi interval keep-warm dipegang GitHub Actions.
 
 ### 4. Backup — Vercel Cron harian
 

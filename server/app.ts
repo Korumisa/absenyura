@@ -14,7 +14,7 @@ import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import crypto from 'crypto';
 import { csrfProtect } from './middlewares/csrf.middleware.js';
 import { requestTiming } from './middlewares/requestTiming.middleware.js';
-import { guardInternal, guardCron } from './middlewares/guardInternal.js';
+import { guardHealth, guardCron } from './middlewares/guardInternal.js';
 import prisma from './utils/prisma.js';
 import { AppError } from './utils/AppError.js';
 import { isPrismaConnectionError } from './utils/prismaTransient.js';
@@ -248,9 +248,9 @@ app.use('/api/', anonymousApiLimiter);
 app.use('/api/', apiLimiter);
 
 app.use('/api/cron', guardCron);
-app.use('/api/health', guardInternal);
+app.use('/api/health', guardHealth);
 
-/** Public liveness for browser — /api/health stays internal-only */
+/** Public liveness for browser — /api/health stays secret-gated (internal or cron) */
 app.get('/api/status', async (_req: Request, res: Response): Promise<void> => {
   try {
     await prisma.$queryRaw`SELECT 1`;

@@ -1,0 +1,29 @@
+name: Keep-warm API
+
+on:
+  schedule:
+    # Reduce Vercel cold starts; Hobby Vercel Cron is once/day so GHA owns the interval.
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping-health:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping /api/health (DB + function warm)
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "APP_URL dan CRON_SECRET harus diset di repository secrets"
+            exit 1
+          fi
+          url="${APP_URL%/}/api/health"
+          code=$(curl -sS -o /tmp/keep-warm-body.txt -w "%{http_code}" \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            --max-time 25 \
+            "$url")
+          echo "HTTP $code"
+          cat /tmp/keep-warm-body.txt
+          test "$code" = "200"
