@@ -39,6 +39,7 @@ import { track } from '@vercel/analytics';
 import { getDeviceFingerprint } from '@/lib/storage/deviceFingerprint';
 import {
   acquireCameraStream,
+  awaitPendingCameraRelease,
   humanizeCameraError,
   releaseMediaStream,
   waitForCameraRelease,
@@ -472,6 +473,8 @@ export default function Attend() {
       setCameraPermissionError(null);
       try {
         stopCamera();
+        // Wait for QR scanner unmount teardown (if any) before re-opening.
+        await awaitPendingCameraRelease();
         await waitForCameraRelease(400);
 
         let lastErr: unknown;

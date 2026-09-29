@@ -18,6 +18,7 @@ import {
   validateIpRestriction,
 } from '../utils/attendanceValidation.js';
 import crypto from 'crypto';
+import { normalizeIp } from '../utils/ip.js';
 import fs from 'fs';
 import fsPromises from 'fs/promises';
 import path from 'path';
@@ -532,7 +533,7 @@ export const checkIn = async (req: AuthRequest, res: Response): Promise<void> =>
         check_in_lat: latitudeValue,
         check_in_lng: longitudeValue,
         check_in_accuracy: accuracyValue,
-        check_in_ip: req.ip || req.socket.remoteAddress || null,
+        check_in_ip: normalizeIp(req.ip || req.socket.remoteAddress || undefined) || null,
         check_in_device: device_fingerprint,
         photo_url: null,
       },

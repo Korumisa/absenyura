@@ -114,16 +114,24 @@ export default function PublicNavbar() {
           </div>
         </Link>
 
-        <div className="hidden items-center gap-8 md:flex">
+        <div className="hidden items-center gap-7 md:flex">
           <Link
             to="/"
-            className={`min-h-11 rounded-full px-4 py-2 text-[15px] font-semibold transition ${
-              location.pathname === '/'
-                ? 'bg-[var(--public-primary)]/10 text-[var(--public-primary)]'
-                : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
+            className={`group/nav inline-flex min-h-11 items-center px-1 text-[15px] font-semibold transition-colors duration-200 ${
+              activePath === '/'
+                ? 'text-[var(--public-primary)]'
+                : 'text-slate-700 hover:text-slate-900'
             }`}
           >
-            Beranda
+            <span className="relative inline-block pb-[3px]">
+              Beranda
+              <span
+                aria-hidden
+                className={`pointer-events-none absolute inset-x-0 bottom-0 h-[1px] origin-left bg-[var(--public-primary)] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                  activePath === '/' ? 'scale-x-100' : 'scale-x-0 group-hover/nav:scale-x-100'
+                }`}
+              />
+            </span>
           </Link>
 
           {NAV_GROUPS.map((g) => {
@@ -139,14 +147,22 @@ export default function PublicNavbar() {
                 <button
                   type="button"
                   onClick={() => setOpenGroup((x) => (x === g.label ? null : g.label))}
-                  className={`inline-flex min-h-11 items-center gap-1.5 rounded-full px-4 py-2 text-[15px] font-semibold transition ${
-                    isActive
-                      ? 'bg-[var(--public-primary)]/10 text-[var(--public-primary)]'
-                      : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
+                  className={`group/nav inline-flex min-h-11 items-center gap-1 px-1 text-[15px] font-semibold transition-colors duration-200 ${
+                    isActive || isOpen
+                      ? 'text-[var(--public-primary)]'
+                      : 'text-slate-700 hover:text-slate-900'
                   }`}
                   aria-expanded={isOpen}
                 >
-                  {g.label}
+                  <span className="relative inline-block pb-[3px]">
+                    {g.label}
+                    <span
+                      aria-hidden
+                      className={`pointer-events-none absolute inset-x-0 bottom-0 h-[1px] origin-left bg-[var(--public-primary)] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                        isActive || isOpen ? 'scale-x-100' : 'scale-x-0 group-hover/nav:scale-x-100'
+                      }`}
+                    />
+                  </span>
                   <ChevronDown
                     size={16}
                     className={`transition-transform duration-200 ease-out ${isOpen ? 'rotate-180' : ''}`}
@@ -156,20 +172,20 @@ export default function PublicNavbar() {
 
                 {isOpen ? (
                   <div className="absolute left-1/2 top-full z-50 -translate-x-1/2 pt-2">
-                    <div className="w-[260px] rounded-2xl border border-black/10 bg-white p-2 shadow-[0_22px_60px_-45px_rgba(15,23,42,0.5)]">
+                    <div className="w-[240px] rounded-xl border border-black/10 bg-white p-1.5 shadow-md">
                       {g.items.map((it) => {
                         const active = activePath === it.to;
                         return (
                           <Link
                             key={it.to}
                             to={it.to}
-                            className={`flex min-h-11 items-center justify-between rounded-xl px-3 py-2 text-sm font-semibold transition ${
+                            className={`flex min-h-10 items-center rounded-lg px-3 py-2 text-sm font-medium transition ${
                               active
-                                ? 'bg-[var(--public-primary)]/10 text-[var(--public-primary)]'
-                                : 'text-slate-700 hover:bg-slate-50'
+                                ? 'text-[var(--public-primary)]'
+                                : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
                             }`}
                           >
-                            <span>{it.label}</span>
+                            {it.label}
                           </Link>
                         );
                       })}
@@ -184,7 +200,7 @@ export default function PublicNavbar() {
         <div className="hidden items-center gap-4 md:flex">
           <Link
             to={loginCta.to}
-            className="min-h-11 rounded-full bg-[var(--public-primary)] px-6 py-2.5 text-sm font-semibold text-white shadow-[0_14px_26px_rgba(37,99,235,0.35)] transition hover:brightness-110"
+            className="min-h-11 rounded-lg bg-[var(--public-primary)] px-5 py-2.5 text-sm font-semibold text-white transition hover:brightness-110"
           >
             {loginCta.label}
           </Link>

@@ -18,6 +18,7 @@ import {
 import { sendForbidden } from '../utils/errorResponse.js';
 import { sendValidationError } from '../utils/sendValidationError.js';
 import { queryWithSemesterFallback } from '../utils/prismaErrors.js';
+import { normalizeIp } from '../utils/ip.js';
 
 const VALID_QR_MODES = new Set(['NONE', 'STATIC', 'DYNAMIC']);
 const VALID_SESSION_STATUSES = new Set(['UPCOMING', 'ACTIVE', 'CLOSED']);
@@ -514,7 +515,7 @@ export const deleteSession = async (req: AuthRequest, res: Response): Promise<vo
             attendance_count: attendanceCount,
             excuse_count: excuseCount,
           }),
-          ip_address: req.ip,
+          ip_address: normalizeIp(req.ip),
         },
       });
 

@@ -49,6 +49,15 @@
       ]
     },
     {
+      "source": "/(dashboard|sessions|reports|users|classes|locations|excuses|history|settings|audit|master-data|public-site|attend|login)(.*)",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow, nosnippet, noarchive"
+        }
+      ]
+    },
+    {
       "source": "/manifest.webmanifest",
       "headers": [
         {
@@ -131,11 +140,15 @@
   ],
   "rewrites": [
     {
+      "source": "/sitemap.xml",
+      "destination": "/api/sitemap.xml"
+    },
+    {
       "source": "/api/:path*",
       "destination": "/api/index.ts"
     },
     {
-      "source": "/((?!assets/|api/).*)",
+      "source": "/((?!assets/|api/|404\\.html).*)",
       "destination": "/index.html"
     }
   ]

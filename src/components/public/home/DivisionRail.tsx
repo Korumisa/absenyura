@@ -5,15 +5,23 @@ import type { PublicStructureGroup } from '@/types/publicSite';
 import { HorizontalSnapRail } from './HorizontalSnapRail';
 import { getDivisionDisplayTitle, getDivisionTagline } from './divisionUtils';
 import { PublicSectionOrnament } from '@/components/public/PublicSectionOrnament';
+import { useReducedMotion } from '@/lib/a11y/useReducedMotion';
+
+const AUTOPLAY_MS = 3500;
+const INTERACT_PAUSE_MS = 5000;
 
 export function DivisionRail({
   label,
   groups,
+  centerWhenFits = false,
+  autoplay = true,
 }: {
-  /** Optional section eyebrow; omit when it would duplicate the group title. */
   label?: string;
   groups: PublicStructureGroup[];
+  centerWhenFits?: boolean;
+  autoplay?: boolean;
 }) {
+  const reducedMotion = useReducedMotion();
   const ordered = useMemo(
     () =>
       groups
@@ -27,40 +35,48 @@ export function DivisionRail({
   const groupRefs = useRef<Array<HTMLDivElement | null>>([]);
   const offsets = useRef<number[]>([]);
   const rafScroll = useRef<number | null>(null);
-  const rafInitRef = useRef<number | null>(null);
-  const lastActiveIdx = useRef<number>(0);
-  const [activeIdx, setActiveIdx] = useState<number>(0);
+  const autoDir = useRef<1 | -1>(1);
+  const pauseUntil = useRef(0);
+  const [activeIdx, setActiveIdx] = useState(0);
+  const [fits, setFits] = useState(false);
 
   const recalc = useCallback(() => {
     offsets.current = groupRefs.current.map((el) => el?.offsetLeft ?? 0);
   }, []);
 
+  const syncEdges = useCallback(() => {
+    const el = scrollerRef.current;
+    if (!el) {
+      setFits(true);
+      return;
+    }
+    setFits(el.scrollWidth - el.clientWidth <= 4);
+  }, []);
+
   const updateActive = useCallback(() => {
     const el = scrollerRef.current;
-    if (!el) return;
+    if (!el || !offsets.current.length) {
+      syncEdges();
+      return;
+    }
     const left = el.scrollLeft;
-    const list = offsets.current;
-    if (!list.length) return;
     let best = 0;
     let bestDist = Infinity;
-    for (let i = 0; i < list.length; i++) {
-      const d = Math.abs(list[i] - left);
+    for (let i = 0; i < offsets.current.length; i++) {
+      const d = Math.abs(offsets.current[i] - left);
       if (d < bestDist) {
         bestDist = d;
         best = i;
       }
     }
-    if (best !== lastActiveIdx.current) {
-      lastActiveIdx.current = best;
-      setActiveIdx(best);
-    }
-  }, [scrollerRef, offsets]);
+    setActiveIdx((prev) => (prev === best ? prev : best));
+    syncEdges();
+  }, [syncEdges]);
 
   useEffect(() => {
-    lastActiveIdx.current = 0;
     setActiveIdx(0);
-    rafInitRef.current = requestAnimationFrame(() => {
-      rafInitRef.current = null;
+    autoDir.current = 1;
+    const id = requestAnimationFrame(() => {
       recalc();
       updateActive();
     });
@@ -69,18 +85,11 @@ export function DivisionRail({
       updateActive();
     };
     window.addEventListener('resize', onResize);
-    const rafSnapInit = rafInitRef.current;
-    const rafSnapScroll = rafScroll.current;
     return () => {
+      cancelAnimationFrame(id);
       window.removeEventListener('resize', onResize);
-      if (rafSnapInit !== null) cancelAnimationFrame(rafSnapInit);
-      if (rafSnapScroll !== null) cancelAnimationFrame(rafSnapScroll);
-      if (rafInitRef.current !== null) cancelAnimationFrame(rafInitRef.current);
-      if (rafScroll.current !== null) cancelAnimationFrame(rafScroll.current);
-      rafInitRef.current = null;
-      rafScroll.current = null;
     };
-  }, [ordered, updateActive, recalc]);
+  }, [ordered, recalc, updateActive]);
 
   const onScroll = useCallback(() => {
     if (rafScroll.current) return;
@@ -90,17 +99,72 @@ export function DivisionRail({
     });
   }, [updateActive]);
 
+  const setScroller = useCallback(
+    (el: HTMLDivElement | null) => {
+      scrollerRef.current = el;
+      requestAnimationFrame(() => {
+        recalc();
+        updateActive();
+      });
+    },
+    [recalc, updateActive],
+  );
+
+  const scrollByCards = useCallback((dir: -1 | 1) => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    // Smaller step = softer autoplay advance
+    const step = Math.min(Math.round(el.clientWidth * 0.55), 380);
+    const max = el.scrollWidth - el.clientWidth;
+    let target = el.scrollLeft + dir * step;
+    if (target <= 0) {
+      target = 0;
+      autoDir.current = 1;
+    } else if (target >= max) {
+      target = max;
+      autoDir.current = -1;
+    }
+    el.scrollTo({ left: target, behavior: 'smooth' });
+    const started = performance.now();
+    const tick = () => {
+      syncEdges();
+      updateActive();
+      if (performance.now() - started < 700) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }, [syncEdges, updateActive]);
+
+  const bumpInteractPause = useCallback(() => {
+    pauseUntil.current = performance.now() + INTERACT_PAUSE_MS;
+  }, []);
+
+  useEffect(() => {
+    if (!autoplay || reducedMotion || fits) return;
+    const id = window.setInterval(() => {
+      if (performance.now() < pauseUntil.current) return;
+      const el = scrollerRef.current;
+      if (!el) return;
+      const max = el.scrollWidth - el.clientWidth;
+      if (max <= 4) return;
+      if (el.scrollLeft >= max - 4) autoDir.current = -1;
+      else if (el.scrollLeft <= 4) autoDir.current = 1;
+      scrollByCards(autoDir.current);
+    }, AUTOPLAY_MS);
+    return () => window.clearInterval(id);
+  }, [autoplay, reducedMotion, fits, ordered, scrollByCards]);
+
   if (!ordered.length) return null;
 
   const showLabel = Boolean(label?.trim());
+  const centered = centerWhenFits && fits;
 
   return (
-    <div>
+    <div className="min-w-0">
       <div className="mx-auto max-w-3xl text-center">
         {showLabel ? (
-          <div className="inline-flex items-center rounded-full bg-[var(--public-primary)]/10 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-[var(--public-primary)]">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--public-primary)]">
             {label}
-          </div>
+          </p>
         ) : null}
         <div className={showLabel ? 'mt-4' : ''}>
           <div className="rail-title-swap">
@@ -111,11 +175,10 @@ export function DivisionRail({
                 <div
                   key={g.id ?? `t-${i}`}
                   className={[
-                    'text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl transition-all duration-300 ease-out',
-                    isActive
-                      ? 'opacity-100 translate-y-0 scale-100'
-                      : 'opacity-0 translate-y-2 scale-[0.98] pointer-events-none',
+                    'text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl',
+                    isActive ? 'is-active' : '',
                   ].join(' ')}
+                  aria-hidden={!isActive}
                 >
                   <span className="text-[var(--public-primary)]">{t}</span>
                 </div>
@@ -123,21 +186,19 @@ export function DivisionRail({
             })}
           </div>
           <PublicSectionOrnament wide compact className="mt-3" />
-          <div className="relative mt-3 min-h-[1.5rem]">
+          <div className="rail-tagline-swap mt-3">
             {ordered.map((g, i) => {
               const t = getDivisionDisplayTitle(g.title ?? '');
-              const fromCms = String(g.description ?? '').trim();
-              const tg = fromCms || getDivisionTagline(t);
+              const tg = String(g.description ?? '').trim() || getDivisionTagline(t);
               const isActive = i === activeIdx;
               return (
                 <p
                   key={g.id ?? `tg-${i}`}
                   className={[
-                    'absolute inset-x-0 text-sm font-medium text-muted-foreground transition-all duration-300 ease-out',
-                    isActive
-                      ? 'opacity-100 translate-y-0'
-                      : 'opacity-0 translate-y-1.5 pointer-events-none',
+                    'text-sm text-muted-foreground',
+                    isActive ? 'is-active' : '',
                   ].join(' ')}
+                  aria-hidden={!isActive}
                 >
                   {tg}
                 </p>
@@ -147,17 +208,14 @@ export function DivisionRail({
         </div>
       </div>
 
-      <div className="mt-5 relative w-full overflow-x-clip sm:mt-6">
-        <div className="pointer-events-none absolute inset-y-0 left-0 w-12 bg-gradient-to-r from-slate-50/95 to-transparent z-10" />
-        <div className="pointer-events-none absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-slate-50/95 to-transparent z-10" />
+      <div className="relative mt-5 min-w-0 sm:mt-6">
         <HorizontalSnapRail
           ariaLabel={label || 'Struktur fungsionaris'}
-          setScroller={(el) => {
-            scrollerRef.current = el;
-          }}
+          setScroller={setScroller}
           onScroll={onScroll}
+          onUserInteract={bumpInteractPause}
         >
-          <div className="rail-track flex w-max gap-8 px-2 sm:px-6 lg:px-8">
+          <div className={['flex w-max gap-3 px-1 sm:gap-4', centered ? 'mx-auto' : ''].join(' ')}>
             {ordered.map((group, gi) => {
               const members = (group.members ?? []).slice(0, 8);
               return (
@@ -166,7 +224,7 @@ export function DivisionRail({
                   ref={(el) => {
                     groupRefs.current[gi] = el;
                   }}
-                  className="flex snap-start gap-4"
+                  className="flex shrink-0 gap-3 sm:gap-4"
                 >
                   {members.map((m) => {
                     const initial = String(m.name ?? '').trim().slice(0, 1).toUpperCase() || 'A';
@@ -174,29 +232,25 @@ export function DivisionRail({
                       <Link
                         key={m.id}
                         to="/struktur-organisasi"
-                        className="rail-card group relative w-[240px] shrink-0 overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-1 hover:border-[var(--public-primary)]/35 hover:shadow-[0_28px_55px_-40px_rgba(37,99,235,0.35)] sm:w-[260px]"
+                        draggable={false}
+                        className="relative w-[152px] shrink-0 overflow-hidden rounded-lg bg-slate-100 sm:w-[168px]"
                       >
-                        <div className="rail-card-image relative aspect-[4/5] w-full bg-slate-100 overflow-hidden">
+                        <div className="relative aspect-[3/4] w-full">
                           {m.photo_url ? (
                             <PublicCoverImage
                               url={m.photo_url}
                               alt={m.name}
-                              imgClassName="rail-card-image object-cover grayscale transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:grayscale-0 group-hover:scale-[1.04]"
+                              imgClassName="object-cover pointer-events-none select-none"
+                              displayWidth={360}
                             />
                           ) : (
-                            <div className="grid h-full w-full place-items-center bg-gradient-to-br from-slate-50 to-slate-100 ring-1 ring-slate-200">
-                              <div className="grid size-20 place-items-center rounded-2xl bg-white/80 text-4xl font-extrabold text-[var(--public-primary)]/80 ring-1 ring-slate-200">
-                                {initial}
-                              </div>
+                            <div className="grid h-full w-full place-items-center text-3xl font-bold text-slate-400">
+                              {initial}
                             </div>
                           )}
-                          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/85 via-black/10 to-transparent" />
-                          <div
-                            className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 ease-out [.group:hover_&]:bg-[var(--public-primary)]/10"
-                          />
-                          <div className="absolute inset-x-0 bottom-0 p-4">
-                            <div className="truncate text-sm font-extrabold tracking-tight text-white drop-shadow-sm">{m.role}</div>
-                            <div className="mt-1 truncate text-xs font-semibold text-white/90">{m.name}</div>
+                          <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent px-2.5 pb-2.5 pt-8">
+                            <div className="truncate text-sm font-semibold text-white">{m.role}</div>
+                            <div className="truncate text-xs text-white/85">{m.name}</div>
                           </div>
                         </div>
                       </Link>
@@ -211,4 +265,3 @@ export function DivisionRail({
     </div>
   );
 }
-

@@ -19,6 +19,7 @@ import prisma from './utils/prisma.js';
 import { AppError } from './utils/AppError.js';
 import { isPrismaConnectionError } from './utils/prismaTransient.js';
 import { sendServiceUnavailable } from './utils/errorResponse.js';
+import { normalizeIp } from './utils/ip.js';
 
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
@@ -74,6 +75,18 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 app.use(requestTiming);
+
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const existing = req.header('x-request-id');
+  const traceId =
+    typeof existing === 'string' && existing.length > 0 && existing.length <= 128
+      ? existing
+      : crypto.randomUUID();
+  res.setHeader('X-Request-ID', traceId);
+  res.locals.traceId = traceId;
+  (req as Request & { traceId?: string }).traceId = traceId;
+  next();
+});
 
 app.disable('x-powered-by');
 app.use(
@@ -182,7 +195,7 @@ const loginLimiter = rateLimit({
       .trim()
       .toLowerCase();
     if (identity) return `login:user:${identity}`;
-    return `login:anon:${ipKeyGenerator(req.ip ?? 'unknown')}`;
+    return `login:anon:${ipKeyGenerator(normalizeIp(req.ip))}`;
   },
 });
 
@@ -207,7 +220,7 @@ function sessionRateLimitKey(req: Request): string {
     return `api:rt:${hashRateLimitSecret(String(req.cookies.refreshToken))}`;
   if (req.headers?.authorization)
     return `api:auth:${hashRateLimitSecret(String(req.headers.authorization))}`;
-  return `api:ip:${ipKeyGenerator(req.ip ?? 'unknown')}`;
+  return `api:ip:${ipKeyGenerator(normalizeIp(req.ip))}`;
 }
 
 const apiLimiter = rateLimit({
@@ -239,7 +252,7 @@ const anonymousApiLimiter = rateLimit({
     if (p.startsWith('/cron')) return true;
     return Boolean(req.cookies?.accessToken || req.cookies?.refreshToken);
   },
-  keyGenerator: (req) => `anon:${ipKeyGenerator(req.ip ?? 'unknown')}`,
+  keyGenerator: (req) => `anon:${ipKeyGenerator(normalizeIp(req.ip))}`,
 });
 
 app.use('/api/auth/login', loginLimiter);
@@ -257,6 +270,91 @@ app.get('/api/status', async (_req: Request, res: Response): Promise<void> => {
     res.status(200).json({ success: true, status: 'ok' });
   } catch {
     res.status(503).json({ success: false, status: 'degraded' });
+  }
+});
+
+const SITE_URL = 'https://hmsdp.vercel.app';
+
+function formatLastMod(d: Date | string | null | undefined): string {
+  if (!d) return new Date().toISOString().slice(0, 10);
+  const dt = typeof d === 'string' ? new Date(d) : d;
+  if (Number.isNaN(dt.getTime())) return new Date().toISOString().slice(0, 10);
+  return dt.toISOString().slice(0, 10);
+}
+
+function xmlEscape(s: string): string {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+app.get('/api/sitemap.xml', async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const staticRoutes: Array<{ path: string; changefreq: string; priority: string }> = [
+      { path: '/', changefreq: 'daily', priority: '1.0' },
+      { path: '/berita', changefreq: 'daily', priority: '0.9' },
+      { path: '/struktur-organisasi', changefreq: 'monthly', priority: '0.8' },
+      { path: '/program-kerja', changefreq: 'weekly', priority: '0.9' },
+      { path: '/informasi-lomba', changefreq: 'weekly', priority: '0.8' },
+      { path: '/informasi', changefreq: 'weekly', priority: '0.8' },
+      { path: '/galeri', changefreq: 'weekly', priority: '0.7' },
+      { path: '/open-recruitment', changefreq: 'monthly', priority: '0.7' },
+    ];
+
+    const [posts, programs] = await Promise.all([
+      prisma.publicPost.findMany({
+        where: { type: 'BERITA', is_published: true },
+        select: { slug: true, updated_at: true },
+      }),
+      prisma.publicProgram.findMany({
+        where: { is_published: true },
+        select: { id: true, updated_at: true },
+      }),
+    ]);
+
+    const today = new Date().toISOString().slice(0, 10);
+    const urlParts: string[] = [];
+
+    for (const route of staticRoutes) {
+      const loc = xmlEscape(`${SITE_URL}${route.path}`);
+      urlParts.push(
+        `<url><loc>${loc}</loc><lastmod>${today}</lastmod><changefreq>${route.changefreq}</changefreq><priority>${route.priority}</priority></url>`
+      );
+    }
+
+    for (const post of posts) {
+      const loc = xmlEscape(`${SITE_URL}/berita/${post.slug}`);
+      urlParts.push(
+        `<url><loc>${loc}</loc><lastmod>${formatLastMod(post.updated_at)}</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>`
+      );
+    }
+
+    for (const prog of programs) {
+      const loc = xmlEscape(`${SITE_URL}/program-kerja/${prog.id}`);
+      urlParts.push(
+        `<url><loc>${loc}</loc><lastmod>${formatLastMod(prog.updated_at)}</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>`
+      );
+    }
+
+    const xml = `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urlParts.join('')}</urlset>`;
+
+    res
+      .set({
+        'Content-Type': 'application/xml; charset=utf-8',
+        'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400',
+        'Content-Length': Buffer.byteLength(xml, 'utf8'),
+      })
+      .status(200)
+      .send(xml);
+  } catch (e) {
+    if (isPrismaConnectionError(e)) {
+      sendServiceUnavailable(res, { error: 'Sitemap unavailable', reason: 'prisma_connection' });
+      return;
+    }
+    res.status(503).json({ success: false, error: 'Failed to generate sitemap' });
   }
 });
 
@@ -318,15 +416,30 @@ app.get('/api/health/db', async (_req: Request, res: Response): Promise<void> =>
  * error handler middleware
  */
 app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
+  const traceId =
+    (typeof res.locals?.traceId === 'string' && res.locals.traceId) ||
+    ((req as Request & { traceId?: string }).traceId ?? crypto.randomUUID());
+  const normalizedIp = normalizeIp(req.ip);
+
   if (isPrismaConnectionError(err)) {
-    if (process.env.NODE_ENV !== 'production') {
-      console.error(
-        '[ERROR]',
-        req.method,
-        req.path,
-        err instanceof Error ? (err.stack ?? err) : err
-      );
-    }
+    console.error(
+      JSON.stringify({
+        trace_id: traceId,
+        level: 'error',
+        timestamp: new Date().toISOString(),
+        method: req.method,
+        url: req.originalUrl || req.url,
+        ip: normalizedIp,
+        category: 'prisma_connection',
+        error_message: err instanceof Error ? err.message : 'Prisma connection error',
+        stack:
+          process.env.NODE_ENV === 'production'
+            ? undefined
+            : err instanceof Error
+              ? err.stack?.split('\n').slice(0, 5)
+              : undefined,
+      } satisfies Record<string, unknown>)
+    );
     sendServiceUnavailable(res, {
       error: 'Database unavailable',
       reason: 'prisma_connection',
@@ -387,20 +500,42 @@ app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
           ? 'Internal server error'
           : 'Bad request';
 
-  if (!isProd) {
-    console.error('[ERROR]', req.method, req.path, err instanceof Error ? (err.stack ?? err) : err);
+  if (!isProd || statusCode === 500) {
+    console.error(
+      JSON.stringify({
+        trace_id: traceId,
+        level: statusCode === 500 ? 'error' : 'warn',
+        timestamp: new Date().toISOString(),
+        method: req.method,
+        url: req.originalUrl || req.url,
+        ip: normalizedIp,
+        status_code: statusCode,
+        error_code: errorCode,
+        error_message: message,
+        stack: isProd
+          ? undefined
+          : err instanceof Error
+            ? err.stack?.split('\n').slice(0, 5)
+            : undefined,
+      } satisfies Record<string, unknown>)
+    );
   }
 
-  res.status(statusCode).json({ error: { code: errorCode, message } });
+  res.setHeader('X-Request-ID', traceId);
+  res.status(statusCode).json({ error: { code: errorCode, message, trace_id: traceId } });
 });
 
 /**
  * 404 handler
  */
-app.use((req: Request, res: Response) => {
+app.use((_req: Request, res: Response) => {
+  const traceId =
+    (typeof res.locals?.traceId === 'string' && res.locals.traceId) || crypto.randomUUID();
+  res.setHeader('X-Request-ID', traceId);
   res.status(404).json({
     success: false,
     error: 'API not found',
+    trace_id: traceId,
   });
 });
 

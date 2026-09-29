@@ -412,9 +412,6 @@ export default function Sessions() {
     }
   };
 
-  const fieldError = (key: FormFieldKey) =>
-    formErrors[key] ? <p className="text-sm text-destructive">{formErrors[key]}</p> : null;
-
   const clearFieldError = (key: FormFieldKey) => {
     if (!formErrors[key]) return;
     setFormErrors((prev) => {
@@ -864,32 +861,42 @@ export default function Sessions() {
                           <TableCell className="text-right">
                             {session.status === 'ACTIVE' && (
                               <div className="flex gap-2 justify-end">
-                                {(session as any).attendances &&
-                                (session as any).attendances.length > 0 ? (
-                                  (session as any).attendances[0].check_out_time ||
-                                  !session.require_checkout ? (
-                                    <Badge variant="success">Sudah Absen</Badge>
-                                  ) : (
+                                {(() => {
+                                  const maybeAtts = (
+                                    session as {
+                                      attendances?: {
+                                        id?: string;
+                                        check_out_time?: string | Date | null;
+                                      }[];
+                                    }
+                                  ).attendances;
+                                  if (maybeAtts && maybeAtts.length > 0) {
+                                    const first = maybeAtts[0]!;
+                                    return first.check_out_time || !session.require_checkout ? (
+                                      <Badge variant="success">Sudah Absen</Badge>
+                                    ) : (
+                                      <Button
+                                        variant="warning"
+                                        className="min-h-11 text-xs px-3"
+                                        onClick={() =>
+                                          navigate(
+                                            `/attend?session=${session.id}&checkout=true&attendance=${first.id}`
+                                          )
+                                        }
+                                      >
+                                        Check-out
+                                      </Button>
+                                    );
+                                  }
+                                  return (
                                     <Button
-                                      variant="warning"
-                                      className="min-h-11 text-xs px-3"
-                                      onClick={() =>
-                                        navigate(
-                                          `/attend?session=${session.id}&checkout=true&attendance=${(session as any).attendances[0].id}`
-                                        )
-                                      }
+                                      onClick={() => navigate(`/attend?session=${session.id}`)}
+                                      className="min-h-11 shadow-sm"
                                     >
-                                      Check-out
+                                      Hadir
                                     </Button>
-                                  )
-                                ) : (
-                                  <Button
-                                    onClick={() => navigate(`/attend?session=${session.id}`)}
-                                    className="min-h-11 shadow-sm"
-                                  >
-                                    Hadir
-                                  </Button>
-                                )}
+                                  );
+                                })()}
                               </div>
                             )}
                           </TableCell>

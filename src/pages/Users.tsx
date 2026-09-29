@@ -415,7 +415,7 @@ export default function Users() {
     }
   };
 
-  const formIsDirty = JSON.stringify(formData) !== formBaseline;
+  const formIsDirty = isModalOpen && JSON.stringify(formData) !== formBaseline;
   const { confirmIfDirty } = useFormDirtyGuard(formIsDirty);
 
   const actionOverlayLabel = saving
@@ -626,7 +626,8 @@ export default function Users() {
                         <TableCell>
                           <div className="text-muted-foreground dark:text-zinc-300">
                             {typeof user.department === 'object' && user.department !== null
-                              ? (user.department as any).name || (user.department as any).id
+                              ? (user.department as { id?: string | number; name?: string }).name ||
+                                (user.department as { id?: string | number; name?: string }).id
                               : user.department || '-'}
                           </div>
                           {user.role === 'USER' ? (
@@ -668,7 +669,7 @@ export default function Users() {
                               variant="ghost"
                               size="icon"
                               onClick={() => handleOpenModal(user)}
-                              className="text-muted-foreground hover:bg-indigo-50 hover:text-brand text-muted-foreground dark:hover:bg-indigo-900/30"
+                              className="hover:bg-indigo-50 hover:text-brand text-muted-foreground dark:hover:bg-indigo-900/30"
                               title="Edit"
                               aria-label={`Edit pengguna ${user.name}`}
                             >
@@ -679,7 +680,7 @@ export default function Users() {
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => openDeleteConfirm(user.id)}
-                                className="text-muted-foreground hover:bg-red-50 hover:text-red-600 text-muted-foreground dark:hover:bg-red-900/30"
+                                className="hover:bg-red-50 hover:text-red-600 text-muted-foreground dark:hover:bg-red-900/30"
                                 title="Hapus"
                                 aria-label={`Hapus pengguna ${user.name}`}
                               >
@@ -882,10 +883,14 @@ export default function Users() {
                             <SelectGroup key={f.name}>
                               <SelectLabel>{f.name}</SelectLabel>
                               {f.departments?.map((d) => {
-                                const deptName =
+                                const deptName = String(
                                   typeof d === 'object' && d !== null
-                                    ? (d as any).name || (d as any).id
-                                    : d;
+                                    ? ((d as { id?: string | number; name?: string }).name ??
+                                        String(
+                                          (d as { id?: string | number; name?: string }).id ?? ''
+                                        ))
+                                    : d
+                                );
                                 return (
                                   <SelectItem key={deptName} value={deptName}>
                                     {deptName}

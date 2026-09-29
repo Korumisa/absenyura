@@ -6,6 +6,7 @@ import { enrollStudentInClasses, parseClassIds } from '../utils/enrollment.js';
 import ExcelJS from 'exceljs';
 import { Prisma } from '@prisma/client';
 import fs from 'fs';
+import { normalizeIp } from '../utils/ip.js';
 
 const ALLOWED_ROLES = new Set(['USER', 'ADMIN', 'SUPER_ADMIN', 'CONTENT_ADMIN']);
 
@@ -398,7 +399,7 @@ export const createUser = async (req: AuthRequest, res: Response): Promise<void>
         target_table: 'User',
         target_id: user.id,
         new_value: JSON.stringify({ ...user, enrolled_classes: enrolledCount }),
-        ip_address: req.ip,
+        ip_address: normalizeIp(req.ip),
       },
     });
 
@@ -571,7 +572,7 @@ export const updateUser = async (req: AuthRequest, res: Response): Promise<void>
         target_id: user.id,
         old_value: JSON.stringify(oldUser),
         new_value: JSON.stringify({ ...user, enrolled_added: enrolledAdded }),
-        ip_address: req.ip,
+        ip_address: normalizeIp(req.ip),
       },
     });
 
@@ -615,7 +616,7 @@ export const deleteUser = async (req: AuthRequest, res: Response): Promise<void>
         target_table: 'User',
         target_id: id,
         old_value: JSON.stringify(oldUser),
-        ip_address: req.ip,
+        ip_address: normalizeIp(req.ip),
       },
     });
 
@@ -912,7 +913,7 @@ export const importUsers = async (req: AuthRequest, res: Response): Promise<void
           skipped_duplicate_rows: duplicateRowCount,
           skipped_missing_nim_nip_rows: missingNimNipRowCount,
         }),
-        ip_address: req.ip,
+        ip_address: normalizeIp(req.ip),
       },
     });
 

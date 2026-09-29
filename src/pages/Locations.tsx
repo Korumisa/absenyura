@@ -82,7 +82,7 @@ export default function Locations() {
     wifi_bssid: '',
   });
   const [dirty, setDirty] = useState(false);
-  const { confirmIfDirty } = useFormDirtyGuard(dirty);
+  const { confirmIfDirty } = useFormDirtyGuard(isModalOpen && dirty);
 
   const setFormDataDirty = useMemo(
     () => (updater: React.SetStateAction<typeof formData>) => {
@@ -329,7 +329,7 @@ export default function Locations() {
     resetDeps: [searchTerm, wifiFilter],
   });
 
-  const formIsDirty = JSON.stringify(formData) !== formBaseline;
+  const formIsDirty = isModalOpen && JSON.stringify(formData) !== formBaseline;
 
   const actionOverlayLabel = saving
     ? editingLocation
@@ -581,6 +581,7 @@ export default function Locations() {
             if (!open) {
               const ok = await confirmIfDirty();
               if (!ok) return;
+              setDirty(false);
             }
             setIsModalOpen(open);
           }}

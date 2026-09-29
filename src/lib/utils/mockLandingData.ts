@@ -848,7 +848,7 @@ const lomba: PublicPost[] = [
     excerpt:
       'Lomba desain aplikasi berbasis kearifan lokal desa adat Bali. Total hadiah Rp 10 juta. Tema besar: Digitalisasi Administrasi Desa.',
     content:
-      '<p>Subtema: Administrasi kependudukan, Sistem adat, UMKM desa, Pariwisata desa, atau Pendidikan di desa. Final 10 desain terbaik akan dipresentasikan di hadapan juri dari industri GoTo dan Tokopedia UX team.</p>',
+      '<h3>Syarat peserta</h3><ul><li>Mahasiswa aktif S1/D3/D4 (individu atau tim maks. 3 orang).</li><li>Karya orisinal, belum pernah dipublikasikan di kompetisi lain.</li><li>Subtema: Administrasi kependudukan, Sistem adat, UMKM desa, Pariwisata desa, atau Pendidikan di desa.</li></ul><h3>Ketentuan karya</h3><ul><li>Protoype Figma + video walkthrough maks. 3 menit.</li><li>Final 10 desain terbaik dipresentasikan di hadapan juri industri.</li></ul><p><a href="https://drive.google.com/file/d/mock-uiux-guidebook/view">Unduh Guidebook UI/UX Challenge 2025 (PDF)</a></p>',
     coverImagePrompt:
       'UI UX design competition poster purple gradient, balinese traditional ornaments frame, mobile app interface wireframes, DESIGN CHALLENGE 2025 typography',
     category: categories.LOMBA_INTERNAL,
@@ -865,7 +865,7 @@ const lomba: PublicPost[] = [
     excerpt:
       'Tulis gagasan terbaik meratakan kualitas pendidikan vokasi di daerah 3T NTT. Juara 1: Rp 3 juta + voucher buku Gramedia.',
     content:
-      '<p>Minimal 3.000 kata, format PDF, font Times New Roman 12pt. Batas pengiriman: 15 Oktober 2025 pukul 23:59 WITA.</p>',
+      '<h3>Syarat &amp; ketentuan</h3><ul><li>Minimal 3.000 kata, format PDF, font Times New Roman 12pt, spasi 1,5.</li><li>Batas pengiriman: 15 Oktober 2025 pukul 23:59 WITA.</li><li>Peserta menyertakan biodata dan pernyataan orisinalitas.</li><li>Plagiarisme di atas 25% akan didiskualifikasi.</li></ul><p><a href="https://drive.google.com/file/d/mock-esai-guidebook/view">Unduh Guidebook &amp; Juknis Lomba Esai (PDF)</a></p>',
     coverImagePrompt:
       'Essay writing contest poster purple indigo gradient, open book quill pen laptop icons, indonesian student national essay contest design',
     category: categories.LOMBA_INTERNAL,
@@ -882,7 +882,7 @@ const lomba: PublicPost[] = [
     excerpt:
       'Jeopardy + Attack-Defense 3 hari offline camp, 80 tim. Juara 1: Rp 7 juta + sertifikat kompetensi BNSP Junior Security Engineer.',
     content:
-      '<p>Pendaftaran dibuka resmi 15 September 2025. Kuota 80 tim pertama — pelajari roadmaps CTF di server Discord HM SDP.</p>',
+      '<h3>Syarat tim</h3><ul><li>1–4 orang per tim, mahasiswa aktif.</li><li>Pendaftaran dibuka 15 September 2025 — kuota 80 tim pertama.</li><li>Wajib membawa laptop sendiri; jaringan disediakan panitia.</li></ul><p><a href="https://drive.google.com/file/d/mock-ctf-rulebook/view">Unduh Rulebook CTF Cyber War 2025</a></p>',
     coverImagePrompt:
       'Capture the flag cybersecurity contest poster, dark purple neon hacker matrix code rain aesthetic, glowing CTF badge logo, gaming flyer',
     category: categories.LOMBA_INTERNAL,
@@ -899,7 +899,7 @@ const lomba: PublicPost[] = [
     excerpt:
       'Ide startup teknologi hijau realistis untuk Bali hijau. 10 finalis mendapatkan mentoring langsung founder eFishery & Waste4Change.',
     content:
-      '<p>Kategori: Pertanian presisi, Pengolahan limbah plastik, Ekowisata digital, dan Energi hijau mikro. Final pitch day di Bali Creative Hub, 3 November 2025.</p>',
+      '<h3>Kategori</h3><ul><li>Pertanian presisi</li><li>Pengolahan limbah plastik</li><li>Ekowisata digital</li><li>Energi hijau mikro</li></ul><h3>Ketentuan</h3><ul><li>Pitch deck maks. 12 slide + one-pager PDF.</li><li>Final pitch day di Bali Creative Hub, 3 November 2025.</li></ul><p><a href="https://drive.google.com/file/d/mock-bizplan-panduan/view">Unduh Panduan &amp; Template Business Plan</a></p>',
     coverImagePrompt:
       'Green tech startup business plan pitch poster, green purple color scheme, plant growing circuit board leaves, eco-friendly tech infographic',
     category: categories.LOMBA_INTERNAL,
@@ -916,7 +916,7 @@ const lomba: PublicPost[] = [
     excerpt:
       'Short video kreatif 60 detik vertikal. Juara 1: kamera mirrorless + fitur di TikTok HM SDP (100K+ penonton).',
     content:
-      '<p>Pengumuman pemenang akan diumumkan pada upacara HUT RI ke-80 HM SDP, 17 September 2025. Terima kasih untuk 187 peserta yang telah berpartisipasi!</p>',
+      '<h3>Ketentuan karya</h3><ul><li>Durasi maks. 60 detik, format vertikal 9:16.</li><li>Tanpa watermark pihak ketiga; musik bebas lisensi.</li></ul><p>Pengumuman pemenang: upacara HUT RI ke-80 HM SDP, 17 September 2025.</p><p><a href="https://drive.google.com/file/d/mock-video-juknis/view">Unduh Juknis Lomba Video</a></p>',
     coverImagePrompt:
       'Indonesia independence day short video contest poster, red white flag bunting, purple overlay, smartphone vertical frame, cinematic poster flyer',
     category: categories.LOMBA_INTERNAL,
@@ -933,7 +933,7 @@ const lomba: PublicPost[] = [
     excerpt:
       '10 desain terbaik akan dicetak poster FTIK & merchandise kampus. Hadiah: headphone, keyboard mechanical, dan puluhan voucher.',
     content:
-      '<p>Spesifikasi karya: kanvas A3 landscape, 300 DPI, RGB, format PNG + AI/PSD. Batas pengumpulan: 5 November 2025.</p>',
+      '<h3>Spesifikasi karya</h3><ul><li>Kanvas A3 landscape, 300 DPI, RGB.</li><li>Format pengiriman: PNG + AI/PSD.</li><li>Batas pengumpulan: 5 November 2025.</li></ul><p><a href="https://drive.google.com/file/d/mock-poster-guidebook/view">Unduh Guidebook Poster Competition</a></p>',
     coverImagePrompt:
       'Anti cyberbullying awareness poster competition design, purple soft blue theme, heart shield protecting bubble chat icons, advocacy typography',
     category: categories.LOMBA_INTERNAL,
@@ -950,7 +950,7 @@ const lomba: PublicPost[] = [
     excerpt:
       'Debat ilmiah format British Parliamentary. Total 48 tim dari 16 kampus. Kuota pendaftaran sudah terpenuhi; terima kasih atas antusiasme kalian.',
     content:
-      '<p>Jadwal babak penyisihan: 4–5 Oktober 2025. Silakan cek email resmi panitia untuk technical meeting selengkapnya.</p>',
+      '<h3>Jadwal</h3><ul><li>Babak penyisihan: 4–5 Oktober 2025.</li><li>Technical meeting: cek email resmi panitia.</li></ul><p><a href="https://drive.google.com/file/d/mock-debat-rulebook/view">Unduh Rulebook Debat Ilmiah</a></p>',
     coverImagePrompt:
       'University british parliamentary debate competition poster, students speaking podium microphone, purple orange professional design, DEBAT ILMIAH text',
     category: categories.LOMBA_INTERNAL,

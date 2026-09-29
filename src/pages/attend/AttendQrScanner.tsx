@@ -68,33 +68,39 @@ export default function AttendQrScanner({
     [onQrErrorChange]
   );
 
-  const loadQrCamera = useCallback(
-    async (preferRear: boolean) => {
-      try {
-        const cameras = await Html5Qrcode.getCameras();
-        const preferredId = pickPreferredCameraId(
-          cameras.map((c) => ({ id: c.id, label: c.label })),
-          { preferRear }
-        );
-        qrCameraIdRef.current = preferredId;
-      } catch {
+  const loadQrCamera = useCallback(async (preferRear: boolean) => {
+    try {
+      // Prefer enumerateDevices — Html5Qrcode.getCameras() opens a temporary
+      // stream just to list devices, which causes open→close→open flicker
+      // before the real scanner starts.
+      if (!navigator.mediaDevices?.enumerateDevices) {
         qrCameraIdRef.current = null;
-        const msg = 'Kamera tidak diizinkan. Buka pengaturan browser.';
-        setQrError({ code: 'PERMISSION' });
-        toastError(null, msg);
-      } finally {
-        setCamerasReady(true);
+        return;
       }
-    },
-    [setQrError]
-  );
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoInputs = devices
+        .filter((d) => d.kind === 'videoinput')
+        .map((d) => ({ id: d.deviceId, label: d.label || '' }));
+      const hasLabels = videoInputs.some((d) => d.label);
+      // Without labels (permission not yet granted), fall back to facingMode
+      // so qr.start() requests permission once — not twice.
+      qrCameraIdRef.current = hasLabels ? pickPreferredCameraId(videoInputs, { preferRear }) : null;
+    } catch {
+      qrCameraIdRef.current = null;
+    } finally {
+      setCamerasReady(true);
+    }
+  }, []);
 
   useEffect(() => {
     loadQrCamera(initialPreferRear);
   }, [loadQrCamera, initialPreferRear]);
 
-  const releaseQrScanner = useCallback(async () => {
-    if (qrReleasedRef.current) return;
+  const releaseQrScanner = useCallback(async (opts?: { force?: boolean }) => {
+    // After SCAN_TIMEOUT we may already have marked released but skipped the
+    // full wait — force re-runs track teardown so "Coba Lagi" / switch camera
+    // do not hit NotReadableError from a still-held stream.
+    if (qrReleasedRef.current && !opts?.force) return;
     qrReleasedRef.current = true;
     const instance = scannerRef.current;
     if (instance) {
@@ -226,6 +232,11 @@ export default function AttendQrScanner({
       await waitForCameraRelease(350);
       if (cancelled || bootGen !== qrBootGenRef.current || scannerRef.current) return;
 
+      // Short settle delay so React StrictMode's first mount cleanup cancels
+      // before we open the camera (avoids open→close→open in development).
+      await new Promise<void>((r) => setTimeout(r, 120));
+      if (cancelled || bootGen !== qrBootGenRef.current || scannerRef.current) return;
+
       const cameraConfig: string | MediaTrackConstraints = qrCameraIdRef.current
         ? qrCameraIdRef.current
         : { facingMode: qrFacingMode };
@@ -256,16 +267,7 @@ export default function AttendQrScanner({
           }
         );
         if (cancelled || bootGen !== qrBootGenRef.current) {
-          if (!qrReleasedRef.current) {
-            qrReleasedRef.current = true;
-            try {
-              if (qr.isScanning) await qr.stop();
-              qr.clear();
-            } catch {
-              void 0;
-            }
-            stripHtml5QrDomSignatures('qr-reader');
-          }
+          await releaseQrScanner();
           return;
         }
         scannerRef.current = qr;
@@ -277,36 +279,18 @@ export default function AttendQrScanner({
             'Tidak dapat membaca kode. Pastikan QR berada di tengah layar dan cahaya cukup.';
           setQrError({ code: 'SCAN_TIMEOUT' });
           toastError(null, msg);
-          void (async () => {
-            if (!qrReleasedRef.current) {
-              qrReleasedRef.current = true;
-              try {
-                if (qr.isScanning) await qr.stop();
-                qr.clear();
-              } catch {
-                void 0;
-              }
-              stripHtml5QrDomSignatures('qr-reader');
-            }
-            if (scannerRef.current === qr) {
-              scannerRef.current = null;
-            }
-          })();
+          void releaseQrScanner().catch(() => {
+            void 0;
+          });
         }, 15000);
       } catch (err) {
         clearQrTimeout();
         const msg = 'Kamera tidak diizinkan. Buka pengaturan browser.';
         setQrError({ code: 'PERMISSION' });
         toastError(null, msg);
-        if (!qrReleasedRef.current) {
-          qrReleasedRef.current = true;
-          try {
-            qr.clear();
-          } catch {
-            void 0;
-          }
-          stripHtml5QrDomSignatures('qr-reader');
-        }
+        void releaseQrScanner().catch(() => {
+          void 0;
+        });
       }
     };
 
@@ -395,7 +379,7 @@ export default function AttendQrScanner({
 
   const switchQrCamera = async () => {
     const nextMode = qrFacingMode === 'environment' ? 'user' : 'environment';
-    await releaseQrScanner();
+    await releaseQrScanner({ force: true });
     setQrFacingMode(nextMode);
     await loadQrCamera(nextMode === 'environment');
     onQrErrorChange?.(null);
@@ -437,7 +421,7 @@ export default function AttendQrScanner({
               size="sm"
               className="mt-3 min-h-11"
               onClick={() => {
-                void releaseQrScanner().then(() => {
+                void releaseQrScanner({ force: true }).then(() => {
                   setQrError(null);
                   onQrErrorChange?.(null);
                   setScanning(true);

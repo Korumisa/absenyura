@@ -17,6 +17,7 @@ import { buildPagedResponse, safeItems } from '@/lib/utils/publicContent';
 import { PublicPageError } from '@/components/public/PublicPageError';
 import { PublicEmptyState } from '@/components/public/PublicEmptyState';
 import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
+import { PublicPageMeta } from '@/components/public/PublicPageMeta';
 import { publicSiteFetcher, safeArray } from '@/lib/utils/publicSiteFetcher';
 
 const MOCK_CATEGORIES: PublicCategory[] = [
@@ -111,6 +112,11 @@ export default function Berita() {
 
   return (
     <PublicLayout>
+      <PublicPageMeta
+        title="Berita Terbaru"
+        description="Update kampus, prestasi, berita organisasi, dan info penting HM SDP Undiksha. Baca ringkasan singkat yang mudah dibagikan."
+        path="/berita"
+      />
       <PublicLoadingOverlay show={isLoading} label="Memuat berita..." />
       <PublicEnter>
         <PublicPageHero top="Berita" bottom="Terbaru" subtitle="Baca update kampus, prestasi, dan info penting. Formatnya singkat, jelas, dan enak dibagikan.">

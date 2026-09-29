@@ -164,7 +164,8 @@ export default function Settings() {
     }
   };
 
-  const formIsDirty = JSON.stringify(formData) !== formBaseline;
+  // Baseline kosong = profil belum selesai dimuat; jangan anggap dirty.
+  const formIsDirty = Boolean(formBaseline) && JSON.stringify(formData) !== formBaseline;
   const { confirmIfDirty } = useFormDirtyGuard(formIsDirty);
 
   return (

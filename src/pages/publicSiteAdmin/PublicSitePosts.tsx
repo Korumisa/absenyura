@@ -667,7 +667,15 @@ export default function PublicSitePosts() {
                     />
                   )}
                 </FormField>
-                <FormField id="ps-post-content" label="Konten">
+                <FormField
+                  id="ps-post-content"
+                  label="Konten"
+                  description={
+                    postType === 'LOMBA'
+                      ? 'Isi syarat & ketentuan. Untuk menampilkan tombol Guidebook di halaman publik, sisipkan tautan bertuliskan “guidebook”, “panduan”, atau “juknis” (mis. link Google Drive PDF).'
+                      : undefined
+                  }
+                >
                   {({ id, 'aria-describedby': ariaDescribedBy, 'aria-invalid': ariaInvalid }) => (
                     <Textarea
                       id={id}
@@ -676,6 +684,11 @@ export default function PublicSitePosts() {
                       onChange={(e) => setPostFormDirty((p) => ({ ...p, content: e.target.value }))}
                       aria-describedby={ariaDescribedBy}
                       aria-invalid={ariaInvalid}
+                      placeholder={
+                        postType === 'LOMBA'
+                          ? '<h3>Syarat</h3><ul><li>...</li></ul><p><a href="https://...">Unduh Guidebook (PDF)</a></p>'
+                          : undefined
+                      }
                     />
                   )}
                 </FormField>

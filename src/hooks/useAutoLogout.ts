@@ -42,7 +42,7 @@ export function useAutoLogout() {
         }
       }, INACTIVITY_TIMEOUT_MS);
     }
-  }, [isAuthenticated, logout]);
+  }, [isAuthenticated, logout, navigate]);
 
   const startProactiveRefresh = useCallback(() => {
     const refresh = async () => {

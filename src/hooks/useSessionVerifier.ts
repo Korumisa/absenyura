@@ -102,6 +102,7 @@ export function useSessionVerifier(): UseSessionVerifierReturn {
     startSessionVerification,
     completeSessionVerification,
     logout,
+    navigate,
   ]);
 
   useEffect(() => {
