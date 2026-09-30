@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import type { AuthRequest } from '../types/index.js';
 import bcrypt from 'bcryptjs';
 import prisma from '../utils/prisma.js';
+import { normalizeIp } from '../utils/ip.js';
 
 export const getProfile = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -24,7 +25,7 @@ export const getProfile = async (req: AuthRequest, res: Response): Promise<void>
 export const updateProfile = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const user_id = req.user!.id;
-    const ip_address = req.ip;
+    const ip_address = normalizeIp(req.ip);
     const { name, phone, email, current_password, new_password } = req.body;
 
     const user = await prisma.user.findUnique({ where: { id: user_id } });
@@ -181,7 +182,7 @@ export const updateDepartments = async (req: AuthRequest, res: Response): Promis
           target_table: 'setting',
           target_id: 'FACULTIES_AND_DEPARTMENTS',
           actor_id: user.id,
-          ip_address: req.ip,
+          ip_address: normalizeIp(req.ip),
           old_value: oldSetting ? oldSetting.value : null,
           new_value: JSON.stringify(data),
         },
@@ -240,7 +241,7 @@ export const updateSubjects = async (req: AuthRequest, res: Response): Promise<v
           target_table: 'setting',
           target_id: 'SUBJECTS',
           actor_id: user.id,
-          ip_address: req.ip,
+          ip_address: normalizeIp(req.ip),
           old_value: oldSetting ? oldSetting.value : null,
           new_value: JSON.stringify(validData),
         },

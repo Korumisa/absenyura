@@ -3,19 +3,7 @@ import { useDialogA11y } from '@/hooks/useDialogA11y';
 import PublicLayout from '@/components/PublicLayout';
 import type { PublicRecruitment } from '@/types/publicSite';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Search,
-  X,
-  FileText,
-  PhoneCall,
-  Users2,
-  ClipboardList,
-  User,
-  MessageCircle,
-  ExternalLink,
-  ArrowRight,
-  LogIn,
-} from 'lucide-react';
+import { Search, X, ArrowRight, LogIn } from 'lucide-react';
 import PublicEnter from '@/components/PublicEnter';
 import PublicReveal from '@/components/PublicReveal';
 import PublicPageHero from '@/components/PublicPageHero';
@@ -30,6 +18,7 @@ import { PublicPageError } from '@/components/public/PublicPageError';
 import { PublicEmptyState } from '@/components/public/PublicEmptyState';
 import { ensureHttpsUrl } from '@/lib/http/ensureHttpsUrl';
 import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
+import { PublicPageMeta } from '@/components/public/PublicPageMeta';
 import { publicSiteFetcher, safeArray } from '@/lib/utils/publicSiteFetcher';
 
 function parseDateRange(dateRangeStr: string | null | undefined): { start?: Date; end?: Date } {
@@ -149,6 +138,11 @@ export default function OpenRecruitment() {
 
   return (
     <PublicLayout>
+      <PublicPageMeta
+        title="Open Recruitment"
+        description="Informasi pendaftaran pengurus, rekrutmen terbuka, lowongan kepanitiaan, dan narahubung HM SDP Undiksha untuk periode berjalan."
+        path="/open-recruitment"
+      />
       <PublicLoadingOverlay show={isLoading} label="Memuat open recruitment..." />
       <PublicEnter>
         <PublicPageHero top="Open" bottom="Recruitment" subtitle="Informasi pendaftaran, deskripsi, dan link form. Bisa dikelola dari menu Konten Website.">
@@ -210,51 +204,47 @@ export default function OpenRecruitment() {
               />
             )
           ) : (
-            <div className="mt-6 grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="mt-6 grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {filtered.map((r) => {
                 const open = isRecruitmentOpen(r);
+                const plainDesc = r.description
+                  ? String(r.description).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+                  : '';
                 return (
                   <button
                     key={r.id}
                     type="button"
                     onClick={() => openModal(r.id)}
-                    className="group w-full overflow-hidden rounded-2xl border border-black/10 bg-white text-left shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-[var(--public-primary)]/25"
+                    className="group flex w-full flex-col overflow-hidden border border-black/10 bg-white text-left transition hover:border-[var(--public-primary)]/40"
                   >
-                    <div className="relative aspect-[4/5] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))]">
-                      <div className="absolute left-3 top-3 z-10">
-                        <span
-                          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-widest ring-1 ${
-                            open
-                              ? 'bg-emerald-500/95 text-white ring-emerald-600/20'
-                              : 'bg-rose-500/95 text-white ring-rose-600/20'
-                          }`}
-                        >
-                          <span className={`inline-flex h-1.5 w-1.5 rounded-full ${open ? 'bg-emerald-200' : 'bg-rose-200'}`} />
-                          {open ? 'Dibuka' : 'Ditutup'}
-                        </span>
-                      </div>
-                      <PublicCoverImage url={r.poster_image_url} alt={r.title} imgClassName="object-cover transition duration-700 group-hover:scale-[1.01]" />
+                    <div className="relative aspect-[4/5] w-full overflow-hidden bg-slate-100">
+                      <span
+                        className={`absolute left-3 top-3 z-10 text-[11px] font-semibold uppercase tracking-wide ${
+                          open ? 'text-emerald-700' : 'text-rose-700'
+                        }`}
+                      >
+                        {open ? 'Dibuka' : 'Ditutup'}
+                      </span>
+                      <PublicCoverImage
+                        url={r.poster_image_url}
+                        alt={r.title}
+                        imgClassName="object-cover transition duration-500 group-hover:scale-[1.02]"
+                      />
                     </div>
-                    <div className="p-5">
-                      <div className="text-base font-extrabold tracking-tight text-slate-900 line-clamp-2">
+                    <div className="flex flex-1 flex-col p-4">
+                      <h3 className="text-base font-bold leading-snug tracking-tight text-slate-900 line-clamp-2">
                         {r.title}
-                      </div>
-                      <div className="mt-2 text-xs font-semibold uppercase tracking-widest text-slate-500">
+                      </h3>
+                      <p className="mt-1 text-xs font-medium uppercase tracking-wide text-slate-500">
                         {r.date_range ?? '-'}
-                      </div>
-                      {r.description ? (
-                        <div className="mt-3 line-clamp-3 text-sm leading-relaxed text-slate-600">
-                          {String(r.description).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()}
-                        </div>
+                      </p>
+                      {plainDesc ? (
+                        <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-slate-600">{plainDesc}</p>
                       ) : null}
-                      <div className="mt-5 flex items-center justify-between gap-3">
-                        <div className="inline-flex items-center rounded-xl border border-black/10 bg-white px-4 py-2 text-xs font-semibold text-slate-700 transition group-hover:border-[var(--public-primary)]/25">
-                          Detail
-                        </div>
-                        <div className="inline-flex items-center rounded-xl bg-[var(--public-primary)] px-4 py-2 text-xs font-semibold text-white shadow-[0_12px_22px_rgba(37,99,235,0.28)] transition group-hover:brightness-110">
-                          Daftar
-                        </div>
-                      </div>
+                      <span className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-[var(--public-primary)]">
+                        Lihat detail
+                        <ArrowRight size={14} className="transition group-hover:translate-x-0.5" />
+                      </span>
                     </div>
                   </button>
                 );
@@ -278,252 +268,174 @@ export default function OpenRecruitment() {
             aria-modal="true"
             aria-labelledby="recruitment-dialog-title"
             tabIndex={-1}
-            className="relative w-full max-w-5xl 2xl:max-w-6xl overflow-hidden rounded-3xl border border-black/10 bg-white shadow-[0_38px_90px_-50px_rgba(15,23,42,0.65)] outline-none"
+            className="relative w-full max-w-5xl overflow-hidden rounded-xl border border-black/10 bg-white shadow-xl outline-none"
           >
-            <div className="relative overflow-hidden">
-              <div className="pointer-events-none absolute -top-24 -right-24 size-64 rounded-full bg-[var(--public-primary)]/12 blur-3xl" />
-              <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(37,99,235,0.10),rgba(37,99,235,0.02),transparent_60%)]" />
-              <div className="relative flex items-start justify-between gap-4 border-b border-black/10 px-6 py-6 sm:px-8 sm:py-7">
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <div className="inline-flex items-center gap-2 rounded-full bg-[var(--public-primary)]/12 px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-widest text-[var(--public-primary)] ring-1 ring-[var(--public-primary)]/15">
-                      Open Recruitment
-                    </div>
-                    <span
-                      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-widest ring-1 ${
-                        selectedIsOpen
-                          ? 'bg-emerald-500/12 text-emerald-600 ring-emerald-500/20'
-                          : 'bg-rose-500/12 text-rose-600 ring-rose-500/20'
-                      }`}
-                    >
-                      <span className={`inline-flex h-1.5 w-1.5 rounded-full ${selectedIsOpen ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                      {selectedIsOpen ? 'Pendaftaran Dibuka' : 'Pendaftaran Ditutup'}
-                    </span>
-                  </div>
-                  <h2
-                    id="recruitment-dialog-title"
-                    className="mt-3 text-xl font-extrabold tracking-tight text-slate-900 sm:text-2xl"
-                  >
-                    {selected.title}
-                  </h2>
-                  <div className="mt-2 flex items-center gap-2 text-sm font-semibold text-slate-500">
-                    <span className="inline-flex h-2 w-2 rounded-full bg-[var(--public-primary)]" />
-                    {selected.date_range ?? '-'}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  className="inline-flex items-center justify-center rounded-2xl border border-black/10 bg-white/90 p-2.5 text-slate-700 transition-all duration-200 hover:border-[var(--public-primary)]/35 hover:bg-[var(--public-primary)]/5 hover:text-[var(--public-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/45"
-                  onClick={closeModal}
-                  aria-label="Tutup"
+            <div className="flex items-start justify-between gap-4 border-b border-black/10 px-5 py-4 sm:px-6">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Open recruitment
+                  <span className="mx-2 text-slate-300">·</span>
+                  <span className={selectedIsOpen ? 'text-emerald-700' : 'text-rose-700'}>
+                    {selectedIsOpen ? 'Dibuka' : 'Ditutup'}
+                  </span>
+                </p>
+                <h2
+                  id="recruitment-dialog-title"
+                  className="mt-1 text-xl font-bold tracking-tight text-slate-900 sm:text-2xl"
                 >
-                  <X size={20} strokeWidth={2.2} />
-                </button>
+                  {selected.title}
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">{selected.date_range ?? '-'}</p>
               </div>
+              <button
+                type="button"
+                className="inline-flex size-10 shrink-0 items-center justify-center rounded-lg border border-black/10 text-slate-600 transition hover:bg-slate-50"
+                onClick={closeModal}
+                aria-label="Tutup"
+              >
+                <X size={18} />
+              </button>
             </div>
 
-            <div className="max-h-[80vh] overflow-y-auto p-5 sm:p-8">
-              <div className="flex flex-col gap-8 md:flex-row lg:gap-8 lg:grid lg:grid-cols-[1fr_1.2fr]">
-                <div className="space-y-5 md:shrink-0 md:basis-[40%]">
-                  <div className="group relative overflow-hidden rounded-3xl border border-black/10 bg-slate-50 shadow-[0_22px_55px_-45px_rgba(15,23,42,0.55)]">
-                    <div className="relative aspect-[4/5] w-full overflow-hidden md:aspect-[3/4]">
+            <div className="max-h-[80vh] overflow-y-auto p-5 sm:p-6">
+              <div className="flex flex-col gap-6 md:flex-row md:gap-8">
+                <div className="md:w-[42%] md:shrink-0">
+                  <div className="overflow-hidden rounded-lg border border-black/10 bg-slate-50">
+                    <div className="relative aspect-[3/4] w-full">
                       <PublicCoverImage
                         url={selected.poster_image_url}
                         alt={selected.title}
-                        imgClassName="rail-card-image object-cover transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.035]"
+                        imgClassName="object-cover"
+                        displayWidth={640}
                       />
                     </div>
                   </div>
                 </div>
 
-                <div className="space-y-6 md:min-w-0">
+                <div className="min-w-0 flex-1 space-y-5">
                   {selected.description ? (
-                    <div className="group relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-300 hover:border-[var(--public-primary)]/25 sm:p-6">
-                      <div className="flex items-center gap-2.5">
-                        <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-[var(--public-primary)]/12 text-[var(--public-primary)] ring-1 ring-[var(--public-primary)]/15">
-                          <FileText size={18} strokeWidth={2} />
-                        </span>
-                        <h3 className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--public-primary)]">
-                          Deskripsi Kegiatan
-                        </h3>
-                      </div>
+                    <div>
+                      <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Deskripsi
+                      </h3>
                       <div
-                        className="recruitment-prose relative mt-4 text-[15px] leading-relaxed text-slate-700 sm:text-[15.5px] [&_h3]:mt-6 [&_h3]:mb-2 [&_h3]:text-xl [&_h3]:font-extrabold [&_h3]:tracking-tight [&_h3]:text-slate-900 [&_h4]:mt-5 [&_h4]:mb-1.5 [&_h4]:text-lg [&_h4]:font-bold [&_h4]:text-slate-900 [&_p]:mb-4 [&_p]:leading-relaxed [&_ul]:mb-4 [&_ul]:ml-5 [&_ul]:list-disc [&_ol]:mb-4 [&_ol]:ml-5 [&_ol]:list-decimal [&_li]:mb-1 [&_strong]:font-bold [&_strong]:text-slate-900 [&_a]:text-[var(--public-primary)] [&_a]:underline [&_a]:underline-offset-2"
-                        // XSS-sanitized HTML via sanitizeDescriptionHtml helper (script/style/on* attrs stripped)
+                        className="recruitment-prose mt-2 text-sm leading-relaxed text-slate-700 [&_h3]:mt-4 [&_h3]:mb-1.5 [&_h3]:text-base [&_h3]:font-bold [&_h3]:text-slate-900 [&_h4]:mt-3 [&_h4]:mb-1 [&_h4]:text-sm [&_h4]:font-semibold [&_p]:mb-2.5 [&_ul]:mb-2.5 [&_ul]:ml-4 [&_ul]:list-disc [&_ol]:mb-2.5 [&_ol]:ml-4 [&_ol]:list-decimal [&_li]:mb-0.5 [&_a]:text-[var(--public-primary)] [&_a]:underline"
                         dangerouslySetInnerHTML={sanitizeDescriptionHtml(selected.description)}
                       />
                     </div>
                   ) : null}
 
-                  {safeRelation(selected.contacts).length ? (
-                    <div className="group relative overflow-hidden rounded-3xl border-emerald-100 ring-1 ring-emerald-50/60 bg-white p-5 shadow-sm transition-all duration-300 hover:border-[var(--public-primary)]/20 sm:p-6">
-                      <div className="flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-2.5">
-                          <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-emerald-500/12 text-emerald-600 ring-1 ring-emerald-500/15">
-                            <PhoneCall size={18} strokeWidth={2} />
-                          </span>
-                          <h3 className="text-[15px] font-extrabold tracking-tight text-slate-900">Contact Person</h3>
-                        </div>
-                        <div className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-slate-600 ring-1 ring-black/5">
-                          {safeRelation(selected.contacts).length} kontak
-                        </div>
-                      </div>
-                      <div className="relative mt-5 grid gap-4 grid-cols-1 sm:grid-cols-[repeat(auto-fit,minmax(260px,1fr))]">
-                        {safeRelation(selected.contacts).map((c) => (
-                          <a
-                            key={c.id}
-                            href={contactHref(c.contact)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            aria-label={`Hubungi ${c.name} via ${String(c.contact).startsWith('http') ? 'link' : 'WhatsApp'}: ${c.contact}`}
-                            title={`${c.name} — ${c.contact}`}
-                            className="group/card relative overflow-hidden rounded-2xl border border-black/10 bg-gradient-to-br from-white to-slate-50 p-5 text-left transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:border-emerald-500/30 hover:bg-white hover:shadow-[0_18px_40px_-30px_rgba(16,185,129,0.45)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/45"
-                          >
-                            <div className="flex items-start gap-3">
-                              <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-emerald-500/12 text-emerald-600 ring-1 ring-emerald-500/10">
-                                <MessageCircle size={20} strokeWidth={2} />
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <div
-                                  title={c.name}
-                                  className="text-base font-semibold leading-snug text-slate-900 line-clamp-2"
-                                >
-                                  {c.name}
-                                </div>
-                                <div
-                                  title={c.contact}
-                                  className="mt-1 text-sm text-slate-600 leading-relaxed transition-colors duration-200 group-hover/card:text-emerald-600 line-clamp-2"
-                                >
-                                  {c.contact}
-                                </div>
-                              </div>
-                              <span className="grid size-8 shrink-0 place-items-center rounded-lg text-slate-400 transition-all duration-300 group-hover/card:-translate-x-0.5 group-hover/card:text-emerald-600">
-                                <ExternalLink size={16} strokeWidth={2} />
-                              </span>
-                            </div>
-                          </a>
-                        ))}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="rounded-3xl border border-dashed border-black/15 bg-slate-50/80 p-5 text-sm text-slate-500 sm:p-6">
-                      Belum ada narahubung. Informasi kontak akan segera diumumkan.
-                    </div>
-                  )}
-
                   {safeRelation(selected.committee).length ? (
-                    <div className="group relative overflow-hidden rounded-3xl border-violet-100 ring-1 ring-violet-50/60 bg-white p-5 shadow-sm transition-all duration-300 hover:border-[var(--public-primary)]/20 sm:p-6">
-                      <div className="flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-2.5">
-                          <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-violet-500/12 text-violet-600 ring-1 ring-violet-500/15">
-                            <Users2 size={18} strokeWidth={2} />
-                          </span>
-                          <h3 className="text-[15px] font-extrabold tracking-tight text-slate-900">Panitia / Posisi</h3>
-                        </div>
-                        <div className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-slate-600 ring-1 ring-black/5">
-                          {safeRelation(selected.committee).length} orang
-                        </div>
+                    <div>
+                      <div className="flex items-baseline justify-between gap-2">
+                        <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          Posisi terbuka
+                        </h3>
+                        <span className="text-xs text-slate-400">
+                          {safeRelation(selected.committee).length}
+                        </span>
                       </div>
-                      <div className="relative mt-5 grid gap-4 grid-cols-1 md:grid-cols-[repeat(auto-fit,minmax(280px,1fr))]">
+                      <ul className="mt-2 max-h-48 divide-y divide-black/5 overflow-y-auto border-y border-black/5">
                         {safeRelation(selected.committee).map((p) => (
-                          <div
+                          <li
                             key={p.id}
-                            className="group/card relative overflow-hidden rounded-2xl border border-black/10 bg-gradient-to-br from-white to-slate-50 p-5 transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:border-violet-500/30 hover:bg-white hover:shadow-[0_14px_35px_-28px_rgba(139,92,246,0.45)]"
+                            className="flex items-baseline justify-between gap-3 py-2.5 text-sm"
                           >
-                            <div className="pointer-events-none absolute left-0 top-2 bottom-2 w-[3px] rounded-full bg-[var(--public-primary)] transition-all duration-300 group-hover/card:bg-violet-500" />
-                            <div className="flex items-start gap-3 pl-3">
-                              <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-violet-500/12 text-violet-600 ring-1 ring-violet-500/10">
-                                <User size={20} strokeWidth={2} />
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <div
-                                  title={p.name}
-                                  className="text-base font-semibold leading-snug text-slate-900 line-clamp-2"
-                                >
-                                  {p.name}
-                                </div>
-                                <div
-                                  title={p.role}
-                                  className="mt-1 text-sm text-slate-600 leading-relaxed line-clamp-2"
-                                >
-                                  {p.role}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
+                            <span className="min-w-0">
+                              <span className="block font-medium text-slate-900">
+                                {p.role || p.name}
+                              </span>
+                              {p.role && p.name ? (
+                                <span className="mt-0.5 block text-[11px] text-slate-400">
+                                  Penanggung jawab · {p.name}
+                                </span>
+                              ) : null}
+                            </span>
+                          </li>
                         ))}
-                      </div>
+                      </ul>
                     </div>
                   ) : (
-                    <div className="rounded-3xl border border-dashed border-black/15 bg-slate-50/80 p-5 text-sm text-slate-500 sm:p-6">
-                      Belum ada struktur panitia. Akan diumumkan segera setelah tim selesai disusun.
-                    </div>
+                    <p className="text-sm text-slate-500">Posisi terbuka belum diumumkan.</p>
                   )}
 
-                  <div className="group relative overflow-hidden rounded-3xl border-l-4 border-[var(--public-primary)] border-t border-r border-b border-black/10 bg-gradient-to-br from-white via-white to-[var(--public-primary)]/[0.04] p-5 shadow-md sm:p-6">
-                    <div className="flex items-center gap-2.5">
-                      <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-amber-500/12 text-amber-600 ring-1 ring-amber-500/15">
-                        <ClipboardList size={18} strokeWidth={2} />
-                      </span>
-                      <h3 className="text-[15px] font-extrabold tracking-tight text-slate-900">Pendaftaran</h3>
-                    </div>
-                    {selectedFormUrl ? (
-                      <div className="relative mt-5 flex flex-col-reverse gap-3.5 sm:flex-row sm:justify-end sm:items-center">
-                        <button
-                          type="button"
-                          className="group/btn inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-black/10 bg-white px-5 text-sm font-bold text-slate-700 transition-all duration-250 ease-[cubic-bezier(0.22,1,0.36,1)] hover:border-slate-300 hover:bg-slate-50 hover:shadow-[0_8px_20px_-18px_rgba(15,23,42,0.45)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/40 sm:w-auto"
-                          onClick={closeModal}
-                        >
-                          Tutup
-                        </button>
-                        {selectedIsOpen ? (
-                          isAuthenticated && user ? (
+                  {safeRelation(selected.contacts).length ? (
+                    <div>
+                      <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Narahubung
+                      </h3>
+                      <ul className="mt-2 divide-y divide-black/5 border-y border-black/5">
+                        {safeRelation(selected.contacts).map((c) => (
+                          <li key={c.id}>
                             <a
-                              href={selectedFormUrl}
+                              href={contactHref(c.contact)}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="group/btn inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[var(--public-primary)] px-6 text-center text-sm font-bold text-white shadow-[0_18px_40px_-20px_rgba(37,99,235,0.75)] ring-1 ring-[var(--public-primary)]/25 transition-all duration-250 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:brightness-110 hover:shadow-[0_24px_50px_-20px_rgba(37,99,235,0.85)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/60 sm:w-auto"
+                              className="flex items-center justify-between gap-3 py-2.5 text-sm transition hover:text-[var(--public-primary)]"
                             >
-                              Daftar Sekarang
-                              <span className="inline-flex transition-transform duration-250 group-hover/btn:translate-x-0.5">
-                                <ArrowRight size={16} strokeWidth={2.2} />
+                              <span className="min-w-0">
+                                <span className="block truncate font-medium text-slate-900">{c.name}</span>
+                                <span className="block text-[11px] text-slate-400">Contact person</span>
                               </span>
+                              <span className="shrink-0 truncate text-xs text-slate-500">{c.contact}</span>
                             </a>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const next = new URLSearchParams(searchParams);
-                                next.set('id', selected.id);
-                                navigate('/login', {
-                                  state: { from: { pathname: location.pathname, search: `?${next.toString()}` } },
-                                });
-                              }}
-                              className="group/btn inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[var(--public-primary)] px-6 text-sm font-bold text-white shadow-[0_18px_40px_-20px_rgba(37,99,235,0.75)] ring-1 ring-[var(--public-primary)]/25 transition-all duration-250 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:brightness-110 hover:shadow-[0_24px_50px_-20px_rgba(37,99,235,0.85)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/60 sm:w-auto"
-                            >
-                              Login untuk Daftar
-                              <span className="inline-flex transition-transform duration-250 group-hover/btn:translate-x-0.5">
-                                <LogIn size={16} strokeWidth={2.2} />
-                              </span>
-                            </button>
-                          )
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-slate-500">Narahubung belum diumumkan.</p>
+                  )}
+
+                  <div className="flex flex-col-reverse gap-2 border-t border-black/10 pt-4 sm:flex-row sm:justify-end sm:gap-3">
+                    <button
+                      type="button"
+                      className="inline-flex h-10 items-center justify-center rounded-lg border border-black/10 px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                      onClick={closeModal}
+                    >
+                      Tutup
+                    </button>
+                    {selectedFormUrl ? (
+                      selectedIsOpen ? (
+                        isAuthenticated && user ? (
+                          <a
+                            href={selectedFormUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex h-10 items-center justify-center gap-1.5 rounded-lg bg-[var(--public-primary)] px-4 text-sm font-semibold text-white transition hover:brightness-110"
+                          >
+                            Daftar Sekarang
+                            <ArrowRight size={16} />
+                          </a>
                         ) : (
                           <button
                             type="button"
-                            disabled
-                            aria-disabled="true"
-                            title="Pendaftaran telah ditutup"
-                            className="group/btn inline-flex h-11 w-full cursor-not-allowed items-center justify-center gap-2 rounded-xl bg-slate-200/70 px-6 text-sm font-bold text-slate-500 ring-1 ring-slate-300/60 sm:w-auto"
+                            onClick={() => {
+                              const next = new URLSearchParams(searchParams);
+                              next.set('id', selected.id);
+                              navigate('/login', {
+                                state: {
+                                  from: { pathname: location.pathname, search: `?${next.toString()}` },
+                                },
+                              });
+                            }}
+                            className="inline-flex h-10 items-center justify-center gap-1.5 rounded-lg bg-[var(--public-primary)] px-4 text-sm font-semibold text-white transition hover:brightness-110"
                           >
-                            Pendaftaran Telah Ditutup
-                            <span className="inline-flex opacity-70">
-                              <X size={16} strokeWidth={2.2} />
-                            </span>
+                            Login untuk Daftar
+                            <LogIn size={16} />
                           </button>
-                        )}
-                      </div>
+                        )
+                      ) : (
+                        <button
+                          type="button"
+                          disabled
+                          className="inline-flex h-10 cursor-not-allowed items-center justify-center rounded-lg bg-slate-200 px-4 text-sm font-semibold text-slate-500"
+                        >
+                          Pendaftaran Ditutup
+                        </button>
+                      )
                     ) : (
-                      <div className="relative mt-4 text-sm text-slate-500">Link pendaftaran belum diatur.</div>
+                      <p className="self-center text-sm text-slate-500">Link pendaftaran belum diatur.</p>
                     )}
                   </div>
                 </div>

@@ -12,6 +12,7 @@ import {
   PUBLIC_STRUCTURE_EMPTY,
 } from '../services/publicHome.js';
 import fs from 'fs';
+import { normalizeIp } from '../utils/ip.js';
 
 function toInt(value: unknown, fallback: number) {
   const n =
@@ -418,7 +419,7 @@ export const replaceAdminStructure = async (req: AuthRequest, res: Response): Pr
           target_table: 'PublicStructure',
           target_id: 'ALL',
           new_value: JSON.stringify({ cabinetName, cabinetPeriod, data }),
-          ip_address: req.ip,
+          ip_address: normalizeIp(req.ip),
         },
       });
     });
@@ -469,7 +470,7 @@ export const setActiveCabinet = async (req: AuthRequest, res: Response): Promise
           target_table: 'PublicStructureCabinet',
           target_id: id,
           new_value: JSON.stringify({ is_active: true }),
-          ip_address: req.ip,
+          ip_address: normalizeIp(req.ip),
         },
       });
     });

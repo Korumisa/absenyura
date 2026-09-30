@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { Request } from 'express';
+import { normalizeIp } from './ip.js';
 
 export type AttendanceProofAction = 'checkin' | 'checkout';
 
@@ -164,8 +165,8 @@ export function validateIpRestriction(
 
   if (allowedIPs.length === 0) return { ok: true };
 
-  const observedIp = req.ip || req.socket.remoteAddress || '';
-  if (!observedIp) {
+  const observedIp = normalizeIp(req.ip || req.socket.remoteAddress || undefined);
+  if (!observedIp || observedIp === 'unknown') {
     return { ok: false, status: 400, error: 'Alamat IP perangkat Anda tidak terdeteksi' };
   }
 

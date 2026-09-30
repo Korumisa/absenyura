@@ -1,23 +1,27 @@
-import React, { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import PublicLayout from '@/components/PublicLayout';
 import { ArrowRight, GraduationCap, Lightbulb, PenLine, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { PublicProgram } from '@/types/publicSite';
 import PublicEnter from '@/components/PublicEnter';
 import PublicReveal from '@/components/PublicReveal';
+import { CabinetPeriodSwitcher } from '@/components/public/home/CabinetPeriodSwitcher';
 import PublicCoverImage from '@/components/PublicCoverImage';
 import PublicProgramCard from '@/components/PublicProgramCard';
 import { PublicPageError } from '@/components/public/PublicPageError';
 import { Skeleton } from '@/components/ui/skeleton';
 import { hasText, showPublicSection } from '@/lib/utils/publicContent';
+import { truncateText } from '@/lib/utils/utils';
 import { BrandMark } from '@/components/public/home/BrandMark';
 import { DivisionRail } from '@/components/public/home/DivisionRail';
+import { HomeSectionTitle } from '@/components/public/home/HomeSectionTitle';
 import { PublicSectionOrnament } from '@/components/public/PublicSectionOrnament';
 import { isCoreStructureGroup } from '@/components/public/home/divisionUtils';
 import { PublicHomeCmsHint } from '@/components/public/home/PublicHomeCmsHint';
 import { normalizeYoutubeEmbedUrl } from '@/lib/media/normalizeYoutubeEmbedUrl';
 import { optimizeCloudinaryUrl } from '@/lib/media/cloudinaryImage';
 import { PublicSlowLoadingHint } from '@/components/public/PublicSlowLoadingHint';
+import { PublicPageMeta } from '@/components/public/PublicPageMeta';
 import { usePublicHomeData, isPublicProfileSparse } from '@/hooks/usePublicHomeData';
 import { ensureHttpsUrl } from '@/lib/http/ensureHttpsUrl';
 import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
@@ -37,37 +41,30 @@ function PublicHomeSkeleton({
         <div>
           <section
             aria-label="Beranda organisasi"
-            className="relative overflow-hidden bg-slate-50/60"
+            className="relative isolate min-h-[min(70vh,640px)] overflow-hidden bg-slate-950"
           >
-            <PublicEnter instant className="mx-auto grid max-w-7xl items-center gap-12 px-4 py-16 sm:px-6 md:grid-cols-2 md:py-24">
+            <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-800" aria-hidden />
+            <PublicEnter instant className="relative mx-auto flex min-h-[min(70vh,640px)] max-w-7xl flex-col justify-end px-4 pb-14 pt-24 sm:px-6">
               <div className="flex items-start gap-6">
-                <div className="hidden size-28 shrink-0 sm:block">
-                  <Skeleton className="size-28 rounded-3xl" />
+                <div className="hidden size-20 shrink-0 sm:block">
+                  <Skeleton className="size-20 rounded-2xl bg-white/15" />
                 </div>
                 <div className="w-full max-w-xl">
-                  <div className="font-display text-4xl italic tracking-tight text-slate-900 md:text-5xl">
-                    Kabinet
-                  </div>
+                  <div className="font-display text-4xl italic text-white/80 md:text-5xl">Kabinet</div>
                   <div
                     className="mt-2 space-y-3"
                     aria-busy="true"
                     aria-label="Memuat profil organisasi"
                   >
-                    <Skeleton className="h-14 w-full max-w-md md:h-16" />
-                    <Skeleton className="h-4 w-40" />
-                    <Skeleton className="h-4 w-56" />
-                    <Skeleton className="h-4 w-48" />
+                    <Skeleton className="h-14 w-full max-w-md bg-white/20 md:h-16" />
+                    <Skeleton className="h-4 w-40 bg-white/15" />
+                    <Skeleton className="h-4 w-56 bg-white/10" />
                   </div>
                   {showSlowHint ? (
-                    <div className="mt-5 max-w-md">
+                    <div className="mt-5 max-w-md rounded-xl border border-white/15 bg-white/10 p-4">
                       <PublicSlowLoadingHint onRetry={onRetry} />
                     </div>
                   ) : null}
-                </div>
-              </div>
-              <div className="relative">
-                <div className="aspect-[4/3] w-full overflow-hidden rounded-3xl border border-black/10 bg-white shadow-[0_35px_80px_-60px_rgba(15,23,42,0.45)]">
-                  <Skeleton className="h-full w-full" />
                 </div>
               </div>
             </PublicEnter>
@@ -169,7 +166,7 @@ export default function PublicHome() {
   const isProgramsError = programsState.isError;
   const retryPrograms = programsState.retry;
 
-  React.useEffect(() => {
+  useEffect(() => {
     const raw = profile?.home_image_url;
     if (!raw) return;
     const href = optimizeCloudinaryUrl(ensureHttpsUrl(raw), { width: 828 });
@@ -239,6 +236,16 @@ export default function PublicHome() {
   const misiName = profile?.misi_name ?? '';
   const misiRole = profile?.misi_role ?? '';
 
+  const homeMetaDescription = useMemo(() => {
+    const org = (orgName || 'HM SDP Undiksha').trim();
+    const base = profile?.about_content?.trim();
+    if (base && base.length >= 40) {
+      return truncateText(base, 160);
+    }
+    const kabinet = [kabinetName, kabinetPeriod].filter(Boolean).join(' · ');
+    return `Portal informasi ${org}${kabinet ? ` (${kabinet})` : ''}. Jelajahi struktur organisasi, program kerja, berita, galeri, dan informasi rekrutmen.`;
+  }, [orgName, profile?.about_content, kabinetName, kabinetPeriod]);
+
   const coreMembers = useMemo(() => {
     const coreGroups = structure.filter(
       (g: any) => Boolean(g.is_core) || isCoreStructureGroup(g.title),
@@ -300,146 +307,140 @@ export default function PublicHome() {
 
   return (
     <PublicLayout>
+      <PublicPageMeta
+        title={orgName ? `${orgName} · Portal Informasi` : undefined}
+        description={homeMetaDescription}
+        path="/"
+      />
       {!isLoadingProfile && isPublicProfileSparse(profile) ? <PublicHomeCmsHint /> : null}
       <div className="relative">
         <div>
+          {/*
+            Hero: full-bleed plane (not HMTI two-column card clone).
+            Brand kabinet dominates; photo is atmosphere, not a side panel.
+          */}
           <section
             aria-label="Beranda organisasi"
-            className="relative overflow-hidden bg-slate-50/60"
+            className="relative isolate min-h-[min(92vh,860px)] overflow-hidden bg-slate-950 text-white"
           >
-            <PublicEnter instant className="mx-auto grid max-w-7xl items-center gap-12 px-4 py-16 sm:px-6 md:grid-cols-2 md:py-24">
-              <div className="flex items-start gap-6">
-                <BrandMark className="hidden size-28 shrink-0 sm:block" src={logoSrc} name={orgName || campusName} />
-                <div>
-                  <h1 className="tracking-tight text-slate-900">
-                    <span className="block font-display text-4xl italic md:text-5xl">Kabinet</span>
-                    {heroKabinetName ? (
-                      <span className="mt-1 block text-5xl font-extrabold uppercase text-[var(--public-primary)] md:text-7xl">
-                        {heroKabinetName}
-                      </span>
-                    ) : null}
-                  </h1>
-                  {isLoadingProfile ? (
-                    <div className="mt-2 space-y-3" aria-busy="true" aria-label="Memuat profil organisasi">
-                      <Skeleton className="h-14 w-full max-w-md md:h-16" />
-                      <Skeleton className="h-4 w-40" />
-                      <Skeleton className="h-4 w-56" />
-                      <Skeleton className="h-4 w-48" />
-                    </div>
-                  ) : showProfileSlowHint ? (
-                    <div className="mt-4 max-w-md">
-                      <PublicSlowLoadingHint onRetry={retryProfile} />
-                    </div>
-                  ) : (
-                    <>
-                      {kabinetPeriod ? (
-                        <p className="mt-2 text-sm font-semibold tracking-wide text-muted-foreground">{kabinetPeriod}</p>
-                      ) : null}
-                      <p className="mt-5 max-w-md text-sm font-medium text-slate-700 md:text-base">
-                        {orgName}
-                        <span className="block text-muted-foreground">{campusName}</span>
-                      </p>
-                    </>
-                  )}
-                  {heroSubtitle ? (
-                    <p className="mt-4 max-w-xl text-sm text-muted-foreground md:text-base">{heroSubtitle}</p>
-                  ) : null}
+            <div className="absolute inset-0" aria-hidden="true">
+              {isLoadingProfile ? (
+                <Skeleton className="h-full w-full rounded-none bg-slate-800" />
+              ) : profile?.home_image_url ? (
+                <PublicCoverImage
+                  url={profile.home_image_url}
+                  alt=""
+                  priority
+                  displayWidth={1600}
+                  imgClassName="object-cover object-center opacity-70"
+                />
+              ) : (
+                <div className="h-full w-full bg-[radial-gradient(ellipse_at_30%_20%,var(--public-primary)_0%,transparent_55%),linear-gradient(160deg,#0f172a,#1e293b)]" />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-r from-slate-950/92 via-slate-950/70 to-slate-950/35" />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-slate-950/40" />
+              <div className="pointer-events-none absolute -left-24 top-1/4 size-[28rem] rounded-full bg-[var(--public-primary)]/25 blur-3xl" />
+            </div>
 
-                  <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
-                    <Link
-                      to="/struktur-organisasi"
-                      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[var(--public-primary)] px-6 py-3 text-sm font-semibold text-white shadow-[0_16px_32px_rgba(37,99,235,0.35)] transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/45"
-                    >
-                      Struktur Organisasi
-                      <ArrowRight size={18} aria-hidden="true" />
-                    </Link>
-                    <Link
-                      to="/berita"
-                      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-black/10 bg-white/70 px-6 py-3 text-sm font-semibold text-slate-900 backdrop-blur transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/45"
-                    >
-                      Berita &amp; Kegiatan
-                      <ArrowRight size={18} aria-hidden="true" />
-                    </Link>
-                  </div>
+            <PublicEnter
+              instant
+              className="relative mx-auto flex min-h-[min(92vh,860px)] max-w-7xl flex-col justify-end px-4 pb-16 pt-28 sm:px-6 sm:pb-20 md:justify-center md:pb-24 md:pt-24"
+            >
+              <div className="max-w-3xl">
+                <div className="flex items-center gap-4">
+                  <BrandMark
+                    className="hidden size-16 shrink-0 overflow-hidden rounded-2xl bg-white/10 ring-1 ring-white/25 sm:grid sm:size-20"
+                    src={logoSrc}
+                    name={orgName || campusName}
+                  />
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/70">
+                    {orgName || 'Organisasi'}
+                    {campusName ? ` · ${campusName}` : ''}
+                  </p>
                 </div>
-              </div>
 
-              <div className="relative">
-                <div className="overflow-hidden rounded-3xl border border-black/10 bg-white shadow-[0_28px_70px_-50px_rgba(15,23,42,0.4)]">
-                  <div className="relative aspect-[4/3] w-full bg-slate-50">
-                    {isLoadingProfile ? (
-                      <Skeleton className="h-full w-full rounded-none" aria-hidden="true" />
-                    ) : profile?.home_image_url ? (
-                      <PublicCoverImage
-                        url={profile.home_image_url}
-                        alt="Foto Anggota"
-                        priority
-                        displayWidth={828}
-                      />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center p-8">
-                        <p className="text-center text-sm text-muted-foreground">Foto anggota belum tersedia.</p>
-                      </div>
-                    )}
+                <h1 className="mt-6 tracking-tight">
+                  <span className="block font-display text-4xl italic text-white/90 md:text-5xl lg:text-6xl">
+                    Kabinet
+                  </span>
+                  {heroKabinetName ? (
+                    <span className="mt-1 block text-5xl font-extrabold uppercase leading-[0.95] text-[var(--public-primary)] drop-shadow-[0_12px_40px_rgba(0,0,0,0.35)] md:text-7xl lg:text-8xl">
+                      {heroKabinetName}
+                    </span>
+                  ) : null}
+                </h1>
+
+                {isLoadingProfile ? (
+                  <div className="mt-6 space-y-3" aria-busy="true" aria-label="Memuat profil organisasi">
+                    <Skeleton className="h-4 w-40 bg-white/20" />
+                    <Skeleton className="h-4 w-72 max-w-full bg-white/15" />
                   </div>
+                ) : showProfileSlowHint ? (
+                  <div className="mt-6 max-w-md rounded-xl border border-white/15 bg-white/10 p-4 backdrop-blur">
+                    <PublicSlowLoadingHint onRetry={retryProfile} />
+                  </div>
+                ) : (
+                  <>
+                    {kabinetPeriod ? (
+                      <p className="mt-4 text-sm font-semibold tracking-[0.18em] text-white/75 uppercase">
+                        {kabinetPeriod}
+                      </p>
+                    ) : null}
+                    {heroSubtitle ? (
+                      <p className="mt-5 max-w-xl text-base leading-relaxed text-white/80 md:text-lg">
+                        {heroSubtitle}
+                      </p>
+                    ) : null}
+                  </>
+                )}
+
+                <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
+                  <Link
+                    to="/struktur-organisasi"
+                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[var(--public-primary)] px-6 py-3 text-sm font-semibold text-white shadow-[0_18px_40px_-12px_rgba(0,0,0,0.45)] transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+                  >
+                    Struktur Organisasi
+                    <ArrowRight size={18} aria-hidden="true" />
+                  </Link>
+                  <Link
+                    to="/program-kerja"
+                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/25 bg-white/10 px-6 py-3 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+                  >
+                    Program Kerja
+                    <ArrowRight size={18} aria-hidden="true" />
+                  </Link>
                 </div>
               </div>
             </PublicEnter>
           </section>
 
-          {/* Cabinet Switcher */}
           {allCabinets.length > 1 && (
-            <section className="relative bg-slate-50/70 py-5 pt-10 sm:pt-14">
+            <section className="relative bg-white py-6 sm:py-8">
               <div className="mx-auto max-w-7xl px-4 sm:px-6">
-                <div
-                  role="tablist"
-                  className="flex flex-wrap items-center justify-center gap-2"
-                  aria-label="Pilih periode kabinet"
-                >
-                  {allCabinets.map((cabinet: any) => {
-                    const isSelected = selectedCabinet?.id === cabinet.id;
-                    return (
-                      <button
-                        key={cabinet.id}
-                        type="button"
-                        role="tab"
-                        aria-selected={isSelected}
-                        aria-pressed={isSelected}
-                        onClick={() => setSelectedCabinetId(isSelected ? null : cabinet.id)}
-                        className={
-                          (isSelected
-                            ? "bg-[var(--public-primary)] text-white shadow-[0_10px_22px_rgba(37,99,235,0.35)]"
-                            : "bg-white text-slate-900 border border-black/10 hover:border-[var(--public-primary)]/40"
-                          ) + " inline-flex min-h-10 items-center gap-2 rounded-xl px-5 py-2.5 text-xs font-semibold uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500 dark:focus-visible:ring-indigo-400"
-                        }
-                      >
-                        {cabinet.name}
-                        <span className="text-[10px] opacity-75">{cabinet.period}</span>
-                        {cabinet.is_active && !isSelected && <span className="ml-1 h-2 w-2 rounded-full bg-green-500" />}
-                      </button>
-                    );
-                  })}
-                </div>
+                <CabinetPeriodSwitcher
+                  cabinets={allCabinets}
+                  selectedId={selectedCabinet?.id}
+                  onSelect={setSelectedCabinetId}
+                />
 
-                {/* ── IDE 3: Signature Tagline Kabinet + Filosofi Logo ─── */}
-                {/* Setiap periode kabinet punya identitas filosofis unik (nama    */}
-                {/* tagline + motto). Render dengan gradien ungu→emas, italic      */}
-                {/* serif, dan prefix Unicode ✦ (asterate ornamental) yang identik */}
-                {/* dengan footer profile tagline "Atma Siddhi Wiweka".            */}
                 {selectedCabinet?.tagline || selectedCabinet?.motto ? (
                   <div
                     key={`tagline-${selectedCabinet?.id ?? 'default'}`}
-                    className="mx-auto mt-6 max-w-4xl text-center animate-[taglineFadeIn_520ms_ease-out_both]"
+                    className="mx-auto mt-7 max-w-2xl text-center animate-[taglineFadeIn_520ms_ease-out_both]"
                   >
                     {selectedCabinet?.tagline ? (
-                      <p
-                        className="font-serif text-xl italic font-extrabold leading-tight sm:text-2xl md:text-3xl text-[var(--public-primary)]"
-                      >
+                      <p className="font-display text-[1.65rem] italic leading-[1.15] tracking-tight text-slate-900 sm:text-3xl md:text-[2.15rem]">
+                        <span className="text-[var(--public-primary)]/55" aria-hidden>
+                          “
+                        </span>
                         {String(selectedCabinet.tagline)}
+                        <span className="text-[var(--public-primary)]/55" aria-hidden>
+                          ”
+                        </span>
                       </p>
                     ) : null}
                     {selectedCabinet?.motto ? (
-                      <p className="mt-2 text-sm italic text-slate-600 sm:text-base md:text-[15px]">
+                      <p className="mx-auto mt-4 max-w-xl text-[11px] font-semibold uppercase leading-relaxed tracking-[0.2em] text-[var(--public-primary)] sm:text-xs">
                         {String(selectedCabinet.motto)}
                       </p>
                     ) : null}
@@ -530,7 +531,14 @@ export default function PublicHome() {
 
               {aboutParagraphs.length ? (
               <div className="text-slate-800">
-                <div className="mb-4 font-display text-3xl italic tracking-tight md:text-4xl">{aboutTitle || 'Tentang'}</div>
+                <HomeSectionTitle
+                  align="left"
+                  eyebrow="Profil"
+                  lead="Tentang"
+                  accent="Kami"
+                  support={aboutTitle && aboutTitle !== 'Tentang' ? aboutTitle : undefined}
+                  className="mb-6"
+                />
                   <div className="space-y-5 text-[17px] leading-relaxed text-slate-700">
                     {aboutParagraphs.map((p) => (
                       <p key={p}>{p}</p>
@@ -671,11 +679,13 @@ export default function PublicHome() {
           <section className="relative bg-slate-50/55 py-20">
         <PublicReveal className="mx-auto max-w-7xl px-4 text-center sm:px-6">
 
-          <div className="font-display text-5xl italic tracking-tight text-slate-900 sm:text-6xl md:text-7xl">Program</div>
-          <div className="-mt-2 text-5xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] sm:-mt-3 sm:text-6xl md:text-7xl">Kerja</div>
-          <div className="mx-auto mt-3 max-w-xl text-sm text-slate-700">
-            Ringkasan program kerja yang sedang berjalan dan yang akan dilaksanakan.
-          </div>
+          <HomeSectionTitle
+            eyebrow="Kegiatan"
+            lead="Program"
+            accent="Kerja"
+            support="Ringkasan program kerja yang sedang berjalan dan yang akan dilaksanakan."
+          />
+          <PublicSectionOrnament wide className="mx-auto mt-5" />
 
           <div className="relative mx-auto mt-10 max-w-5xl">
             {isLoadingPrograms ? (
@@ -776,46 +786,52 @@ export default function PublicHome() {
                 <div className={gridClass}>
                   {shown.map((r) => {
                     const joinUrl = ensureHttpsUrl(r.form_url);
+                    const plainDesc = r.description
+                      ? String(r.description).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+                      : '';
                     return (
-                      <div
+                      <article
                         key={r.id}
-                        className="flex h-full flex-col overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)]"
+                        className="group flex h-full flex-col border border-black/10 bg-white"
                       >
-                      <div className="aspect-[16/10] w-full bg-gradient-to-br from-slate-50 to-slate-100 ring-1 ring-slate-200">
-                        <PublicCoverImage url={r.poster_image_url} alt={r.title} imgClassName="object-cover" />
-                      </div>
-                      <div className="flex flex-1 flex-col p-5">
-                        <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{r.date_range ?? '-'}</div>
-                        <div className="mt-2 text-lg font-extrabold tracking-tight text-slate-900 line-clamp-2">{r.title}</div>
-                        {r.description ? (
-                          <div className="mt-3 text-sm text-slate-700 line-clamp-2">{r.description}</div>
-                        ) : (
-                          <div className="mt-3 text-sm text-muted-foreground line-clamp-2">Informasi singkat belum tersedia.</div>
-                        )}
-                        <div className="mt-auto pt-5">
-                          <div className="flex items-center justify-between gap-3">
+                        <div className="aspect-[16/10] w-full overflow-hidden bg-slate-100">
+                          <PublicCoverImage
+                            url={r.poster_image_url}
+                            alt={r.title}
+                            imgClassName="object-cover transition duration-500 group-hover:scale-[1.02]"
+                          />
+                        </div>
+                        <div className="flex flex-1 flex-col p-4 sm:p-5">
+                          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                            {r.date_range ?? '-'}
+                          </p>
+                          <h3 className="mt-1.5 text-base font-bold leading-snug tracking-tight text-slate-900 line-clamp-2 sm:text-lg">
+                            {r.title}
+                          </h3>
+                          <p className="mt-2 flex-1 text-sm leading-relaxed text-slate-600 line-clamp-2">
+                            {plainDesc || 'Informasi singkat belum tersedia.'}
+                          </p>
+                          <div className="mt-4 flex items-center gap-3 border-t border-black/5 pt-3">
                             <Link
                               to="/open-recruitment"
-                              className="inline-flex items-center gap-2 rounded-xl border border-black/10 bg-white px-4 py-2 text-xs font-semibold text-slate-700 transition hover:border-[var(--public-primary)]/30"
+                              className="text-sm font-semibold text-slate-700 transition hover:text-[var(--public-primary)]"
                             >
                               Detail
-                              <ArrowRight size={16} />
                             </Link>
                             {joinUrl ? (
                               <a
                                 href={joinUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center gap-2 rounded-xl bg-[var(--public-primary)] px-4 py-2 text-xs font-semibold text-white shadow-[0_12px_22px_rgba(37,99,235,0.28)] transition hover:brightness-110"
+                                className="ml-auto inline-flex items-center gap-1 text-sm font-semibold text-[var(--public-primary)] transition hover:brightness-110"
                               >
-                                Join
-                                <ArrowRight size={16} />
+                                Daftar
+                                <ArrowRight size={14} />
                               </a>
                             ) : null}
                           </div>
                         </div>
-                        </div>
-                      </div>
+                      </article>
                     );
                   })}
                 </div>
@@ -827,14 +843,13 @@ export default function PublicHome() {
 
       {(isLoadingStructure || structure.length > 0) ? (
       <section className="relative bg-slate-50/55 py-10 sm:py-12">
-        <PublicReveal eager className="mx-auto max-w-7xl px-4 sm:px-6">
-          <div className="text-center">
-            <div className="font-display text-5xl italic tracking-tight text-slate-900 sm:text-6xl md:text-7xl">Susunan</div>
-            <div className="-mt-2 text-5xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] sm:-mt-3 sm:text-6xl md:text-7xl">
-              Fungsionaris
-            </div>
-            <PublicSectionOrnament wide className="mt-4" />
-          </div>
+        <PublicReveal eager className="mx-auto w-full min-w-0 max-w-7xl px-4 sm:px-6">
+          <HomeSectionTitle
+            eyebrow="Kepengurusan"
+            lead="Susunan"
+            accent="Fungsionaris"
+          />
+          <PublicSectionOrnament wide className="mx-auto mt-4" />
 
           {isLoadingStructure ? (
             <div className="mt-5 h-40" aria-busy="true" />
@@ -844,15 +859,19 @@ export default function PublicHome() {
                 .slice()
                 .sort((a: any, b: any) => (Number(a.sort_order ?? 999) || 999) - (Number(b.sort_order ?? 999) || 999));
               const core = ordered.filter(
-                (g: any) => Boolean((g as { is_core?: boolean }).is_core) || isCoreStructureGroup(g.title) || (Number(g.sort_order ?? 999) || 999) === 0,
+                (g: any) =>
+                  Boolean((g as { is_core?: boolean }).is_core) ||
+                  isCoreStructureGroup(g.title) ||
+                  (Number(g.sort_order ?? 999) || 999) === 0,
               );
               const coreIds = new Set(core.map((g: any) => g.id));
               const support = ordered.filter((g: any) => !coreIds.has(g.id));
               return (
-                <div className="mt-4 space-y-8 sm:mt-5 sm:space-y-10">
-                  {/* No "Divisi Inti" eyebrow — it duplicated CMS titles like "Inti". */}
-                  {core.length ? <DivisionRail groups={core} /> : null}
-                  {support.length ? <DivisionRail label="Divisi Pendukung" groups={support} /> : null}
+                <div className="mt-4 min-w-0 space-y-10 sm:mt-5 sm:space-y-12">
+                  {core.length ? <DivisionRail groups={core} centerWhenFits /> : null}
+                  {support.length ? (
+                    <DivisionRail label="Divisi Pendukung" groups={support} />
+                  ) : null}
                 </div>
               );
             })()
@@ -874,13 +893,13 @@ export default function PublicHome() {
       <section className="relative bg-white py-20">
         <PublicReveal className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
-            <div>
-              <div className="font-display text-5xl italic tracking-tight text-slate-900 md:text-6xl">Informasi</div>
-              <div className="-mt-2 text-5xl font-extrabold uppercase tracking-tight text-[var(--public-primary)] md:text-6xl">Lomba</div>
-              <div className="mt-3 max-w-xl text-sm text-slate-700">
-                Kumpulan informasi lomba yang sedang dibuka dan mendekati tenggat.
-              </div>
-            </div>
+            <HomeSectionTitle
+              align="left"
+              eyebrow="Kompetisi"
+              lead="Informasi"
+              accent="Lomba"
+              support="Kumpulan informasi lomba yang sedang dibuka dan mendekati tenggat."
+            />
             <Link
               to="/informasi-lomba"
               className="inline-flex items-center gap-2 rounded-xl border border-black/10 bg-white px-6 py-3 text-sm font-semibold text-slate-900 transition hover:border-[var(--public-primary)]/40"
@@ -908,27 +927,29 @@ export default function PublicHome() {
                     <Link
                       key={l.id}
                       to="/informasi-lomba"
-                      className="group flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--public-primary)]/30 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-[var(--public-primary)]/55"
+                      className="group flex h-full flex-col border border-black/10 bg-white transition hover:border-[var(--public-primary)]/40"
                     >
-                      <div className="relative aspect-[16/10] w-full bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(15,23,42,0.03))]">
-                        <PublicCoverImage url={l.cover_image_url} alt={l.title} imgClassName="object-cover transition duration-700 group-hover:scale-[1.02]" />
-                        <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-black/5" />
+                      <div className="aspect-[16/10] w-full overflow-hidden bg-slate-100">
+                        <PublicCoverImage
+                          url={l.cover_image_url}
+                          alt={l.title}
+                          imgClassName="object-cover transition duration-500 group-hover:scale-[1.02]"
+                        />
                       </div>
-                      <div className="flex flex-1 flex-col p-5">
-                        <div className="text-lg font-extrabold tracking-tight text-slate-900 line-clamp-2">{l.title}</div>
-                        <div className="mt-2 text-sm font-semibold text-muted-foreground">
-                          {l.date_label ? `Batas Pendaftaran : ${l.date_label}` : 'Batas Pendaftaran : -'}
-                        </div>
-                        {l.excerpt ? (
-                          <div className="mt-4 text-sm leading-relaxed text-slate-700 line-clamp-3">{l.excerpt}</div>
-                        ) : (
-                          <div className="mt-4 text-sm text-muted-foreground line-clamp-3">Ringkasan belum tersedia.</div>
-                        )}
-                        <div className="mt-6">
-                          <div className="flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--public-primary)]/45 bg-white px-5 py-3 text-sm font-semibold text-[var(--public-primary)] transition group-hover:bg-[var(--public-primary)]/5">
-                            Lihat Detail <ArrowRight size={16} />
-                          </div>
-                        </div>
+                      <div className="flex flex-1 flex-col p-4 sm:p-5">
+                        <h3 className="text-base font-bold leading-snug tracking-tight text-slate-900 line-clamp-2 sm:text-lg">
+                          {l.title}
+                        </h3>
+                        <p className="mt-1.5 text-xs font-medium text-slate-500">
+                          {l.date_label ? `Batas: ${l.date_label}` : 'Batas pendaftaran belum diumumkan'}
+                        </p>
+                        <p className="mt-2 flex-1 text-sm leading-relaxed text-slate-600 line-clamp-2">
+                          {l.excerpt || 'Ringkasan belum tersedia.'}
+                        </p>
+                        <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-[var(--public-primary)]">
+                          Lihat detail
+                          <ArrowRight size={14} className="transition group-hover:translate-x-0.5" />
+                        </span>
                       </div>
                     </Link>
                   ))}
@@ -980,25 +1001,27 @@ export default function PublicHome() {
                     <Link
                       key={a.id}
                       to="/galeri"
-                      className="group flex h-full flex-col overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-[var(--public-primary)]/30"
+                      className="group flex h-full flex-col border border-black/10 bg-white transition hover:border-[var(--public-primary)]/40"
                     >
-                      <div className="aspect-[16/10] w-full bg-gradient-to-br from-slate-50 to-slate-100 ring-1 ring-slate-200">
-                        <PublicCoverImage url={a.items?.[0]?.image_url} alt={a.title} imgClassName="transition duration-500 group-hover:scale-[1.02]" />
+                      <div className="aspect-[16/10] w-full overflow-hidden bg-slate-100">
+                        <PublicCoverImage
+                          url={a.items?.[0]?.image_url}
+                          alt={a.title}
+                          imgClassName="object-cover transition duration-500 group-hover:scale-[1.02]"
+                        />
                       </div>
-                      <div className="flex flex-1 flex-col p-5">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="min-w-0">
-                            <div className="text-lg font-extrabold tracking-tight text-slate-900 line-clamp-1">{a.title}</div>
-                            {a.description ? (
-                              <div className="mt-2 text-sm text-slate-700 line-clamp-2">{a.description}</div>
-                            ) : (
-                              <div className="mt-2 text-sm text-muted-foreground line-clamp-2">Dokumentasi akan ditampilkan setelah diisi.</div>
-                            )}
-                          </div>
-                          <div className="inline-flex shrink-0 items-center gap-2 rounded-full bg-[var(--public-primary)]/10 px-3 py-1 text-xs font-semibold text-[var(--public-primary)]">
+                      <div className="flex flex-1 flex-col p-4 sm:p-5">
+                        <div className="flex items-baseline justify-between gap-3">
+                          <h3 className="min-w-0 text-base font-bold tracking-tight text-slate-900 line-clamp-1 sm:text-lg">
+                            {a.title}
+                          </h3>
+                          <span className="shrink-0 text-xs font-medium text-slate-500">
                             {a.item_count ?? a.items?.length ?? 0} foto
-                          </div>
+                          </span>
                         </div>
+                        <p className="mt-2 text-sm leading-relaxed text-slate-600 line-clamp-2">
+                          {a.description || 'Dokumentasi akan ditampilkan setelah diisi.'}
+                        </p>
                       </div>
                     </Link>
                   ))}
@@ -1050,35 +1073,30 @@ export default function PublicHome() {
                     <Link
                       key={p.id}
                       to={`/berita/${p.slug}`}
-                      className="group flex h-full flex-col overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-[var(--public-primary)]/30"
+                      className="group flex h-full flex-col border border-black/10 bg-white transition hover:border-[var(--public-primary)]/40"
                     >
-                      <div className="aspect-[16/10] w-full bg-gradient-to-br from-slate-50 to-slate-100 ring-1 ring-slate-200">
-                        <PublicCoverImage url={p.cover_image_url} alt={p.title} imgClassName="object-cover transition duration-700 group-hover:scale-[1.01]" />
+                      <div className="aspect-[16/10] w-full overflow-hidden bg-slate-100">
+                        <PublicCoverImage
+                          url={p.cover_image_url}
+                          alt={p.title}
+                          imgClassName="object-cover transition duration-500 group-hover:scale-[1.02]"
+                        />
                       </div>
-                      <div className="flex flex-1 flex-col p-5">
-                        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                          <span>{p.category?.name ?? 'Berita'}</span>
-                          {p.date_label ? <span className="text-slate-300">•</span> : null}
-                          {p.date_label ? <span className="normal-case tracking-normal">{p.date_label}</span> : null}
-                        </div>
-                        <div className="mt-3 text-lg font-extrabold tracking-tight text-slate-900 line-clamp-2">
+                      <div className="flex flex-1 flex-col p-4 sm:p-5">
+                        <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                          {p.category?.name ?? 'Berita'}
+                          {p.date_label ? ` · ${p.date_label}` : ''}
+                        </p>
+                        <h3 className="mt-1.5 text-base font-bold leading-snug tracking-tight text-slate-900 line-clamp-2 sm:text-lg">
                           {p.title}
-                        </div>
-                        {p.excerpt ? (
-                          <div className="mt-3 text-sm leading-relaxed text-slate-700 line-clamp-3">
-                            {p.excerpt}
-                          </div>
-                        ) : (
-                          <div className="mt-3 text-sm leading-relaxed text-muted-foreground line-clamp-3">
-                            Ringkasan belum tersedia.
-                          </div>
-                        )}
-                        <div className="mt-auto pt-5">
-                          <div className="inline-flex items-center gap-2 rounded-xl border border-[var(--public-primary)]/25 bg-[var(--public-primary)]/10 px-3 py-2 text-sm font-semibold text-[var(--public-primary)] transition group-hover:bg-[var(--public-primary)] group-hover:text-white">
-                            Baca selengkapnya
-                            <ArrowRight size={18} className="transition group-hover:translate-x-0.5" />
-                          </div>
-                        </div>
+                        </h3>
+                        <p className="mt-2 flex-1 text-sm leading-relaxed text-slate-600 line-clamp-2">
+                          {p.excerpt || 'Ringkasan belum tersedia.'}
+                        </p>
+                        <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-[var(--public-primary)]">
+                          Baca
+                          <ArrowRight size={14} className="transition group-hover:translate-x-0.5" />
+                        </span>
                       </div>
                     </Link>
                   ))}

@@ -4,9 +4,7 @@ import type { PublicProfile, PublicStructureGroup } from '@/types/publicSite';
 import { Skeleton } from '@/components/ui/skeleton';
 import PublicPageHero from '@/components/PublicPageHero';
 import PublicCoverImage from '@/components/PublicCoverImage';
-import { AnimatePresence, m } from 'framer-motion';
 import { useReducedMotion } from '@/lib/a11y/useReducedMotion';
-import { fadeTransition } from '@/lib/perf/motionPresets';
 import PublicEnter from '@/components/PublicEnter';
 import PublicReveal from '@/components/PublicReveal';
 import { useMockOrSwr } from '@/hooks/useMockOrSwr';
@@ -16,7 +14,9 @@ import { safeRelation } from '@/lib/utils/publicContent';
 import { PublicPageError } from '@/components/public/PublicPageError';
 import { PublicEmptyState } from '@/components/public/PublicEmptyState';
 import { PublicSectionOrnament } from '@/components/public/PublicSectionOrnament';
+import { CabinetPeriodSwitcher } from '@/components/public/home/CabinetPeriodSwitcher';
 import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
+import { PublicPageMeta } from '@/components/public/PublicPageMeta';
 
 type StructureResp = { data: PublicStructureGroup[]; cabinet: any; allCabinets: any[] };
 
@@ -28,9 +28,11 @@ export default function Fungsionaris() {
     }`,
     fetcher: (u) => publicSiteFetcher<StructureResp>(u, { kind: 'top' }),
     swrConfig: {
-      errorRetryCount: 2,
-      errorRetryInterval: 1500,
-      dedupingInterval: 10_000,
+      errorRetryCount: 5,
+      errorRetryInterval: 1200,
+      dedupingInterval: 8_000,
+      keepPreviousData: true,
+      revalidateOnReconnect: true,
     },
     mockStatic: mockStructure as StructureResp,
   });
@@ -164,6 +166,11 @@ export default function Fungsionaris() {
 
   return (
     <PublicLayout>
+      <PublicPageMeta
+        title="Struktur Organisasi & Fungsionaris"
+        description="Susunan pengurus kabinet, struktur organisasi, dan biodata fungsionaris HM SDP Undiksha untuk periode berjalan."
+        path="/struktur-organisasi"
+      />
       <PublicLoadingOverlay show={isLoading} label="Memuat fungsionaris..." />
       <PublicEnter>
         <PublicPageHero
@@ -173,72 +180,21 @@ export default function Fungsionaris() {
           compact
         >
           {subtitleBits.length ? (
-            <div className="flex w-full max-w-full flex-wrap items-center justify-center gap-2 pt-1 sm:gap-3">
-              <span aria-hidden="true" className="flex items-center gap-1">
-                <span className="h-px w-4 bg-gradient-to-r from-transparent to-[var(--public-primary)]/50 sm:w-8" />
-                <span className="size-1 rotate-45 bg-[var(--public-primary)]/45" />
-                <span className="size-1.5 rotate-45 bg-[var(--public-primary)]/75" />
-              </span>
-              <span className="relative inline-flex max-w-full items-center gap-2 rounded-full bg-[var(--public-primary)] px-4 py-2 text-white sm:gap-2.5 sm:px-5">
-                <span
-                  aria-hidden="true"
-                  className="pointer-events-none absolute inset-[2px] rounded-full border border-white/20"
-                />
-                <span className="relative truncate font-display text-sm font-semibold italic tracking-wide">
-                  {subtitleBits[0]}
-                </span>
-                {subtitleBits[1] ? (
-                  <span className="relative shrink-0 rounded-full border border-white/25 bg-white/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/95">
-                    {subtitleBits[1]}
-                  </span>
-                ) : null}
-              </span>
-              <span aria-hidden="true" className="flex items-center gap-1">
-                <span className="size-1.5 rotate-45 bg-[var(--public-primary)]/75" />
-                <span className="size-1 rotate-45 bg-[var(--public-primary)]/45" />
-                <span className="h-px w-4 bg-gradient-to-l from-transparent to-[var(--public-primary)]/50 sm:w-8" />
-              </span>
-            </div>
+            <p className="pt-1 text-sm font-medium text-slate-600">
+              {subtitleBits.join(' · ')}
+            </p>
           ) : null}
         </PublicPageHero>
       </PublicEnter>
 
-      {/* Cabinet Switcher */}
       {allCabinets.length > 1 && (
         <PublicEnter>
-          <div className="mx-auto max-w-7xl px-4 pb-1 pt-1 sm:px-6">
-            <div
-              role="tablist"
-              className="flex flex-wrap items-center justify-center gap-2"
-              aria-label="Pilih periode kabinet"
-            >
-              {allCabinets.map((cab: any) => {
-                const isSelected = cabinet?.id === cab.id;
-                return (
-                  <button
-                    key={cab.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={isSelected}
-                    aria-pressed={isSelected}
-                    onClick={() => setSelectedCabinetId(isSelected ? null : cab.id)}
-                    className={
-                      (isSelected
-                        ? 'bg-[var(--public-primary)] text-white'
-                        : 'border border-black/10 bg-white text-slate-900 hover:border-[var(--public-primary)]/40'
-                      ) +
-                      ' inline-flex min-h-11 items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)] focus-visible:ring-offset-2'
-                    }
-                  >
-                    {cab.name}
-                    <span className="text-[10px] opacity-75">{cab.period}</span>
-                    {cab.is_active && !isSelected ? (
-                      <span className="ml-1 h-2 w-2 rounded-full bg-[var(--public-primary)]" />
-                    ) : null}
-                  </button>
-                );
-              })}
-            </div>
+          <div className="mx-auto max-w-7xl px-4 pb-2 pt-1 sm:px-6">
+            <CabinetPeriodSwitcher
+              cabinets={allCabinets}
+              selectedId={cabinet?.id}
+              onSelect={setSelectedCabinetId}
+            />
           </div>
         </PublicEnter>
       )}
@@ -359,7 +315,7 @@ export default function Fungsionaris() {
 
             {bidangGroups.length ? (
               <div className="mt-8">
-                <div className="mx-auto flex w-full max-w-5xl items-center justify-start gap-2 overflow-x-auto pb-2 scrollbar-hide sm:flex-wrap sm:justify-center sm:overflow-visible">
+                <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-center gap-x-1 gap-y-1">
                   {bidangGroups.map((g: any) => {
                     const active = g.id === activeId;
                     return (
@@ -368,13 +324,21 @@ export default function Fungsionaris() {
                         type="button"
                         onClick={() => setActiveId(g.id)}
                         className={[
-                          'flex-none min-h-11 rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-widest transition ring-1 ring-inset focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)] focus-visible:ring-offset-2 sm:px-5',
+                          'min-h-10 px-3 py-2 text-xs font-semibold uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/40 sm:px-4',
                           active
-                            ? 'bg-[var(--public-primary)] text-white ring-[var(--public-primary)]'
-                            : 'bg-white text-[var(--public-primary)] ring-[var(--public-primary)]/25 hover:ring-[var(--public-primary)]/55',
+                            ? 'text-[var(--public-primary)]'
+                            : 'text-slate-600 hover:text-slate-900',
                         ].join(' ')}
                       >
-                        {g.title}
+                        <span className="relative inline-block pb-[3px]">
+                          {g.title}
+                          <span
+                            aria-hidden
+                            className={`pointer-events-none absolute inset-x-0 bottom-0 h-[1px] origin-left bg-[var(--public-primary)] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                              active ? 'scale-x-100' : 'scale-x-0'
+                            }`}
+                          />
+                        </span>
                       </button>
                     );
                   })}
@@ -416,27 +380,15 @@ export default function Fungsionaris() {
                       </>
                     );
 
-                    if (reducedMotion) {
-                      return (
-                        <div key={activeId} className="mt-10">
-                          {panel}
-                        </div>
-                      );
-                    }
-
                     return (
-                      <AnimatePresence mode="wait" initial={false}>
-                        <m.div
-                          key={activeId}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -10 }}
-                          transition={fadeTransition(false)}
-                          className="mt-10"
-                        >
-                          {panel}
-                        </m.div>
-                      </AnimatePresence>
+                      <div
+                        key={activeId}
+                        className={`mt-10 min-h-[22rem] ${
+                          reducedMotion ? '' : 'animate-[taglineFadeIn_320ms_ease-out_both]'
+                        }`}
+                      >
+                        {panel}
+                      </div>
                     );
                   })()
                 ) : (

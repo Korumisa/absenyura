@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import type { AuthRequest } from '../types/index.js';
 import prisma from '../utils/prisma.js';
 import { sendForbidden } from '../utils/errorResponse.js';
+import { normalizeIp } from '../utils/ip.js';
 
 export const getLocations = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -28,7 +29,7 @@ export const createLocation = async (req: AuthRequest, res: Response): Promise<v
 
     // Auth middleware ensures req.user exists
     const user_id = req.user!.id;
-    const ip_address = req.ip;
+    const ip_address = normalizeIp(req.ip);
 
     const location = await prisma.$transaction(async (tx) => {
       const loc = await tx.location.create({
@@ -116,7 +117,7 @@ export const updateLocation = async (req: AuthRequest, res: Response): Promise<v
           target_table: 'location',
           target_id: loc.id,
           actor_id: user.id,
-          ip_address: req.ip,
+          ip_address: normalizeIp(req.ip),
           old_value: JSON.stringify(oldLoc),
           new_value: JSON.stringify({ name, address, latitude, longitude, radius, wifi_bssid }),
         },
@@ -172,7 +173,7 @@ export const deleteLocation = async (req: AuthRequest, res: Response): Promise<v
           target_table: 'location',
           target_id: id,
           actor_id: user.id,
-          ip_address: req.ip,
+          ip_address: normalizeIp(req.ip),
           old_value: JSON.stringify(oldLoc),
           new_value: null,
         },

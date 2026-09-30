@@ -10,7 +10,9 @@ import { useMockOrSwr } from '@/hooks/useMockOrSwr';
 import { mockPrograms } from '@/lib/utils/mockLandingData';
 import { PublicPageError } from '@/components/public/PublicPageError';
 import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
+import { PublicPageMeta } from '@/components/public/PublicPageMeta';
 import { publicSiteFetcher, safeArray } from '@/lib/utils/publicSiteFetcher';
+import { truncateText } from '@/lib/utils/utils';
 
 const SCROLL_KEY_PREFIX = 'proker-detail-scroll-y';
 
@@ -80,6 +82,20 @@ export default function ProgramKerjaDetail() {
   const target = program?.target ?? parsedFallback.target;
   const rationale = program?.rationale ?? parsedFallback.body;
 
+  const prokerMetaTitle = program?.title ?? (isLoading ? 'Memuat program' : 'Program Tidak Ditemukan');
+  const prokerMetaDescription = program
+    ? truncateText(
+        program.description ??
+          rationale ??
+          [program.date_range, division, location].filter(Boolean).join(' · ') ??
+          '',
+        160,
+      ) || 'Detail program kerja HM SDP periode berjalan.'
+    : isLoading
+      ? 'Memuat detail program kerja...'
+      : 'Program kerja yang Anda cari tidak tersedia.';
+  const prokerMetaPath = id ? `/program-kerja/${id}` : '/program-kerja';
+
   useLayoutEffect(() => {
     if (!id) {
       window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
@@ -110,6 +126,11 @@ export default function ProgramKerjaDetail() {
 
   return (
     <PublicLayout>
+      <PublicPageMeta
+        title={prokerMetaTitle}
+        description={prokerMetaDescription}
+        path={prokerMetaPath}
+      />
       <PublicLoadingOverlay show={isLoading} label="Memuat detail program..." />
       <PublicEnter>
         <PublicPageHero top="Program" bottom="Kerja" subtitle="Detail program kerja yang dipublikasikan." />

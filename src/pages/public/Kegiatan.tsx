@@ -19,6 +19,7 @@ import { buildPagedResponse, safeItems } from '@/lib/utils/publicContent';
 import { PublicPageError } from '@/components/public/PublicPageError';
 import { PublicEmptyState } from '@/components/public/PublicEmptyState';
 import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
+import { PublicPageMeta } from '@/components/public/PublicPageMeta';
 import { publicSiteFetcher } from '@/lib/utils/publicSiteFetcher';
 
 const TABS: Array<{ label: string; type?: PublicPostType }> = [
@@ -73,6 +74,11 @@ export default function Kegiatan() {
 
   return (
     <PublicLayout>
+      <PublicPageMeta
+        title="Informasi Kegiatan & Pengumuman"
+        description="Update kegiatan, berita, dan pengumuman terbaru HM SDP Undiksha. Jelajahi tab kategori untuk konten yang Anda cari."
+        path="/informasi"
+      />
       <PublicLoadingOverlay show={isLoading} label="Memuat kegiatan..." />
       <PublicEnter>
         <PublicPageHero

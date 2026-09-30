@@ -3,6 +3,7 @@ import type { AuthRequest } from '../types/index.js';
 import prisma from '../utils/prisma.js';
 import { assertAdminSessionScope } from '../utils/sessionAccess.js';
 import { sendForbidden } from '../utils/errorResponse.js';
+import { normalizeIp } from '../utils/ip.js';
 
 export const overrideAttendance = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -53,7 +54,7 @@ export const overrideAttendance = async (req: AuthRequest, res: Response): Promi
         target_table: 'Attendance',
         target_id: attendance.id,
         new_value: JSON.stringify({ status, notes }),
-        ip_address: req.ip,
+        ip_address: normalizeIp(req.ip),
       },
     });
 

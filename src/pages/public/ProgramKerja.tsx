@@ -13,6 +13,7 @@ import { mockPrograms } from '@/lib/utils/mockLandingData';
 import { PublicPageError } from '@/components/public/PublicPageError';
 import { PublicEmptyState } from '@/components/public/PublicEmptyState';
 import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
+import { PublicPageMeta } from '@/components/public/PublicPageMeta';
 import { publicSiteFetcher, safeArray } from '@/lib/utils/publicSiteFetcher';
 
 function extractDivisionFallback(program: PublicProgram) {
@@ -65,6 +66,11 @@ export default function ProgramKerja() {
 
   return (
     <PublicLayout>
+      <PublicPageMeta
+        title="Program Kerja"
+        description="Daftar program kerja HM SDP periode ini, dikelompokkan per divisi beserta target, jadwal, dan rincian kegiatan."
+        path="/program-kerja"
+      />
       <PublicLoadingOverlay show={isPending} label="Memuat program kerja..." />
       <PublicEnter>
         <PublicPageHero top="Program" bottom="Kerja" subtitle="Daftar program kerja yang dapat dipantau publik dan dikelola oleh admin." />

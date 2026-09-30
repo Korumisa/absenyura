@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useMemo } from 'react';
+import { useEffect, useLayoutEffect, useMemo } from 'react';
 import PublicLayout from '@/components/PublicLayout';
 import type { PublicPost, PublicProfile } from '@/types/publicSite';
 import { Link, useParams } from 'react-router-dom';
@@ -10,7 +10,9 @@ import { useMockOrSwr } from '@/hooks/useMockOrSwr';
 import { mockAllPosts, mockProfile } from '@/lib/utils/mockLandingData';
 import { PublicPageError } from '@/components/public/PublicPageError';
 import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
+import { PublicPageMeta, upsertScriptJsonLd } from '@/components/public/PublicPageMeta';
 import { publicSiteFetcher } from '@/lib/utils/publicSiteFetcher';
+import { truncateText } from '@/lib/utils/utils';
 
 const SCROLL_KEY_PREFIX = 'berita-detail-scroll-y';
 
@@ -29,6 +31,65 @@ export default function BeritaDetail() {
     mockStatic: slug ? mockAllPosts.find((p) => p.slug === slug) ?? null : null,
   });
   const orgName = profile?.org_name ?? '';
+  const siteUrl = 'https://hmsdp.vercel.app';
+
+  const metaTitle = post?.title ?? (isLoading ? 'Memuat berita' : 'Berita Tidak Ditemukan');
+  const metaDescription = post
+    ? (post.excerpt ?? (truncateText(post.content, 160) || 'Berita dan update terbaru HM SDP Undiksha.'))
+    : isLoading
+      ? 'Memuat konten berita...'
+      : 'Berita yang Anda cari tidak tersedia atau belum dipublikasikan.';
+  const metaPath = slug ? `/berita/${slug}` : '/berita';
+  const metaImage = post?.cover_image_url ?? undefined;
+
+  useEffect(() => {
+    if (!post) {
+      upsertScriptJsonLd('blog-posting', null);
+      return;
+    }
+    const fullOrg = orgName || 'HM SDP Undiksha';
+    const absoluteImage = post.cover_image_url
+      ? (/^https?:\/\//i.test(post.cover_image_url)
+          ? post.cover_image_url
+          : post.cover_image_url.startsWith('/')
+            ? `${siteUrl}${post.cover_image_url}`
+            : `${siteUrl}/${post.cover_image_url}`)
+        : `${siteUrl}/logo-hmsdp.png`;
+    const safeSlug = post.slug || slug || '';
+    const publishedAtVal = post.published_at ?? post.created_at ?? undefined;
+    const isoPublished = publishedAtVal
+      ? new Date(String(publishedAtVal)).toISOString()
+      : undefined;
+    const isoModified = post.updated_at
+      ? new Date(String(post.updated_at)).toISOString()
+      : isoPublished;
+    upsertScriptJsonLd('blog-posting', {
+      '@context': 'https://schema.org',
+      '@type': 'BlogPosting',
+      headline: post.title,
+      description: post.excerpt || truncateText(post.content, 200),
+      image: [absoluteImage],
+      datePublished: isoPublished,
+      dateModified: isoModified,
+      author: {
+        '@type': 'Organization',
+        name: fullOrg,
+        url: siteUrl,
+      },
+      publisher: {
+        '@type': 'Organization',
+        name: fullOrg,
+        logo: {
+          '@type': 'ImageObject',
+          url: `${siteUrl}/logo-hmsdp.png`,
+        },
+      },
+      mainEntityOfPage: `${siteUrl}/berita/${safeSlug}`,
+    });
+    return () => {
+      upsertScriptJsonLd('blog-posting', null);
+    };
+  }, [post, orgName, slug]);
 
   useLayoutEffect(() => {
     if (!slug) {
@@ -60,6 +121,12 @@ export default function BeritaDetail() {
 
   return (
     <PublicLayout>
+      <PublicPageMeta
+        title={metaTitle}
+        description={metaDescription}
+        path={metaPath}
+        imageUrl={metaImage}
+      />
       <PublicLoadingOverlay show={isLoading} label="Memuat berita..." />
       <PublicEnter className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
         <Link to="/berita" className="inline-flex items-center gap-2 rounded-xl border border-[var(--public-primary)]/20 bg-[var(--public-primary)]/10 px-4 py-2 text-sm font-semibold text-[var(--public-primary)] transition hover:bg-[var(--public-primary)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--public-primary)]/45">

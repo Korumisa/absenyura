@@ -1,20 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import api from '@/services/api';
 import useSWR from 'swr';
-import {
-  Download,
-  FileText,
-  Search,
-  CheckCircle2,
-  Clock,
-  XCircle,
-  Edit3,
-  ChevronDown,
-  Loader2,
-  Smartphone,
-  MapPin,
-} from 'lucide-react';
+import { Download, FileText, Search, Edit3, ChevronDown, Smartphone, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, isValid } from 'date-fns';
 import { id } from 'date-fns/locale';
@@ -23,7 +11,6 @@ import { Button } from '@/components/ui/button';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import {
   Table,
   TableBody,
@@ -67,10 +54,27 @@ import { ConfirmModal } from '@/components/ConfirmModal';
 import { DatePicker } from '@/components/ui/date-picker';
 import { FadeIn } from '@/components/admin/FadeIn';
 
+type ReportsRow = {
+  id?: string | number;
+  user_id?: string | number;
+  user_name?: string;
+  full_name?: string;
+  session_title?: string;
+  session_date?: string | Date | number;
+  check_in_time?: string | Date | number;
+  check_in?: string;
+  status?: string;
+  excuse_description?: string;
+  excuse_desc?: string;
+  excuse_proof_url?: string;
+  date?: string | Date;
+  class_name?: string | { id?: string | number; name?: string } | null;
+};
+
 const fetcher = (url: string) => api.get(url).then((res) => res.data);
 
 const safeFormat = (value: unknown, fmt: string) => {
-  const d = new Date(value as any);
+  const d = new Date(value as string | number | Date);
   if (!isValid(d)) return '-';
   return format(d, fmt, { locale: id });
 };
@@ -184,7 +188,7 @@ export default function Reports() {
   const exportExcelMatrix = useCallback(
     async (rows: Report[], fileSuffix: string, sessionMeta?: ExportSessionMeta) => {
       const safeRows = (Array.isArray(rows) ? rows : []).filter((r): r is Report =>
-        Boolean(r && (r as any).id)
+        Boolean(r && (r as ReportsRow).id)
       );
       const { default: ExcelJS } = await import('exceljs');
       const workbook = new ExcelJS.Workbook();
@@ -240,17 +244,17 @@ export default function Reports() {
 
           const rowsForClass = safeRows.filter((r) => reportClassLabel(r) === clsLabel);
           rowsForClass.forEach((r, idx) => {
-            const proofUrlRaw = (r as any).excuse_proof_url
-              ? String((r as any).excuse_proof_url)
+            const proofUrlRaw = (r as ReportsRow).excuse_proof_url
+              ? String((r as ReportsRow).excuse_proof_url)
               : '';
             const proofUrl = proofUrlRaw ? resolveAssetUrl(proofUrlRaw) : '';
             const row = sheet.addRow({
               no: idx + 1,
-              user_name: String((r as any).user_name ?? '-'),
+              user_name: String((r as ReportsRow).user_name ?? '-'),
               nim_nip: r.nim_nip || '-',
               status: r.status,
-              check_in: safeFormat((r as any).check_in_time, 'dd/MM/yyyy HH:mm'),
-              excuse_desc: String((r as any).excuse_description ?? ''),
+              check_in: safeFormat((r as ReportsRow).check_in_time, 'dd/MM/yyyy HH:mm'),
+              excuse_desc: String((r as ReportsRow).excuse_description ?? ''),
               proof: proofUrl ? 'Lihat' : '',
             });
             if (proofUrl) {
@@ -282,18 +286,18 @@ export default function Reports() {
             fgColor: { argb: 'FFE0E7FF' },
           };
           otherRows.forEach((r, idx) => {
-            const proofUrlRaw = (r as any).excuse_proof_url
-              ? String((r as any).excuse_proof_url)
+            const proofUrlRaw = (r as ReportsRow).excuse_proof_url
+              ? String((r as ReportsRow).excuse_proof_url)
               : '';
             const proofUrl = proofUrlRaw ? resolveAssetUrl(proofUrlRaw) : '';
             const row = sheet.addRow({
               no: idx + 1,
-              user_name: String((r as any).user_name ?? '-'),
+              user_name: String((r as ReportsRow).user_name ?? '-'),
               nim_nip: r.nim_nip || '-',
               kelas: reportClassLabel(r),
               status: r.status,
-              check_in: safeFormat((r as any).check_in_time, 'dd/MM/yyyy HH:mm'),
-              excuse_desc: String((r as any).excuse_description ?? ''),
+              check_in: safeFormat((r as ReportsRow).check_in_time, 'dd/MM/yyyy HH:mm'),
+              excuse_desc: String((r as ReportsRow).excuse_description ?? ''),
               proof: proofUrl ? 'Lihat' : '',
             });
             if (proofUrl) {
@@ -340,7 +344,7 @@ export default function Reports() {
 
       // Dapatkan daftar sesi unik dari laporan yang difilter
       const uniqueSessions = Array.from(
-        new Set(safeRows.map((r) => String((r as any).session_title ?? '')))
+        new Set(safeRows.map((r) => String((r as ReportsRow).session_title ?? '')))
       ).filter(Boolean);
 
       // Siapkan kolom: Nama, NIM, Kelas, lalu diikuti nama-nama sesi
@@ -371,7 +375,7 @@ export default function Reports() {
         if (!studentId) return;
         if (!studentData[studentId]) {
           studentData[studentId] = {
-            user_name: String((r as any).user_name ?? '-'),
+            user_name: String((r as ReportsRow).user_name ?? '-'),
             nim_nip: r.nim_nip || '-',
             kelas: reportClassLabel(r),
             total_present: 0,
@@ -382,7 +386,7 @@ export default function Reports() {
         }
 
         // Isi status sesi
-        const sessionTitle = String((r as any).session_title ?? '-');
+        const sessionTitle = String((r as ReportsRow).session_title ?? '-');
         studentData[studentId][sessionTitle] = r.status;
 
         // Hitung total
@@ -435,7 +439,7 @@ export default function Reports() {
   const exportPdfList = useCallback(
     async (rows: Report[], fileSuffix: string, sessionMeta?: ExportSessionMeta) => {
       const safeRows = (Array.isArray(rows) ? rows : []).filter((r): r is Report =>
-        Boolean(r && (r as any).id)
+        Boolean(r && (r as ReportsRow).id)
       );
       const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
         import('jspdf'),
@@ -468,13 +472,13 @@ export default function Reports() {
       }
 
       const tableData = safeRows.map((r) => [
-        String((r as any).user_name ?? '-'),
+        String((r as ReportsRow).user_name ?? '-'),
         r.nim_nip || '-',
         reportClassLabel(r),
-        String((r as any).session_title ?? '-'),
-        safeFormat((r as any).session_date, 'dd/MM/yyyy'),
-        safeFormat((r as any).check_in_time, 'HH:mm:ss'),
-        (r as any).status ?? '-',
+        String((r as ReportsRow).session_title ?? '-'),
+        safeFormat((r as ReportsRow).session_date, 'dd/MM/yyyy'),
+        safeFormat((r as ReportsRow).check_in_time, 'HH:mm:ss'),
+        (r as ReportsRow).status ?? '-',
       ]);
 
       autoTable(doc, {
@@ -915,9 +919,11 @@ export default function Reports() {
                             {String(report?.session_title ?? '-')}
                           </div>
                           {report?.class_name && (
-                            <div className="text-xs font-semibold text-brand text-brand mt-0.5">
+                            <div className="text-xs font-semibold text-brand mt-0.5">
                               {typeof report.class_name === 'object' && report.class_name !== null
-                                ? (report.class_name as any).name || (report.class_name as any).id
+                                ? (report.class_name as { id?: string | number; name?: string })
+                                    .name ||
+                                  (report.class_name as { id?: string | number; name?: string }).id
                                 : report.class_name}
                             </div>
                           )}

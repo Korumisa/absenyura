@@ -25,6 +25,9 @@ export type PublicStructureResponse = {
     period: string;
     is_active: boolean;
     sort_order?: number;
+    /** Optional UI fields (mock / future CMS); not always returned by API */
+    tagline?: string | null;
+    motto?: string | null;
     groups?: PublicStructureGroup[];
   } | null;
   allCabinets: Array<{
@@ -33,6 +36,8 @@ export type PublicStructureResponse = {
     period: string;
     is_active: boolean;
     sort_order?: number;
+    tagline?: string | null;
+    motto?: string | null;
   }>;
 };
 

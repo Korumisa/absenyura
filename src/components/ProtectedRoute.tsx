@@ -6,6 +6,25 @@ import { useSessionVerifier } from '../hooks/useSessionVerifier';
 import PageSkeleton from './PageSkeleton';
 import { saveTarget } from '@/lib/auth/postLoginTarget';
 
+const NOINDEX_SELECTOR = 'meta[name="robots"][data-protected-route="true"]';
+
+function upsertNoindexMeta() {
+  if (typeof document === 'undefined') return;
+  let el = document.querySelector(NOINDEX_SELECTOR) as HTMLMetaElement | null;
+  if (!el) {
+    el = document.createElement('meta');
+    el.name = 'robots';
+    el.setAttribute('data-protected-route', 'true');
+    document.head.appendChild(el);
+  }
+  el.content = 'noindex, nofollow, nosnippet, noarchive';
+}
+
+function removeNoindexMeta() {
+  if (typeof document === 'undefined') return;
+  document.querySelectorAll(NOINDEX_SELECTOR).forEach((n) => n.remove());
+}
+
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles, children }) => {
   const { hasHydrated, isAuthenticated, user, setAuth } = useAuthStore();
   const { sessionStatus } = useSessionVerifier();
@@ -28,6 +47,11 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles, ch
       });
     }
   }, [bypass, isAuthenticated, user, setAuth]);
+
+  useEffect(() => {
+    upsertNoindexMeta();
+    return () => removeNoindexMeta();
+  }, []);
 
   if (bypass) {
     return children ? <>{children}</> : <Outlet />;

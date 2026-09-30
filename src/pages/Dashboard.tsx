@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useMemo, useState } from 'react';
+import { lazy, Suspense, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useSWR from 'swr';
 import { useAuthStore } from '@/stores/authStore';
@@ -128,7 +128,6 @@ export default function Dashboard() {
   });
   const { data, isValidating } = swr;
   const {
-    data: _unusedData,
     isPending: pageIsPending,
     isError: pageIsError,
     error: pageError,
@@ -251,7 +250,7 @@ export default function Dashboard() {
                     'bg-card text-card-foreground p-4 sm:p-6 rounded-3xl border border-border shadow-sm hover:shadow-md group'
                   )}
                 >
-                  <div className="size-12 bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center text-brand text-brand mb-4 group-hover:scale-110 transition-transform">
+                  <div className="size-12 bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center text-brand mb-4 group-hover:scale-110 transition-transform">
                     <Calendar size={24} />
                   </div>
                   <p className="text-sm text-muted-foreground font-medium mb-1">Total Sesi</p>
@@ -317,7 +316,7 @@ export default function Dashboard() {
           <div className="overflow-hidden rounded-xl border border-border bg-card shadow-card dark:shadow-none dark:ring-1 dark:ring-white/10">
             <div className="flex items-center justify-between border-b border-border px-6 py-5">
               <h2 className="text-xl font-bold text-foreground">Jadwal Sesi Terdekat</h2>
-              <span className="bg-indigo-50 dark:bg-indigo-900/30 text-brand text-brand py-1 px-3 rounded-full text-xs font-bold">
+              <span className="bg-indigo-50 dark:bg-indigo-900/30 text-brand py-1 px-3 rounded-full text-xs font-bold">
                 {data?.recent_sessions?.length || 0} Sesi
               </span>
             </div>
@@ -336,7 +335,7 @@ export default function Dashboard() {
                     className="rounded-2xl border border-border bg-muted/20 p-4 dark:bg-muted/10"
                   >
                     <p className="font-bold text-foreground">{session.title}</p>
-                    <p className="text-sm text-brand text-brand">
+                    <p className="text-sm text-brand">
                       {(() => {
                         const labels = (session.session_classes ?? []).flatMap((x: any) => {
                           const result = formatClassLabel(x?.class);
@@ -421,10 +420,11 @@ export default function Dashboard() {
                           <TableCell>
                             <div className="font-bold text-foreground text-base">
                               {typeof session.title === 'object' && session.title !== null
-                                ? (session.title as any).name || (session.title as any).id
+                                ? (session.title as { id?: string | number; name?: string }).name ||
+                                  (session.title as { id?: string | number; name?: string }).id
                                 : session.title}
                             </div>
-                            <p className="text-sm font-semibold text-brand text-brand mt-0.5">
+                            <p className="text-sm font-semibold text-brand mt-0.5">
                               {(() => {
                                 const labels = (session.session_classes ?? []).flatMap((x: any) => {
                                   const result = formatClassLabel(x?.class);
@@ -434,14 +434,21 @@ export default function Dashboard() {
                                 if (session.class) {
                                   if (typeof session.class === 'object' && session.class !== null) {
                                     return (
-                                      formatClassLabel(session.class as any) ||
-                                      (session.class as any).name ||
-                                      (session.class as any).id ||
+                                      formatClassLabel(
+                                        session.class as { id?: string | number; name?: string }
+                                      ) ||
+                                      (session.class as { id?: string | number; name?: string })
+                                        .name ||
+                                      (session.class as { id?: string | number; name?: string })
+                                        .id ||
                                       '-'
                                     );
                                   }
                                   return String(
-                                    (session.class as any)?.name || session.class || '-'
+                                    (session.class as { id?: string | number; name?: string })
+                                      ?.name ||
+                                      session.class ||
+                                      '-'
                                   );
                                 }
                                 return 'Semua Mahasiswa';
@@ -470,7 +477,9 @@ export default function Dashboard() {
                               <MapPin size={14} className="shrink-0" />
                               <span className="truncate max-w-[200px]">
                                 {typeof session.location === 'object' && session.location !== null
-                                  ? (session.location as any).name || (session.location as any).id
+                                  ? (session.location as { id?: string | number; name?: string })
+                                      .name ||
+                                    (session.location as { id?: string | number; name?: string }).id
                                   : session.location?.name || session.location || '-'}
                               </span>
                             </div>
@@ -542,7 +551,7 @@ export default function Dashboard() {
             <div className="bg-card text-card-foreground p-6 rounded-3xl border border-border shadow-sm hover:shadow-md transition-shadow group">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-medium text-muted-foreground">Total Pengguna</h3>
-                <div className="size-12 bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center text-brand text-brand group-hover:scale-110 transition-transform">
+                <div className="size-12 bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center text-brand group-hover:scale-110 transition-transform">
                   <Users size={24} />
                 </div>
               </div>

@@ -66,6 +66,7 @@ import { ConfirmModal } from '@/components/ConfirmModal';
 import { useFormDirtyGuard } from '@/hooks/useFormDirtyGuard';
 import {
   acquireCameraStream,
+  awaitPendingCameraRelease,
   humanizeCameraError,
   releaseMediaStream,
   waitForCameraRelease,
@@ -112,7 +113,8 @@ export default function Excuses() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const pendingStreamRef = useRef<MediaStream | null>(null);
   const [dirty, setDirty] = useState(false);
-  const { confirmIfDirty } = useFormDirtyGuard(dirty);
+  // Guard hanya aktif saat modal form terbuka dan ada edit nyata (bukan sekadar buka halaman).
+  const { confirmIfDirty } = useFormDirtyGuard(isModalOpen && dirty);
 
   const setFormDataDirty = useMemo(
     () =>
@@ -131,32 +133,17 @@ export default function Excuses() {
     },
     []
   );
-  const setPhotoPreviewUrlDirty = useMemo(
+  const setPhotoPreviewUrlQuiet = useMemo(
     () => (updater: React.SetStateAction<string | null>) => {
-      setDirty(true);
       setPhotoPreviewUrl(updater);
-    },
-    []
-  );
-  const setIsCameraActiveDirty = useMemo(
-    () => (updater: React.SetStateAction<boolean>) => {
-      setDirty(true);
-      setIsCameraActive(updater);
-    },
-    []
-  );
-  const setFacingModeDirty = useMemo(
-    () => (updater: React.SetStateAction<'user' | 'environment'>) => {
-      setDirty(true);
-      setFacingMode(updater);
     },
     []
   );
 
   const clearPhoto = () => {
-    setPhotoBlobDirty(null);
+    setPhotoBlob(null);
     if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
-    setPhotoPreviewUrlDirty(null);
+    setPhotoPreviewUrl(null);
     setCameraError(null);
   };
 
@@ -173,7 +160,7 @@ export default function Excuses() {
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
-    setIsCameraActiveDirty(false);
+    setIsCameraActive(false);
   };
 
   // Camera: dilepas HANYA saat unmount — jangan gabungkan dengan photoPreviewUrl
@@ -228,6 +215,7 @@ export default function Excuses() {
     setCameraError(null);
     try {
       stopCamera();
+      await awaitPendingCameraRelease();
       await waitForCameraRelease(400);
 
       // Retry loop — hardware kamera kadang butuh waktu extra untuk dilepas
@@ -246,7 +234,7 @@ export default function Excuses() {
           // pick it up and assign it to the <video> after React re-renders
           // and the container's `hidden` class is removed.
           pendingStreamRef.current = stream;
-          setIsCameraActiveDirty(true);
+          setIsCameraActive(true);
           return;
         } catch (err) {
           lastErr = err;
@@ -263,7 +251,7 @@ export default function Excuses() {
 
   const switchCamera = () => {
     const next = facingMode === 'user' ? 'environment' : 'user';
-    setFacingModeDirty(next);
+    setFacingMode(next);
     if (isCameraActive) void startCamera(next);
   };
 
@@ -292,7 +280,7 @@ export default function Excuses() {
         if (!blob) return;
         setPhotoBlobDirty(blob);
         if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
-        setPhotoPreviewUrlDirty(URL.createObjectURL(blob));
+        setPhotoPreviewUrlQuiet(URL.createObjectURL(blob));
         stopCamera();
       },
       'image/jpeg',
@@ -695,7 +683,7 @@ export default function Excuses() {
                           href={proofHref}
                           target="_blank"
                           rel="noreferrer"
-                          className="mt-2 inline-flex items-center gap-1 text-sm text-brand text-brand"
+                          className="mt-2 inline-flex items-center gap-1 text-sm text-brand"
                         >
                           <Download className="size-4" />
                           Lihat bukti
@@ -799,7 +787,7 @@ export default function Excuses() {
                           <div className="font-medium text-slate-800 dark:text-zinc-200">
                             {excuse.session.title}
                           </div>
-                          <div className="text-xs font-semibold text-brand text-brand mt-0.5">
+                          <div className="text-xs font-semibold text-brand mt-0.5">
                             {(() => {
                               const labels = (excuse.session.session_classes ?? []).flatMap(
                                 (x: any) => {
@@ -933,6 +921,7 @@ export default function Excuses() {
               if (!ok) return;
               stopCamera();
               clearPhoto();
+              setDirty(false);
             }
             setIsModalOpen(open);
           }}
