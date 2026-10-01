@@ -11,6 +11,8 @@ import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
+const ipKeyFn: (ip: string) => string =
+  typeof ipKeyGenerator === 'function' ? ipKeyGenerator : (ip: string) => ip;
 import crypto from 'crypto';
 import { csrfProtect } from './middlewares/csrf.middleware.js';
 import { requestTiming } from './middlewares/requestTiming.middleware.js';
@@ -195,7 +197,7 @@ const loginLimiter = rateLimit({
       .trim()
       .toLowerCase();
     if (identity) return `login:user:${identity}`;
-    return `login:anon:${ipKeyGenerator(normalizeIp(req.ip))}`;
+    return `login:anon:${ipKeyFn(normalizeIp(req.ip))}`;
   },
 });
 
@@ -220,7 +222,7 @@ function sessionRateLimitKey(req: Request): string {
     return `api:rt:${hashRateLimitSecret(String(req.cookies.refreshToken))}`;
   if (req.headers?.authorization)
     return `api:auth:${hashRateLimitSecret(String(req.headers.authorization))}`;
-  return `api:ip:${ipKeyGenerator(normalizeIp(req.ip))}`;
+  return `api:ip:${ipKeyFn(normalizeIp(req.ip))}`;
 }
 
 const apiLimiter = rateLimit({
@@ -252,7 +254,7 @@ const anonymousApiLimiter = rateLimit({
     if (p.startsWith('/cron')) return true;
     return Boolean(req.cookies?.accessToken || req.cookies?.refreshToken);
   },
-  keyGenerator: (req) => `anon:${ipKeyGenerator(normalizeIp(req.ip))}`,
+  keyGenerator: (req) => `anon:${ipKeyFn(normalizeIp(req.ip))}`,
 });
 
 app.use('/api/auth/login', loginLimiter);
