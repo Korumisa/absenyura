@@ -113,6 +113,18 @@ export async function login(params: {
     };
   }
 
+  if (typeof user.password !== 'string' || user.password.length === 0) {
+    return {
+      ok: false,
+      status: 401,
+      body: {
+        success: false,
+        error_code: 'INVALID_CREDENTIALS',
+        message: 'NIM atau kata sandi salah.',
+      },
+    };
+  }
+
   const isPasswordValid = await bcrypt.compare(password, user.password);
   if (!isPasswordValid) {
     return {
