@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import api from '@/services/api';
 import useSWR from 'swr';
 import { useAuthStore } from '@/stores/authStore';
@@ -74,6 +74,8 @@ export default function Users() {
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [passwordFilter, setPasswordFilter] = useState<'ALL' | 'must_change'>('ALL');
+  const location = useLocation();
 
   // Pagination & Debounce State
   const [page, setPage] = useState(1);
@@ -90,7 +92,16 @@ export default function Users() {
   // Reset page to 1 when debouncedSearch or other filters change
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, roleFilter, statusFilter]);
+  }, [debouncedSearch, roleFilter, statusFilter, passwordFilter]);
+
+  // Sync ?filter_password query param (coming from Dashboard red card) → passwordFilter state
+  useEffect(() => {
+    const qs = new URLSearchParams(location.search);
+    const qp = qs.get('filter_password');
+    if (qp === 'must_change' && passwordFilter !== 'must_change') {
+      setPasswordFilter('must_change');
+    }
+  }, [location.search, passwordFilter]);
 
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -146,8 +157,9 @@ export default function Users() {
         search: debouncedSearch.trim(),
         role: roleFilter,
         status: statusFilter,
+        filter_password: passwordFilter,
       }).toString(),
-    [page, debouncedSearch, roleFilter, statusFilter]
+    [page, debouncedSearch, roleFilter, statusFilter, passwordFilter]
   );
 
   const swr = useSWR<{
@@ -499,6 +511,22 @@ export default function Users() {
                     <SelectItem value="INACTIVE">Nonaktif</SelectItem>
                   </SelectContent>
                 </Select>
+
+                <Select
+                  value={passwordFilter}
+                  onValueChange={(v) => setPasswordFilter(v as 'ALL' | 'must_change')}
+                >
+                  <SelectTrigger
+                    className="w-full md:w-[210px]"
+                    aria-label="Filter status penggantian password default"
+                  >
+                    <SelectValue placeholder="Status Password" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">Semua Status Password</SelectItem>
+                    <SelectItem value="must_change">🔒 Belum Ubah Default</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
@@ -530,6 +558,15 @@ export default function Users() {
                       <Badge variant={user.is_active ? 'success' : 'destructive'}>
                         {user.is_active ? 'Aktif' : 'Nonaktif'}
                       </Badge>
+                      {user.must_change_password ? (
+                        <Badge variant="destructive" className="gap-1">
+                          🔒 Default
+                        </Badge>
+                      ) : (
+                        <Badge variant="success" className="gap-1">
+                          ✅ Sudah Ubah
+                        </Badge>
+                      )}
                       {user.device_bound || user.device_fingerprint ? (
                         <Badge variant="success" className="gap-1.5">
                           <Smartphone size={12} aria-hidden="true" />
@@ -622,6 +659,17 @@ export default function Users() {
                         </TableCell>
                         <TableCell>
                           <Badge {...roleBadgeProps(user.role)}>{userRoleLabel(user.role)}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          {user.must_change_password ? (
+                            <Badge variant="destructive" className="gap-1 text-xs">
+                              🔒 Default
+                            </Badge>
+                          ) : (
+                            <Badge variant="success" className="gap-1 text-xs">
+                              ✅ Sudah Ubah
+                            </Badge>
+                          )}
                         </TableCell>
                         <TableCell>
                           <div className="text-muted-foreground dark:text-zinc-300">

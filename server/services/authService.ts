@@ -26,6 +26,8 @@ const authUserSelect = {
   department: true,
   is_active: true,
   device_fingerprint: true,
+  must_change_password: true,
+  last_password_change: true,
 } as const;
 
 type AuthUser = Awaited<ReturnType<typeof userRepository.findByNim<typeof authUserSelect>>>;
@@ -58,6 +60,8 @@ export async function login(params: {
       role: string;
       avatar_url: string | null;
       department: string | null;
+      must_change_password: boolean;
+      last_password_change: string | null;
     };
     accessToken: string;
     refreshToken: string;
@@ -174,6 +178,10 @@ export async function login(params: {
         role: user.role,
         avatar_url: user.avatar_url ?? null,
         department: user.department ?? null,
+        must_change_password: user.must_change_password ?? true,
+        last_password_change: user.last_password_change
+          ? user.last_password_change.toISOString()
+          : null,
       },
       accessToken,
       refreshToken,

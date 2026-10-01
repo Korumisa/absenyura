@@ -1,14 +1,21 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { toast } from 'sonner';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
-import { toastError } from '@/lib/utils/toastMessage';
+import { toastError, toastInfo } from '@/lib/utils/toastMessage';
 import { stripHtml5QrDomSignatures } from '@/lib/systemic/stripDomExpandos';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   pickPreferredCameraId,
   waitForCameraRelease,
   releaseActiveVideoTracks,
   registerPendingCameraRelease,
+  acquireCameraLock,
+  createStreamHealthWatchdog,
+  StreamWatchdog,
+  WatchdogStatus,
+  camLog,
+  humanizeCameraError,
 } from '@/lib/media/camera';
 
 type QrErrorType = 'PERMISSION' | 'SCAN_TIMEOUT' | 'BAD_SIG' | 'NOT_ENROLLED';
@@ -40,10 +47,10 @@ export default function AttendQrScanner({
   const qrDecodeTimeoutRef = useRef<number | null>(null);
   const qrDecodedSuccessRef = useRef(false);
   const qrReleasedRef = useRef(false);
-  // ── Global noise-catcher refs ─────────────────────────────────────────────
-  // html5-qrcode's RenderedCameraImpl aborts fire from inside a postMessage
-  // scheduler (async). addEventListener('error', capture) misses them — we
-  // must also install a legacy `window.onerror` setter and `unhandledrejection`.
+  const qrStartInFlightRef = useRef<Promise<Html5Qrcode | null> | null>(null);
+  const qrSwitchingRef = useRef(false);
+  const qrWatchdogRef = useRef<StreamWatchdog | null>(null);
+  const qrLockReleaseRef = useRef<(() => void) | null>(null);
   const qrPrevOnErrorRef = useRef<OnErrorEventHandlerNonNull | null>(null);
   const qrUnhandledHandlerRef = useRef<((ev: PromiseRejectionEvent) => void) | null>(null);
   const qrCaptureErrorHandlerRef = useRef<((ev: ErrorEvent) => void) | null>(null);
@@ -55,6 +62,7 @@ export default function AttendQrScanner({
     code: QrErrorType;
     detail?: string;
   } | null>(null);
+  const [qrWatchdogStatus, setQrWatchdogStatus] = useState<WatchdogStatus>('healthy');
 
   const qrError = qrErrorOverride !== undefined ? qrErrorOverride : internalQrError;
 
@@ -96,51 +104,87 @@ export default function AttendQrScanner({
     loadQrCamera(initialPreferRear);
   }, [loadQrCamera, initialPreferRear]);
 
-  const releaseQrScanner = useCallback(async (opts?: { force?: boolean }) => {
-    // After SCAN_TIMEOUT we may already have marked released but skipped the
-    // full wait — force re-runs track teardown so "Coba Lagi" / switch camera
-    // do not hit NotReadableError from a still-held stream.
-    if (qrReleasedRef.current && !opts?.force) return;
-    qrReleasedRef.current = true;
-    const instance = scannerRef.current;
-    if (instance) {
-      try {
-        if (instance.isScanning) {
-          await instance.stop();
-        }
-        instance.clear();
-      } catch {
-        void 0;
-      }
-      scannerRef.current = null;
+  const cleanupQrWatchdog = useCallback(() => {
+    const wd = qrWatchdogRef.current;
+    if (wd) {
+      wd.destroy();
+      qrWatchdogRef.current = null;
     }
-    // ── Uninstall 3-tier global noise catcher ────────────────────────────────
-    if (qrCaptureErrorHandlerRef.current) {
-      window.removeEventListener(
-        'error',
-        qrCaptureErrorHandlerRef.current as unknown as EventListener,
-        true
-      );
-      qrCaptureErrorHandlerRef.current = null;
-    }
-    if (qrUnhandledHandlerRef.current) {
-      window.removeEventListener(
-        'unhandledrejection',
-        qrUnhandledHandlerRef.current as unknown as EventListener
-      );
-      qrUnhandledHandlerRef.current = null;
-    }
-    if (qrPrevOnErrorRef.current !== null) {
-      try {
-        window.onerror = qrPrevOnErrorRef.current;
-      } catch {
-        void 0;
-      }
-      qrPrevOnErrorRef.current = null;
-    }
-    stripHtml5QrDomSignatures('qr-reader');
-    await waitForCameraRelease();
+    setQrWatchdogStatus('healthy');
   }, []);
+
+  const releaseQrScanner = useCallback(
+    async (opts?: { force?: boolean }) => {
+      if (qrReleasedRef.current && !opts?.force) return;
+      qrReleasedRef.current = true;
+      camLog('qr:releaseScanner', { forced: Boolean(opts?.force) });
+
+      // ── Cleanup watchdog first (prevent mid-reconnect) ──
+      cleanupQrWatchdog();
+
+      // ── Release pending lock (if any) ──
+      if (qrLockReleaseRef.current) {
+        try {
+          qrLockReleaseRef.current();
+        } catch {
+          /* ignore */
+        }
+        qrLockReleaseRef.current = null;
+      }
+
+      // ── In-flight qr.start() guard: ensure teardown after resolves ──
+      const inFlight = qrStartInFlightRef.current;
+      let resolvedInstance: Html5Qrcode | null = null;
+      if (inFlight) {
+        try {
+          resolvedInstance = await inFlight.catch(() => null);
+        } catch {
+          resolvedInstance = null;
+        }
+        qrStartInFlightRef.current = null;
+      }
+
+      const instance = scannerRef.current ?? resolvedInstance;
+      if (instance) {
+        try {
+          if (instance.isScanning) {
+            await instance.stop();
+          }
+          instance.clear();
+        } catch {
+          void 0;
+        }
+        scannerRef.current = null;
+      }
+      // ── Uninstall 3-tier global noise catcher ────────────────────────────────
+      if (qrCaptureErrorHandlerRef.current) {
+        window.removeEventListener(
+          'error',
+          qrCaptureErrorHandlerRef.current as unknown as EventListener,
+          true
+        );
+        qrCaptureErrorHandlerRef.current = null;
+      }
+      if (qrUnhandledHandlerRef.current) {
+        window.removeEventListener(
+          'unhandledrejection',
+          qrUnhandledHandlerRef.current as unknown as EventListener
+        );
+        qrUnhandledHandlerRef.current = null;
+      }
+      if (qrPrevOnErrorRef.current !== null) {
+        try {
+          window.onerror = qrPrevOnErrorRef.current;
+        } catch {
+          void 0;
+        }
+        qrPrevOnErrorRef.current = null;
+      }
+      stripHtml5QrDomSignatures('qr-reader');
+      await waitForCameraRelease();
+    },
+    [cleanupQrWatchdog]
+  );
 
   useEffect(() => {
     if (!scanning || externalResult || !camerasReady) return;
@@ -148,6 +192,7 @@ export default function AttendQrScanner({
     const bootGen = ++qrBootGenRef.current;
     let cancelled = false;
     qrDecodedSuccessRef.current = false;
+    let localLockRelease: (() => void) | null = null;
 
     const clearQrTimeout = () => {
       if (qrDecodeTimeoutRef.current !== null) {
@@ -156,18 +201,66 @@ export default function AttendQrScanner({
       }
     };
 
+    const attachQrWatchdog = () => {
+      try {
+        const videoEl = document.querySelector<HTMLVideoElement>('#qr-reader video');
+        const stream = (videoEl?.srcObject as MediaStream | null) ?? null;
+        if (!videoEl || !stream) return;
+
+        const wd = createStreamHealthWatchdog(stream, videoEl, {
+          reconnect: {
+            enabled: true,
+            facingMode: qrFacingMode,
+            preferRear: qrFacingMode === 'environment',
+            deviceId: qrCameraIdRef.current,
+          },
+        });
+        wd.on('statusChange', ({ status, reconnectAttempt }: any) => {
+          setQrWatchdogStatus(status);
+          if (status === 'reconnecting' && reconnectAttempt > 1) {
+            toast.info(
+              humanizeCameraError({ message: 'recovering' }, { attempt: reconnectAttempt, max: 3 }),
+              { id: 'qr-wd-recover' }
+            );
+          }
+        });
+        wd.on('reconnectSuccess', (payload: any) => {
+          const newStream = (payload as { stream?: MediaStream | null })?.stream ?? null;
+          if (!newStream || !videoEl) return;
+          try {
+            videoEl.srcObject = newStream;
+            void videoEl.play().catch(() => undefined);
+          } catch {
+            /* ignore */
+          }
+        });
+        wd.on('reconnectFail', () => {
+          const errMsg = humanizeCameraError({ message: 'lock' });
+          setQrError({ code: 'PERMISSION', detail: errMsg });
+          toastError(null, errMsg);
+        });
+        qrWatchdogRef.current = wd;
+        setQrWatchdogStatus(wd.status);
+      } catch {
+        /* watchdog install failure is non-fatal */
+      }
+    };
+
     const bootScanner = async () => {
       setQrError(null);
       qrReleasedRef.current = false;
 
-      // ── Install 3-tier global noise catcher (idempotent) ──────────────────
-      // html5-qrcode's internal RenderedCameraImpl fires `video.onabort` from
-      // inside a postMessage scheduler when the media stream is torn down
-      // mid-init by page navigation / React StrictMode double-cleanup. This
-      // throw path BYPASSES addEventListener('error', capture) in many
-      // engines — we also need the legacy `window.onerror` setter AND a
-      // Promise rejection handler. All three match the exact same noise
-      // signatures and swallow only those (everything else bubbles normally).
+      try {
+        localLockRelease = await acquireCameraLock('qr-scanner', `qr-${bootGen}`);
+        qrLockReleaseRef.current = localLockRelease;
+      } catch (lockErr) {
+        camLog('qr:lockFailed', { error: (lockErr as Error)?.name });
+        const msg = humanizeCameraError({ message: 'lock' });
+        setQrError({ code: 'PERMISSION', detail: msg });
+        toastError(null, msg);
+        return;
+      }
+
       const isAbortNoise = (raw: string): boolean => {
         const s = String(raw || '').toLowerCase();
         return (
@@ -220,7 +313,7 @@ export default function AttendQrScanner({
         window.onerror = function (this: any, msg, src, lineno, colno, err): boolean {
           const combined = `${msg} ${err && (err as any).message ? (err as any).message : ''}`;
           if (isAbortNoise(combined)) {
-            return true; // suppress browser default reporting
+            return true;
           }
           if (prev) {
             return prev.call(this, msg, src, lineno, colno, err);
@@ -232,8 +325,6 @@ export default function AttendQrScanner({
       await waitForCameraRelease(350);
       if (cancelled || bootGen !== qrBootGenRef.current || scannerRef.current) return;
 
-      // Short settle delay so React StrictMode's first mount cleanup cancels
-      // before we open the camera (avoids open→close→open in development).
       await new Promise<void>((r) => setTimeout(r, 120));
       if (cancelled || bootGen !== qrBootGenRef.current || scannerRef.current) return;
 
@@ -246,31 +337,60 @@ export default function AttendQrScanner({
         verbose: false,
       });
 
-      try {
-        await qr.start(
-          cameraConfig,
-          {
-            fps: 10,
-            qrbox: { width: 250, height: 250 },
-            aspectRatio: 1.0,
-            disableFlip: qrFacingMode === 'user',
-          },
-          async (decodedText) => {
-            if (cancelled || bootGen !== qrBootGenRef.current) return;
-            qrDecodedSuccessRef.current = true;
-            clearQrTimeout();
-            await releaseQrScanner();
-            onScanSuccess(decodedText);
-          },
-          () => {
-            // Abaikan kegagalan scan berulang sampai QR terbaca
+      const startPromise: Promise<Html5Qrcode | null> = (async () => {
+        try {
+          await qr.start(
+            cameraConfig,
+            {
+              fps: 10,
+              qrbox: { width: 250, height: 250 },
+              aspectRatio: 1.0,
+              disableFlip: qrFacingMode === 'user',
+            },
+            async (decodedText) => {
+              if (cancelled || bootGen !== qrBootGenRef.current) return;
+              qrDecodedSuccessRef.current = true;
+              clearQrTimeout();
+              // Immediately register pending release so Attend.tsx startCamera awaits us
+              const releaseP = (async () => {
+                await releaseQrScanner();
+              })();
+              registerPendingCameraRelease(releaseP);
+              await releaseP;
+              onScanSuccess(decodedText);
+            },
+            () => {
+              /* repeat scan failures are expected until a valid QR is presented */
+            }
+          );
+          return qr;
+        } catch (e) {
+          try {
+            if (qr?.isScanning) await qr.stop().catch(() => undefined);
+            qr?.clear?.();
+          } catch {
+            /* ignore */
           }
-        );
+          throw e;
+        }
+      })();
+
+      qrStartInFlightRef.current = startPromise;
+
+      try {
+        const resolvedQr = await startPromise;
+        qrStartInFlightRef.current = null;
         if (cancelled || bootGen !== qrBootGenRef.current) {
           await releaseQrScanner();
           return;
         }
-        scannerRef.current = qr;
+        scannerRef.current = resolvedQr ?? null;
+
+        // Attach watchdog AFTER html5-qrcode has attached its own video.srcObject
+        requestAnimationFrame(() => {
+          if (cancelled || bootGen !== qrBootGenRef.current) return;
+          attachQrWatchdog();
+        });
 
         qrDecodeTimeoutRef.current = window.setTimeout(() => {
           if (cancelled || bootGen !== qrBootGenRef.current) return;
@@ -284,6 +404,7 @@ export default function AttendQrScanner({
           });
         }, 15000);
       } catch (err) {
+        qrStartInFlightRef.current = null;
         clearQrTimeout();
         const msg = 'Kamera tidak diizinkan. Buka pengaturan browser.';
         setQrError({ code: 'PERMISSION' });
@@ -295,8 +416,6 @@ export default function AttendQrScanner({
     };
 
     void bootScanner().catch((_e) => {
-      // Swallow any async boot noise (media aborts, mid-flight unmounts) —
-      // user-facing error toast was already shown by inner catch clauses.
       void _e;
     });
 
@@ -327,9 +446,30 @@ export default function AttendQrScanner({
   useEffect(() => {
     return () => {
       const teardown = (async () => {
+        // Always cleanup watchdog + noise catchers on unmount regardless of state,
+        // but only release stream if not already released (prevents double-release)
+        cleanupQrWatchdog();
+        if (qrLockReleaseRef.current) {
+          try {
+            qrLockReleaseRef.current();
+          } catch {
+            /* ignore */
+          }
+          qrLockReleaseRef.current = null;
+        }
         if (!qrReleasedRef.current) {
           qrReleasedRef.current = true;
-          const instance = scannerRef.current;
+          const inFlight = qrStartInFlightRef.current;
+          let instFromFlight: Html5Qrcode | null = null;
+          if (inFlight) {
+            try {
+              instFromFlight = await inFlight.catch(() => null);
+            } catch {
+              instFromFlight = null;
+            }
+            qrStartInFlightRef.current = null;
+          }
+          const instance = scannerRef.current ?? instFromFlight;
           scannerRef.current = null;
           if (instance) {
             try {
@@ -344,8 +484,9 @@ export default function AttendQrScanner({
           } catch {
             void 0;
           }
+          await releaseActiveVideoTracks();
         }
-        // ── Always uninstall 3-tier global abort-catcher on full unmount ──
+        // Always uninstall 3-tier global abort-catcher on full unmount, even if stream already released
         if (qrCaptureErrorHandlerRef.current) {
           window.removeEventListener(
             'error',
@@ -369,30 +510,63 @@ export default function AttendQrScanner({
           }
           qrPrevOnErrorRef.current = null;
         }
-        await releaseActiveVideoTracks();
         await new Promise<void>((r) => setTimeout(r, 300));
       })();
 
       registerPendingCameraRelease(teardown);
     };
-  }, []);
+  }, [cleanupQrWatchdog]);
 
   const switchQrCamera = async () => {
-    const nextMode = qrFacingMode === 'environment' ? 'user' : 'environment';
-    await releaseQrScanner({ force: true });
-    setQrFacingMode(nextMode);
-    await loadQrCamera(nextMode === 'environment');
-    onQrErrorChange?.(null);
-    setQrError(null);
-    setScanning(true);
-    setQrBootNonce((n) => n + 1);
+    if (qrSwitchingRef.current) return;
+    qrSwitchingRef.current = true;
+    try {
+      const nextMode = qrFacingMode === 'environment' ? 'user' : 'environment';
+      const lock = await acquireCameraLock('qr-switch', `qrsw-${Date.now()}`);
+      try {
+        await releaseQrScanner({ force: true });
+        setQrFacingMode(nextMode);
+        await loadQrCamera(nextMode === 'environment');
+        onQrErrorChange?.(null);
+        setQrError(null);
+        setScanning(true);
+        setQrBootNonce((n) => n + 1);
+      } finally {
+        lock();
+      }
+    } finally {
+      qrSwitchingRef.current = false;
+    }
   };
+
+  const showWatchdogIndicator =
+    !qrError &&
+    scanning &&
+    (qrWatchdogStatus === 'reconnecting' || qrWatchdogStatus === 'degraded');
 
   return (
     <div className="attend-qr-root w-full max-w-md">
       <div className="relative overflow-hidden rounded-2xl border-4 border-border bg-slate-900 shadow-2xl">
         <div className="pointer-events-none absolute inset-0 z-10 m-8 rounded-xl border-[3px] border-dashed border-indigo-500/50" />
         <div id="qr-reader" className="min-h-[300px] w-full bg-black" />
+        {showWatchdogIndicator && (
+          <div
+            className="pointer-events-none absolute inset-x-0 top-3 z-20 flex justify-center"
+            role="status"
+            aria-live="polite"
+          >
+            <div className="flex items-center gap-2 rounded-full bg-black/70 px-3 py-1.5 text-xs font-medium text-amber-200 ring-1 ring-amber-400/40 backdrop-blur-sm">
+              <Loader2 size={14} className="animate-spin" aria-hidden="true" />
+              <span>
+                Memulihkan kamera
+                {qrWatchdogRef.current?.reconnectAttempt
+                  ? ` (${qrWatchdogRef.current.reconnectAttempt}/3)`
+                  : ''}
+                …
+              </span>
+            </div>
+          </div>
+        )}
       </div>
       <div className="mt-8 space-y-4 text-center">
         {qrError ? (
@@ -408,7 +582,16 @@ export default function AttendQrScanner({
               {qrError.code === 'NOT_ENROLLED' && 'Tidak terdaftar di sesi ini'}
             </p>
             <p className="mt-1">
-              {qrError.code === 'PERMISSION' && 'Kamera tidak diizinkan. Buka pengaturan browser.'}
+              {qrError.code === 'PERMISSION' &&
+              qrError.detail &&
+              (qrError.detail.includes('izin') || qrError.detail.includes('digunakan'))
+                ? qrError.detail
+                : qrError.code === 'PERMISSION'
+                  ? 'Kamera tidak diizinkan. Buka pengaturan browser.'
+                  : null}
+              {qrError.code === 'PERMISSION' &&
+                !qrError.detail &&
+                'Kamera tidak diizinkan. Buka pengaturan browser.'}
               {qrError.code === 'SCAN_TIMEOUT' &&
                 'Tidak dapat membaca kode. Pastikan QR berada di tengah layar dan cahaya cukup.'}
               {qrError.code === 'BAD_SIG' && 'Kode QR tidak valid atau sudah digunakan.'}
@@ -421,12 +604,18 @@ export default function AttendQrScanner({
               size="sm"
               className="mt-3 min-h-11"
               onClick={() => {
-                void releaseQrScanner({ force: true }).then(() => {
-                  setQrError(null);
-                  onQrErrorChange?.(null);
-                  setScanning(true);
-                  setQrBootNonce((n) => n + 1);
-                });
+                void (async () => {
+                  const lock = await acquireCameraLock('qr-retry', `qrrt-${Date.now()}`);
+                  try {
+                    await releaseQrScanner({ force: true });
+                    setQrError(null);
+                    onQrErrorChange?.(null);
+                    setScanning(true);
+                    setQrBootNonce((n) => n + 1);
+                  } finally {
+                    lock();
+                  }
+                })();
               }}
             >
               Coba Lagi
@@ -442,6 +631,7 @@ export default function AttendQrScanner({
             type="button"
             variant="outline"
             onClick={() => void switchQrCamera()}
+            disabled={qrSwitchingRef.current}
             className="min-h-11 gap-2"
           >
             <RefreshCw size={16} aria-hidden="true" />

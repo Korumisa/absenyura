@@ -50,6 +50,7 @@ export const getUsers = async (req: Request, res: Response): Promise<void> => {
     const search = req.query.search as string | undefined;
     const role = req.query.role as string | undefined;
     const status = req.query.status as string | undefined;
+    const passwordFilter = req.query.filter_password as string | undefined;
 
     const where: Prisma.UserWhereInput = {};
 
@@ -68,6 +69,10 @@ export const getUsers = async (req: Request, res: Response): Promise<void> => {
 
     if (status && status !== 'ALL') {
       where.is_active = status === 'ACTIVE' || status === 'true';
+    }
+
+    if (passwordFilter === 'must_change') {
+      where.must_change_password = true;
     }
 
     if (pageQuery !== undefined) {
@@ -103,6 +108,8 @@ export const getUsers = async (req: Request, res: Response): Promise<void> => {
             enrollment_date: true,
             device_fingerprint: true,
             created_at: true,
+            must_change_password: true,
+            last_password_change: true,
           },
           orderBy: { created_at: 'desc' },
           skip,

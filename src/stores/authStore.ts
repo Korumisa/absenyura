@@ -8,6 +8,8 @@ interface User {
   role: string;
   avatar_url?: string | null;
   department?: string | null;
+  must_change_password?: boolean | null;
+  last_password_change?: string | null;
 }
 
 type SessionStatus = 'guest' | 'unknown' | 'verifying' | 'verified';

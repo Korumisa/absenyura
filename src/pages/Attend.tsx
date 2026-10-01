@@ -45,7 +45,11 @@ import {
   waitForCameraRelease,
   releaseActiveVideoTracks,
   registerPendingCameraRelease,
+  acquireCameraLock,
+  createStreamHealthWatchdog,
+  camLog,
 } from '@/lib/media/camera';
+import type { StreamWatchdog, WatchdogStatus } from '@/lib/media/camera';
 import { drawCaptureWatermark } from '@/lib/media/drawCaptureWatermark';
 import ActionLoadingOverlay from '@/components/ActionLoadingOverlay';
 import { useAppStatusStore } from '@/stores/appStatusStore';
@@ -143,6 +147,11 @@ export default function Attend() {
   const [submitError, setSubmitError] = useState<{ message: string; hint?: string } | null>(null);
   const [storageSaveFailed, setStorageSaveFailed] = useState(false);
   const storagePermanentlyFailedRef = React.useRef(false);
+
+  const photoWatchdogRef = React.useRef<StreamWatchdog | null>(null);
+  const photoLockReleaseRef = React.useRef<(() => void) | null>(null);
+  const photoSwitchingRef = React.useRef(false);
+  const [photoWatchdogStatus, setPhotoWatchdogStatus] = useState<WatchdogStatus>('healthy');
 
   // Derived session ID from parameter or scan result
   const extractSessionIdAndToken = (rawResult: string | null) => {
@@ -432,6 +441,21 @@ export default function Attend() {
   }, [handlePosition, requestLocationOnce]);
 
   const stopCamera = () => {
+    try {
+      photoWatchdogRef.current?.destroy();
+    } catch (e) {
+      camLog('photo_stop_watchdog_err', { err: e });
+    } finally {
+      photoWatchdogRef.current = null;
+      setPhotoWatchdogStatus('healthy');
+    }
+    try {
+      photoLockReleaseRef.current?.();
+    } catch (e) {
+      camLog('photo_stop_lock_err', { err: e });
+    } finally {
+      photoLockReleaseRef.current = null;
+    }
     if (pendingStreamRef.current) {
       releaseMediaStream(pendingStreamRef.current);
       pendingStreamRef.current = null;
@@ -469,13 +493,18 @@ export default function Attend() {
 
   const startCamera = useCallback(
     async (mode = facingMode) => {
+      if (photoSwitchingRef.current) return;
+      photoSwitchingRef.current = true;
       setCameraStarting(true);
       setCameraPermissionError(null);
+      setPhotoWatchdogStatus('reconnecting');
       try {
         stopCamera();
-        // Wait for QR scanner unmount teardown (if any) before re-opening.
         await awaitPendingCameraRelease();
         await waitForCameraRelease(400);
+
+        const ownerTag = `attend-photo-${derivedSessionId || sessionParam || tokenParam || 'checkout-mode'}`;
+        photoLockReleaseRef.current = await acquireCameraLock(ownerTag);
 
         let lastErr: unknown;
         for (let attempt = 0; attempt < 4; attempt++) {
@@ -483,33 +512,81 @@ export default function Attend() {
             await waitForCameraRelease(700 + attempt * 350);
           }
           try {
+            camLog('photo_start_attempt', { mode, attempt });
             const stream = await acquireCameraStream({
               facingMode: mode,
               preferRear: mode === 'environment',
             });
             pendingStreamRef.current = stream;
             setIsCameraActive(true);
+
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                try {
+                  const wd = createStreamHealthWatchdog(stream, videoRef.current, {
+                    reconnect: {
+                      maxAttempts: 3,
+                      facingMode: mode,
+                      onAttempt: (n, max) => {
+                        setPhotoWatchdogStatus('reconnecting');
+                        if (n >= 2) {
+                          toastInfo(`Memulihkan kamera (${n}/${max})…`);
+                        }
+                      },
+                    },
+                    onStatusChange: (status, evt) => {
+                      setPhotoWatchdogStatus(status);
+                      if (evt?.type === 'reconnect_success') {
+                        const restored = evt.stream as MediaStream | null;
+                        if (restored && videoRef.current && !videoRef.current.srcObject) {
+                          videoRef.current.srcObject = restored;
+                          videoRef.current.play().catch(() => undefined);
+                        }
+                      }
+                      if (status === 'failed') {
+                        setCameraPermissionError(
+                          'Kamera terputus permanen. Tutup tab lain yang memakai kamera, lalu tekan "Buka Kamera".'
+                        );
+                        toastError(
+                          null,
+                          'Kamera tidak dapat dipulihkan otomatis. Silakan tekan "Buka Kamera" kembali.'
+                        );
+                      }
+                    },
+                  });
+                  photoWatchdogRef.current = wd;
+                  setPhotoWatchdogStatus(wd.status);
+                } catch (wdErr) {
+                  camLog('photo_watchdog_create_err', { err: wdErr });
+                }
+              });
+            });
             return;
           } catch (err) {
             lastErr = err;
           }
         }
 
+        photoLockReleaseRef.current?.();
+        photoLockReleaseRef.current = null;
         const msg = humanizeCameraError(lastErr);
         setCameraPermissionError(msg);
         toastError(null, msg);
+        setPhotoWatchdogStatus('failed');
       } finally {
+        photoSwitchingRef.current = false;
         setCameraStarting(false);
       }
     },
-    [facingMode]
+    [facingMode, derivedSessionId, sessionParam, tokenParam]
   );
 
   const switchCamera = () => {
+    if (photoSwitchingRef.current) return;
     const newMode = facingMode === 'user' ? 'environment' : 'user';
     setFacingMode(newMode);
     if (isCameraActive) {
-      startCamera(newMode);
+      void startCamera(newMode);
     }
   };
 
@@ -557,10 +634,63 @@ export default function Attend() {
   };
 
   const retakePhoto = () => {
+    stopCamera();
     setPhotoBlob(null);
     setPhotoPreview(null);
-    startCamera();
+    void startCamera();
   };
+
+  const sessionTagForLog = derivedSessionId || sessionParam || tokenParam || 'checkout-mode';
+  if (typeof window !== 'undefined') {
+    // Guarded: no side effect during SSR
+  }
+  camLog('attend_init_after_callbacks', {
+    wizardStep,
+    draftSessionId,
+    sessionTag: sessionTagForLog,
+  });
+
+  useEffect(() => {
+    if (isCheckoutMode) return;
+    let step: 0 | 1 | 2 = 0;
+    if (!scanning && scanResult) {
+      step = photoBlob ? 2 : 1;
+    }
+    void setWizardDraft({ wizardStep: step, draftSessionId: derivedSessionId || draftSessionId });
+  }, [
+    scanning,
+    scanResult,
+    photoBlob,
+    isCheckoutMode,
+    setWizardDraft,
+    derivedSessionId,
+    draftSessionId,
+  ]);
+
+  useEffect(() => {
+    if (isCheckoutMode) return;
+    const run = (async () => {
+      try {
+        if (wizardStep === 1 && draftSessionId && !scanResult) {
+          setScanResult(draftSessionId);
+          setScanning(false);
+          setShowResumeCard(false);
+          await awaitPendingCameraRelease();
+          void startCamera(facingMode);
+        } else if (wizardStep === 2 && draftSessionId && !photoBlob) {
+          setScanResult(draftSessionId);
+          setScanning(false);
+          setShowResumeCard(false);
+          await awaitPendingCameraRelease();
+          void startCamera(facingMode);
+        }
+      } catch (e) {
+        camLog('attend_recovery_fail', { err: e });
+      }
+    })();
+    return () => {};
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleCheckIn = async () => {
     if (isSubmittingRef.current) return;
@@ -885,14 +1015,36 @@ export default function Attend() {
                       className="size-full object-cover"
                     />
                   ) : (
-                    <video
-                      ref={videoRef}
-                      autoPlay
-                      playsInline
-                      muted
-                      aria-hidden="true"
-                      className="size-full object-cover"
-                    />
+                    <>
+                      <video
+                        ref={videoRef}
+                        autoPlay
+                        playsInline
+                        muted
+                        aria-hidden="true"
+                        className={`size-full object-cover ${facingMode === 'user' ? 'scale-x-[-1]' : ''}`}
+                      />
+                      {isCameraActive &&
+                      photoWatchdogStatus !== 'healthy' &&
+                      photoWatchdogStatus !== 'paused' ? (
+                        <div
+                          role="status"
+                          aria-live="polite"
+                          className="absolute left-3 top-3 inline-flex items-center gap-2 rounded-full bg-amber-500/95 px-3 py-1 text-xs font-semibold text-white shadow-lg ring-1 ring-amber-200 backdrop-blur dark:ring-amber-800"
+                        >
+                          <Loader2 size={14} className="animate-spin" aria-hidden="true" />
+                          <span>
+                            {photoWatchdogStatus === 'degraded'
+                              ? 'Sinyal kamera menurun…'
+                              : photoWatchdogStatus === 'reconnecting'
+                                ? 'Memulihkan kamera…'
+                                : photoWatchdogStatus === 'failed'
+                                  ? 'Kamera terputus'
+                                  : 'Memantau kamera…'}
+                          </span>
+                        </div>
+                      ) : null}
+                    </>
                   )}
                   <canvas ref={canvasRef} className="hidden" aria-hidden="true" />
                 </div>
@@ -1222,6 +1374,27 @@ export default function Attend() {
                       aria-hidden="true"
                       className={`w-full h-full object-cover absolute inset-0 z-10 ${isCameraActive ? 'block' : 'hidden'} ${facingMode === 'user' ? 'scale-x-[-1]' : ''} pointer-events-none`}
                     ></video>
+
+                    {isCameraActive &&
+                    photoWatchdogStatus !== 'healthy' &&
+                    photoWatchdogStatus !== 'paused' ? (
+                      <div
+                        role="status"
+                        aria-live="polite"
+                        className="absolute left-3 top-3 z-30 inline-flex items-center gap-2 rounded-full bg-amber-500/95 px-3 py-1 text-xs font-semibold text-white shadow-lg ring-1 ring-amber-200 backdrop-blur dark:ring-amber-800"
+                      >
+                        <Loader2 size={14} className="animate-spin" aria-hidden="true" />
+                        <span>
+                          {photoWatchdogStatus === 'degraded'
+                            ? 'Sinyal kamera menurun…'
+                            : photoWatchdogStatus === 'reconnecting'
+                              ? 'Memulihkan kamera…'
+                              : photoWatchdogStatus === 'failed'
+                                ? 'Kamera terputus'
+                                : 'Memantau kamera…'}
+                        </span>
+                      </div>
+                    ) : null}
 
                     {!isCameraActive && (
                       <div className="relative z-20 flex flex-col items-center justify-center gap-3 p-6 text-center text-muted-foreground">
