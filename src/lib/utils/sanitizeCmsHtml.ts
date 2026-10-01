@@ -1,22 +1,31 @@
-/** Lightweight HTML sanitize for public CMS rich text (no DOMPurify dependency). */
-export function sanitizeCmsHtml(dirty: string | null | undefined): { __html: string } {
-  if (!dirty) return { __html: '' };
-  let cleaned = String(dirty);
-  cleaned = cleaned.replace(/<(script|style)[\s\S]*?>[\s\S]*?<\/\1>/gi, '');
-  cleaned = cleaned.replace(/\son[a-z]+\s*=\s*"[^"]*"/gi, '');
-  cleaned = cleaned.replace(/\son[a-z]+\s*=\s*'[^']*'/gi, '');
-  cleaned = cleaned.replace(/<a\s([^>]*)href="([^"]+)"([^>]*)>/gi, (_match, pre, href, post) => {
-    const safeHref = /^https?:\/\//i.test(href) ? href : '#';
-    return `<a ${pre} href="${safeHref}" ${post} target="_blank" rel="noopener noreferrer">`;
-  });
-  cleaned = cleaned.replace(/<a\s([^>]*)href='([^']+)'([^>]*)>/gi, (_match, pre, href, post) => {
-    const safeHref = /^https?:\/\//i.test(href) ? href : '#';
-    return `<a ${pre} href='${safeHref}' ${post} target="_blank" rel="noopener noreferrer">`;
-  });
-  return { __html: cleaned };
+import DOMPurify from 'dompurify';
+
+let purifyInstance: { sanitize: (dirty: string) => string } | null = null;
+
+function getPurify(): { sanitize: (dirty: string) => string } {
+  if (purifyInstance) return purifyInstance;
+  if (
+    typeof (DOMPurify as unknown as { sanitize?: (s: string) => string }).sanitize === 'function'
+  ) {
+    purifyInstance = DOMPurify as unknown as { sanitize: (s: string) => string };
+  } else if (typeof window !== 'undefined') {
+    const factory = DOMPurify as unknown as (w: Window) => { sanitize: (s: string) => string };
+    purifyInstance = factory(window);
+  } else {
+    throw new Error(
+      'DOMPurify membutuhkan global window (browser atau test dengan @vitest-environment jsdom)'
+    );
+  }
+  return purifyInstance;
 }
 
-/** True when string looks like HTML markup rather than plain text. */
+/** DOMPurify-based CMS sanitizer — menghilangkan seluruh regex-only bypass XSS di original L1-L23 */
+export function sanitizeCmsHtml(dirty: string | null | undefined): { __html: string } {
+  if (!dirty) return { __html: '' };
+  return { __html: getPurify().sanitize(dirty) };
+}
+
+/** True when string contains HTML markup (bukan plain text) */
 export function looksLikeHtml(value: string | null | undefined): boolean {
   if (!value) return false;
   return /<\/?[a-z][\s\S]*>/i.test(String(value));

@@ -3,7 +3,6 @@ import { resolveDatabaseUrl } from './databaseUrl.js';
 import { withTransientDbRetry } from './prismaTransient.js';
 
 declare global {
-   
   var prisma: ReturnType<typeof createPrismaClient> | undefined;
 }
 
@@ -23,12 +22,23 @@ if (!(process.env.DATABASE_URL || '').startsWith('prisma://')) {
 
 function createPrismaClient() {
   const base = new PrismaClient();
-  // Retry transient pooler/network blips on every query so individual
-  // controllers do not each re-implement P1001 handling.
   return base.$extends({
     query: {
-      $allOperations({ args, query }) {
-        return withTransientDbRetry(() => query(args), { retries: 2, delayMs: 200 });
+      async $allOperations({ model, operation, args, query }) {
+        const t0 = performance.now();
+        const result = await withTransientDbRetry(() => query(args), { retries: 2, delayMs: 200 });
+        const durationMs = Math.round(performance.now() - t0);
+        if (durationMs > 500) {
+          console.warn(
+            JSON.stringify({
+              type: 'slow_db_query_ms',
+              value: durationMs,
+              model: model ?? 'unknown',
+              op: operation,
+            })
+          );
+        }
+        return result;
       },
     },
   });

@@ -103,41 +103,57 @@ export const getDashboardStats = async (req: AuthRequest, res: Response): Promis
         now: new Date(),
       });
       const { startUtc, endUtc } = getWibRangeUtc({ rangeDays, now: new Date() });
+      const parsedSessionLimit = parseInt((req.query.recentSessionsCount as string) || '10', 10);
+      const recentSessionsCount =
+        Number.isInteger(parsedSessionLimit) && parsedSessionLimit >= 1 ? parsedSessionLimit : 10;
 
       const lecturerClassRowsPromise = isAdmin
         ? prisma.class.findMany({ where: { lecturer_id: userId }, select: { id: true } })
         : Promise.resolve([] as { id: string }[]);
 
-      const [totalUsers, totalSessions, todayGrouped, recentSessions, lecturerClassRows] =
-        await Promise.all([
-          prisma.user.count({
-            where: isAdmin
-              ? { role: 'USER', enrollments: { some: { class: { lecturer_id: userId } } } }
-              : { role: 'USER' },
-          }),
-          prisma.session.count(isAdmin ? { where: adminSessionScopeWhere(userId) } : undefined),
-          prisma.attendance.groupBy({
-            by: ['status'],
-            where: {
-              check_in_time: { gte: todayStartUtc, lt: todayEndUtc },
-              session: isAdmin ? adminSessionScopeWhere(userId) : undefined,
-            },
-            _count: { _all: true },
-          }),
-          prisma.session.findMany({
-            where: isAdmin ? adminSessionScopeWhere(userId) : undefined,
-            orderBy: { created_at: 'desc' },
-            take: 5,
-            select: {
-              ...sessionApiSelect,
-              _count: { select: { attendances: true } },
-              location: { select: { name: true } },
-              class: { select: { id: true, name: true } },
-              session_classes: { select: { class: { select: { id: true, name: true } } } },
-            },
-          }),
-          lecturerClassRowsPromise,
-        ]);
+      const userCountWhere = isAdmin
+        ? { role: 'USER', enrollments: { some: { class: { lecturer_id: userId } } } }
+        : { role: 'USER' };
+      const [
+        totalUsers,
+        totalSessions,
+        todayGrouped,
+        recentSessions,
+        lecturerClassRows,
+        usersMustChangePasswordCount,
+      ] = await Promise.all([
+        prisma.user.count({ where: userCountWhere }),
+        prisma.session.count(isAdmin ? { where: adminSessionScopeWhere(userId) } : undefined),
+        prisma.attendance.groupBy({
+          by: ['status'],
+          where: {
+            check_in_time: { gte: todayStartUtc, lt: todayEndUtc },
+            session: isAdmin ? adminSessionScopeWhere(userId) : undefined,
+          },
+          _count: { _all: true },
+        }),
+        prisma.session.findMany({
+          where: isAdmin ? adminSessionScopeWhere(userId) : undefined,
+          orderBy: [{ session_start: 'desc' }],
+          take: Math.min(recentSessionsCount, 100),
+          select: {
+            ...sessionApiSelect,
+            _count: { select: { attendances: true } },
+            location: { select: { name: true } },
+            class: { select: { id: true, name: true } },
+            session_classes: { select: { class: { select: { id: true, name: true } } } },
+          },
+        }),
+        lecturerClassRowsPromise,
+        prisma.user.count({
+          where:
+            user.role === 'SUPER_ADMIN'
+              ? { must_change_password: true }
+              : isAdmin
+                ? { ...userCountWhere, must_change_password: true }
+                : undefined,
+        }),
+      ]);
 
       const lecturerClassIds = (lecturerClassRows ?? []).map((x) => x.id);
 
@@ -197,6 +213,7 @@ export const getDashboardStats = async (req: AuthRequest, res: Response): Promis
             total_sessions: totalSessions,
             today_present: present,
             today_late: late,
+            users_must_change_password: usersMustChangePasswordCount ?? 0,
           },
           recent_sessions: recentSessions,
           chart_data: chartData,

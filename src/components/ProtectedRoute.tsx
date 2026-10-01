@@ -74,5 +74,13 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles, ch
     return <Navigate to="/forbidden" state={{ from: location }} replace />;
   }
 
+  const onSettingsPage = location.pathname === '/settings';
+  if (user.must_change_password && !onSettingsPage) {
+    saveTarget(location.pathname + location.search + location.hash);
+    return (
+      <Navigate to="/settings" state={{ from: location, reason: 'must_change_password' }} replace />
+    );
+  }
+
   return children ? <>{children}</> : <Outlet />;
 };

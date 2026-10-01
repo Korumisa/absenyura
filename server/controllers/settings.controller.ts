@@ -9,7 +9,15 @@ export const getProfile = async (req: AuthRequest, res: Response): Promise<void>
     const user_id = req.user!.id;
     const user = await prisma.user.findUnique({
       where: { id: user_id },
-      select: { id: true, name: true, email: true, phone: true, role: true },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        role: true,
+        must_change_password: true,
+        last_password_change: true,
+      },
     });
     if (!user) {
       res.status(404).json({ success: false, error: 'User not found' });
@@ -61,6 +69,8 @@ export const updateProfile = async (req: AuthRequest, res: Response): Promise<vo
       }
 
       updateData.password = await bcrypt.hash(new_password, 12);
+      updateData.must_change_password = false;
+      updateData.last_password_change = new Date();
     }
 
     const updatedUser = await prisma.$transaction(async (tx) => {

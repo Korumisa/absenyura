@@ -11,4 +11,6 @@ export interface User {
   enrollment_date?: string;
   device_fingerprint?: string | null;
   device_bound?: boolean;
+  must_change_password?: boolean | null;
+  last_password_change?: string | null;
 }
