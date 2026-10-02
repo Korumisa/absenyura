@@ -18,6 +18,15 @@
   }
 }
 
+@keyframes thin-progress {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(400%);
+  }
+}
+
 @layer base {
   :root {
     /* [TOKEN] Design tokens — admin & publik */

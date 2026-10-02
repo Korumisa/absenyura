@@ -28,11 +28,18 @@ export default function Fungsionaris() {
     }`,
     fetcher: (u) => publicSiteFetcher<StructureResp>(u, { kind: 'top' }),
     swrConfig: {
-      errorRetryCount: 5,
+      errorRetryCount: 2,
       errorRetryInterval: 1200,
       dedupingInterval: 8_000,
       keepPreviousData: true,
       revalidateOnReconnect: true,
+      onErrorRetry: (err, _key, _config, revalidate, revalidateOpts) => {
+        const status = (err as { response?: { status?: number } })?.response?.status;
+        if (status === 429) {
+          return;
+        }
+        void revalidate(revalidateOpts);
+      },
     },
     mockStatic: mockStructure as StructureResp,
   });

@@ -67,6 +67,7 @@ export default function AttendQrScanner({
   const qrUnhandledHandlerRef = useRef<((ev: PromiseRejectionEvent) => void) | null>(null);
   const qrCaptureErrorHandlerRef = useRef<((ev: ErrorEvent) => void) | null>(null);
   const qrReconnectingRef = useRef(false);
+  const qrWdStatusDebounceRef = useRef<number | null>(null);
 
   const [camerasReady, setCamerasReady] = useState(false);
   const [qrBootNonce, setQrBootNonce] = useState(0);
@@ -122,6 +123,10 @@ export default function AttendQrScanner({
     if (wd) {
       wd.destroy();
       qrWatchdogRef.current = null;
+    }
+    if (qrWdStatusDebounceRef.current !== null) {
+      window.clearTimeout(qrWdStatusDebounceRef.current);
+      qrWdStatusDebounceRef.current = null;
     }
     setQrWatchdogStatus('healthy');
   }, []);
@@ -231,13 +236,31 @@ export default function AttendQrScanner({
           },
         });
         wd.on('statusChange', ({ status, reconnectAttempt }: WatchdogStatusChangePayload) => {
-          setQrWatchdogStatus(status);
-          if (status === 'reconnecting' && reconnectAttempt > 1) {
-            toast.info(
-              humanizeCameraError({ message: 'recovering' }, { attempt: reconnectAttempt, max: 3 }),
-              { id: 'qr-wd-recover' }
-            );
+          // #region spec-T5 Debounce 700ms trailing edge — kec reconnectAttempt>1 reconnecting
+          // (real recovery progress — user harus tahu segera)
+          const isRealReconnect = status === 'reconnecting' && reconnectAttempt > 1;
+          const apply = () => {
+            setQrWatchdogStatus(status);
+            if (isRealReconnect) {
+              toast.info(
+                humanizeCameraError(
+                  { message: 'recovering' },
+                  { attempt: reconnectAttempt, max: 3 }
+                ),
+                { id: 'qr-wd-recover' }
+              );
+            }
+          };
+          if (qrWdStatusDebounceRef.current !== null) {
+            window.clearTimeout(qrWdStatusDebounceRef.current);
+            qrWdStatusDebounceRef.current = null;
           }
+          if (isRealReconnect) {
+            apply();
+          } else {
+            qrWdStatusDebounceRef.current = window.setTimeout(apply, 700);
+          }
+          // #endregion
         });
         wd.on('reconnectSuccess', (payload: WatchdogReconnectPayload) => {
           void handleQrAwareReconnect(payload, videoEl);
