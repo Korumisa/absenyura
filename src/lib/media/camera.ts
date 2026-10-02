@@ -17,25 +17,95 @@ let _cameraLockQueueResolvers: Array<() => void> = [];
 
 const _DEBUG_CAM_KEY = 'DEBUG_CAM';
 
+// #region debug-point ALL:camLog-reporting
+const _DBG_SERVER_URL =
+  typeof window === 'undefined'
+    ? null
+    : (() => {
+        // Sesuai .dbg/qr-scanner-camera-fluctuation.env — port 7777 LAN remote
+        return 'http://192.168.1.5:7777/event';
+      })();
+const _DBG_SESSION_ID = 'qr-scanner-camera-fluctuation';
+let _dbgReportedEvents = 0;
+function _dbgReport(hypothesisId: string, location: string, msg: string, data: unknown): void {
+  if (!_DBG_SERVER_URL || typeof window === 'undefined') return;
+  if (++_dbgReportedEvents > 2000) return; // throttle safety
+  try {
+    const payload = {
+      sessionId: _DBG_SESSION_ID,
+      runId: 'pre-fix',
+      hypothesisId,
+      location,
+      msg: `[DEBUG] ${msg}`,
+      data,
+      ts: Date.now(),
+      perf: typeof performance !== 'undefined' ? performance.now() : null,
+    };
+    // fire-and-forget — no await, swallowed error (jika server down, tidak ganggu alur)
+    const fd = new FormData();
+    Object.entries(payload).forEach(([k, v]) => {
+      fd.append(k, typeof v === 'object' && v !== null ? JSON.stringify(v) : String(v ?? ''));
+    });
+    void fetch(_DBG_SERVER_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      credentials: 'omit',
+      body: fd,
+    }).catch(() => {});
+  } catch {
+    /* ignore: debug server optional */
+  }
+}
+// #endregion
+
 function _isDebugCamEnabled(): boolean {
   if (typeof window === 'undefined') return false;
   try {
-    return window.localStorage.getItem(_DEBUG_CAM_KEY) === '1';
+    // Enable juga secara implisit saat development mode agar logs ter-collect
+    const explicit = window.localStorage.getItem(_DEBUG_CAM_KEY) === '1';
+    const importMetaDev =
+      (import.meta as ImportMeta & { env?: { DEV?: boolean } })?.env?.DEV === true;
+    return explicit || importMetaDev;
   } catch {
     return false;
   }
 }
 
 export function camLog(event: string, detail?: unknown): void {
-  if (!_isDebugCamEnabled()) return;
+  const enabled = _isDebugCamEnabled();
   const ts = new Date().toISOString();
-  if (detail !== undefined) {
-     
-    console.debug('[CAM]', ts, event, detail);
-  } else {
-     
-    console.debug('[CAM]', ts, event);
+  if (enabled) {
+    if (detail !== undefined) {
+      console.debug('[CAM]', ts, event, detail);
+    } else {
+      console.debug('[CAM]', ts, event);
+    }
   }
+  // #region debug-point ALL:camLog-reporting
+  // Selalu report ke debug server walau explicit off — minimal evidence capture kecuali user localStorage DEBUG_CAM='0' hard disable
+  try {
+    if (typeof window !== 'undefined' && window.localStorage.getItem(_DEBUG_CAM_KEY) !== '0') {
+      const hMap: Record<string, string> = {
+        'watchdog:degraded': 'H2',
+        'watchdog:frame_timeout': 'H2',
+        'watchdog:reconnect_start': 'H2',
+        'watchdog:reconnect_success': 'H2',
+        'watchdog:reconnect_fail': 'H2',
+        'visibility:hidden': 'H1',
+        'visibility:visible': 'H1',
+        'watchdog:track_ended': 'H5',
+        'lock:request': 'H4',
+        'lock:acquired': 'H4',
+        'lock:release': 'H4',
+        'html5qrcode:internal_stop': 'H3',
+      };
+      const hyp = hMap[event] ?? 'ALL';
+      _dbgReport(hyp, 'camera.ts/camLog', event, detail ?? null);
+    }
+  } catch {
+    /* ignore */
+  }
+  // #endregion
 }
 
 export async function acquireCameraLock(ownerName: string, ownerId?: string): Promise<() => void> {
@@ -321,7 +391,6 @@ export function humanizeCameraError(
   opts?: { attempt?: number; max?: number }
 ): string {
   const e = err as { name?: string; message?: string } | null;
-  const name = e?.name ?? '';
   const raw = (e?.message ?? '').toLowerCase();
   const attempt = opts?.attempt ?? 0;
   const max = opts?.max ?? 3;
@@ -506,6 +575,9 @@ export interface CreateWatchdogOptions {
   trackPollMs?: number;
   readyStatePollMs?: number;
   handleVisibilityLifecycle?: boolean;
+  consecutiveThreshold?: number;
+  gracePeriodMs?: number;
+  preset?: 'qr-scan' | 'photo';
 }
 
 type _WatchdogListener<T = unknown> = (payload: T) => void;
@@ -519,9 +591,19 @@ export interface StreamWatchdog {
   resume: () => void;
   replaceStream: (stream: MediaStream | null) => void;
   on: <T = unknown>(event: WatchdogEvent, cb: _WatchdogListener<T>) => () => void;
+  suspendAutoReconnect: (reason?: string) => void;
+  resumeAutoReconnect: () => void;
 }
 
 const VIDEO_HAVE_CURRENT_DATA = 2;
+
+const QR_SCAN_PRESET = {
+  frameTimeoutMs: 6000,
+  trackPollMs: 700,
+  readyStatePollMs: 1200,
+  consecutiveThreshold: 3,
+  gracePeriodMs: 5000,
+} as const;
 
 export function createStreamHealthWatchdog(
   initialStream: MediaStream | null,
@@ -538,9 +620,15 @@ export function createStreamHealthWatchdog(
     preferRear: options.reconnect?.preferRear,
     deviceId: options.reconnect?.deviceId ?? null,
   };
-  const FRAME_TIMEOUT_MS = options.frameTimeoutMs ?? 2500;
-  const TRACK_POLL_MS = options.trackPollMs ?? 300;
-  const RS_POLL_MS = options.readyStatePollMs ?? 500;
+
+  const usePreset = options.preset === 'qr-scan' ? QR_SCAN_PRESET : null;
+
+  const FRAME_TIMEOUT_MS = options.frameTimeoutMs ?? usePreset?.frameTimeoutMs ?? 2500;
+  const TRACK_POLL_MS = options.trackPollMs ?? usePreset?.trackPollMs ?? 300;
+  const RS_POLL_MS = options.readyStatePollMs ?? usePreset?.readyStatePollMs ?? 500;
+  const CONSECUTIVE_DEGRADE_THRESHOLD =
+    options.consecutiveThreshold ?? usePreset?.consecutiveThreshold ?? 1;
+  const GRACE_PERIOD_MS = options.gracePeriodMs ?? usePreset?.gracePeriodMs ?? 0;
   const HANDLE_LIFECYCLE = options.handleVisibilityLifecycle ?? true;
 
   let status: WatchdogStatus = 'healthy';
@@ -557,6 +645,13 @@ export function createStreamHealthWatchdog(
   let frameDeadlineTimer: ReturnType<typeof setTimeout> | null = null;
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   let rvfcCancel: (() => void) | null = null;
+  let visibilityDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  let consecutiveResetTimer: ReturnType<typeof setTimeout> | null = null;
+  let degradeSafetyTimer: ReturnType<typeof setTimeout> | null = null;
+
+  let _initializedAt = performance.now();
+  let _consecutiveDegradeCount = 0;
+  let _reconnectSuspended = false;
 
   const fire = <T>(event: WatchdogEvent, payload: T) => {
     const set = listeners.get(event);
@@ -583,6 +678,11 @@ export function createStreamHealthWatchdog(
     }
   };
 
+  // #region debug-point H5:track-poll-history
+  let _lastPollTrackEnded = false;
+  let _consecutiveEndedCount = 0;
+  // #endregion
+
   const hasEndedTrack = (s: MediaStream | null): boolean => {
     if (!s) return true;
     const tracks = s.getVideoTracks();
@@ -594,7 +694,30 @@ export function createStreamHealthWatchdog(
     if (frameDeadlineTimer) clearTimeout(frameDeadlineTimer);
     frameDeadlineTimer = setTimeout(() => {
       if (destroyed || paused) return;
-      camLog('watchdog:frameTimeout', { timeoutMs: FRAME_TIMEOUT_MS });
+      // #region debug-point H2:frame-flow-deadline-detail
+      try {
+        const vid = currentVideoEl;
+        const detail = {
+          timeoutMs: FRAME_TIMEOUT_MS,
+          videoReadyState: vid?.readyState ?? null,
+          videoCurrentTime: vid?.currentTime ?? null,
+          videoPaused: vid?.paused ?? null,
+          videoSeeking: vid?.seeking ?? null,
+          trackCount: currentStream?.getTracks().length ?? null,
+          videoTracksLive:
+            currentStream?.getVideoTracks().filter((t) => t.readyState === 'live').length ?? null,
+        };
+        camLog('watchdog:frameTimeout', detail);
+        _dbgReport(
+          'H2',
+          'camera.ts/kickFrameDeadline',
+          'Frame flow deadline exceeded — potential false positive',
+          detail
+        );
+      } catch {
+        camLog('watchdog:frameTimeout', { timeoutMs: FRAME_TIMEOUT_MS });
+      }
+      // #endregion
       triggerDegrade('frameTimeout');
     }, FRAME_TIMEOUT_MS);
   };
@@ -642,16 +765,60 @@ export function createStreamHealthWatchdog(
 
     trackPollTimer = setInterval(() => {
       if (destroyed || paused) return;
-      if (hasEndedTrack(currentStream)) {
+      const endedNow = hasEndedTrack(currentStream);
+      // #region debug-point H5:track-ended-2-poll-consecutive
+      try {
+        if (endedNow) _consecutiveEndedCount++;
+        else _consecutiveEndedCount = 0;
+        const transientCaution = _lastPollTrackEnded && !endedNow;
+        _lastPollTrackEnded = endedNow;
+        if (endedNow || transientCaution) {
+          const detail = {
+            endedNow,
+            consecutiveEndedPolls: _consecutiveEndedCount,
+            previousWasEnded: _lastPollTrackEnded,
+            transientFlip: transientCaution,
+            videoTracksLive:
+              currentStream?.getVideoTracks().filter((t) => t.readyState === 'live').length ?? null,
+            videoTrackCount: currentStream?.getVideoTracks().length ?? null,
+          };
+          camLog('watchdog:trackPoll', detail);
+          _dbgReport(
+            'H5',
+            'camera.ts/installPollers',
+            'Track poll state change (watch for transient false ended)',
+            detail
+          );
+        }
+      } catch {
+        /* ignore instrumentation only */
+      }
+      if (endedNow) {
         camLog('watchdog:trackEnded');
         triggerDegrade('trackEnded');
       }
+      // #endregion
     }, TRACK_POLL_MS);
 
     rsPollTimer = setInterval(() => {
       if (destroyed || paused || !currentVideoEl) return;
       if (currentVideoEl.readyState < VIDEO_HAVE_CURRENT_DATA) {
-        camLog('watchdog:readyStateLow', { readyState: currentVideoEl.readyState });
+        const detail = {
+          readyState: currentVideoEl.readyState,
+          videoCurrentTime: currentVideoEl.currentTime,
+          videoPaused: currentVideoEl.paused,
+        };
+        camLog('watchdog:readyStateLow', detail);
+        try {
+          _dbgReport(
+            'H2',
+            'camera.ts/installPollers:rsPoll',
+            'readyState below HAVE_CURRENT_DATA',
+            detail
+          );
+        } catch {
+          /* ignore */
+        }
         triggerDegrade('readyState');
       }
     }, RS_POLL_MS);
@@ -672,7 +839,23 @@ export function createStreamHealthWatchdog(
     reconnectAttempt++;
     setStatus('reconnecting', 'reconnectAttempt');
     const backoff = (reconnectOpts.baseBackoffMs ?? 500) * Math.pow(2, reconnectAttempt - 1);
-    camLog('watchdog:reconnect', { attempt: reconnectAttempt, max, backoffMs: backoff });
+    // #region debug-point H4:reconnect-acquire-race
+    try {
+      const detail = {
+        attempt: reconnectAttempt,
+        max,
+        backoffMs: backoff,
+        degradeReason: null,
+        currentStreamTracks: currentStream?.getTracks().length ?? null,
+        videoElementHasSrcObject: !!currentVideoEl?.srcObject,
+        status,
+      };
+      camLog('watchdog:reconnect', detail);
+      _dbgReport('H4', 'camera.ts/doReconnect:start', 'Reconnect started', detail);
+    } catch {
+      camLog('watchdog:reconnect', { attempt: reconnectAttempt, max, backoffMs: backoff });
+    }
+    // #endregion
     try {
       reconnectOnAttempt?.(reconnectAttempt, max);
     } catch {
@@ -689,15 +872,40 @@ export function createStreamHealthWatchdog(
       }
       if (destroyed) return;
 
+      const prevStreamId = (currentStream as MediaStream & { id?: string })?.id ?? null;
       releaseMediaStream(currentStream);
       currentStream = null;
       if (currentVideoEl) currentVideoEl.srcObject = null;
 
+      const acquireStartedAt = performance.now();
       const newStream = await acquireCameraStream({
         facingMode: reconnectOpts.facingMode,
         preferRear: reconnectOpts.preferRear,
         deviceId: reconnectOpts.deviceId,
       });
+      // #region debug-point H4:reconnect-acquire-race
+      try {
+        const detail = {
+          attempt: reconnectAttempt,
+          prevStreamId,
+          newStreamId: (newStream as MediaStream & { id?: string })?.id ?? null,
+          acquireDurationMs: performance.now() - acquireStartedAt,
+          newTrackCount: newStream.getTracks().length,
+          wasSameStream:
+            prevStreamId != null &&
+            prevStreamId === ((newStream as MediaStream & { id?: string })?.id ?? null),
+        };
+        camLog('watchdog:reconnectAcquired', detail);
+        _dbgReport(
+          'H4',
+          'camera.ts/doReconnect:acquired',
+          'Camera reacquired stream after reconnect',
+          detail
+        );
+      } catch {
+        /* ignore */
+      }
+      // #endregion
 
       currentStream = newStream;
       if (currentVideoEl) {
@@ -724,35 +932,152 @@ export function createStreamHealthWatchdog(
 
   let degradeInProgress = false;
   const triggerDegrade = (reason: string) => {
-    if (degradeInProgress) return;
+    if (degradeInProgress) {
+      camLog('watchdog:degradeSuppressed', { reason: 'degradeInProgress', cause: reason });
+      return;
+    }
     if (destroyed || paused) return;
+
+    if (_reconnectSuspended) {
+      camLog('watchdog:degradeSuppressed', { reason: 'suspended', cause: reason });
+      return;
+    }
+
+    const ageMs = performance.now() - _initializedAt;
+    if (ageMs < GRACE_PERIOD_MS) {
+      camLog('watchdog:degradeSuppressed', {
+        reason: 'gracePeriod',
+        cause: reason,
+        ageMs,
+        gracePeriodMs: GRACE_PERIOD_MS,
+      });
+      return;
+    }
+
+    _consecutiveDegradeCount++;
+    if (consecutiveResetTimer) {
+      clearTimeout(consecutiveResetTimer);
+      consecutiveResetTimer = null;
+    }
+    consecutiveResetTimer = setTimeout(() => {
+      if (_consecutiveDegradeCount > 0) {
+        _consecutiveDegradeCount = 0;
+        camLog('watchdog:consecutiveCounterReset');
+      }
+    }, 2000);
+
+    if (_consecutiveDegradeCount < CONSECUTIVE_DEGRADE_THRESHOLD) {
+      camLog('watchdog:degradeSuppressed', {
+        reason: 'belowThreshold',
+        cause: reason,
+        count: _consecutiveDegradeCount,
+        threshold: CONSECUTIVE_DEGRADE_THRESHOLD,
+      });
+      return;
+    }
+
     degradeInProgress = true;
+    if (degradeSafetyTimer) clearTimeout(degradeSafetyTimer);
+    degradeSafetyTimer = setTimeout(() => {
+      if (degradeInProgress) {
+        camLog('watchdog:degradeSafetyTimeout');
+        degradeInProgress = false;
+      }
+    }, 15000);
+
+    _consecutiveDegradeCount = 0;
     setStatus('degraded');
     fire('statusChange', { status: 'degraded', reason });
     void doReconnect().finally(() => {
+      if (degradeSafetyTimer) {
+        clearTimeout(degradeSafetyTimer);
+        degradeSafetyTimer = null;
+      }
       degradeInProgress = false;
     });
   };
 
+  // #region debug-point H1:visibility-throttle-state
+  let _lastVisibilityChangeAt = 0;
+  let _lastVisibilityState: DocumentVisibilityState | null = null;
+  // #endregion
+
   const onVisibilityChange = () => {
     if (destroyed) return;
     if (typeof document === 'undefined') return;
-    if (document.visibilityState === 'hidden') {
-      camLog('watchdog:visibilityHidden');
+    const now = performance.now();
+    const stateNow = document.visibilityState;
+    const deltaFromLastMs = _lastVisibilityChangeAt === 0 ? 0 : now - _lastVisibilityChangeAt;
+    // #region debug-point H1:visibility-reporting
+    try {
+      const detail = {
+        state: stateNow,
+        previousState: _lastVisibilityState,
+        deltaFromLastMs,
+        documentHiddenActual: document.hidden,
+        hasFocus: typeof document.hasFocus === 'function' ? document.hasFocus() : null,
+        windowInnerHeight: typeof window !== 'undefined' ? window.innerHeight : null,
+        windowOuterHeight: typeof window !== 'undefined' ? window.outerHeight : null,
+        visualViewportHeight:
+          typeof window !== 'undefined' &&
+          (window as Window & { visualViewport?: { height?: number } }).visualViewport
+            ? (window as Window & { visualViewport?: { height?: number } }).visualViewport!.height
+            : null,
+        falsePositiveCandidate: deltaFromLastMs > 0 && deltaFromLastMs < 1000,
+      };
+      camLog(
+        stateNow === 'hidden' ? 'watchdog:visibilityHidden' : 'watchdog:visibilityVisible',
+        detail
+      );
+      _dbgReport(
+        'H1',
+        'camera.ts/onVisibilityChange',
+        stateNow === 'hidden'
+          ? 'visibilitychange hidden fired — watch for false positive flicker'
+          : 'visibilitychange visible fired',
+        detail
+      );
+    } catch {
+      camLog(stateNow === 'hidden' ? 'watchdog:visibilityHidden' : 'watchdog:visibilityVisible', {
+        deltaFromLastMs,
+      });
+    }
+    _lastVisibilityChangeAt = now;
+    _lastVisibilityState = stateNow;
+    // #endregion
+    if (stateNow === 'hidden') {
+      if (visibilityDebounceTimer) {
+        clearTimeout(visibilityDebounceTimer);
+        visibilityDebounceTimer = null;
+      }
       if (!paused) {
         paused = true;
         setStatus('paused', 'visibilityHidden');
       }
     } else {
-      camLog('watchdog:visibilityVisible');
       if (paused) {
         paused = false;
         const prev = status === 'paused' ? 'healthy' : status;
         setStatus(prev, 'visibilityVisible');
       }
-      if (status !== 'healthy' && status !== 'reconnecting') {
-        triggerDegrade('visibilityResume');
+      if (visibilityDebounceTimer) {
+        clearTimeout(visibilityDebounceTimer);
       }
+      visibilityDebounceTimer = setTimeout(() => {
+        visibilityDebounceTimer = null;
+        if (destroyed) return;
+        const tracksEnded = hasEndedTrack(currentStream);
+        if (tracksEnded && status !== 'reconnecting') {
+          camLog('watchdog:visibilityResume:triggerDegrade');
+          triggerDegrade('visibilityResumeEndedTracks');
+        } else {
+          camLog('watchdog:visibilityResume:skip', {
+            reason: tracksEnded ? 'statusAlreadyReconnecting' : 'tracksStillLive',
+            hasEndedTrack: tracksEnded,
+            currentStatus: status,
+          });
+        }
+      }, 3000);
     }
   };
 
@@ -794,6 +1119,18 @@ export function createStreamHealthWatchdog(
       cleanupFrameMonitor();
       cleanupFrameMonitor = null;
     }
+    if (visibilityDebounceTimer) {
+      clearTimeout(visibilityDebounceTimer);
+      visibilityDebounceTimer = null;
+    }
+    if (consecutiveResetTimer) {
+      clearTimeout(consecutiveResetTimer);
+      consecutiveResetTimer = null;
+    }
+    if (degradeSafetyTimer) {
+      clearTimeout(degradeSafetyTimer);
+      degradeSafetyTimer = null;
+    }
     if (typeof document !== 'undefined' && typeof window !== 'undefined') {
       document.removeEventListener('visibilitychange', onVisibilityChange);
       window.removeEventListener('pagehide', onPageHide);
@@ -807,7 +1144,7 @@ export function createStreamHealthWatchdog(
   installPollers();
   if (HANDLE_LIFECYCLE) installLifecycleListeners();
 
-  const api: StreamWatchdog = {
+  const api = {
     get status() {
       return status;
     },
@@ -851,7 +1188,75 @@ export function createStreamHealthWatchdog(
         set?.delete(cb as _WatchdogListener);
       };
     },
+    suspendAutoReconnect(reason?: string) {
+      if (destroyed || _reconnectSuspended) return;
+      _reconnectSuspended = true;
+      camLog('watchdog:suspendAutoReconnect', { reason: reason ?? null });
+    },
+    resumeAutoReconnect() {
+      if (destroyed || !_reconnectSuspended) return;
+      _reconnectSuspended = false;
+      camLog('watchdog:resumeAutoReconnect');
+    },
+    _test: {
+      triggerDegrade(reason: string) {
+        triggerDegrade(reason);
+      },
+      onVisibilityChange() {
+        onVisibilityChange();
+      },
+      getConsecutiveCount(): number {
+        return _consecutiveDegradeCount;
+      },
+      isReconnectSuspended(): boolean {
+        return _reconnectSuspended;
+      },
+      getGracePeriodMs(): number {
+        return GRACE_PERIOD_MS;
+      },
+      getConsecutiveThreshold(): number {
+        return CONSECUTIVE_DEGRADE_THRESHOLD;
+      },
+      getInitializedAt(): number {
+        return _initializedAt;
+      },
+      setInitializedAt(value: number) {
+        _initializedAt = value;
+      },
+      clearPollersAndMonitors() {
+        if (trackPollTimer) {
+          clearInterval(trackPollTimer);
+          trackPollTimer = null;
+        }
+        if (rsPollTimer) {
+          clearInterval(rsPollTimer);
+          rsPollTimer = null;
+        }
+        if (frameDeadlineTimer) {
+          clearTimeout(frameDeadlineTimer);
+          frameDeadlineTimer = null;
+        }
+        if (cleanupFrameMonitor) {
+          cleanupFrameMonitor();
+          cleanupFrameMonitor = null;
+        }
+        if (typeof document !== 'undefined') {
+          document.removeEventListener('visibilitychange', onVisibilityChange);
+        }
+      },
+    },
   };
 
-  return api;
+  return api as StreamWatchdog;
+}
+
+export function createQrScanWatchdog(
+  initialStream: MediaStream | null,
+  videoEl: HTMLVideoElement | null,
+  options: Omit<CreateWatchdogOptions, 'preset'> = {}
+): StreamWatchdog {
+  return createStreamHealthWatchdog(initialStream, videoEl, {
+    ...options,
+    preset: 'qr-scan',
+  });
 }

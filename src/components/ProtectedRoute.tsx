@@ -74,12 +74,35 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles, ch
     return <Navigate to="/forbidden" state={{ from: location }} replace />;
   }
 
-  const onSettingsPage = location.pathname === '/settings';
-  if (user.must_change_password && !onSettingsPage) {
-    saveTarget(location.pathname + location.search + location.hash);
-    return (
-      <Navigate to="/settings" state={{ from: location, reason: 'must_change_password' }} replace />
-    );
+  if (user.must_change_password) {
+    try {
+      const KEY = 'app-must-change-password-ack';
+      const nowMs = Date.now();
+      const last = Number(window.sessionStorage.getItem(KEY) || '0');
+      if (!last || nowMs - last > 60_000) {
+        window.sessionStorage.setItem(KEY, String(nowMs));
+        import('sonner')
+          .then(({ toast }) => {
+            toast.warning(
+              'Ganti kata sandi default Anda segera untuk keamanan akun. Buka menu Pengaturan Akun.',
+              {
+                id: 'must-change-password-once-per-minute',
+                duration: 8000,
+                closeButton: true,
+                description:
+                  location.pathname === '/settings'
+                    ? 'Silakan gunakan bagian Ubah Kata Sandi di bawah.'
+                    : 'Navigasi aman — Anda tetap bisa mengakses halaman lain.',
+              }
+            );
+          })
+          .catch(() => {
+            /* toast module load failure is non-fatal */
+          });
+      }
+    } catch {
+      /* sessionStorage access errors are non-fatal */
+    }
   }
 
   return children ? <>{children}</> : <Outlet />;

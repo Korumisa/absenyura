@@ -30,9 +30,6 @@ const authUserSelect = {
   last_password_change: true,
 } as const;
 
-type AuthUser = Awaited<ReturnType<typeof userRepository.findByNim<typeof authUserSelect>>>;
-type AuthUserNonNull = Exclude<AuthUser, null>;
-
 function normalizeDeviceFingerprint(raw: string): string {
   return raw.replace(' [OFFLINE_SYNC]', '');
 }
@@ -109,18 +106,6 @@ export async function login(params: {
         success: false,
         error_code: 'ACCOUNT_INACTIVE',
         message: 'Akun Anda nonaktif. Hubungi admin.',
-      },
-    };
-  }
-
-  if (typeof user.password !== 'string' || user.password.length === 0) {
-    return {
-      ok: false,
-      status: 401,
-      body: {
-        success: false,
-        error_code: 'INVALID_CREDENTIALS',
-        message: 'NIM atau kata sandi salah.',
       },
     };
   }

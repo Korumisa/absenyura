@@ -4,7 +4,7 @@ import { useTheme } from '@/providers/theme-provider';
 import { Moon, Sun } from 'lucide-react';
 import api from '@/services/api';
 import { toast } from 'sonner';
-import { User, LogOut, Shield, Mail, Phone } from 'lucide-react';
+import { User, LogOut, Shield, ShieldAlert, Mail, Phone } from 'lucide-react';
 import { userRoleLabel } from '@/lib/utils/classLabel';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -56,7 +56,7 @@ export default function Settings() {
   const [saving, setSaving] = useState(false);
   const [profileError, setProfileError] = useState<unknown>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
-  const [activeTab, setActiveTab] = useState<'profile'>('profile');
+  const [activeTab] = useState<'profile'>('profile');
 
   const [formData, setFormData] = useState({
     name: user?.name || '',
@@ -166,7 +166,7 @@ export default function Settings() {
 
   // Baseline kosong = profil belum selesai dimuat; jangan anggap dirty.
   const formIsDirty = Boolean(formBaseline) && JSON.stringify(formData) !== formBaseline;
-  const { confirmIfDirty } = useFormDirtyGuard(formIsDirty);
+  useFormDirtyGuard(formIsDirty);
 
   return (
     <AdminPageShell
@@ -175,6 +175,45 @@ export default function Settings() {
       variant="plain"
       icon={<User className="size-5" />}
     >
+      {user?.must_change_password ? (
+        <div
+          role="region"
+          aria-label="Penggantian kata sandi diperlukan"
+          className={cn(
+            settingsCardClass,
+            'mb-6 border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-100'
+          )}
+        >
+          <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <ShieldAlert
+                className="mt-0.5 size-6 shrink-0 text-amber-600 dark:text-amber-400"
+                aria-hidden="true"
+              />
+              <div className="space-y-1">
+                <p className="text-sm font-semibold leading-6">
+                  Ganti kata sandi default Anda segera
+                </p>
+                <p className="text-sm text-amber-800 dark:text-amber-200/90">
+                  Untuk keamanan akun, lengkapi bagian <strong>Ubah Kata Sandi</strong> di bawah
+                  sebelum menggunakan fitur akademik. Navigasi tetap dapat digunakan.
+                </p>
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="default"
+              onClick={() => {
+                const el = document.getElementById('profile-current-password');
+                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }}
+              className="shrink-0 bg-amber-600 text-white hover:bg-amber-700 focus-visible:ring-amber-500 dark:bg-amber-500 dark:hover:bg-amber-600"
+            >
+              Menuju Ubah Kata Sandi
+            </Button>
+          </div>
+        </div>
+      ) : null}
       <div className="grid w-full gap-6 xl:grid-cols-12 xl:items-start">
         {activeTab === 'profile' && profileError ? (
           <div className="xl:col-span-12">
