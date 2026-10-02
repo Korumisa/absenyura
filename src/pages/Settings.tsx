@@ -147,7 +147,22 @@ export default function Settings() {
     try {
       const result = await doSaveProfile();
       if (result !== undefined) {
-        setAuth({ ...user!, name: formData.name, email: formData.email });
+        const rawLastPw =
+          (result.data?.data as { last_password_change?: string | Date })?.last_password_change ??
+          user?.last_password_change;
+        const nextUser = {
+          ...user!,
+          name: formData.name,
+          email: formData.email,
+          must_change_password:
+            formData.new_password && formData.new_password.length > 0
+              ? false
+              : ((result.data?.data as { must_change_password?: boolean })?.must_change_password ??
+                user?.must_change_password),
+          last_password_change:
+            rawLastPw instanceof Date ? rawLastPw.toISOString() : (rawLastPw ?? null),
+        };
+        setAuth(nextUser);
         setFormData((prev) => {
           const updated = {
             ...prev,

@@ -543,46 +543,128 @@ export default function Users() {
               ) : (
                 filteredUsers.map((user) => (
                   <li key={user.id} className="rounded-2xl border border-border bg-background p-4">
-                    <p className="font-bold text-foreground">{user.name}</p>
-                    <p className="text-sm text-muted-foreground">{user.email}</p>
-                    <p className="mt-1 text-sm text-muted-foreground">{user.nim_nip || '—'}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {typeof user.department === 'object' && user.department !== null
-                        ? (user.department as { name?: string; id?: string }).name ||
-                          (user.department as { id?: string }).id
-                        : user.department || '—'}
-                      {user.role === 'USER' ? ` · Semester ${user.semester || 1}` : ''}
-                    </p>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      <Badge {...roleBadgeProps(user.role)}>{userRoleLabel(user.role)}</Badge>
-                      <Badge variant={user.is_active ? 'success' : 'destructive'}>
-                        {user.is_active ? 'Aktif' : 'Nonaktif'}
-                      </Badge>
-                      {user.must_change_password ? (
-                        <Badge variant="destructive" className="gap-1">
-                          🔒 Default
-                        </Badge>
-                      ) : (
-                        <Badge variant="success" className="gap-1">
-                          ✅ Sudah Ubah
-                        </Badge>
-                      )}
-                      {user.device_bound || user.device_fingerprint ? (
-                        <Badge variant="success" className="gap-1.5">
-                          <Smartphone size={12} aria-hidden="true" />
-                          Terikat
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary">Bebas</Badge>
-                      )}
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-bold text-foreground">{user.name}</p>
+                        <p className="truncate text-sm text-muted-foreground">{user.email}</p>
+                        <p className="mt-1 truncate text-sm text-muted-foreground">
+                          {user.nim_nip || '—'}
+                        </p>
+
+                        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                          <div className="flex flex-col gap-1 rounded-xl border border-border/60 bg-muted/20 p-3">
+                            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                              Peran
+                            </span>
+                            <Badge
+                              {...roleBadgeProps(user.role)}
+                              className="h-7 w-fit px-2.5 text-[11px] font-semibold tracking-tight"
+                            >
+                              {userRoleLabel(user.role)}
+                            </Badge>
+                          </div>
+                          <div className="flex flex-col gap-1 rounded-xl border border-border/60 bg-muted/20 p-3">
+                            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                              Departemen / Semester
+                            </span>
+                            {(() => {
+                              const deptObj =
+                                typeof user.department === 'object' && user.department !== null
+                                  ? (user.department as { id?: string | number; name?: string })
+                                  : null;
+                              const deptName = deptObj
+                                ? deptObj.name || String(deptObj.id ?? '—')
+                                : user.department || null;
+                              const showSem = user.role === 'USER';
+                              return (
+                                <div className="flex flex-col gap-1 leading-tight">
+                                  {deptName ? (
+                                    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-foreground/90">
+                                      <span
+                                        aria-hidden
+                                        className="size-1.5 rounded-full bg-indigo-500/80 dark:bg-indigo-400"
+                                      />
+                                      {deptName}
+                                    </span>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground/80">
+                                      <span
+                                        aria-hidden
+                                        className="mr-1.5 inline-block size-1.5 rounded-full border border-dashed border-muted-foreground/60"
+                                      />
+                                      Belum diatur
+                                    </span>
+                                  )}
+                                  {showSem ? (
+                                    <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                                      <span
+                                        aria-hidden
+                                        className="size-1.5 rounded-full bg-indigo-400/60 dark:bg-indigo-500/60"
+                                      />
+                                      Sem.
+                                      <span className="font-semibold tabular-nums text-foreground/80">
+                                        {user.semester || 1}
+                                      </span>
+                                    </span>
+                                  ) : null}
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-2 sm:min-w-[220px] sm:items-end">
+                        <div className="flex flex-wrap gap-1.5 sm:justify-end">
+                          <Badge
+                            variant={user.is_active ? 'success' : 'destructive'}
+                            className="h-6 w-fit px-2 text-[11px] font-semibold"
+                          >
+                            {user.is_active ? 'Aktif' : 'Nonaktif'}
+                          </Badge>
+                          {user.must_change_password ? (
+                            <Badge
+                              variant="destructive"
+                              className="h-6 w-fit gap-1 bg-red-100/80 px-2 text-[11px] font-medium text-red-700 ring-1 ring-red-200 hover:bg-red-100 dark:bg-red-950/60 dark:text-red-300 dark:ring-red-900/70 dark:hover:bg-red-950"
+                              title="Kata sandi default belum diubah pengguna"
+                            >
+                              <span aria-hidden>🔒</span> Sandi default
+                            </Badge>
+                          ) : (
+                            <Badge
+                              variant="success"
+                              className="h-6 w-fit gap-1 bg-emerald-50 px-2 text-[11px] font-medium text-emerald-700 ring-1 ring-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-900/60 dark:hover:bg-emerald-950"
+                              title="Pengguna sudah mengganti kata sandi"
+                            >
+                              <span aria-hidden>✓</span> Sandi diubah
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap gap-1.5 sm:justify-end">
+                          {user.device_bound || user.device_fingerprint ? (
+                            <Badge
+                              variant="success"
+                              className="h-6 w-fit gap-1 bg-sky-50 px-2 text-[11px] font-medium text-sky-700 ring-1 ring-sky-200 hover:bg-sky-100 dark:bg-sky-950/40 dark:text-sky-300 dark:ring-sky-900/60 dark:hover:bg-sky-950"
+                            >
+                              <Smartphone size={11} aria-hidden />
+                              Perangkat terikat
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="h-6 w-fit px-2 text-[11px]">
+                              Bebas perangkat
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    <div className="mt-3 flex flex-wrap gap-2">
+
+                    <div className="mt-4 flex flex-wrap gap-2">
                       {user.device_bound || user.device_fingerprint ? (
                         <Button
                           type="button"
                           size="sm"
                           variant="outline"
-                          className="min-h-11 flex-1 border-orange-200 text-orange-600"
+                          className="min-h-10 flex-1 border-orange-200 text-orange-600 hover:bg-orange-50 hover:text-orange-700 dark:border-orange-900 dark:text-orange-500 dark:hover:bg-orange-900/30"
                           onClick={() => openResetConfirm(user.id)}
                         >
                           Reset perangkat
@@ -592,7 +674,7 @@ export default function Users() {
                         type="button"
                         size="sm"
                         variant="outline"
-                        className="min-h-11 flex-1"
+                        className="min-h-10 flex-1"
                         onClick={() => handleOpenModal(user)}
                       >
                         Edit
@@ -602,7 +684,7 @@ export default function Users() {
                           type="button"
                           size="sm"
                           variant="destructive"
-                          className="min-h-11 flex-1"
+                          className="min-h-10 flex-1"
                           onClick={() => openDeleteConfirm(user.id)}
                         >
                           Hapus
@@ -654,52 +736,95 @@ export default function Users() {
                           <div className="font-medium text-foreground">{user.name}</div>
                           <div className="text-sm text-muted-foreground">{user.email}</div>
                         </TableCell>
-                        <TableCell className="text-muted-foreground dark:text-zinc-300">
+                        <TableCell className="align-top tabular-nums text-muted-foreground dark:text-zinc-300">
                           {user.nim_nip || '-'}
                         </TableCell>
-                        <TableCell>
-                          <Badge {...roleBadgeProps(user.role)}>{userRoleLabel(user.role)}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          {user.must_change_password ? (
-                            <Badge variant="destructive" className="gap-1 text-xs">
-                              🔒 Default
-                            </Badge>
-                          ) : (
-                            <Badge variant="success" className="gap-1 text-xs">
-                              ✅ Sudah Ubah
-                            </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-muted-foreground dark:text-zinc-300">
-                            {typeof user.department === 'object' && user.department !== null
-                              ? (user.department as { id?: string | number; name?: string }).name ||
-                                (user.department as { id?: string | number; name?: string }).id
-                              : user.department || '-'}
-                          </div>
-                          {user.role === 'USER' ? (
-                            <div className="mt-1 text-xs text-muted-foreground">
-                              Semester {user.semester || 1}
-                            </div>
-                          ) : null}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={user.is_active ? 'success' : 'destructive'}>
-                            {user.is_active ? 'Aktif' : 'Nonaktif'}
+                        <TableCell className="align-top">
+                          <Badge
+                            {...roleBadgeProps(user.role)}
+                            className="h-7 px-2.5 text-[11px] font-semibold tracking-tight"
+                          >
+                            {userRoleLabel(user.role)}
                           </Badge>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="align-top">
+                          {(() => {
+                            const deptObj =
+                              typeof user.department === 'object' && user.department !== null
+                                ? (user.department as { id?: string | number; name?: string })
+                                : null;
+                            const deptName = deptObj
+                              ? deptObj.name || String(deptObj.id ?? '-')
+                              : user.department || null;
+                            const showSem = user.role === 'USER';
+                            if (!deptName && !showSem) {
+                              return <span className="text-xs text-muted-foreground/80">—</span>;
+                            }
+                            return (
+                              <div className="flex flex-col gap-1 leading-tight">
+                                {deptName ? (
+                                  <span className="inline-flex items-center gap-1 text-xs font-medium text-foreground/90">
+                                    <span
+                                      aria-hidden
+                                      className="size-1.5 rounded-full bg-indigo-500/80 dark:bg-indigo-400"
+                                    />
+                                    {deptName}
+                                  </span>
+                                ) : null}
+                                {showSem ? (
+                                  <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                                    Sem.{' '}
+                                    <span className="font-semibold tabular-nums text-foreground/80">
+                                      {user.semester || 1}
+                                    </span>
+                                  </span>
+                                ) : null}
+                              </div>
+                            );
+                          })()}
+                        </TableCell>
+                        <TableCell className="align-top">
+                          <div className="flex flex-col gap-1.5">
+                            <Badge
+                              variant={user.is_active ? 'success' : 'destructive'}
+                              className="h-6 w-fit px-2 text-[11px] font-semibold"
+                            >
+                              {user.is_active ? 'Aktif' : 'Nonaktif'}
+                            </Badge>
+                            {user.must_change_password ? (
+                              <Badge
+                                variant="destructive"
+                                className="h-6 w-fit gap-1 bg-red-100/80 px-2 text-[11px] font-medium text-red-700 ring-1 ring-red-200 hover:bg-red-100 dark:bg-red-950/60 dark:text-red-300 dark:ring-red-900/70 dark:hover:bg-red-950"
+                                title="Kata sandi default belum diubah pengguna"
+                              >
+                                <span aria-hidden>🔒</span> Sandi default
+                              </Badge>
+                            ) : (
+                              <Badge
+                                variant="success"
+                                className="h-6 w-fit gap-1 bg-emerald-50 px-2 text-[11px] font-medium text-emerald-700 ring-1 ring-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-900/60 dark:hover:bg-emerald-950"
+                                title="Pengguna sudah mengganti kata sandi"
+                              >
+                                <span aria-hidden>✓</span> Sandi diubah
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="align-top">
                           {user.device_bound || user.device_fingerprint ? (
-                            <Badge variant="success" className="gap-1.5">
-                              <Smartphone size={12} />
-                              Terikat
+                            <Badge
+                              variant="success"
+                              className="h-6 w-fit gap-1 bg-sky-50 px-2 text-[11px] font-medium text-sky-700 ring-1 ring-sky-200 hover:bg-sky-100 dark:bg-sky-950/40 dark:text-sky-300 dark:ring-sky-900/60 dark:hover:bg-sky-950"
+                            >
+                              <Smartphone size={11} aria-hidden /> Terikat
                             </Badge>
                           ) : (
-                            <Badge variant="secondary">Bebas</Badge>
+                            <Badge variant="outline" className="h-6 w-fit px-2 text-[11px]">
+                              Bebas
+                            </Badge>
                           )}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right align-top">
                           <div className="flex justify-end gap-2">
                             {user.device_bound || user.device_fingerprint ? (
                               <Button
