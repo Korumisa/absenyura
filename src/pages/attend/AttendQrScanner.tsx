@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
-import { toastError, toastInfo } from '@/lib/utils/toastMessage';
+import { toastError } from '@/lib/utils/toastMessage';
 import { stripHtml5QrDomSignatures } from '@/lib/systemic/stripDomExpandos';
 import { RefreshCw, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,7 @@ import {
   releaseActiveVideoTracks,
   registerPendingCameraRelease,
   acquireCameraLock,
-  createStreamHealthWatchdog,
+  createQrScanWatchdog,
   StreamWatchdog,
   WatchdogStatus,
   camLog,
@@ -19,6 +19,18 @@ import {
 } from '@/lib/media/camera';
 
 type QrErrorType = 'PERMISSION' | 'SCAN_TIMEOUT' | 'BAD_SIG' | 'NOT_ENROLLED';
+
+type Html5QrcodeExtended = Html5Qrcode & {
+  pause?: () => unknown;
+  isScanning?: boolean;
+  _dbgStopExpected?: boolean;
+  _dbgControlledMark?: symbol;
+};
+
+type WatchdogStatusChangePayload = { status: WatchdogStatus; reconnectAttempt: number };
+type WatchdogReconnectPayload = { stream?: MediaStream | null };
+
+type ErrorLike = { message?: unknown };
 
 export interface AttendQrScannerProps {
   scanning: boolean;
@@ -54,6 +66,7 @@ export default function AttendQrScanner({
   const qrPrevOnErrorRef = useRef<OnErrorEventHandlerNonNull | null>(null);
   const qrUnhandledHandlerRef = useRef<((ev: PromiseRejectionEvent) => void) | null>(null);
   const qrCaptureErrorHandlerRef = useRef<((ev: ErrorEvent) => void) | null>(null);
+  const qrReconnectingRef = useRef(false);
 
   const [camerasReady, setCamerasReady] = useState(false);
   const [qrBootNonce, setQrBootNonce] = useState(0);
@@ -207,7 +220,9 @@ export default function AttendQrScanner({
         const stream = (videoEl?.srcObject as MediaStream | null) ?? null;
         if (!videoEl || !stream) return;
 
-        const wd = createStreamHealthWatchdog(stream, videoEl, {
+        cleanupQrWatchdog();
+
+        const wd = createQrScanWatchdog(stream, videoEl, {
           reconnect: {
             enabled: true,
             facingMode: qrFacingMode,
@@ -215,7 +230,7 @@ export default function AttendQrScanner({
             deviceId: qrCameraIdRef.current,
           },
         });
-        wd.on('statusChange', ({ status, reconnectAttempt }: any) => {
+        wd.on('statusChange', ({ status, reconnectAttempt }: WatchdogStatusChangePayload) => {
           setQrWatchdogStatus(status);
           if (status === 'reconnecting' && reconnectAttempt > 1) {
             toast.info(
@@ -224,15 +239,8 @@ export default function AttendQrScanner({
             );
           }
         });
-        wd.on('reconnectSuccess', (payload: any) => {
-          const newStream = (payload as { stream?: MediaStream | null })?.stream ?? null;
-          if (!newStream || !videoEl) return;
-          try {
-            videoEl.srcObject = newStream;
-            void videoEl.play().catch(() => undefined);
-          } catch {
-            /* ignore */
-          }
+        wd.on('reconnectSuccess', (payload: WatchdogReconnectPayload) => {
+          void handleQrAwareReconnect(payload, videoEl);
         });
         wd.on('reconnectFail', () => {
           const errMsg = humanizeCameraError({ message: 'lock' });
@@ -243,6 +251,212 @@ export default function AttendQrScanner({
         setQrWatchdogStatus(wd.status);
       } catch {
         /* watchdog install failure is non-fatal */
+      }
+    };
+
+    const handleQrAwareReconnect = async (
+      payload: { stream?: MediaStream | null },
+      videoEl: HTMLVideoElement
+    ) => {
+      if (qrReconnectingRef.current) {
+        camLog('qr:reconnect_reEntrant_skip');
+        return;
+      }
+      qrReconnectingRef.current = true;
+      const bootGen = qrBootGenRef.current;
+      try {
+        camLog('qr:awareReconnect_start', { generation: bootGen });
+
+        cleanupQrWatchdog();
+
+        const instance = scannerRef.current;
+        if (instance) {
+          try {
+            (instance as Html5QrcodeExtended)._dbgStopExpected = true;
+            if (instance.isScanning) {
+              await instance.stop().catch(() => undefined);
+            }
+            instance.clear();
+          } catch {
+            /* ignore */
+          }
+          scannerRef.current = null;
+        }
+        stripHtml5QrDomSignatures('qr-reader');
+
+        const newStream = (payload as { stream?: MediaStream | null })?.stream ?? null;
+        if (newStream && videoEl) {
+          try {
+            videoEl.srcObject = newStream;
+            await videoEl.play().catch(() => undefined);
+          } catch {
+            /* ignore */
+          }
+        }
+
+        await waitForCameraRelease(200);
+        if (bootGen !== qrBootGenRef.current) return;
+
+        const cameraConfig: string | MediaTrackConstraints = qrCameraIdRef.current
+          ? qrCameraIdRef.current
+          : { facingMode: qrFacingMode };
+
+        const qrNew = new Html5Qrcode('qr-reader', {
+          formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
+          verbose: false,
+        });
+
+        try {
+          const originalStop: Html5Qrcode['stop'] = qrNew.stop.bind(qrNew);
+          const originalPause = (qrNew as Html5QrcodeExtended).pause?.bind(qrNew);
+          const originalClear: Html5Qrcode['clear'] = qrNew.clear.bind(qrNew);
+          (qrNew as Html5QrcodeExtended)._dbgStopExpected = false;
+
+          (qrNew as Html5QrcodeExtended).stop = async function wrappedStop(
+            this: Html5Qrcode
+          ): Promise<void> {
+            const stack = new Error('qr_stop_capture').stack ?? '';
+            const fromControlled =
+              stack.includes('releaseQrScanner') ||
+              stack.includes('bootScanner') ||
+              stack.includes('catch') ||
+              stack.includes('e =') ||
+              stack.includes('handleQrAwareReconnect') ||
+              (this as Html5QrcodeExtended)._dbgStopExpected === true;
+            camLog('html5qrcode:stopCalled', {
+              stack: stack.split('\n').slice(1, 6).join(' | '),
+              fromControlledOwner: fromControlled,
+              generation: bootGen,
+            });
+            if (!fromControlled) {
+              camLog('html5qrcode:internal_stop', { generation: bootGen });
+              qrWatchdogRef.current?.suspendAutoReconnect('html5qrcode-internal-stop-uncontrolled');
+            } else {
+              qrWatchdogRef.current?.suspendAutoReconnect('html5qrcode-internal-stop-controlled');
+            }
+            try {
+              return await originalStop();
+            } finally {
+              if (fromControlled) qrWatchdogRef.current?.resumeAutoReconnect();
+            }
+          } as Html5Qrcode['stop'];
+
+          if (typeof originalPause === 'function') {
+            (qrNew as Html5QrcodeExtended).pause = function wrappedPause(
+              this: Html5QrcodeExtended
+            ) {
+              const stack = new Error('qr_pause_capture').stack ?? '';
+              camLog('html5qrcode:pauseCalled', {
+                stack: stack.split('\n').slice(1, 5).join(' | '),
+                generation: bootGen,
+              });
+              qrWatchdogRef.current?.suspendAutoReconnect('html5qrcode-internal-pause');
+              try {
+                return originalPause();
+              } finally {
+                qrWatchdogRef.current?.resumeAutoReconnect();
+              }
+            };
+          }
+
+          (qrNew as Html5QrcodeExtended).clear = function wrappedClear(this: Html5Qrcode): void {
+            const stack = new Error('qr_clear_capture').stack ?? '';
+            const fromControlled =
+              stack.includes('releaseQrScanner') ||
+              stack.includes('bootScanner') ||
+              stack.includes('catch') ||
+              stack.includes('handleQrAwareReconnect');
+            camLog('html5qrcode:clearCalled', {
+              stack: stack.split('\n').slice(1, 6).join(' | '),
+              fromControlledOwner: fromControlled,
+              generation: bootGen,
+            });
+            return originalClear();
+          } as Html5Qrcode['clear'];
+        } catch {
+          /* instrumentation non-fatal */
+        }
+
+        const startP = (async () => {
+          try {
+            await qrNew.start(
+              cameraConfig,
+              {
+                fps: 10,
+                qrbox: { width: 250, height: 250 },
+                aspectRatio: 1.0,
+                disableFlip: qrFacingMode === 'user',
+              },
+              async (decodedText) => {
+                if (bootGen !== qrBootGenRef.current) return;
+                qrDecodedSuccessRef.current = true;
+                if (qrDecodeTimeoutRef.current !== null) {
+                  window.clearTimeout(qrDecodeTimeoutRef.current);
+                  qrDecodeTimeoutRef.current = null;
+                }
+                const releaseP = (async () => {
+                  await releaseQrScanner();
+                })();
+                registerPendingCameraRelease(releaseP);
+                await releaseP;
+                onScanSuccess(decodedText);
+              },
+              () => {}
+            );
+            return qrNew;
+          } catch (e) {
+            try {
+              if ((qrNew as Html5QrcodeExtended)?.isScanning)
+                await (qrNew as Html5QrcodeExtended).stop().catch(() => undefined);
+              (qrNew as Html5QrcodeExtended)?.clear?.();
+            } catch {
+              /* ignore */
+            }
+            throw e;
+          }
+        })();
+
+        qrStartInFlightRef.current = startP;
+        const resolved = await startP.catch(() => null);
+        qrStartInFlightRef.current = null;
+
+        if (bootGen !== qrBootGenRef.current || !resolved) {
+          camLog('qr:awareReconnect_staleGeneration', {
+            expected: bootGen,
+            actual: qrBootGenRef.current,
+          });
+          return;
+        }
+        scannerRef.current = resolved;
+
+        if (qrDecodeTimeoutRef.current !== null) {
+          window.clearTimeout(qrDecodeTimeoutRef.current);
+        }
+        qrDecodeTimeoutRef.current = window.setTimeout(() => {
+          if (bootGen !== qrBootGenRef.current) return;
+          if (qrDecodedSuccessRef.current) return;
+          const msg =
+            'Tidak dapat membaca kode. Pastikan QR berada di tengah layar dan cahaya cukup.';
+          setQrError({ code: 'SCAN_TIMEOUT' });
+          toastError(null, msg);
+          void releaseQrScanner().catch(() => undefined);
+        }, 15000);
+
+        requestAnimationFrame(() => {
+          if (bootGen !== qrBootGenRef.current) return;
+          attachQrWatchdog();
+        });
+
+        camLog('qr:awareReconnect_success', { generation: bootGen });
+      } catch (err) {
+        camLog('qr:awareReconnect_fail', { error: (err as Error)?.name ?? String(err) });
+        qrDecodedSuccessRef.current = false;
+        void releaseQrScanner().catch(() => undefined);
+        const msg = humanizeCameraError({ message: 'lock' });
+        setQrError({ code: 'PERMISSION', detail: msg });
+        toastError(null, msg);
+      } finally {
+        qrReconnectingRef.current = false;
       }
     };
 
@@ -274,7 +488,8 @@ export default function AttendQrScanner({
 
       if (!qrCaptureErrorHandlerRef.current) {
         const h = (ev: ErrorEvent): void => {
-          const msg = String(ev.message || (ev.error && (ev.error as any).message) || '');
+          const errObj = (ev.error ?? null) as ErrorLike | null;
+          const msg = String(ev.message || (errObj && errObj.message) || '');
           if (isAbortNoise(msg)) {
             try {
               ev.preventDefault();
@@ -291,9 +506,12 @@ export default function AttendQrScanner({
 
       if (!qrUnhandledHandlerRef.current) {
         const h = (ev: PromiseRejectionEvent): void => {
-          const reasonAny: any = ev.reason;
+          const reasonAny = (ev.reason ?? null) as ErrorLike | { error?: unknown } | null;
           const msg = String(
-            (reasonAny && (reasonAny.message || reasonAny.error || reasonAny)) || ''
+            (reasonAny && ('message' in reasonAny ? reasonAny.message : null)) ||
+              (reasonAny && ('error' in reasonAny ? reasonAny.error : null)) ||
+              reasonAny ||
+              ''
           );
           if (isAbortNoise(msg)) {
             try {
@@ -310,8 +528,16 @@ export default function AttendQrScanner({
       if (qrPrevOnErrorRef.current === null) {
         const prev = window.onerror;
         qrPrevOnErrorRef.current = prev as OnErrorEventHandlerNonNull | null;
-        window.onerror = function (this: any, msg, src, lineno, colno, err): boolean {
-          const combined = `${msg} ${err && (err as any).message ? (err as any).message : ''}`;
+        window.onerror = function (
+          this: OnErrorEventHandlerNonNull,
+          msg,
+          src,
+          lineno,
+          colno,
+          err
+        ): boolean {
+          const errMsg = (err ?? null) as ErrorLike | null;
+          const combined = `${msg} ${errMsg && errMsg.message ? errMsg.message : ''}`;
           if (isAbortNoise(combined)) {
             return true;
           }
@@ -336,6 +562,89 @@ export default function AttendQrScanner({
         formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
         verbose: false,
       });
+
+      // #region debug-point H3:html5qrcode-stop-contention-detector
+      // Wrap instance methods stop()/pause()/clear() to detect html5-qrcode INTERNAL contention
+      // If call stack NOT includes releaseQrScanner or L369 catch handler → owner mismatch = H3
+      // RC-6 FIX: also suspend watchdog during internal pause/stop operations
+      try {
+        const originalStop: Html5Qrcode['stop'] = qr.stop.bind(qr);
+        const originalPause = (qr as Html5QrcodeExtended).pause?.bind(qr);
+        const originalClear: Html5Qrcode['clear'] = qr.clear.bind(qr);
+        const controlledMark = Symbol('controlled-release-qr-scanner');
+        (qr as Html5QrcodeExtended)._dbgControlledMark = controlledMark;
+        qr.stop = async function wrappedStop(this: Html5Qrcode): Promise<void> {
+          const stack = new Error('qr_stop_capture').stack ?? '';
+          const fromControlled =
+            stack.includes('releaseQrScanner') ||
+            stack.includes('bootScanner') ||
+            stack.includes('catch') ||
+            stack.includes('e =') ||
+            stack.includes('handleQrAwareReconnect') ||
+            (this as Html5QrcodeExtended)._dbgStopExpected === true;
+          camLog('html5qrcode:stopCalled', {
+            stack: stack.split('\n').slice(1, 6).join(' | '),
+            fromControlledOwner: fromControlled,
+            isScanningNow: (this as Html5QrcodeExtended).isScanning,
+            generation: bootGen,
+          });
+          if (!fromControlled) {
+            camLog('html5qrcode:internal_stop', {
+              stack: stack.split('\n').slice(1, 10).join('\n'),
+              generation: bootGen,
+            });
+            qrWatchdogRef.current?.suspendAutoReconnect('html5qrcode-internal-stop-uncontrolled');
+          } else {
+            qrWatchdogRef.current?.suspendAutoReconnect('html5qrcode-internal-stop-controlled');
+          }
+          try {
+            return await originalStop();
+          } finally {
+            if (fromControlled) {
+              qrWatchdogRef.current?.resumeAutoReconnect();
+            }
+          }
+        } as Html5Qrcode['stop'];
+        if (typeof originalPause === 'function') {
+          (qr as Html5QrcodeExtended).pause = function wrappedPause(this: Html5QrcodeExtended) {
+            const stack = new Error('qr_pause_capture').stack ?? '';
+            camLog('html5qrcode:pauseCalled', {
+              stack: stack.split('\n').slice(1, 5).join(' | '),
+              generation: bootGen,
+            });
+            qrWatchdogRef.current?.suspendAutoReconnect('html5qrcode-internal-pause');
+            try {
+              return originalPause();
+            } finally {
+              qrWatchdogRef.current?.resumeAutoReconnect();
+            }
+          };
+        }
+        qr.clear = function wrappedClear(this: Html5Qrcode): void {
+          const stack = new Error('qr_clear_capture').stack ?? '';
+          const fromControlled =
+            stack.includes('releaseQrScanner') ||
+            stack.includes('bootScanner') ||
+            stack.includes('catch') ||
+            stack.includes('handleQrAwareReconnect');
+          camLog('html5qrcode:clearCalled', {
+            stack: stack.split('\n').slice(1, 6).join(' | '),
+            fromControlledOwner: fromControlled,
+            generation: bootGen,
+          });
+          if (!fromControlled) {
+            camLog('html5qrcode:internal_stop', {
+              type: 'clear',
+              stack: stack.split('\n').slice(1, 10).join('\n'),
+              generation: bootGen,
+            });
+          }
+          return originalClear();
+        } as Html5Qrcode['clear'];
+      } catch {
+        /* instrumentation failure non-fatal */
+      }
+      // #endregion
 
       const startPromise: Promise<Html5Qrcode | null> = (async () => {
         try {
@@ -403,7 +712,7 @@ export default function AttendQrScanner({
             void 0;
           });
         }, 15000);
-      } catch (err) {
+      } catch {
         qrStartInFlightRef.current = null;
         clearQrTimeout();
         const msg = 'Kamera tidak diizinkan. Buka pengaturan browser.';
@@ -440,6 +749,7 @@ export default function AttendQrScanner({
     releaseQrScanner,
     onScanSuccess,
     setQrError,
+    cleanupQrWatchdog,
   ]);
 
   // Cleanup saat unmount

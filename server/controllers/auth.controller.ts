@@ -58,8 +58,9 @@ export const login = async (req: Request, res: Response): Promise<void> => {
         user,
       },
     });
-  } catch (error: any) {
-    sendInternalServerError(res, error, [], req);
+  } catch (error) {
+    console.error('Login error:', error);
+    sendInternalServerError(res, error);
   }
 };
 
@@ -110,34 +111,31 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
         ...(staleTab ? { stale_tab: true } : {}),
       },
     });
-  } catch (error: any) {
-    sendInternalServerError(res, error, [], req);
+  } catch (error) {
+    console.error('Refresh error:', error);
+    sendInternalServerError(res, error);
   }
 };
 
 export const logout = async (req: Request, res: Response): Promise<void> => {
-  try {
-    await authService.logout({ refreshToken: req.cookies?.refreshToken });
+  await authService.logout({ refreshToken: req.cookies?.refreshToken });
 
-    const isProduction = process.env.NODE_ENV === 'production';
-    const cookieOptions = {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: (isProduction ? 'none' : 'lax') as 'none' | 'lax',
-      path: '/',
-    };
-    res.clearCookie('accessToken', cookieOptions);
-    res.clearCookie('refreshToken', cookieOptions);
-    res.clearCookie('csrfToken', {
-      httpOnly: false,
-      secure: isProduction,
-      sameSite: (isProduction ? 'none' : 'lax') as 'none' | 'lax',
-      path: '/',
-    });
-    res.status(200).json({ success: true, message: 'Logged out successfully' });
-  } catch (error: any) {
-    sendInternalServerError(res, error, [], req);
-  }
+  const isProduction = process.env.NODE_ENV === 'production';
+  const cookieOptions = {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: (isProduction ? 'none' : 'lax') as 'none' | 'lax',
+    path: '/',
+  };
+  res.clearCookie('accessToken', cookieOptions);
+  res.clearCookie('refreshToken', cookieOptions);
+  res.clearCookie('csrfToken', {
+    httpOnly: false,
+    secure: isProduction,
+    sameSite: (isProduction ? 'none' : 'lax') as 'none' | 'lax',
+    path: '/',
+  });
+  res.status(200).json({ success: true, message: 'Logged out successfully' });
 };
 
 // Seed endpoint for initial SUPER_ADMIN
@@ -159,8 +157,9 @@ export const seedAdmin = async (req: Request, res: Response): Promise<void> => {
     }
 
     res.status(201).json({ success: true, data: result.data });
-  } catch (error: any) {
-    sendInternalServerError(res, error, [], req);
+  } catch (error) {
+    console.error('Seed error:', error);
+    sendInternalServerError(res, error);
   }
 };
 
@@ -178,7 +177,8 @@ export const flushDb = async (req: Request, res: Response): Promise<void> => {
     }
 
     res.status(200).json({ success: true, message: result.data.message });
-  } catch (error: any) {
-    sendInternalServerError(res, error, [], req);
+  } catch (error) {
+    console.error('Flush DB error:', error);
+    sendInternalServerError(res, error);
   }
 };

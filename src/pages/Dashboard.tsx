@@ -12,6 +12,7 @@ import {
   FileText,
   BarChart3,
   QrCode,
+  ShieldAlert,
 } from 'lucide-react';
 import AdminPageShell from '@/components/AdminPageShell';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
@@ -60,10 +61,13 @@ type DashboardRecentSession = {
   title: unknown;
   status: string;
   session_start: string;
+  session_end?: string;
   class?: unknown;
   session_classes?: Array<{ class?: unknown }>;
-  location?: { name?: string } | null;
+  location?: { name?: string; id?: string | number } | string | null;
   _count?: { attendances?: number };
+  attendances?: Array<{ id: string; check_out_time?: unknown }>;
+  require_checkout?: boolean;
 };
 
 function dashboardSessionTitle(session: DashboardRecentSession): string {
@@ -165,6 +169,37 @@ export default function Dashboard() {
 
   return (
     <AdminPageShell title="Dashboard" icon={<BarChart3 className="size-5" />}>
+      {user?.must_change_password ? (
+        <div
+          role="region"
+          aria-label="Penggantian kata sandi diperlukan"
+          className={cn(
+            'mb-6 flex flex-col gap-4 rounded-xl border border-amber-300 bg-amber-50 p-5 text-amber-900 shadow-card dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-100 dark:shadow-none dark:ring-1 dark:ring-white/10 sm:flex-row sm:items-center sm:justify-between'
+          )}
+        >
+          <div className="flex items-start gap-3">
+            <ShieldAlert
+              className="mt-0.5 size-6 shrink-0 text-amber-600 dark:text-amber-400"
+              aria-hidden="true"
+            />
+            <div className="space-y-1">
+              <p className="text-sm font-semibold leading-6">Kata sandi default belum diganti</p>
+              <p className="text-sm text-amber-800 dark:text-amber-200/90">
+                Ganti kata sandi Anda segera di menu Pengaturan Akun untuk menjaga keamanan akun
+                HMSDP E-Absensi.
+              </p>
+            </div>
+          </div>
+          <Button
+            type="button"
+            variant="default"
+            onClick={() => navigate('/settings')}
+            className="shrink-0 bg-amber-600 text-white hover:bg-amber-700 focus-visible:ring-amber-500 dark:bg-amber-500 dark:hover:bg-amber-600"
+          >
+            Buka Pengaturan Akun
+          </Button>
+        </div>
+      ) : null}
       {page.isPending && !page.showSlowLoadingHint && !page.data ? (
         isUser ? (
           <DashboardUserSkeleton />
@@ -329,20 +364,26 @@ export default function Dashboard() {
               {!data?.recent_sessions?.length ? (
                 <li className="py-8 text-center text-muted-foreground">Belum ada sesi terdekat.</li>
               ) : (
-                data.recent_sessions.map((session: any) => (
+                data.recent_sessions.map((session: DashboardRecentSession) => (
                   <li
                     key={session.id}
                     className="rounded-2xl border border-border bg-muted/20 p-4 dark:bg-muted/10"
                   >
-                    <p className="font-bold text-foreground">{session.title}</p>
+                    <p className="font-bold text-foreground">{dashboardSessionTitle(session)}</p>
                     <p className="text-sm text-brand">
                       {(() => {
-                        const labels = (session.session_classes ?? []).flatMap((x: any) => {
-                          const result = formatClassLabel(x?.class);
+                        const labels = (session.session_classes ?? []).flatMap((x) => {
+                          const result = formatClassLabel(
+                            x?.class as Parameters<typeof formatClassLabel>[0]
+                          );
                           return result ? [result] : [];
                         });
                         if (labels.length) return labels.join(', ');
-                        return session.class ? formatClassLabel(session.class) : 'Semua Mahasiswa';
+                        return session.class
+                          ? formatClassLabel(
+                              session.class as Parameters<typeof formatClassLabel>[0]
+                            ) || 'Semua Mahasiswa'
+                          : 'Semua Mahasiswa';
                       })()}
                     </p>
                     <p className="mt-2 text-sm text-muted-foreground">
@@ -352,13 +393,15 @@ export default function Dashboard() {
                       WIB
                     </p>
                     <p className="text-xs text-muted-foreground truncate">
-                      {typeof session.location === 'object'
-                        ? session.location?.name
-                        : session.location || '-'}
+                      {typeof session.location === 'object' && session.location !== null
+                        ? session.location.name
+                        : typeof session.location === 'string'
+                          ? session.location
+                          : '-'}
                     </p>
                     <div className="mt-3">
                       {session.status === 'ACTIVE' ? (
-                        session.attendances?.length > 0 ? (
+                        session.attendances?.length ? (
                           session.attendances[0].check_out_time || !session.require_checkout ? (
                             <Badge variant="success">Sudah absen</Badge>
                           ) : (
@@ -367,7 +410,7 @@ export default function Dashboard() {
                               className="min-h-11 w-full rounded-xl bg-amber-500 hover:bg-amber-600"
                               onClick={() =>
                                 navigate(
-                                  `/attend?session=${session.id}&checkout=true&attendance=${session.attendances[0].id}`
+                                  `/attend?session=${session.id}&checkout=true&attendance=${session.attendances?.[0]?.id}`
                                 )
                               }
                             >
@@ -415,44 +458,14 @@ export default function Dashboard() {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      data?.recent_sessions?.map((session: any) => (
+                      data?.recent_sessions?.map((session: DashboardRecentSession) => (
                         <TableRow key={session.id}>
                           <TableCell>
                             <div className="font-bold text-foreground text-base">
-                              {typeof session.title === 'object' && session.title !== null
-                                ? (session.title as { id?: string | number; name?: string }).name ||
-                                  (session.title as { id?: string | number; name?: string }).id
-                                : session.title}
+                              {dashboardSessionTitle(session)}
                             </div>
                             <p className="text-sm font-semibold text-brand mt-0.5">
-                              {(() => {
-                                const labels = (session.session_classes ?? []).flatMap((x: any) => {
-                                  const result = formatClassLabel(x?.class);
-                                  return result ? [result] : [];
-                                });
-                                if (labels.length) return labels.join(', ');
-                                if (session.class) {
-                                  if (typeof session.class === 'object' && session.class !== null) {
-                                    return (
-                                      formatClassLabel(
-                                        session.class as { id?: string | number; name?: string }
-                                      ) ||
-                                      (session.class as { id?: string | number; name?: string })
-                                        .name ||
-                                      (session.class as { id?: string | number; name?: string })
-                                        .id ||
-                                      '-'
-                                    );
-                                  }
-                                  return String(
-                                    (session.class as { id?: string | number; name?: string })
-                                      ?.name ||
-                                      session.class ||
-                                      '-'
-                                  );
-                                }
-                                return 'Semua Mahasiswa';
-                              })()}
+                              {dashboardSessionClass(session) ?? 'Semua Mahasiswa'}
                             </p>
                           </TableCell>
                           <TableCell>
@@ -468,7 +481,11 @@ export default function Dashboard() {
                               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                 <Clock size={14} />
                                 {format(new Date(session.session_start), 'HH:mm')} -{' '}
-                                {format(new Date(session.session_end), 'HH:mm')} WIB
+                                {format(
+                                  new Date(session.session_end ?? session.session_start),
+                                  'HH:mm'
+                                )}{' '}
+                                WIB
                               </div>
                             </div>
                           </TableCell>
@@ -477,17 +494,21 @@ export default function Dashboard() {
                               <MapPin size={14} className="shrink-0" />
                               <span className="truncate max-w-[200px]">
                                 {typeof session.location === 'object' && session.location !== null
-                                  ? (session.location as { id?: string | number; name?: string })
-                                      .name ||
-                                    (session.location as { id?: string | number; name?: string }).id
-                                  : session.location?.name || session.location || '-'}
+                                  ? (session.location.name ??
+                                    (typeof session.location.id === 'string' ||
+                                    typeof session.location.id === 'number'
+                                      ? String(session.location.id)
+                                      : '-'))
+                                  : typeof session.location === 'string'
+                                    ? session.location
+                                    : '-'}
                               </span>
                             </div>
                           </TableCell>
                           <TableCell className="text-right">
                             {session.status === 'ACTIVE' ? (
                               <div className="flex gap-2 justify-end">
-                                {session.attendances && session.attendances.length > 0 ? (
+                                {session.attendances?.length ? (
                                   session.attendances[0].check_out_time ||
                                   !session.require_checkout ? (
                                     <Badge variant="success" className="px-3 py-1">
@@ -497,7 +518,7 @@ export default function Dashboard() {
                                     <Button
                                       onClick={() =>
                                         navigate(
-                                          `/attend?session=${session.id}&checkout=true&attendance=${session.attendances[0].id}`
+                                          `/attend?session=${session.id}&checkout=true&attendance=${session.attendances?.[0]?.id}`
                                         )
                                       }
                                       className="h-auto min-h-11 bg-amber-500 px-3 py-1.5 text-xs text-white shadow-lg shadow-amber-600/20 hover:bg-amber-600"
@@ -741,10 +762,15 @@ export default function Dashboard() {
                           {sessionStatusLabel(session.status)}
                         </Badge>
                       </div>
-                      {session.location?.name ? (
+                      {typeof session.location === 'object' && session.location?.name ? (
                         <p className="mt-2 flex items-center gap-1.5 text-sm text-muted-foreground">
                           <MapPin size={14} className="shrink-0" aria-hidden="true" />
                           <span className="truncate">{session.location.name}</span>
+                        </p>
+                      ) : typeof session.location === 'string' && session.location ? (
+                        <p className="mt-2 flex items-center gap-1.5 text-sm text-muted-foreground">
+                          <MapPin size={14} className="shrink-0" aria-hidden="true" />
+                          <span className="truncate">{session.location}</span>
                         </p>
                       ) : null}
                       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
