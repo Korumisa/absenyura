@@ -77,7 +77,15 @@ export const updateProfile = async (req: AuthRequest, res: Response): Promise<vo
       const updated = await tx.user.update({
         where: { id: user_id },
         data: updateData,
-        select: { id: true, name: true, email: true, phone: true, role: true },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          role: true,
+          must_change_password: true,
+          last_password_change: true,
+        },
       });
 
       const auditData = { ...updateData };

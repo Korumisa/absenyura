@@ -17,47 +17,6 @@ let _cameraLockQueueResolvers: Array<() => void> = [];
 
 const _DEBUG_CAM_KEY = 'DEBUG_CAM';
 
-// #region debug-point ALL:camLog-reporting
-const _DBG_SERVER_URL =
-  typeof window === 'undefined'
-    ? null
-    : (() => {
-        // Sesuai .dbg/qr-scanner-camera-fluctuation.env — port 7777 LAN remote
-        return 'http://192.168.1.5:7777/event';
-      })();
-const _DBG_SESSION_ID = 'qr-scanner-camera-fluctuation';
-let _dbgReportedEvents = 0;
-function _dbgReport(hypothesisId: string, location: string, msg: string, data: unknown): void {
-  if (!_DBG_SERVER_URL || typeof window === 'undefined') return;
-  if (++_dbgReportedEvents > 2000) return; // throttle safety
-  try {
-    const payload = {
-      sessionId: _DBG_SESSION_ID,
-      runId: 'pre-fix',
-      hypothesisId,
-      location,
-      msg: `[DEBUG] ${msg}`,
-      data,
-      ts: Date.now(),
-      perf: typeof performance !== 'undefined' ? performance.now() : null,
-    };
-    // fire-and-forget — no await, swallowed error (jika server down, tidak ganggu alur)
-    const fd = new FormData();
-    Object.entries(payload).forEach(([k, v]) => {
-      fd.append(k, typeof v === 'object' && v !== null ? JSON.stringify(v) : String(v ?? ''));
-    });
-    void fetch(_DBG_SERVER_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      credentials: 'omit',
-      body: fd,
-    }).catch(() => {});
-  } catch {
-    /* ignore: debug server optional */
-  }
-}
-// #endregion
-
 function _isDebugCamEnabled(): boolean {
   if (typeof window === 'undefined') return false;
   try {
@@ -81,31 +40,6 @@ export function camLog(event: string, detail?: unknown): void {
       console.debug('[CAM]', ts, event);
     }
   }
-  // #region debug-point ALL:camLog-reporting
-  // Selalu report ke debug server walau explicit off — minimal evidence capture kecuali user localStorage DEBUG_CAM='0' hard disable
-  try {
-    if (typeof window !== 'undefined' && window.localStorage.getItem(_DEBUG_CAM_KEY) !== '0') {
-      const hMap: Record<string, string> = {
-        'watchdog:degraded': 'H2',
-        'watchdog:frame_timeout': 'H2',
-        'watchdog:reconnect_start': 'H2',
-        'watchdog:reconnect_success': 'H2',
-        'watchdog:reconnect_fail': 'H2',
-        'visibility:hidden': 'H1',
-        'visibility:visible': 'H1',
-        'watchdog:track_ended': 'H5',
-        'lock:request': 'H4',
-        'lock:acquired': 'H4',
-        'lock:release': 'H4',
-        'html5qrcode:internal_stop': 'H3',
-      };
-      const hyp = hMap[event] ?? 'ALL';
-      _dbgReport(hyp, 'camera.ts/camLog', event, detail ?? null);
-    }
-  } catch {
-    /* ignore */
-  }
-  // #endregion
 }
 
 export async function acquireCameraLock(ownerName: string, ownerId?: string): Promise<() => void> {
@@ -745,12 +679,6 @@ export function createStreamHealthWatchdog(
             currentStream?.getVideoTracks().filter((t) => t.readyState === 'live').length ?? null,
         };
         camLog('watchdog:frameTimeout', detail);
-        _dbgReport(
-          'H2',
-          'camera.ts/kickFrameDeadline',
-          'Frame flow deadline exceeded — reached per-source streak',
-          detail
-        );
       } catch {
         camLog('watchdog:frameTimeout', { timeoutMs: FRAME_TIMEOUT_MS });
       }
@@ -832,12 +760,6 @@ export function createStreamHealthWatchdog(
             videoTrackCount: currentStream?.getVideoTracks().length ?? null,
           };
           camLog('watchdog:trackPoll', detail);
-          _dbgReport(
-            'H5',
-            'camera.ts/installPollers',
-            'Track poll consecutive ended → firing degrade',
-            detail
-          );
         } catch {
           /* ignore instrumentation only */
         }
@@ -903,16 +825,6 @@ export function createStreamHealthWatchdog(
           videoPaused: currentVideoEl.paused,
         };
         camLog('watchdog:readyStateLow', detail);
-        try {
-          _dbgReport(
-            'H2',
-            'camera.ts/installPollers:rsPoll',
-            'readyState below HAVE_CURRENT_DATA (consecutive)',
-            detail
-          );
-        } catch {
-          /* ignore */
-        }
         triggerDegrade('readyState');
       } else if (rsLowNow) {
         camLog('watchdog:degradeSuppressed', {
@@ -952,7 +864,6 @@ export function createStreamHealthWatchdog(
         status,
       };
       camLog('watchdog:reconnect', detail);
-      _dbgReport('H4', 'camera.ts/doReconnect:start', 'Reconnect started', detail);
     } catch {
       camLog('watchdog:reconnect', { attempt: reconnectAttempt, max, backoffMs: backoff });
     }
@@ -997,12 +908,6 @@ export function createStreamHealthWatchdog(
             prevStreamId === ((newStream as MediaStream & { id?: string })?.id ?? null),
         };
         camLog('watchdog:reconnectAcquired', detail);
-        _dbgReport(
-          'H4',
-          'camera.ts/doReconnect:acquired',
-          'Camera reacquired stream after reconnect',
-          detail
-        );
       } catch {
         /* ignore */
       }
@@ -1137,14 +1042,6 @@ export function createStreamHealthWatchdog(
       };
       camLog(
         stateNow === 'hidden' ? 'watchdog:visibilityHidden' : 'watchdog:visibilityVisible',
-        detail
-      );
-      _dbgReport(
-        'H1',
-        'camera.ts/onVisibilityChange',
-        stateNow === 'hidden'
-          ? 'visibilitychange hidden fired — watch for false positive flicker'
-          : 'visibilitychange visible fired',
         detail
       );
     } catch {
