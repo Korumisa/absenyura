@@ -57,6 +57,14 @@ let lastSuccessfulRefreshAt = 0;
 const REFRESH_COOLDOWN_MS = 10_000; // 10 detik
 // ────────────────────────────────────────────────────────────────────────────
 
+// ─── BARU: Rate-limit guard global (HTTP 429) ───────────────────────────────
+// Setelah menerima 429, guard ini memblokir SEMUA panggilan verifySession
+// selama retryMs (clamp 5 detik s.d. 15 menit) agar frontend tidak membanjiri
+// backend dengan request retry yang tidak berguna.
+let rateLimitedUntilMs = 0;
+let rateLimitReloadTimer: ReturnType<typeof setTimeout> | null = null;
+// ────────────────────────────────────────────────────────────────────────────
+
 const processQueue = (error: unknown) => {
   failedQueue.forEach((prom) => {
     if (error) prom.reject(error);
@@ -68,6 +76,19 @@ const processQueue = (error: unknown) => {
 export const verifySession = async () => {
   const now = Date.now();
 
+  // Guard 0: Jika sedang rate-limited oleh server (HTTP 429), skip permintaan.
+  // Tunggu sampai cooldown habis atau reload timer dari interceptor 429 yang aktif.
+  if (rateLimitedUntilMs > now) {
+    const remainingSec = Math.ceil((rateLimitedUntilMs - now) / 1000);
+    try {
+      if (typeof localStorage !== 'undefined' && localStorage.getItem('DEBUG_CAM') === '1') {
+        console.info(`[api:verifySession] skip: rate-limited sisa ${remainingSec}s`);
+      }
+    } catch {
+      /* noop */
+    }
+    return;
+  }
   // Guard 1: Jika sedang refresh, antre — jangan kirim request kedua ke backend
   if (isRefreshing) {
     return new Promise(function (resolve, reject) {
@@ -223,6 +244,107 @@ api.interceptors.response.use(
     const { isAuthenticated } = useAuthStore.getState();
 
     if (error.response?.status === 429) {
+      // Tangkap Retry-After (detik) atau X-RateLimit-Reset (unix ms) dari server.
+      // Hitung retryMs, clamp ke 5 sd 900 detik (15 menit) agar tidak terlalu pendek/panjang.
+      const headersRaw = (error.response?.headers ?? {}) as Record<
+        string,
+        string | number | undefined
+      >;
+      const headerRetryAfter =
+        headersRaw['retry-after'] !== undefined
+          ? String(headersRaw['retry-after'])
+          : headersRaw['Retry-After'] !== undefined
+            ? String(headersRaw['Retry-After'])
+            : undefined;
+      const headerRateLimitRetryMs =
+        headersRaw['x-ratelimit-retryms'] !== undefined
+          ? String(headersRaw['x-ratelimit-retryms'])
+          : headersRaw['X-RateLimit-RetryMs'] !== undefined
+            ? String(headersRaw['X-RateLimit-RetryMs'])
+            : undefined;
+      const headerRateLimitReset =
+        headersRaw['ratelimit-reset'] !== undefined
+          ? String(headersRaw['ratelimit-reset'])
+          : headersRaw['RateLimit-Reset'] !== undefined
+            ? String(headersRaw['RateLimit-Reset'])
+            : undefined;
+      const headerXRateLimitReset =
+        headersRaw['x-ratelimit-reset'] !== undefined
+          ? String(headersRaw['x-ratelimit-reset'])
+          : headersRaw['X-RateLimit-Reset'] !== undefined
+            ? String(headersRaw['X-RateLimit-Reset'])
+            : undefined;
+
+      let retryMs = 60_000; // default 60 detik
+      if (headerRateLimitRetryMs !== undefined) {
+        const n = parseInt(headerRateLimitRetryMs, 10);
+        if (!Number.isNaN(n) && n > 0) retryMs = n;
+      } else if (headerRateLimitReset !== undefined) {
+        // RFC IETF draft-polli-ratelimit-headers: nilai = detik tersisa dalam window
+        const n = parseInt(headerRateLimitReset, 10);
+        if (!Number.isNaN(n) && n > 0) retryMs = n * 1000;
+      } else if (headerXRateLimitReset !== undefined) {
+        // X-RateLimit-Reset (legacy) bisa unix timestamp (detik) atau Date HTTP
+        const n = parseInt(headerXRateLimitReset, 10);
+        if (!Number.isNaN(n) && n > 0) {
+          if (n > 1e10) {
+            retryMs = n - Date.now();
+          } else if (n > 1e9) {
+            retryMs = n * 1000 - Date.now();
+          } else {
+            retryMs = n * 1000;
+          }
+        }
+      } else if (headerRetryAfter !== undefined) {
+        const n = parseInt(headerRetryAfter, 10);
+        if (!Number.isNaN(n) && n > 0) {
+          if (n > 1e10) {
+            retryMs = n * 1000 - Date.now();
+          } else {
+            retryMs = n * 1000;
+          }
+        }
+      }
+      retryMs = Math.min(Math.max(retryMs, 5_000), 15 * 60_000);
+
+      const now = Date.now();
+      const nextLimit = now + retryMs;
+      if (nextLimit > rateLimitedUntilMs) {
+        rateLimitedUntilMs = nextLimit;
+      }
+
+      const remainingSec = Math.ceil((rateLimitedUntilMs - now) / 1000);
+      try {
+        if (typeof localStorage !== 'undefined' && localStorage.getItem('DEBUG_CAM') === '1') {
+          console.info(`[api:interceptor] 429 diterima. rateLimitedUntilMs=${remainingSec}s`);
+        }
+      } catch {
+        /* noop */
+      }
+
+      // Tampilkan banner maintenance non-blocking.
+      scheduleMaintenance(
+        `Server sedang sibuk. Tunggu ${remainingSec} detik lalu muat ulang halaman.`
+      );
+
+      // Hanya set 1x auto-reload timer. Reset yang aktif di-stop dulu.
+      if (rateLimitReloadTimer) {
+        clearTimeout(rateLimitReloadTimer);
+        rateLimitReloadTimer = null;
+      }
+      const reloadAfterMs = Math.min(retryMs + 500, 65_000);
+      rateLimitReloadTimer = setTimeout(() => {
+        rateLimitReloadTimer = null;
+        rateLimitedUntilMs = 0;
+        try {
+          if (typeof window !== 'undefined') {
+            window.location.reload();
+          }
+        } catch {
+          /* noop */
+        }
+      }, reloadAfterMs);
+
       return Promise.reject(error);
     }
 

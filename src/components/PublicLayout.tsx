@@ -18,9 +18,16 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
     error,
   } = useSWR<PublicProfile | null, Error>('/public-site/profile', fetcher, {
     revalidateOnFocus: false,
-    errorRetryCount: 5,
+    errorRetryCount: 2,
     errorRetryInterval: 1200,
     revalidateOnReconnect: true,
+    onErrorRetry: (err, _key, _config, revalidate, revalidateOpts) => {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 429) {
+        return;
+      }
+      void revalidate(revalidateOpts);
+    },
   });
   const primary = profile?.primary_color || '#2563eb';
 

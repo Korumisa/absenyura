@@ -627,7 +627,7 @@ export function createStreamHealthWatchdog(
   const TRACK_POLL_MS = options.trackPollMs ?? usePreset?.trackPollMs ?? 300;
   const RS_POLL_MS = options.readyStatePollMs ?? usePreset?.readyStatePollMs ?? 500;
   const CONSECUTIVE_DEGRADE_THRESHOLD =
-    options.consecutiveThreshold ?? usePreset?.consecutiveThreshold ?? 1;
+    options.consecutiveThreshold ?? usePreset?.consecutiveThreshold ?? 2;
   const GRACE_PERIOD_MS = options.gracePeriodMs ?? usePreset?.gracePeriodMs ?? 0;
   const HANDLE_LIFECYCLE = options.handleVisibilityLifecycle ?? true;
 
@@ -653,6 +653,18 @@ export function createStreamHealthWatchdog(
   let _consecutiveDegradeCount = 0;
   let _reconnectSuspended = false;
 
+  // #region spec-T4 Per-source streak counters
+  let _streakTrackEnded = 0;
+  let _streakReadyStateLow = 0;
+  let _streakFrameTimeout = 0;
+  const _resetAllStreaks = (reason: string) => {
+    _streakTrackEnded = 0;
+    _streakReadyStateLow = 0;
+    _streakFrameTimeout = 0;
+    camLog('watchdog:streakReset', { reason });
+  };
+  // #endregion
+
   const fire = <T>(event: WatchdogEvent, payload: T) => {
     const set = listeners.get(event);
     if (!set) return;
@@ -668,6 +680,9 @@ export function createStreamHealthWatchdog(
   const setStatus = (next: WatchdogStatus, reason?: string) => {
     if (status === next) return;
     status = next;
+    if (next === 'healthy') {
+      _resetAllStreaks(`setStatus:${reason ?? 'healthy'}`);
+    }
     camLog('watchdog:status', { status, reconnectAttempt, reason });
     const payload = { status, reconnectAttempt, reason };
     fire('statusChange', payload);
@@ -690,10 +705,32 @@ export function createStreamHealthWatchdog(
     return tracks.some((t) => t.readyState === 'ended');
   };
 
-  const kickFrameDeadline = () => {
+  const kickFrameDeadline = (_source: 'timeupdate' | 'self' = 'timeupdate') => {
+    if (_source !== 'self') _streakFrameTimeout = 0;
     if (frameDeadlineTimer) clearTimeout(frameDeadlineTimer);
     frameDeadlineTimer = setTimeout(() => {
       if (destroyed || paused) return;
+      // #region spec-T4 frameTimeout per-source streak + extra grace
+      const ageMs = performance.now() - _initializedAt;
+      const EXTRA_GRACE_MS = 500;
+      const MIN_STREAK_FRAME = 2;
+      _streakFrameTimeout++;
+      const belowInitGrace = ageMs < GRACE_PERIOD_MS + EXTRA_GRACE_MS;
+      const belowStreak = _streakFrameTimeout < MIN_STREAK_FRAME;
+      if (belowInitGrace || belowStreak) {
+        camLog('watchdog:degradeSuppressed', {
+          reason: belowInitGrace ? 'initGracePeriod' : 'belowPerSourceStreak',
+          cause: 'frameTimeout',
+          streak: _streakFrameTimeout,
+          threshold: MIN_STREAK_FRAME,
+          ageMs,
+          initGrace: GRACE_PERIOD_MS + EXTRA_GRACE_MS,
+        });
+        kickFrameDeadline('self');
+        return;
+      }
+      _streakFrameTimeout = 0;
+      // #endregion
       // #region debug-point H2:frame-flow-deadline-detail
       try {
         const vid = currentVideoEl;
@@ -711,7 +748,7 @@ export function createStreamHealthWatchdog(
         _dbgReport(
           'H2',
           'camera.ts/kickFrameDeadline',
-          'Frame flow deadline exceeded — potential false positive',
+          'Frame flow deadline exceeded — reached per-source streak',
           detail
         );
       } catch {
@@ -766,7 +803,57 @@ export function createStreamHealthWatchdog(
     trackPollTimer = setInterval(() => {
       if (destroyed || paused) return;
       const endedNow = hasEndedTrack(currentStream);
-      // #region debug-point H5:track-ended-2-poll-consecutive
+      // #region spec-T4 track-ended per-source streak
+      if (endedNow) {
+        _streakTrackEnded++;
+      } else {
+        if (_streakTrackEnded > 0) {
+          camLog('watchdog:streakIgnore', {
+            source: 'trackEnded',
+            streak: _streakTrackEnded,
+            clearedBy: 'nextPollLive',
+          });
+        }
+        _streakTrackEnded = 0;
+      }
+      const MIN_STREAK_TRACK_ENDED = 2;
+      if (_streakTrackEnded >= MIN_STREAK_TRACK_ENDED) {
+        _streakTrackEnded = 0;
+        // #endregion
+        // #region debug-point H5:track-ended-2-poll-consecutive
+        try {
+          const detail = {
+            endedNow,
+            consecutiveEndedPolls: _consecutiveEndedCount,
+            previousWasEnded: _lastPollTrackEnded,
+            transientFlip: false,
+            videoTracksLive:
+              currentStream?.getVideoTracks().filter((t) => t.readyState === 'live').length ?? null,
+            videoTrackCount: currentStream?.getVideoTracks().length ?? null,
+          };
+          camLog('watchdog:trackPoll', detail);
+          _dbgReport(
+            'H5',
+            'camera.ts/installPollers',
+            'Track poll consecutive ended → firing degrade',
+            detail
+          );
+        } catch {
+          /* ignore instrumentation only */
+        }
+        camLog('watchdog:trackEnded');
+        triggerDegrade('trackEnded');
+      } else if (endedNow) {
+        camLog('watchdog:degradeSuppressed', {
+          reason: 'belowPerSourceStreak',
+          cause: 'trackEnded',
+          streak: _streakTrackEnded,
+          threshold: MIN_STREAK_TRACK_ENDED,
+        });
+      }
+      if (_consecutiveEndedCount > 1) {
+        /* retain transient-flip debugging (non-fatal) */
+      }
       try {
         if (endedNow) _consecutiveEndedCount++;
         else _consecutiveEndedCount = 0;
@@ -782,27 +869,34 @@ export function createStreamHealthWatchdog(
               currentStream?.getVideoTracks().filter((t) => t.readyState === 'live').length ?? null,
             videoTrackCount: currentStream?.getVideoTracks().length ?? null,
           };
-          camLog('watchdog:trackPoll', detail);
-          _dbgReport(
-            'H5',
-            'camera.ts/installPollers',
-            'Track poll state change (watch for transient false ended)',
-            detail
-          );
+          camLog('watchdog:trackPoll:instrumentation', detail);
         }
       } catch {
         /* ignore instrumentation only */
-      }
-      if (endedNow) {
-        camLog('watchdog:trackEnded');
-        triggerDegrade('trackEnded');
       }
       // #endregion
     }, TRACK_POLL_MS);
 
     rsPollTimer = setInterval(() => {
       if (destroyed || paused || !currentVideoEl) return;
-      if (currentVideoEl.readyState < VIDEO_HAVE_CURRENT_DATA) {
+      const rsLowNow = currentVideoEl.readyState < VIDEO_HAVE_CURRENT_DATA;
+      // #region spec-T4 readyState per-source streak
+      if (rsLowNow) {
+        _streakReadyStateLow++;
+      } else {
+        if (_streakReadyStateLow > 0) {
+          camLog('watchdog:streakIgnore', {
+            source: 'readyState',
+            streak: _streakReadyStateLow,
+            clearedBy: 'nextPollReady',
+          });
+        }
+        _streakReadyStateLow = 0;
+      }
+      const MIN_STREAK_RS = 2;
+      if (_streakReadyStateLow >= MIN_STREAK_RS) {
+        _streakReadyStateLow = 0;
+        // #endregion
         const detail = {
           readyState: currentVideoEl.readyState,
           videoCurrentTime: currentVideoEl.currentTime,
@@ -813,13 +907,20 @@ export function createStreamHealthWatchdog(
           _dbgReport(
             'H2',
             'camera.ts/installPollers:rsPoll',
-            'readyState below HAVE_CURRENT_DATA',
+            'readyState below HAVE_CURRENT_DATA (consecutive)',
             detail
           );
         } catch {
           /* ignore */
         }
         triggerDegrade('readyState');
+      } else if (rsLowNow) {
+        camLog('watchdog:degradeSuppressed', {
+          reason: 'belowPerSourceStreak',
+          cause: 'readyState',
+          streak: _streakReadyStateLow,
+          threshold: MIN_STREAK_RS,
+        });
       }
     }, RS_POLL_MS);
   };
@@ -917,6 +1018,15 @@ export function createStreamHealthWatchdog(
         }
       }
       reconnectAttempt = 0;
+      // #region spec-CAM-01 Reset grace period for new stream post-reconnect
+      _initializedAt = performance.now();
+      _resetAllStreaks('reconnectSuccess');
+      _consecutiveDegradeCount = 0;
+      if (consecutiveResetTimer) {
+        clearTimeout(consecutiveResetTimer);
+        consecutiveResetTimer = null;
+      }
+      // #endregion
       setStatus('healthy', 'reconnectSuccess');
       try {
         onStatusChangeCb?.('healthy', { type: 'reconnect_success', stream: newStream });
@@ -1158,12 +1268,15 @@ export function createStreamHealthWatchdog(
       if (destroyed) return;
       destroyed = true;
       camLog('watchdog:destroy');
+      _resetAllStreaks('destroy');
+      _consecutiveDegradeCount = 0;
       cleanupAll();
     },
     pause() {
       if (destroyed || paused) return;
       paused = true;
       camLog('watchdog:pause');
+      _resetAllStreaks('pause');
       setStatus('paused');
     },
     resume() {

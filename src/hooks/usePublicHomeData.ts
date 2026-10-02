@@ -81,12 +81,19 @@ export function usePublicHomeData(opts?: { cabinetId?: string | null }) {
     swrKey,
     fetcher: homeFetcher,
     swrConfig: {
-      errorRetryCount: 5,
+      errorRetryCount: 2,
       errorRetryInterval: 1200,
       dedupingInterval: 8_000,
       keepPreviousData: true,
       revalidateOnReconnect: true,
       shouldRetryOnError: true,
+      onErrorRetry: (err, _key, _config, revalidate, revalidateOpts) => {
+        const status = (err as { response?: { status?: number } })?.response?.status;
+        if (status === 429) {
+          return;
+        }
+        void revalidate(revalidateOpts);
+      },
     },
     mockStatic: mockHome,
   });

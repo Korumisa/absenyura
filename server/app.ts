@@ -201,8 +201,7 @@ const loginLimiter = rateLimit({
 
 const refreshLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: isProd ? 120 : 1000,
-  skipSuccessfulRequests: true,
+  max: isProd ? 240 : 1000,
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req) => !req.cookies?.refreshToken,
@@ -225,7 +224,7 @@ function sessionRateLimitKey(req: Request): string {
 
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: isProd ? 800 : 5000,
+  max: isProd ? 1500 : 5000,
   message: rateLimitMessage('Terlalu banyak permintaan. Silakan coba lagi setelah beberapa menit.'),
   standardHeaders: true,
   legacyHeaders: false,
@@ -243,7 +242,7 @@ const apiLimiter = rateLimit({
 /** Batas longgar khusus IP anonim (tanpa cookie) untuk endpoint non-publik */
 const anonymousApiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: isProd ? 3000 : 20000,
+  max: isProd ? 5000 : 20000,
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req) => {

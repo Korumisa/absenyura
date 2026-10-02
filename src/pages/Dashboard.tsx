@@ -36,6 +36,7 @@ import {
   DashboardUserSkeleton,
 } from '@/components/admin/DashboardSkeleton';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { formatClassLabel } from '@/lib/utils/classLabel';
 import { sessionStatusLabel } from '@/lib/utils/classLabel';
 import { AttendOnboardingBanner } from '@/components/attend/AttendOnboardingBanner';
@@ -111,6 +112,77 @@ function dashboardSessionStatusClass(status: string): string {
   return '';
 }
 
+function DashboardRecentSessionsSkeleton({
+  count = 3,
+  mobile = true,
+}: {
+  count?: number;
+  mobile?: boolean;
+}) {
+  if (mobile) {
+    return (
+      <div className="space-y-3" aria-hidden="true">
+        {Array.from({ length: count }).map((_, i) => (
+          <div
+            key={i}
+            className="rounded-2xl border border-border bg-muted/20 p-4 dark:bg-muted/10"
+            data-testid="skeleton-row"
+          >
+            <Skeleton className="h-5 w-3/4 mb-2" />
+            <Skeleton className="h-4 w-1/2 mb-3" />
+            <Skeleton className="h-3 w-2/3 mb-2" />
+            <Skeleton className="h-3 w-1/3 mb-4" />
+            <Skeleton className="h-10 w-full rounded-xl" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return (
+    <TableBody aria-hidden="true" data-testid="skeleton-table-body">
+      {Array.from({ length: count }).map((_, i) => (
+        <TableRow key={i} className="pointer-events-none opacity-70">
+          <TableCell>
+            <div className="space-y-2">
+              <Skeleton className="h-5 w-48" />
+              <Skeleton className="h-4 w-32" />
+            </div>
+          </TableCell>
+          <TableCell>
+            <div className="space-y-1.5">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-3 w-40" />
+            </div>
+          </TableCell>
+          <TableCell>
+            <Skeleton className="h-4 w-32" />
+          </TableCell>
+          <TableCell className="text-right">
+            <div className="flex justify-end">
+              <Skeleton className="h-11 w-32 rounded-lg" />
+            </div>
+          </TableCell>
+        </TableRow>
+      ))}
+    </TableBody>
+  );
+}
+
+function ThinProgressBar({ active }: { active: boolean }) {
+  if (!active) return null;
+  return (
+    <div
+      role="progressbar"
+      aria-busy="true"
+      aria-label="Memuat ulang data"
+      data-testid="thin-progress-bar"
+      className="fixed left-0 top-0 z-[100] h-[3px] w-full overflow-hidden bg-transparent"
+    >
+      <div className="h-full w-1/3 animate-[thin-progress_1.2s_ease-in-out_infinite] bg-gradient-to-r from-transparent via-indigo-500 to-transparent" />
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const user = useAuthStore((state) => state.user);
   const navigate = useNavigate();
@@ -166,9 +238,16 @@ export default function Dashboard() {
   }, [chartPointCount]);
 
   const isUser = user?.role === 'USER';
+  const sessions = data?.recent_sessions ?? [];
+  const sessionsEmpty = sessions.length === 0;
+  const sessionsRefreshing = useMemo(
+    () => swr.isValidating || chartRefreshing,
+    [swr.isValidating, chartRefreshing]
+  );
 
   return (
     <AdminPageShell title="Dashboard" icon={<BarChart3 className="size-5" />}>
+      <ThinProgressBar active={sessionsRefreshing || !!page.isPending} />
       {user?.must_change_password ? (
         <div
           role="region"
@@ -357,87 +436,111 @@ export default function Dashboard() {
             </div>
 
             {/* [UX] D-01 — kartu mobile jadwal sesi */}
-            <ul
-              className="space-y-3 px-4 pb-4 pt-4 sm:px-5 sm:pb-5 md:hidden"
-              aria-label="Jadwal sesi terdekat"
+            <div
+              className={cn(
+                'relative transition-opacity duration-150',
+                sessionsRefreshing ? 'is-loading' : ''
+              )}
+              aria-busy={sessionsRefreshing || undefined}
             >
-              {!data?.recent_sessions?.length ? (
-                <li className="py-8 text-center text-muted-foreground">Belum ada sesi terdekat.</li>
-              ) : (
-                data.recent_sessions.map((session: DashboardRecentSession) => (
-                  <li
-                    key={session.id}
-                    className="rounded-2xl border border-border bg-muted/20 p-4 dark:bg-muted/10"
-                  >
-                    <p className="font-bold text-foreground">{dashboardSessionTitle(session)}</p>
-                    <p className="text-sm text-brand">
-                      {(() => {
-                        const labels = (session.session_classes ?? []).flatMap((x) => {
-                          const result = formatClassLabel(
-                            x?.class as Parameters<typeof formatClassLabel>[0]
-                          );
-                          return result ? [result] : [];
-                        });
-                        if (labels.length) return labels.join(', ');
-                        return session.class
-                          ? formatClassLabel(
-                              session.class as Parameters<typeof formatClassLabel>[0]
-                            ) || 'Semua Mahasiswa'
-                          : 'Semua Mahasiswa';
-                      })()}
-                    </p>
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      {format(new Date(session.session_start), 'dd MMM yyyy · HH:mm', {
-                        locale: id,
-                      })}{' '}
-                      WIB
-                    </p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {typeof session.location === 'object' && session.location !== null
-                        ? session.location.name
-                        : typeof session.location === 'string'
-                          ? session.location
-                          : '-'}
-                    </p>
-                    <div className="mt-3">
-                      {session.status === 'ACTIVE' ? (
-                        session.attendances?.length ? (
-                          session.attendances[0].check_out_time || !session.require_checkout ? (
-                            <Badge variant="success">Sudah absen</Badge>
+              <ul
+                className="space-y-3 px-4 pb-4 pt-4 sm:px-5 sm:pb-5 md:hidden"
+                aria-label="Jadwal sesi terdekat"
+              >
+                {sessionsEmpty && sessionsRefreshing ? (
+                  <DashboardRecentSessionsSkeleton count={3} mobile />
+                ) : sessionsEmpty ? (
+                  <li className="py-8 text-center text-muted-foreground">
+                    Belum ada sesi terdekat.
+                  </li>
+                ) : (
+                  sessions.map((session: DashboardRecentSession) => (
+                    <li
+                      key={session.id}
+                      className="rounded-2xl border border-border bg-muted/20 p-4 dark:bg-muted/10"
+                    >
+                      <p className="font-bold text-foreground">{dashboardSessionTitle(session)}</p>
+                      <p className="text-sm text-brand">
+                        {(() => {
+                          const labels = (session.session_classes ?? []).flatMap((x) => {
+                            const result = formatClassLabel(
+                              x?.class as Parameters<typeof formatClassLabel>[0]
+                            );
+                            return result ? [result] : [];
+                          });
+                          if (labels.length) return labels.join(', ');
+                          return session.class
+                            ? formatClassLabel(
+                                session.class as Parameters<typeof formatClassLabel>[0]
+                              ) || 'Semua Mahasiswa'
+                            : 'Semua Mahasiswa';
+                        })()}
+                      </p>
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        {format(new Date(session.session_start), 'dd MMM yyyy · HH:mm', {
+                          locale: id,
+                        })}{' '}
+                        WIB
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {typeof session.location === 'object' && session.location !== null
+                          ? session.location.name
+                          : typeof session.location === 'string'
+                            ? session.location
+                            : '-'}
+                      </p>
+                      <div className="mt-3">
+                        {session.status === 'ACTIVE' ? (
+                          session.attendances?.length ? (
+                            session.attendances[0].check_out_time || !session.require_checkout ? (
+                              <Badge variant="success">Sudah absen</Badge>
+                            ) : (
+                              <Button
+                                size="lg"
+                                className="min-h-11 w-full rounded-xl bg-amber-500 hover:bg-amber-600"
+                                onClick={() =>
+                                  navigate(
+                                    `/attend?session=${session.id}&checkout=true&attendance=${session.attendances?.[0]?.id}`
+                                  )
+                                }
+                              >
+                                Check-out
+                              </Button>
+                            )
                           ) : (
                             <Button
                               size="lg"
-                              className="min-h-11 w-full rounded-xl bg-amber-500 hover:bg-amber-600"
-                              onClick={() =>
-                                navigate(
-                                  `/attend?session=${session.id}&checkout=true&attendance=${session.attendances?.[0]?.id}`
-                                )
-                              }
+                              className="min-h-11 w-full rounded-xl"
+                              onClick={() => navigate(`/attend?session=${session.id}`)}
                             >
-                              Check-out
+                              <QrCode className="mr-2 size-4" aria-hidden="true" />
+                              Scan QR absen
                             </Button>
                           )
                         ) : (
-                          <Button
-                            size="lg"
-                            className="min-h-11 w-full rounded-xl"
-                            onClick={() => navigate(`/attend?session=${session.id}`)}
-                          >
-                            <QrCode className="mr-2 size-4" aria-hidden="true" />
-                            Scan QR absen
-                          </Button>
-                        )
-                      ) : (
-                        <Badge variant="secondary">Belum mulai</Badge>
-                      )}
-                    </div>
-                  </li>
-                ))
-              )}
-            </ul>
+                          <Badge variant="secondary">Belum mulai</Badge>
+                        )}
+                      </div>
+                    </li>
+                  ))
+                )}
+              </ul>
+              {sessionsRefreshing && !sessionsEmpty ? (
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 z-10 animate-pulse bg-white/40 dark:bg-slate-950/40 backdrop-blur-[1px]"
+                />
+              ) : null}
+            </div>
 
             <div className="hidden md:block">
-              <div className="overflow-x-auto">
+              <div
+                className={cn(
+                  'relative overflow-x-auto transition-opacity duration-150',
+                  sessionsRefreshing ? 'is-loading' : ''
+                )}
+                aria-busy={sessionsRefreshing || undefined}
+              >
                 <Table className="min-w-[720px]">
                   <TableHeader className="sticky top-0 z-10 bg-muted/50 [&_tr]:border-b">
                     <TableRow>
@@ -447,8 +550,10 @@ export default function Dashboard() {
                       <TableHead className="text-right">Aksi</TableHead>
                     </TableRow>
                   </TableHeader>
-                  <TableBody>
-                    {data?.recent_sessions?.length === 0 ? (
+                  {sessionsEmpty && sessionsRefreshing ? (
+                    <DashboardRecentSessionsSkeleton count={3} mobile={false} />
+                  ) : sessionsEmpty ? (
+                    <TableBody>
                       <TableRow>
                         <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
                           <div className="flex flex-col items-center justify-center">
@@ -457,8 +562,10 @@ export default function Dashboard() {
                           </div>
                         </TableCell>
                       </TableRow>
-                    ) : (
-                      data?.recent_sessions?.map((session: DashboardRecentSession) => (
+                    </TableBody>
+                  ) : (
+                    <TableBody>
+                      {sessions.map((session: DashboardRecentSession) => (
                         <TableRow key={session.id}>
                           <TableCell>
                             <div className="font-bold text-foreground text-base">
@@ -542,10 +649,16 @@ export default function Dashboard() {
                             )}
                           </TableCell>
                         </TableRow>
-                      ))
-                    )}
-                  </TableBody>
+                      ))}
+                    </TableBody>
+                  )}
                 </Table>
+                {sessionsRefreshing && !sessionsEmpty ? (
+                  <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-0 z-10 animate-pulse bg-white/40 dark:bg-slate-950/40 backdrop-blur-[1px]"
+                  />
+                ) : null}
               </div>
             </div>
           </div>
@@ -732,65 +845,85 @@ export default function Dashboard() {
                 <h2 className="text-xl font-bold text-foreground">Aktivitas Sesi Terbaru</h2>
               </div>
 
-              <ul className="space-y-3 p-5" aria-label="Sesi terbaru">
-                {data?.recent_sessions?.length === 0 ? (
-                  <li className="flex flex-col items-center py-10 text-center text-muted-foreground">
-                    <Calendar size={40} className="mb-3 opacity-50" aria-hidden="true" />
-                    <p className="text-sm font-medium">Belum ada sesi kelas yang dibuat.</p>
-                  </li>
-                ) : (
-                  data.recent_sessions.map((session: DashboardRecentSession) => (
-                    <li
-                      key={session.id}
-                      className="rounded-2xl border border-border bg-background/60 p-4"
-                    >
-                      <div className="flex flex-wrap items-start justify-between gap-2">
-                        <div className="min-w-0 flex-1">
-                          <p className="font-bold text-foreground">
-                            {dashboardSessionTitle(session)}
-                          </p>
-                          {dashboardSessionClass(session) ? (
-                            <p className="mt-0.5 text-sm text-muted-foreground">
-                              {dashboardSessionClass(session)}
-                            </p>
-                          ) : null}
-                        </div>
-                        <Badge
-                          variant="outline"
-                          className={dashboardSessionStatusClass(session.status)}
-                        >
-                          {sessionStatusLabel(session.status)}
-                        </Badge>
-                      </div>
-                      {typeof session.location === 'object' && session.location?.name ? (
-                        <p className="mt-2 flex items-center gap-1.5 text-sm text-muted-foreground">
-                          <MapPin size={14} className="shrink-0" aria-hidden="true" />
-                          <span className="truncate">{session.location.name}</span>
-                        </p>
-                      ) : typeof session.location === 'string' && session.location ? (
-                        <p className="mt-2 flex items-center gap-1.5 text-sm text-muted-foreground">
-                          <MapPin size={14} className="shrink-0" aria-hidden="true" />
-                          <span className="truncate">{session.location}</span>
-                        </p>
-                      ) : null}
-                      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                        <span className="inline-flex items-center gap-1.5">
-                          <Calendar size={14} className="shrink-0 text-brand" aria-hidden="true" />
-                          {format(new Date(session.session_start), 'dd MMM yyyy', { locale: id })}
-                        </span>
-                        <span className="inline-flex items-center gap-1.5">
-                          <Clock size={14} className="shrink-0 text-brand" aria-hidden="true" />
-                          {format(new Date(session.session_start), 'HH:mm', { locale: id })} WIB
-                        </span>
-                        <span className="inline-flex items-center gap-1.5 font-medium text-foreground">
-                          <Users size={14} className="shrink-0 text-brand" aria-hidden="true" />
-                          {session._count?.attendances ?? 0} hadir
-                        </span>
-                      </div>
-                    </li>
-                  ))
+              <div
+                className={cn(
+                  'relative transition-opacity duration-150',
+                  sessionsRefreshing ? 'is-loading' : ''
                 )}
-              </ul>
+                aria-busy={sessionsRefreshing || undefined}
+              >
+                <ul className="space-y-3 p-5" aria-label="Sesi terbaru">
+                  {sessionsEmpty && sessionsRefreshing ? (
+                    <DashboardRecentSessionsSkeleton count={3} mobile />
+                  ) : sessionsEmpty ? (
+                    <li className="flex flex-col items-center py-10 text-center text-muted-foreground">
+                      <Calendar size={40} className="mb-3 opacity-50" aria-hidden="true" />
+                      <p className="text-sm font-medium">Belum ada sesi kelas yang dibuat.</p>
+                    </li>
+                  ) : (
+                    sessions.map((session: DashboardRecentSession) => (
+                      <li
+                        key={session.id}
+                        className="rounded-2xl border border-border bg-background/60 p-4"
+                      >
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <p className="font-bold text-foreground">
+                              {dashboardSessionTitle(session)}
+                            </p>
+                            {dashboardSessionClass(session) ? (
+                              <p className="mt-0.5 text-sm text-muted-foreground">
+                                {dashboardSessionClass(session)}
+                              </p>
+                            ) : null}
+                          </div>
+                          <Badge
+                            variant="outline"
+                            className={dashboardSessionStatusClass(session.status)}
+                          >
+                            {sessionStatusLabel(session.status)}
+                          </Badge>
+                        </div>
+                        {typeof session.location === 'object' && session.location?.name ? (
+                          <p className="mt-2 flex items-center gap-1.5 text-sm text-muted-foreground">
+                            <MapPin size={14} className="shrink-0" aria-hidden="true" />
+                            <span className="truncate">{session.location.name}</span>
+                          </p>
+                        ) : typeof session.location === 'string' && session.location ? (
+                          <p className="mt-2 flex items-center gap-1.5 text-sm text-muted-foreground">
+                            <MapPin size={14} className="shrink-0" aria-hidden="true" />
+                            <span className="truncate">{session.location}</span>
+                          </p>
+                        ) : null}
+                        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                          <span className="inline-flex items-center gap-1.5">
+                            <Calendar
+                              size={14}
+                              className="shrink-0 text-brand"
+                              aria-hidden="true"
+                            />
+                            {format(new Date(session.session_start), 'dd MMM yyyy', { locale: id })}
+                          </span>
+                          <span className="inline-flex items-center gap-1.5">
+                            <Clock size={14} className="shrink-0 text-brand" aria-hidden="true" />
+                            {format(new Date(session.session_start), 'HH:mm', { locale: id })} WIB
+                          </span>
+                          <span className="inline-flex items-center gap-1.5 font-medium text-foreground">
+                            <Users size={14} className="shrink-0 text-brand" aria-hidden="true" />
+                            {session._count?.attendances ?? 0} hadir
+                          </span>
+                        </div>
+                      </li>
+                    ))
+                  )}
+                </ul>
+                {sessionsRefreshing && !sessionsEmpty ? (
+                  <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-0 z-10 animate-pulse bg-white/40 dark:bg-slate-950/40 backdrop-blur-[1px]"
+                  />
+                ) : null}
+              </div>
             </div>
           </div>
         </div>
