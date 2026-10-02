@@ -9,6 +9,7 @@ type UseFormDirtyGuardOptions = {
 
 type UseFormDirtyGuardReturn = {
   confirmIfDirty: () => Promise<boolean>;
+  suppressBlocker: (ms?: number) => void;
 };
 
 const DEFAULT_MESSAGE =
@@ -28,11 +29,15 @@ function installHistoryMonkeyPatch() {
     window.dispatchEvent(new CustomEvent(HISTORY_WILL_CHANGE_EVENT));
   };
 
-  window.history.pushState = function patchedPushState(...args: Parameters<typeof originalPushState>) {
+  window.history.pushState = function patchedPushState(
+    ...args: Parameters<typeof originalPushState>
+  ) {
     emitChange();
     return originalPushState(...args);
   };
-  window.history.replaceState = function patchedReplaceState(...args: Parameters<typeof originalReplaceState>) {
+  window.history.replaceState = function patchedReplaceState(
+    ...args: Parameters<typeof originalReplaceState>
+  ) {
     emitChange();
     return originalReplaceState(...args);
   };
@@ -47,11 +52,24 @@ export function useFormDirtyGuard(
 ): UseFormDirtyGuardReturn {
   const { confirmMessage = DEFAULT_MESSAGE, enableUnloadGuard = true, enableBlocker = true } = opts;
   const blockerAvailableRef = useRef(false);
+  const blockerSuspendUntilRef = useRef(0);
+
+  const suppressBlocker = useCallback((ms = 150): void => {
+    blockerSuspendUntilRef.current = Date.now() + Math.max(0, Math.min(5000, ms));
+  }, []);
+
+  const isSuppressed = useCallback((): boolean => {
+    if (blockerSuspendUntilRef.current === 0) return false;
+    if (Date.now() < blockerSuspendUntilRef.current) return true;
+    blockerSuspendUntilRef.current = 0;
+    return false;
+  }, []);
 
   try {
     useBlocker(() => {
       if (!enableBlocker) return false;
       if (!dirty) return false;
+      if (isSuppressed()) return false;
       return !window.confirm(confirmMessage);
     });
     blockerAvailableRef.current = true;
@@ -66,13 +84,14 @@ export function useFormDirtyGuard(
     const handler = () => {
       if (!enableBlocker) return;
       if (!dirty) return;
+      if (isSuppressed()) return;
       if (!window.confirm(confirmMessage)) {
         window.history.pushState(null, '', window.location.href);
       }
     };
     window.addEventListener(HISTORY_WILL_CHANGE_EVENT, handler);
     return () => window.removeEventListener(HISTORY_WILL_CHANGE_EVENT, handler);
-  }, [dirty, enableBlocker, confirmMessage]);
+  }, [dirty, enableBlocker, confirmMessage, isSuppressed]);
 
   useEffect(() => {
     if (!enableUnloadGuard) return undefined;
@@ -88,8 +107,9 @@ export function useFormDirtyGuard(
 
   const confirmIfDirty = useCallback(async (): Promise<boolean> => {
     if (!dirty) return true;
+    if (isSuppressed()) return true;
     return window.confirm(confirmMessage);
-  }, [dirty, confirmMessage]);
+  }, [dirty, confirmMessage, isSuppressed]);
 
-  return { confirmIfDirty };
+  return { confirmIfDirty, suppressBlocker };
 }

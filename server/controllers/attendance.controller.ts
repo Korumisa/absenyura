@@ -688,7 +688,183 @@ export const checkIn = async (req: AuthRequest, res: Response): Promise<void> =>
       return;
     }
 
-    // 5. Fallback 500: log semua detail untuk audit, tampilkan pesan aman ke user
+    // 5. Multer file upload error (size, format, unexpected field)
+    if (
+      errName === 'MulterError' ||
+      errCode?.startsWith('LIMIT_') ||
+      String(errName).toLowerCase().includes('multer')
+    ) {
+      console.error(`[check-in:${traceId}] Multer upload validation error`, {
+        code: errCode,
+        name: errName,
+        message: errMessage.slice(0, 400),
+        user_id: req.user?.id ?? '-',
+        session_id: req.body?.session_id ?? '-',
+      });
+      res.status(400).json({
+        success: false,
+        error:
+          'Foto bukti tidak valid: ukuran terlalu besar, format tidak didukung, atau field gambar tidak sesuai. Coba ambil foto ulang (format JPG/PNG < 5MB).',
+      });
+      return;
+    }
+
+    // 6. Transient network / Cloudinary / third-party upload error
+    const isTransientNetwork =
+      String(errName || '')
+        .toLowerCase()
+        .includes('timeout') ||
+      String(errName || '')
+        .toLowerCase()
+        .includes('cloudinary') ||
+      String(errMessage || '')
+        .toLowerCase()
+        .includes('cloudinary') ||
+      String(errMessage || '')
+        .toLowerCase()
+        .includes('econnreset') ||
+      String(errMessage || '')
+        .toLowerCase()
+        .includes('etimedout') ||
+      String(errMessage || '')
+        .toLowerCase()
+        .includes('enotfound') ||
+      String(errMessage || '')
+        .toLowerCase()
+        .includes('eai_again') ||
+      String(errMessage || '')
+        .toLowerCase()
+        .includes('err_network') ||
+      String(errMessage || '')
+        .toLowerCase()
+        .includes('socket hang up') ||
+      String(errCode || '')
+        .toLowerCase()
+        .includes('network') ||
+      String(errCode || '')
+        .toLowerCase()
+        .includes('etimedout') ||
+      String(errCode || '')
+        .toLowerCase()
+        .includes('econnreset') ||
+      String(errCode || '')
+        .toLowerCase()
+        .includes('upload') ||
+      errCode === 'ECONNABORTED' ||
+      errCode === 'ECONNREFUSED' ||
+      errCode === 'ENOTFOUND' ||
+      errCode === 'ERR_SOCKET_CLOSED' ||
+      errCode === 'ERR_STREAM_PREMATURE_CLOSE';
+    if (isTransientNetwork) {
+      console.error(`[check-in:${traceId}] Transient third-party / network error`, {
+        code: errCode,
+        name: errName,
+        message: errMessage.slice(0, 500),
+        user_id: req.user?.id ?? '-',
+        session_id: req.body?.session_id ?? '-',
+        took_ms: Date.now() - checkinStart,
+      });
+      res.setHeader('Retry-After', '30');
+      res.status(503).json({
+        success: false,
+        trace_id: traceId.toUpperCase(),
+        error:
+          'Koneksi ke layanan penyimpanan foto sementara terganggu. Tunggu 30 detik lalu tekan "Coba kirim lagi" (foto tidak perlu diambil ulang jika masih tersimpan).',
+        retry_after_ms: 30_000,
+      });
+      return;
+    }
+
+    // 7. SyntaxError JSON.parse / konfigurasi wifi_bssid / malformed structured data
+    if (
+      errName === 'SyntaxError' ||
+      (String(errMessage || '').includes('JSON.parse') &&
+        String(errStack || '')
+          .toLowerCase()
+          .includes('attendance'))
+    ) {
+      console.error(`[check-in:${traceId}] Syntax / configuration parse error`, {
+        code: errCode,
+        name: errName,
+        message: errMessage.slice(0, 500),
+        stack: typeof errStack === 'string' ? errStack.slice(0, 600) : undefined,
+        user_id: req.user?.id ?? '-',
+        session_id: req.body?.session_id ?? '-',
+      });
+      res.status(400).json({
+        success: false,
+        error:
+          'Konfigurasi validasi jaringan (WiFi BSSID) pada sesi ini tidak valid. Hubungi admin untuk memperbaiki pengaturan sesi.',
+      });
+      return;
+    }
+
+    // 8. Prisma P20xx rest family (validation, raw query, constraints beyond basic ones)
+    const prismaP2Rest = [
+      'P2007',
+      'P2008',
+      'P2009',
+      'P2010',
+      'P2013',
+      'P2014',
+      'P2015',
+      'P2016',
+      'P2017',
+      'P2018',
+      'P2020',
+      'P2021',
+      'P2022',
+      'P2023',
+      'P2026',
+      'P2027',
+      'P2028',
+      'P2029',
+      'P2030',
+      'P2031',
+      'P2032',
+      'P2033',
+      'P2034',
+    ];
+    if (errCode.startsWith('P20') && prismaP2Rest.includes(errCode)) {
+      console.error(`[check-in:${traceId}] Prisma P20x validation/query error`, {
+        code: errCode,
+        name: errName,
+        message: errMessage.slice(0, 500),
+        user_id: req.user?.id ?? '-',
+        session_id: req.body?.session_id ?? '-',
+      });
+      res.status(400).json({
+        success: false,
+        error:
+          'Data yang dikirim tidak sesuai format database. Muat ulang halaman, scan QR ulang, lalu coba kirim lagi.',
+      });
+      return;
+    }
+
+    // 9. Zod validation / TypeError / RangeError from bad structured input
+    if (
+      errName === 'ZodError' ||
+      errName === 'TypeError' ||
+      errName === 'RangeError' ||
+      String(errName || '').toLowerCase() === 'validationerror'
+    ) {
+      console.error(`[check-in:${traceId}] Input validation / type error`, {
+        code: errCode,
+        name: errName,
+        message: errMessage.slice(0, 500),
+        stack: typeof errStack === 'string' ? errStack.slice(0, 500) : undefined,
+        user_id: req.user?.id ?? '-',
+        session_id: req.body?.session_id ?? '-',
+      });
+      res.status(400).json({
+        success: false,
+        error:
+          'Format data yang dikirim tidak dapat diproses (TypeError/Zod). Muat ulang halaman dan ulangi dari awal (scan QR → foto → kirim).',
+      });
+      return;
+    }
+
+    // 10. Fallback 500: log semua detail untuk audit, tampilkan pesan aman ke user
     console.error(`[check-in:${traceId}] Unhandled server error`, {
       code: errCode,
       name: errName,

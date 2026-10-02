@@ -137,6 +137,7 @@ export default function Sessions() {
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [isSaveConfirmOpen, setIsSaveConfirmOpen] = useState(false);
+  const [isDirtyCloseConfirmOpen, setIsDirtyCloseConfirmOpen] = useState(false);
 
   // Nilai minimum untuk input datetime-local (waktu sekarang dalam zona lokal)
   // Sengaja hitung sekali per render — memo tidak perlu karena cheap & tidak harus update tiap detik.
@@ -483,7 +484,7 @@ export default function Sessions() {
   });
 
   const formIsDirty = isModalOpen && JSON.stringify(formData) !== formBaseline;
-  const { confirmIfDirty } = useFormDirtyGuard(formIsDirty);
+  const { confirmIfDirty, suppressBlocker } = useFormDirtyGuard(formIsDirty);
 
   const actionOverlayLabel = saving
     ? editingSession
@@ -1364,9 +1365,12 @@ export default function Sessions() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={async () => {
-                    const ok = await confirmIfDirty();
-                    if (ok) setIsModalOpen(false);
+                  onClick={() => {
+                    if (!formIsDirty) {
+                      setIsModalOpen(false);
+                      return;
+                    }
+                    setIsDirtyCloseConfirmOpen(true);
                   }}
                   disabled={saving}
                   className="min-h-11"
@@ -1378,7 +1382,10 @@ export default function Sessions() {
                     type="button"
                     variant="secondary"
                     className="min-h-11"
-                    onClick={() => setWizardStep((s) => Math.max(1, s - 1))}
+                    onClick={() => {
+                      suppressBlocker(250);
+                      setWizardStep((s) => Math.max(1, s - 1));
+                    }}
                   >
                     Sebelumnya
                   </Button>
@@ -1388,7 +1395,10 @@ export default function Sessions() {
                     type="button"
                     className="min-h-11"
                     disabled={!canProceedWizard(wizardStep)}
-                    onClick={() => setWizardStep((s) => Math.min(4, s + 1))}
+                    onClick={() => {
+                      suppressBlocker(250);
+                      setWizardStep((s) => Math.min(4, s + 1));
+                    }}
                   >
                     Lanjut
                   </Button>
@@ -1427,6 +1437,22 @@ export default function Sessions() {
           variant="primary"
           loading={saving}
           loadingText="Menyimpan…"
+        />
+
+        <ConfirmModal
+          isOpen={isDirtyCloseConfirmOpen}
+          onClose={() => setIsDirtyCloseConfirmOpen(false)}
+          onConfirm={() => {
+            suppressBlocker(500);
+            setIsDirtyCloseConfirmOpen(false);
+            setIsModalOpen(false);
+          }}
+          title="Tutup form tanpa menyimpan?"
+          description="Perubahan yang belum Anda simpan akan hilang. Lanjutkan?"
+          confirmText="Ya, Tutup"
+          variant="danger"
+          loading={false}
+          loadingText="Menutup…"
         />
 
         {/* Delete Session Confirmation Modal */}
