@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, lazy, Suspense, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import api from '@/services/api';
+import api, { getRateLimitedUntilMs, clearRateLimitCooldown } from '@/services/api';
 import { toast } from 'sonner';
 import {
   toastError,
@@ -53,6 +53,7 @@ import type { StreamWatchdog, WatchdogStatus } from '@/lib/media/camera';
 import { drawCaptureWatermark } from '@/lib/media/drawCaptureWatermark';
 import ActionLoadingOverlay from '@/components/ActionLoadingOverlay';
 import { useAppStatusStore } from '@/stores/appStatusStore';
+import { useAuthStore } from '@/stores/authStore';
 
 import { Button } from '@/components/ui/button';
 import { SubmitButton } from '@/components/ui/submit-button';
@@ -88,6 +89,68 @@ const getDistanceMeters = (a: { lat: number; lng: number }, b: { lat: number; ln
     Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
   return 2 * R * Math.asin(Math.sqrt(h));
 };
+
+// ─── Module-level dedup in-flight check-in requests ──────────────────────────
+// Shared Map: key = `${userId}:${sessionId}`. Jika permintaan sama sedang
+// berjalan (TTL 45 detik), skip request KEDUA (cegah double-submit → HTTP 429).
+type InflightEntry = { expiresAt: number; controller: AbortController };
+const CHECKIN_INFLIGHT = new Map<string, InflightEntry>();
+
+const getStickyErrorKey = (sessionId: string | null) =>
+  `absenyura:sticky_submit_error:${sessionId ?? '-'}`;
+
+// ─── Rate-aware retry button with countdown ──────────────────────────────────
+// Menampilkan tombol "Coba kirim lagi" yang otomatis disabled + menampilkan
+// countdown detik tersisa jika rate limit dari api.ts masih aktif.
+function RateAwareRetryButton(props: {
+  loading: boolean;
+  onClick: () => void;
+  transient: boolean;
+}) {
+  const { loading, onClick, transient } = props;
+  const [, forceTick] = useState(0);
+
+  useEffect(() => {
+    const id = window.setInterval(() => forceTick((x) => x + 1), 500);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const rateLimitUntil = getRateLimitedUntilMs();
+  const remainMs = rateLimitUntil - Date.now();
+  const isRateLimited = remainMs > 0;
+  const remainSec = Math.max(1, Math.ceil(remainMs / 1000));
+
+  const disabled = loading || isRateLimited;
+  const borderClass = transient ? 'border-amber-300' : 'border-red-300';
+
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      className={`mt-3 min-h-11 ${borderClass}`}
+      onClick={onClick}
+      disabled={disabled}
+    >
+      {isRateLimited ? (
+        <>
+          <Loader2 className="mr-2 size-3 animate-spin" aria-hidden="true" />
+          Tunggu {remainSec} detik
+        </>
+      ) : loading ? (
+        <>
+          <Loader2 className="mr-2 size-3 animate-spin" aria-hidden="true" />
+          Mengirim…
+        </>
+      ) : (
+        <>
+          <RefreshCw className="mr-2 size-3" aria-hidden="true" />
+          Coba kirim lagi
+        </>
+      )}
+    </Button>
+  );
+}
 
 export default function Attend() {
   const [searchParams] = useSearchParams();
@@ -149,21 +212,15 @@ export default function Attend() {
   const [qrError, setQrError] = useState<{ code: QrErrorType; detail?: string } | null>(null);
   const [qrResetNonce, setQrResetNonce] = useState(0);
   const isSubmittingRef = React.useRef(false);
-  const [submitError, setSubmitError] = useState<{ message: string; hint?: string } | null>(null);
-  const [storageSaveFailed, setStorageSaveFailed] = useState(false);
-  const storagePermanentlyFailedRef = React.useRef(false);
 
-  const photoWatchdogRef = React.useRef<StreamWatchdog | null>(null);
-  const photoLockReleaseRef = React.useRef<(() => void) | null>(null);
-  const photoSwitchingRef = React.useRef(false);
-  const [photoWatchdogStatus, setPhotoWatchdogStatus] = useState<WatchdogStatus>('healthy');
-
-  // Derived session ID from parameter or scan result
+  // ── Derived session ID from parameter or scan result ────────────────────────
+  // DIPINDAH KE ATAS: sessionKey useMemo (baris berikutnya) membutuhkan
+  // derivedSessionId, jadi harus dideklarasikan SEBELUM useMemo agar TypeScript
+  // tidak mendeteksi "used before declaration".
   const extractSessionIdAndToken = (rawResult: string | null) => {
     if (!rawResult) return { sid: sessionParam, tkn: tokenParam };
 
     try {
-      // 1. Check if it's a URL
       if (rawResult.includes('http') || rawResult.includes('?session=')) {
         const urlObj = new URL(
           rawResult.startsWith('http') ? rawResult : `http://localhost${rawResult}`
@@ -172,21 +229,108 @@ export default function Attend() {
         const tkn = urlObj.searchParams.get('token');
         return { sid: sid || sessionParam, tkn: tkn || rawResult };
       }
-    } catch (e) {
-      // Not a valid URL, fallback
+    } catch {
+      /* Not a valid URL, fallback */
     }
 
-    // 2. Check if it's a dynamic token string (sessionId:timestamp:signature)
     if (rawResult.includes(':') && rawResult.split(':').length === 3) {
       return { sid: rawResult.split(':')[0].trim(), tkn: rawResult.trim() };
     }
 
-    // 3. Fallback: Assume it's a raw static token
     return { sid: sessionParam, tkn: rawResult.trim() };
   };
 
   const { sid: derivedSessionId, tkn: parsedToken } = extractSessionIdAndToken(scanResult);
 
+  // ── Smart submit error state ─────────────────────────────────────────────────
+  // `transient` = pesan tidak disimpan sebagai sticky (tidak dimunculkan lagi ketika
+  // user keluar → masuk aplikasi). `sticky` = error yang DIPERTAHANKAN lintas lifecycle
+  // halaman (sesuai requirement: error HANYA muncul ketika user keluar aplikasi lalu
+  // masuk kembali; TIDAK muncul pada percobaan submit ulang di halaman yang sama).
+  type SubmitError = {
+    message: string;
+    hint?: string;
+    transient?: boolean;
+    statusCode?: number;
+  };
+  const [submitError, setSubmitError] = useState<SubmitError | null>(null);
+
+  // ── User visibility guard untuk sticky error ─────────────────────────────────
+  // HANYA ketika visibility hidden→visible (user balik dari tab/aplikasi lain),
+  // kita restore submitError yang tersimpan di sessionStorage.
+  const sessionKey = useMemo(
+    () => getStickyErrorKey(draftSessionId ?? derivedSessionId ?? null),
+    [draftSessionId, derivedSessionId]
+  );
+
+  useEffect(() => {
+    // Cleanup TTL checker: setiap 15 detik hapus entry in-flight yang sudah kedaluwarsa
+    const timer = window.setInterval(() => {
+      const now = Date.now();
+      CHECKIN_INFLIGHT.forEach((entry, key) => {
+        if (entry.expiresAt < now) CHECKIN_INFLIGHT.delete(key);
+      });
+    }, 15_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState !== 'visible') return;
+      // Requirement: HANYA tampilkan sticky error ketika user balik ke aplikasi
+      // (bukan saat tombol di-klik, bukan saat halaman baru mount).
+      try {
+        const raw = sessionStorage.getItem(sessionKey);
+        if (!raw) return;
+        const parsed = JSON.parse(raw) as SubmitError;
+        if (parsed && typeof parsed.message === 'string') {
+          setSubmitError({ ...parsed, transient: false });
+        }
+      } catch {
+        /* corrupted sessionStorage value — ignore */
+      }
+      try {
+        clearRateLimitCooldown();
+      } catch {
+        /* noop */
+      }
+    };
+    document.addEventListener('visibilitychange', onVis);
+    window.addEventListener('focus', onVis);
+    return () => {
+      document.removeEventListener('visibilitychange', onVis);
+      window.removeEventListener('focus', onVis);
+    };
+  }, [sessionKey]);
+
+  // ── Helper: persist/clear sticky error ───────────────────────────────────────
+  const persistErrorIfSticky = useCallback(
+    (err: SubmitError | null) => {
+      try {
+        if (err && !err.transient) {
+          sessionStorage.setItem(
+            sessionKey,
+            JSON.stringify({ message: err.message, hint: err.hint, statusCode: err.statusCode })
+          );
+        } else if (err === null) {
+          sessionStorage.removeItem(sessionKey);
+        }
+      } catch {
+        /* noop */
+      }
+    },
+    [sessionKey]
+  );
+
+  const [storageSaveFailed, setStorageSaveFailed] = useState(false);
+  const storagePermanentlyFailedRef = React.useRef(false);
+
+  const photoWatchdogRef = React.useRef<StreamWatchdog | null>(null);
+  const photoLockReleaseRef = React.useRef<(() => void) | null>(null);
+  const photoSwitchingRef = React.useRef(false);
+  const [photoWatchdogStatus, setPhotoWatchdogStatus] = useState<WatchdogStatus>('healthy');
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [sessionDetails, setSessionDetails] = useState<any>(null);
   const [sessionLoading, setSessionLoading] = useState(Boolean(sessionParam && !tokenParam));
   const [sessionLoadError, setSessionLoadError] = useState<string | null>(null); // [UX] A-03
@@ -301,7 +445,7 @@ export default function Attend() {
     setCheckoutSubmitting(true);
     setCheckoutError(null);
     try {
-      const { sid: _s, tkn: qrToken } = extractSessionIdAndToken(scanResult);
+      const { tkn: qrToken } = extractSessionIdAndToken(scanResult);
       const photoType = photoBlob.type || 'image/jpeg';
       const challengeRes = await api.get('/attendance/challenge', {
         params: {
@@ -674,7 +818,7 @@ export default function Attend() {
 
   useEffect(() => {
     if (isCheckoutMode) return;
-    const run = (async () => {
+    void (async () => {
       try {
         if (wizardStep === 1 && draftSessionId && !scanResult) {
           setScanResult(draftSessionId);
@@ -721,20 +865,54 @@ export default function Attend() {
       return;
     }
 
+    let sessionId = derivedSessionId;
+    if (!sessionId) {
+      toastError(null, 'Sesi tidak ditemukan dalam QR Code atau URL.');
+      return;
+    }
+    sessionId = sessionId.trim();
+
+    // ── Client-side rate-limit guard (P0 MENGHINDARI 429 SEBELUM TERJADI) ─────
+    const rateLimitUntil = getRateLimitedUntilMs();
+    if (rateLimitUntil > Date.now()) {
+      const remainSec = Math.ceil((rateLimitUntil - Date.now()) / 1000);
+      toastWarning(
+        `Tunggu ${remainSec} detik sebelum mengirim ulang (server membatasi permintaan).`
+      );
+      return;
+    }
+
+    // ── Module-level dedup in-flight guard ──────────────────────────────────
+    // Dua klik berturut-turut atau double-submit akan menyebabkan 429 di server.
+    // Cegah sebelum request dikirim: jika (userId:sessionId) masih inflight → skip.
+    // NOTE: deviceFingerprint belum tersedia di titik ini (async call), jadi gunakan
+    // userId jika login, atau fallback ke fingerprint nanti jika perlu.
+    const authState = useAuthStore.getState();
+    const userIdForGuard = (authState.user?.id as string | undefined) ?? 'anon-user';
+    const dedupKey = `${userIdForGuard}:${sessionId}`;
+    const existingInFlight = CHECKIN_INFLIGHT.get(dedupKey);
+    if (existingInFlight && existingInFlight.expiresAt > Date.now()) {
+      toastInfo('Permintaan absensi Anda sedang diproses. Harap tunggu hasilnya...');
+      return;
+    }
+    const abortController = new AbortController();
+    CHECKIN_INFLIGHT.set(dedupKey, {
+      expiresAt: Date.now() + 45_000,
+      controller: abortController,
+    });
+    const clearInflight = () => {
+      const stored = CHECKIN_INFLIGHT.get(dedupKey);
+      if (stored && stored.controller === abortController) {
+        CHECKIN_INFLIGHT.delete(dedupKey);
+      }
+    };
+
     isSubmittingRef.current = true;
     setLoading(true);
-    setSubmitError(null); // [UX] bersihkan error sebelum percobaan baru
+    setSubmitError(null);
+    persistErrorIfSticky(null);
     try {
-      let sessionId = derivedSessionId;
       const qrToken = parsedToken;
-
-      if (!sessionId) {
-        throw new Error('Sesi tidak ditemukan dalam QR Code atau URL.');
-      }
-
-      // Bersihkan whitespace jika ada (misal dari hasil scan)
-      sessionId = sessionId.trim();
-
       const deviceFingerprint = await getDeviceFingerprint();
 
       if (isOffline) {
@@ -829,8 +1007,16 @@ export default function Attend() {
       track('checkin_success');
       navigate('/dashboard');
     } catch (error: unknown) {
+      const axiosError = error as {
+        response?: { status?: number; data?: { error?: string; retry_after_ms?: number } };
+        code?: string;
+        message?: string;
+      };
+      const statusCode = axiosError.response?.status;
+      const serverMsg = axiosError.response?.data?.error || '';
       const apiMsg = getErrorMessage(error, 'Absensi gagal dikirim');
       const lower = apiMsg.toLowerCase();
+      const lowerServer = serverMsg.toLowerCase();
       const isBadSigQrError =
         lower.includes('qr') ||
         lower.includes('token') ||
@@ -840,6 +1026,23 @@ export default function Attend() {
         lower.includes('tidak valid') ||
         lower.includes('security proof');
       const isNotEnrolled = lower.includes('terdaftar di kelas');
+      const photoMissing =
+        lower.includes('foto') &&
+        (lower.includes('bukti') || lower.includes('ada') || lower.includes('tersedia'));
+
+      // ── Klasifikasi error: transient (retryable) vs sticky (persisten) ──
+      // Transient = coba lagi nanti, TIDAK disimpan ke sticky sessionStorage
+      // Sticky    = butuh intervensi user / admin, disimpan dan ditampilkan
+      //             HANYA ketika user balik ke tab (visibilitychange)
+      const isTransient =
+        statusCode === 429 ||
+        statusCode === 503 ||
+        statusCode === 408 ||
+        statusCode === 502 ||
+        statusCode === 504 ||
+        axiosError.code === 'ECONNABORTED' ||
+        axiosError.code === 'ERR_NETWORK' ||
+        photoMissing;
 
       if (isNotEnrolled) {
         const code = derivedSessionId || '-';
@@ -850,6 +1053,14 @@ export default function Attend() {
         setPhotoPreview(null);
         setQrError({ code: 'NOT_ENROLLED', detail: code });
         toastError(null, notEnrolledMsg);
+        const errObj: SubmitError = {
+          message: notEnrolledMsg,
+          hint: 'Kemungkinan QR Code salah sesi atau Anda belum didaftarkan pada kelas ini.',
+          transient: false,
+          statusCode,
+        };
+        setSubmitError(errObj);
+        persistErrorIfSticky(errObj);
       } else if (isBadSigQrError) {
         const badSigMsg = 'Kode QR tidak valid atau sudah digunakan.';
         setScanResult(null);
@@ -857,19 +1068,79 @@ export default function Attend() {
         setPhotoBlob(null);
         setPhotoPreview(null);
         setQrError({ code: 'BAD_SIG' });
-        setSubmitError({
+        const errObj: SubmitError = {
           message: badSigMsg,
           hint: 'Scan ulang QR Code dari layar dosen, lalu lanjutkan langkah berikutnya.',
-        });
+          transient: false,
+          statusCode,
+        };
+        setSubmitError(errObj);
+        persistErrorIfSticky(errObj);
         toastError(null, badSigMsg);
-      } else {
-        setSubmitError({
+      } else if (photoMissing) {
+        const photoMsg = 'Foto bukti absensi tidak tersedia.';
+        const errObj: SubmitError = {
+          message: photoMsg,
+          hint: 'Klik tombol "Ambil Foto Bukti" untuk menangkap foto ulang, lalu kirim lagi.',
+          transient: true,
+          statusCode,
+        };
+        setSubmitError(errObj);
+        persistErrorIfSticky(errObj);
+        toastWarning(photoMsg);
+      } else if (isTransient) {
+        let hint = 'Periksa koneksi internet, tunggu beberapa detik, lalu tekan "Coba kirim lagi".';
+        if (statusCode === 429) {
+          hint = 'Server membatasi permintaan. Tunggu sebentar lalu coba kirim lagi.';
+          toastWarning('Batas permintaan tercapai, tunggu sebentar.');
+        } else if (statusCode === 503) {
+          const retryMs = axiosError.response?.data?.retry_after_ms;
+          const retrySec = retryMs ? Math.ceil(retryMs / 1000) : 30;
+          hint = `Server sedang maintenance. Coba lagi dalam ${retrySec} detik.`;
+          toastWarning(`Server sibuk, tunggu ${retrySec} detik.`);
+        } else if (photoMissing) {
+          hint = 'Ambil foto bukti ulang lalu kirim lagi.';
+        }
+        const errObj: SubmitError = {
           message: apiMsg,
-          hint: 'Periksa koneksi internet atau lokasi GPS, lalu tekan "Coba kirim lagi" tanpa mengulang dari awal.',
-        });
+          hint,
+          transient: true,
+          statusCode,
+        };
+        setSubmitError(errObj);
+        persistErrorIfSticky(errObj);
+        if (statusCode !== 429 && statusCode !== 503) {
+          toastError(error, 'Absensi gagal dikirim');
+        }
+      } else {
+        // Sticky error default: 403 device mismatch, 404 session gone, 500 with traceId
+        const isDeviceMismatch =
+          lowerServer.includes('perangkat') ||
+          lower.includes('device') ||
+          lower.includes('fingerprint');
+        const isSessionGone =
+          statusCode === 404 ||
+          (lowerServer.includes('sesi') &&
+            (lowerServer.includes('dihapus') || lowerServer.includes('tidak ditemukan')));
+        let hint = 'Catat waktu kejadian dan hubungi admin jika masalah berlanjut.';
+        if (isDeviceMismatch) {
+          hint =
+            'Anda diwajibkan menggunakan perangkat yang sama saat pertama kali bind. Hubungi admin untuk reset device.';
+        } else if (isSessionGone) {
+          hint = 'Sesi kelas sudah berakhir atau dihapus oleh dosen. Scan QR Code sesi yang baru.';
+        }
+        const errObj: SubmitError = {
+          message: apiMsg,
+          hint,
+          transient: false,
+          statusCode,
+        };
+        setSubmitError(errObj);
+        persistErrorIfSticky(errObj);
         toastError(error, 'Absensi gagal dikirim');
       }
     } finally {
+      clearInflight();
       setLoading(false);
       isSubmittingRef.current = false;
     }
@@ -1194,34 +1465,68 @@ export default function Attend() {
 
           {submitError && (
             <div
-              className="mx-5 mt-5 rounded-xl border border-red-200 bg-red-50 p-5 dark:border-red-900/50 dark:bg-red-950/40"
+              className={
+                submitError.transient
+                  ? 'mx-5 mt-5 rounded-xl border border-amber-200 bg-amber-50 p-5 dark:border-amber-900/50 dark:bg-amber-950/40'
+                  : 'mx-5 mt-5 rounded-xl border border-red-200 bg-red-50 p-5 dark:border-red-900/50 dark:bg-red-950/40'
+              }
               role="alert"
               aria-live="assertive"
             >
               <div className="flex gap-3">
-                <AlertCircle className="mt-0.5 size-5 shrink-0 text-red-600" aria-hidden="true" />
+                <AlertCircle
+                  className={
+                    submitError.transient
+                      ? 'mt-0.5 size-5 shrink-0 text-amber-600'
+                      : 'mt-0.5 size-5 shrink-0 text-red-600'
+                  }
+                  aria-hidden="true"
+                />
                 <div className="min-w-0 flex-1">
-                  <p className="font-semibold text-red-800 dark:text-red-300">
-                    {submitError.message}
-                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p
+                      className={
+                        submitError.transient
+                          ? 'font-semibold text-amber-800 dark:text-amber-300'
+                          : 'font-semibold text-red-800 dark:text-red-300'
+                      }
+                    >
+                      {submitError.message}
+                    </p>
+                    <span
+                      className={
+                        submitError.transient
+                          ? 'inline-flex h-5 items-center rounded-full border border-amber-300 bg-amber-100 px-2 text-[10px] font-semibold uppercase tracking-wide text-amber-800 dark:border-amber-800 dark:bg-amber-900/60 dark:text-amber-200'
+                          : 'inline-flex h-5 items-center rounded-full border border-red-300 bg-red-100 px-2 text-[10px] font-semibold uppercase tracking-wide text-red-800 dark:border-red-800 dark:bg-red-900/60 dark:text-red-200'
+                      }
+                    >
+                      {submitError.transient ? 'Sementara' : 'Tetap'}
+                    </span>
+                    {submitError.statusCode ? (
+                      <span className="inline-flex h-5 items-center rounded-full bg-slate-900/10 px-2 text-[10px] font-mono font-semibold tabular-nums text-slate-700 dark:bg-slate-100/10 dark:text-slate-300">
+                        HTTP {submitError.statusCode}
+                      </span>
+                    ) : null}
+                  </div>
                   {submitError.hint ? (
-                    <p className="mt-1 text-sm text-red-700 dark:text-red-400">
+                    <p
+                      className={
+                        submitError.transient
+                          ? 'mt-1 text-sm text-amber-700 dark:text-amber-400'
+                          : 'mt-1 text-sm text-red-700 dark:text-red-400'
+                      }
+                    >
                       {submitError.hint}
                     </p>
                   ) : null}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="mt-3 min-h-11 border-red-300"
+                  <RateAwareRetryButton
+                    loading={loading}
                     onClick={() => {
                       setSubmitError(null);
                       void handleCheckIn();
                     }}
-                    disabled={loading}
-                  >
-                    Coba kirim lagi
-                  </Button>
+                    transient={submitError.transient ?? false}
+                  />
                 </div>
               </div>
             </div>

@@ -6,7 +6,10 @@ import { useAppStatusStore } from '../stores/appStatusStore';
 import { getDeviceFingerprint } from '../lib/storage/deviceFingerprint';
 import { saveTarget } from '../lib/auth/postLoginTarget';
 
-const apiBaseUrl = (import.meta as any)?.env?.VITE_API_BASE_URL || '/api';
+const typedImportMeta = import.meta as unknown as {
+  env?: { VITE_API_BASE_URL?: string };
+};
+const apiBaseUrl = typedImportMeta.env?.VITE_API_BASE_URL || '/api';
 
 const API_TIMEOUT_MS = 20_000;
 const TRANSIENT_RETRY_DEFAULT_MS = 800;
@@ -62,6 +65,13 @@ const REFRESH_COOLDOWN_MS = 10_000; // 10 detik
 // selama retryMs (clamp 5 detik s.d. 15 menit) agar frontend tidak membanjiri
 // backend dengan request retry yang tidak berguna.
 let rateLimitedUntilMs = 0;
+
+export function getRateLimitedUntilMs(): number {
+  return rateLimitedUntilMs;
+}
+export function clearRateLimitCooldown(): void {
+  rateLimitedUntilMs = 0;
+}
 let rateLimitReloadTimer: ReturnType<typeof setTimeout> | null = null;
 // ────────────────────────────────────────────────────────────────────────────
 
@@ -244,6 +254,19 @@ api.interceptors.response.use(
     const { isAuthenticated } = useAuthStore.getState();
 
     if (error.response?.status === 429) {
+      // JANGAN trigger aggressive banner/reload untuk MUTASI EXPLICIT user (attendance, excuses, settings).
+      // Untuk endpoint ini, biarkan caller (button handler / page) mengelola error sendiri —
+      // jadinya tidak muncul "loading aneh" / banner maintenance yang menutupi UI kirim ulang.
+      const pathL = pathname.toLowerCase();
+      const isExplicitMutation =
+        method === 'POST' || method === 'PUT' || method === 'PATCH' || method === 'DELETE';
+      const isUserFlow =
+        pathL.startsWith('/attendance/') ||
+        pathL.startsWith('/excuses') ||
+        pathL.startsWith('/settings') ||
+        pathL.startsWith('/uploads/');
+      const bypassAggressiveHandler = isExplicitMutation && isUserFlow;
+
       // Tangkap Retry-After (detik) atau X-RateLimit-Reset (unix ms) dari server.
       // Hitung retryMs, clamp ke 5 sd 900 detik (15 menit) agar tidak terlalu pendek/panjang.
       const headersRaw = (error.response?.headers ?? {}) as Record<
@@ -275,7 +298,7 @@ api.interceptors.response.use(
             ? String(headersRaw['X-RateLimit-Reset'])
             : undefined;
 
-      let retryMs = 60_000; // default 60 detik
+      let retryMs = bypassAggressiveHandler ? 15_000 : 60_000;
       if (headerRateLimitRetryMs !== undefined) {
         const n = parseInt(headerRateLimitRetryMs, 10);
         if (!Number.isNaN(n) && n > 0) retryMs = n;
@@ -284,7 +307,6 @@ api.interceptors.response.use(
         const n = parseInt(headerRateLimitReset, 10);
         if (!Number.isNaN(n) && n > 0) retryMs = n * 1000;
       } else if (headerXRateLimitReset !== undefined) {
-        // X-RateLimit-Reset (legacy) bisa unix timestamp (detik) atau Date HTTP
         const n = parseInt(headerXRateLimitReset, 10);
         if (!Number.isNaN(n) && n > 0) {
           if (n > 1e10) {
@@ -316,34 +338,36 @@ api.interceptors.response.use(
       const remainingSec = Math.ceil((rateLimitedUntilMs - now) / 1000);
       try {
         if (typeof localStorage !== 'undefined' && localStorage.getItem('DEBUG_CAM') === '1') {
-          console.info(`[api:interceptor] 429 diterima. rateLimitedUntilMs=${remainingSec}s`);
+          console.info(
+            `[api:interceptor] 429 diterima (${pathname}) rateLimitedUntilMs=${remainingSec}s explicit=${bypassAggressiveHandler}`
+          );
         }
       } catch {
         /* noop */
       }
 
-      // Tampilkan banner maintenance non-blocking.
-      scheduleMaintenance(
-        `Server sedang sibuk. Tunggu ${remainingSec} detik lalu muat ulang halaman.`
-      );
+      if (!bypassAggressiveHandler) {
+        scheduleMaintenance(
+          `Server sedang sibuk. Tunggu ${remainingSec} detik lalu muat ulang halaman.`
+        );
 
-      // Hanya set 1x auto-reload timer. Reset yang aktif di-stop dulu.
-      if (rateLimitReloadTimer) {
-        clearTimeout(rateLimitReloadTimer);
-        rateLimitReloadTimer = null;
-      }
-      const reloadAfterMs = Math.min(retryMs + 500, 65_000);
-      rateLimitReloadTimer = setTimeout(() => {
-        rateLimitReloadTimer = null;
-        rateLimitedUntilMs = 0;
-        try {
-          if (typeof window !== 'undefined') {
-            window.location.reload();
-          }
-        } catch {
-          /* noop */
+        if (rateLimitReloadTimer) {
+          clearTimeout(rateLimitReloadTimer);
+          rateLimitReloadTimer = null;
         }
-      }, reloadAfterMs);
+        const reloadAfterMs = Math.min(retryMs + 500, 65_000);
+        rateLimitReloadTimer = setTimeout(() => {
+          rateLimitReloadTimer = null;
+          rateLimitedUntilMs = 0;
+          try {
+            if (typeof window !== 'undefined') {
+              window.location.reload();
+            }
+          } catch {
+            /* noop */
+          }
+        }, reloadAfterMs);
+      }
 
       return Promise.reject(error);
     }

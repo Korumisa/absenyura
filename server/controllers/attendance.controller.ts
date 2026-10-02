@@ -23,6 +23,7 @@ import fs from 'fs';
 import fsPromises from 'fs/promises';
 import path from 'path';
 import { v2 as cloudinary } from 'cloudinary';
+import { withTransientDbRetry, isPrismaConnectionError } from '../utils/prismaTransient.js';
 
 const CHECK_OUT_GRACE_MS = 2 * 60 * 1000;
 
@@ -44,12 +45,6 @@ const uploadPhotoInBackground = async (
       const result = await cloudinary.uploader.upload(filePath, { folder: 'attendance' });
       photoUrl = result.secure_url;
     } else {
-      const extFromMime: Record<string, string> = {
-        'image/jpeg': '.jpg',
-        'image/jpg': '.jpg',
-        'image/png': '.png',
-        'image/webp': '.webp',
-      };
       const rawExt = path.extname(path.basename(String(originalname || ''))).toLowerCase();
       const ext = (rawExt && rawExt.length <= 10 ? rawExt : '') || '.jpg';
 
@@ -140,7 +135,7 @@ export const getChallenge = async (req: AuthRequest, res: Response): Promise<voi
     const signature = signAttendanceProof(payload, secret);
 
     res.status(200).json({ success: true, data: { nonce, signature, expires_at } });
-  } catch (error) {
+  } catch {
     res.status(500).json({ success: false, error: 'Gagal membuat security challenge' });
   }
 };
@@ -178,8 +173,12 @@ async function verifyAttendanceProof(input: {
           'Waktu pengambilan foto Anda telah habis demi keamanan. Mari ambil foto ulang untuk melanjutkan.',
       };
     }
-  } catch (error: any) {
-    if (error?.code === 'P2025') {
+  } catch (error: unknown) {
+    const code =
+      error && typeof error === 'object' && 'code' in error
+        ? String((error as { code?: unknown }).code ?? '')
+        : '';
+    if (code === 'P2025') {
       return {
         ok: false,
         status: 400,
@@ -232,7 +231,6 @@ export const checkIn = async (req: AuthRequest, res: Response): Promise<void> =>
       latitude,
       longitude,
       accuracy,
-      ip_address,
       device_fingerprint,
       nonce,
       signature,
@@ -299,31 +297,35 @@ export const checkIn = async (req: AuthRequest, res: Response): Promise<void> =>
       return;
     }
 
-    const [session, lastAttendance, user, existingAttendance] = await Promise.all([
-      prisma.session.findUnique({
-        where: { id: session_id },
-        select: sessionCheckInSelect,
-      }),
-      prisma.attendance.findFirst({
-        where: {
-          user_id,
-          check_in_lat: { not: null },
-          check_in_lng: { not: null },
-        },
-        orderBy: { check_in_time: 'desc' },
-        select: { check_in_lat: true, check_in_lng: true, check_in_time: true },
-      }),
-      prisma.user.findUnique({
-        where: { id: user_id },
-        select: { device_fingerprint: true },
-      }),
-      prisma.attendance.findUnique({
-        where: {
-          session_id_user_id: { session_id, user_id },
-        },
-        select: { check_out_time: true },
-      }),
-    ]);
+    const [session, lastAttendance, user, existingAttendance] = await withTransientDbRetry(
+      () =>
+        Promise.all([
+          prisma.session.findUnique({
+            where: { id: session_id },
+            select: sessionCheckInSelect,
+          }),
+          prisma.attendance.findFirst({
+            where: {
+              user_id,
+              check_in_lat: { not: null },
+              check_in_lng: { not: null },
+            },
+            orderBy: { check_in_time: 'desc' },
+            select: { check_in_lat: true, check_in_lng: true, check_in_time: true },
+          }),
+          prisma.user.findUnique({
+            where: { id: user_id },
+            select: { device_fingerprint: true },
+          }),
+          prisma.attendance.findUnique({
+            where: {
+              session_id_user_id: { session_id, user_id },
+            },
+            select: { check_out_time: true },
+          }),
+        ]),
+      { retries: 3, delayMs: 250 }
+    );
 
     if (!session) {
       res
@@ -354,14 +356,18 @@ export const checkIn = async (req: AuthRequest, res: Response): Promise<void> =>
     if (session.class_id || (session.session_classes ?? []).length > 0) {
       const classIds = session.class_id
         ? [session.class_id]
-        : (session.session_classes ?? []).flatMap((x: any) => {
-            const result = x.class_id;
+        : (session.session_classes ?? []).flatMap((x: Record<string, unknown>) => {
+            const result = x.class_id as string | undefined;
             return result ? [result] : [];
           });
-      const enrolled = await prisma.classEnrollment.findFirst({
-        where: { student_id: user_id, class_id: { in: classIds } },
-        select: { id: true },
-      });
+      const enrolled = await withTransientDbRetry(
+        () =>
+          prisma.classEnrollment.findFirst({
+            where: { student_id: user_id, class_id: { in: classIds } },
+            select: { id: true },
+          }),
+        { retries: 2, delayMs: 150 }
+      );
       if (!enrolled) {
         res.status(403).json({
           success: false,
@@ -485,10 +491,14 @@ export const checkIn = async (req: AuthRequest, res: Response): Promise<void> =>
       device_fingerprint !== 'unknown-device'
     ) {
       // First time check-in: Bind device
-      await prisma.user.update({
-        where: { id: user_id },
-        data: { device_fingerprint },
-      });
+      await withTransientDbRetry(
+        () =>
+          prisma.user.update({
+            where: { id: user_id },
+            data: { device_fingerprint },
+          }),
+        { retries: 2, delayMs: 200 }
+      );
     } else if (user && user.device_fingerprint) {
       // Compare the base fingerprint (ignoring the [OFFLINE_SYNC] tag)
       const storedDevice = user.device_fingerprint.replace(' [OFFLINE_SYNC]', '');
@@ -525,22 +535,26 @@ export const checkIn = async (req: AuthRequest, res: Response): Promise<void> =>
       return;
     }
 
-    const attendance = await prisma.attendance.create({
-      data: {
-        session_id,
-        user_id,
-        status,
-        check_in_lat: latitudeValue,
-        check_in_lng: longitudeValue,
-        check_in_accuracy: accuracyValue,
-        check_in_ip: normalizeIp(req.ip || req.socket.remoteAddress || undefined) || null,
-        check_in_device: device_fingerprint,
-        photo_url: null,
-      },
-      include: {
-        user: { select: { name: true, nim_nip: true } },
-      },
-    });
+    const attendance = await withTransientDbRetry(
+      () =>
+        prisma.attendance.create({
+          data: {
+            session_id,
+            user_id,
+            status,
+            check_in_lat: latitudeValue,
+            check_in_lng: longitudeValue,
+            check_in_accuracy: accuracyValue,
+            check_in_ip: normalizeIp(req.ip || req.socket.remoteAddress || undefined) || null,
+            check_in_device: device_fingerprint,
+            photo_url: null,
+          },
+          include: {
+            user: { select: { name: true, nim_nip: true } },
+          },
+        }),
+      { retries: 3, delayMs: 300 }
+    );
 
     logCheckinStep('db_insert', session_id, checkinStart, { attendanceId: attendance.id });
 
@@ -559,17 +573,89 @@ export const checkIn = async (req: AuthRequest, res: Response): Promise<void> =>
 
     logCheckinStep('complete', session_id, checkinStart, { status: attendance.status });
     res.status(201).json({ success: true, data: attendance, message: 'Check-in berhasil' });
-  } catch (error: any) {
-    if (error?.code === 'P2002') {
+  } catch (error: unknown) {
+    const isObj = error && typeof error === 'object';
+    const errCode =
+      isObj && 'code' in error ? String((error as { code?: unknown }).code ?? '') : '';
+    const errName =
+      isObj && 'name' in error ? String((error as { name?: unknown }).name ?? '') : '';
+    const errMessage =
+      isObj && 'message' in error ? String((error as { message?: unknown }).message ?? '') : '';
+    const errStack = isObj && 'stack' in error ? (error as { stack?: unknown }).stack : undefined;
+    const traceId = crypto.randomBytes(6).toString('hex');
+
+    // 1. Duplicate / Unique constraint violation → sudah check-in
+    if (errCode === 'P2002') {
       res
         .status(400)
         .json({ success: false, error: 'Anda sudah melakukan check-in pada sesi ini' });
       return;
     }
+
+    // 2. Record required not found (foreign key violation / session id hilang sebelum insert)
+    if (errCode === 'P2025') {
+      res.status(400).json({
+        success: false,
+        error: 'Data referensi tidak ditemukan (sesi atau akun). Muat ulang halaman dan coba lagi.',
+      });
+      return;
+    }
+
+    // 3. Value type / constraint validation failure (bad input)
+    if (
+      errCode === 'P2000' ||
+      errCode === 'P2005' ||
+      errCode === 'P2006' ||
+      errCode === 'P2011' ||
+      errCode === 'P2012' ||
+      errCode === 'P2019'
+    ) {
+      console.error(`[check-in:${traceId}] Prisma validation error`, {
+        code: errCode,
+        name: errName,
+        message: errMessage.slice(0, 400),
+        user_id: req.user?.id ?? '-',
+        session_id: req.body?.session_id ?? '-',
+      });
+      res.status(400).json({
+        success: false,
+        error:
+          'Data yang dikirim tidak sesuai format. Silakan ulangi dari awal (scan QR → foto → kirim).',
+      });
+      return;
+    }
+
+    // 4. Prisma transient DB error (connection, pool timeout) — semua retry sudah habis
+    if (isPrismaConnectionError(error)) {
+      console.error(`[check-in:${traceId}] Prisma transient DB exhausted`, {
+        code: errCode,
+        name: errName,
+        message: errMessage.slice(0, 400),
+        user_id: req.user?.id ?? '-',
+        session_id: req.body?.session_id ?? '-',
+      });
+      res.status(503).setHeader('Retry-After', '30').json({
+        success: false,
+        error:
+          'Koneksi database sementara sibuk. Tunggu 30 detik lalu tekan "Coba kirim lagi" (tidak perlu ulang dari awal).',
+        retry_after_ms: 30_000,
+      });
+      return;
+    }
+
+    // 5. Fallback 500: log semua detail untuk audit, tampilkan pesan aman ke user
+    console.error(`[check-in:${traceId}] Unhandled server error`, {
+      code: errCode,
+      name: errName,
+      message: errMessage.slice(0, 500),
+      stack: typeof errStack === 'string' ? errStack.slice(0, 800) : undefined,
+      user_id: req.user?.id ?? '-',
+      session_id: req.body?.session_id ?? '-',
+      took_ms: Date.now() - checkinStart,
+    });
     res.status(500).json({
       success: false,
-      error:
-        'Absensi gagal diproses. Coba lagi dalam 1 menit; jika berulang, hubungi admin dengan waktu kejadian.',
+      error: `Absensi gagal diproses. Tunggu 1 menit lalu coba lagi. Jika masih gagal, hubungi admin dengan kode: ${traceId.toUpperCase()}`,
     });
   } finally {
     if (req.file && req.file.path && !isUploadingInBackground) {
@@ -738,7 +824,7 @@ export const checkOut = async (req: AuthRequest, res: Response): Promise<void> =
     }
 
     res.status(200).json({ success: true, data: updated, message: 'Check-out berhasil' });
-  } catch (error) {
+  } catch {
     res.status(500).json({
       success: false,
       error:
