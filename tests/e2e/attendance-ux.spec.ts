@@ -181,18 +181,40 @@ for (const width of [375, 768, 1440]) {
       .click();
     const indicators = page.getByRole('group', { name: 'Status persyaratan absensi' });
     await expect(indicators).toBeVisible();
-    await expect(indicators.locator(':scope > div')).toHaveCount(3);
+    await expect(indicators.locator(':scope > div')).toHaveCount(4);
     await expect(indicators).not.toContainText(/QR|Terverifikasi/);
-    for (const label of ['GPS Lokasi', 'IP Validasi', 'Foto Bukti']) {
+    for (const label of ['GPS Lokasi', 'IP Validasi', 'Waktu Absensi', 'Foto Bukti']) {
       await expect(indicators.getByText(label, { exact: true })).toBeVisible();
     }
+    await expect(indicators.getByText(/Berjalan \(sisa \d+ menit\)/)).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
       true
     );
     const cells = await indicators.locator(':scope > div').all();
     const boxes = await Promise.all(cells.map((cell) => cell.boundingBox()));
-    if (width < 640) expect(boxes[1]!.y).toBeGreaterThan(boxes[0]!.y);
-    else expect(boxes[1]!.y).toBe(boxes[0]!.y);
+    const cssWidth = await page.evaluate(() => window.innerWidth);
+    const approxYEq = (a: number, b: number) => Math.abs(a - b) < 5;
+    if (cssWidth < 640) {
+      // xs: 1 col 4 rows → every cell.y below previous, every cell.x roughly same
+      expect(boxes[1]!.y).toBeGreaterThan(boxes[0]!.y + boxes[0]!.height / 2);
+      expect(boxes[3]!.y).toBeGreaterThan(boxes[2]!.y + boxes[2]!.height / 2);
+      expect(approxYEq(boxes[0]!.x, boxes[3]!.x)).toBe(true);
+    } else if (cssWidth >= 768) {
+      // md+: 4 cols 1 row → every cell.y ~= row[0].y, x monotonically increasing
+      expect(approxYEq(boxes[1]!.y, boxes[0]!.y)).toBe(true);
+      expect(approxYEq(boxes[2]!.y, boxes[0]!.y)).toBe(true);
+      expect(approxYEq(boxes[3]!.y, boxes[0]!.y)).toBe(true);
+      expect(boxes[1]!.x).toBeGreaterThan(boxes[0]!.x);
+      expect(boxes[2]!.x).toBeGreaterThan(boxes[1]!.x);
+      expect(boxes[3]!.x).toBeGreaterThan(boxes[2]!.x);
+    } else {
+      // sm: 2 cols × 2 rows → row 1 = cells 0,1 same y; row 2 = cells 2,3 same y below, x shifts right per row pair
+      expect(approxYEq(boxes[1]!.y, boxes[0]!.y)).toBe(true);
+      expect(boxes[1]!.x).toBeGreaterThan(boxes[0]!.x);
+      expect(boxes[2]!.y).toBeGreaterThan(boxes[0]!.y + boxes[0]!.height / 2);
+      expect(approxYEq(boxes[3]!.y, boxes[2]!.y)).toBe(true);
+      expect(boxes[3]!.x).toBeGreaterThan(boxes[2]!.x);
+    }
     await page.screenshot({
       path: test.info().outputPath(`attendance-${width}.png`),
       fullPage: true,

@@ -19,8 +19,9 @@ import {
   AlertCircle,
   LogOut,
   Loader2,
+  Clock,
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, differenceInMinutes } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 import type { Report } from '@/types/report';
 import {
@@ -343,6 +344,7 @@ export default function Attend() {
     'id' | 'check_in_time' | 'session_title'
   > | null>(null);
   const [checkoutLoading, setCheckoutLoading] = useState(isCheckoutMode);
+  const [nowTick, setNowTick] = useState<number>(() => Date.now());
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [checkoutSubmitting, setCheckoutSubmitting] = useState(false);
 
@@ -421,6 +423,38 @@ export default function Attend() {
     window.addEventListener(APP_ONLINE_EVENT, resumeAfterOnline);
     return () => window.removeEventListener(APP_ONLINE_EVENT, resumeAfterOnline);
   }, [reloadSession, reloadCheckout, isCheckoutMode]);
+
+  useEffect(() => {
+    const checkInCloseAt = sessionDetails?.check_in_close_at;
+    if (!checkInCloseAt || isOffline) return;
+    let interval: ReturnType<typeof setInterval> | null = null;
+    const startInterval = () => {
+      if (interval) return;
+      interval = setInterval(() => setNowTick(Date.now()), 30_000);
+    };
+    const stopInterval = () => {
+      if (interval) {
+        clearInterval(interval);
+        interval = null;
+      }
+    };
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        setNowTick(Date.now());
+        startInterval();
+      } else {
+        stopInterval();
+      }
+    };
+    if (typeof document !== 'undefined' && document.visibilityState === 'visible') startInterval();
+    if (typeof document !== 'undefined')
+      document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      stopInterval();
+      if (typeof document !== 'undefined')
+        document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [sessionDetails, isOffline]);
 
   const handleCheckOut = async () => {
     if (!myAttendance?.id || isSubmittingRef.current || checkoutSubmitting || isOffline) return;
@@ -1106,6 +1140,43 @@ export default function Attend() {
     return dist <= sessionDetails.location.radius;
   };
 
+  const getAbsensiWindowStatus = (): {
+    label: string;
+    tone: 'green' | 'amber' | 'red' | 'muted';
+    labelName: string;
+  } => {
+    const labelName = isCheckoutMode ? 'Waktu Check-out' : 'Waktu Absensi';
+    if (isOffline) return { label: 'Waktu: Gunakan WiFi', tone: 'muted', labelName };
+    if (!sessionDetails) return { label: 'Menunggu…', tone: 'muted', labelName };
+    const openAt = sessionDetails.check_in_open_at
+      ? new Date(sessionDetails.check_in_open_at).getTime()
+      : null;
+    const closeAt = sessionDetails.check_in_close_at
+      ? new Date(sessionDetails.check_in_close_at).getTime()
+      : null;
+    const now = nowTick;
+    if (openAt === null || closeAt === null)
+      return { label: 'Menunggu…', tone: 'muted', labelName };
+    if (isCheckoutMode) {
+      if (now < closeAt)
+        return {
+          label: `Dibuka s/d ${format(new Date(closeAt), 'HH:mm', { locale: idLocale })} WIB`,
+          tone: 'green',
+          labelName,
+        };
+      return { label: 'Berakhir', tone: 'red', labelName };
+    }
+    if (now < openAt) return { label: 'Belum Dibuka', tone: 'amber', labelName };
+    if (now >= openAt && now < closeAt) {
+      const minutesLeft = Math.max(
+        1,
+        Math.ceil(differenceInMinutes(new Date(closeAt), new Date(now)))
+      );
+      return { label: `Berjalan (sisa ${minutesLeft} menit)`, tone: 'green', labelName };
+    }
+    return { label: 'Ditutup', tone: 'red', labelName };
+  };
+
   const ipStatusLabel = () => {
     if (!hasIpRestriction) return 'Tidak diwajibkan';
     if (!ipAddress) return 'Memuat…';
@@ -1435,7 +1506,7 @@ export default function Attend() {
           <div
             role="group"
             aria-label="Status persyaratan absensi"
-            className="grid grid-cols-1 divide-y divide-border border-b border-border bg-muted/40 sm:grid-cols-3 sm:divide-x sm:divide-y-0"
+            className="grid grid-cols-1 divide-y divide-border border-b border-border bg-muted/40 sm:grid-cols-2 md:grid-cols-4 sm:divide-y-0 md:divide-x"
           >
             <div className="flex flex-col items-center gap-2 p-5 text-center">
               <MapPin
@@ -1475,6 +1546,28 @@ export default function Attend() {
               <span className="text-xs font-medium text-muted-foreground">IP Validasi</span>
               <span className="text-xs font-semibold text-foreground">{ipStatusLabel()}</span>
             </div>
+            {(() => {
+              const windowStatus = getAbsensiWindowStatus();
+              const toneClass =
+                windowStatus.tone === 'green'
+                  ? 'text-green-600 dark:text-green-400'
+                  : windowStatus.tone === 'amber'
+                    ? 'text-amber-600 animate-pulse dark:text-amber-400'
+                    : windowStatus.tone === 'red'
+                      ? 'text-red-600 dark:text-red-400'
+                      : 'text-muted-foreground';
+              return (
+                <div className="flex flex-col items-center gap-2 p-5 text-center">
+                  <Clock className={toneClass} size={24} aria-hidden="true" />
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {windowStatus.labelName}
+                  </span>
+                  <span className="text-xs font-semibold text-foreground" aria-live="polite">
+                    {windowStatus.label}
+                  </span>
+                </div>
+              );
+            })()}
             <div className="flex flex-col items-center gap-2 p-5 text-center">
               <Camera
                 className={
