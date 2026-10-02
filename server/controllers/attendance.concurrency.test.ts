@@ -266,9 +266,8 @@ describe('checkIn attendance window and late status', () => {
   });
 });
 
-describe('checkIn offline sync require_photo_proof guard (P0-2 B.2.1)', () => {
-  test('returns 400 (rejects) when X-Sync-Source=offline-queue, require_photo_proof=true, and photo evidence is missing or incomplete', async () => {
-    prismaMock.session.findUnique.mockResolvedValue(createSession({ require_photo_proof: true }));
+describe('checkIn requires photo evidence for online and offline requests', () => {
+  test('returns 400 before querying the session when offline photo evidence is incomplete', async () => {
     const req = createReq('offline-nonce-broken-photo');
     (req as any).header = vi.fn((name: string) => {
       if (String(name).toLowerCase() === 'x-sync-source') return 'offline-queue';
@@ -284,10 +283,10 @@ describe('checkIn offline sync require_photo_proof guard (P0-2 B.2.1)', () => {
     expect(jsonCall.success).toBe(false);
     expect(typeof jsonCall.error).toBe('string');
     expect(prismaMock.attendance.create).not.toHaveBeenCalled();
+    expect(prismaMock.session.findUnique).not.toHaveBeenCalled();
   });
 
-  test('proceeds normally (201) when no X-Sync-Source header, require_photo_proof=true, photo present', async () => {
-    prismaMock.session.findUnique.mockResolvedValue(createSession({ require_photo_proof: true }));
+  test('proceeds normally (201) with an online request and valid photo', async () => {
     const req = createReq('normal-nonce-with-photo');
     (req as any).header = vi.fn(() => undefined);
 
@@ -298,8 +297,7 @@ describe('checkIn offline sync require_photo_proof guard (P0-2 B.2.1)', () => {
     expect(prismaMock.attendance.create).toHaveBeenCalled();
   });
 
-  test('proceeds normally (201) when X-Sync-Source=offline-queue but require_photo_proof=false, with valid photo', async () => {
-    prismaMock.session.findUnique.mockResolvedValue(createSession({ require_photo_proof: false }));
+  test('proceeds normally (201) with an offline request and valid photo', async () => {
     const req = createReq('offline-nonce-no-proof-req');
     (req as any).header = vi.fn((name: string) => {
       if (String(name).toLowerCase() === 'x-sync-source') return 'offline-queue';

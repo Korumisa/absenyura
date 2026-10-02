@@ -51,6 +51,7 @@ import {
 } from '@/lib/media/camera';
 import type { StreamWatchdog, WatchdogStatus } from '@/lib/media/camera';
 import { drawCaptureWatermark } from '@/lib/media/drawCaptureWatermark';
+import { encodeAttendancePhoto, prepareAttendancePhoto } from '@/lib/media/imageUpload';
 import ActionLoadingOverlay from '@/components/ActionLoadingOverlay';
 import { useAppStatusStore } from '@/stores/appStatusStore';
 import { useAuthStore } from '@/stores/authStore';
@@ -204,6 +205,19 @@ export default function Attend() {
   // Camera state for photo evidence
   const [photoBlob, setPhotoBlob] = useState<Blob | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoProcessing, setPhotoProcessing] = useState(false);
+  const photoProcessingRef = React.useRef(false);
+  const captureGenerationRef = React.useRef(0);
+  useEffect(() => {
+    return () => {
+      captureGenerationRef.current += 1;
+    };
+  }, []);
+  useEffect(() => {
+    return () => {
+      if (photoPreview) URL.revokeObjectURL(photoPreview);
+    };
+  }, [photoPreview]);
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
   const pendingStreamRef = React.useRef<MediaStream | null>(null);
@@ -446,7 +460,8 @@ export default function Attend() {
     setCheckoutError(null);
     try {
       const { tkn: qrToken } = extractSessionIdAndToken(scanResult);
-      const photoType = photoBlob.type || 'image/jpeg';
+      const uploadPhoto = await prepareAttendancePhoto(photoBlob);
+      const photoType = uploadPhoto.type;
       const challengeRes = await api.get('/attendance/challenge', {
         params: {
           action: 'checkout',
@@ -455,7 +470,7 @@ export default function Attend() {
           latitude: location.lat,
           longitude: location.lng,
           accuracy: gpsAccuracy,
-          photo_size: photoBlob.size,
+          photo_size: uploadPhoto.size,
           photo_type: photoType,
         },
       });
@@ -476,9 +491,9 @@ export default function Attend() {
       formData.append('device_fingerprint', deviceFingerprint);
       formData.append('nonce', nonce);
       formData.append('signature', signature);
-      formData.append('photo_size', photoBlob.size.toString());
+      formData.append('photo_size', uploadPhoto.size.toString());
       formData.append('photo_type', photoType);
-      formData.append('photo', photoBlob, 'checkout.jpg');
+      formData.append('photo', uploadPhoto, 'checkout.jpg');
 
       const idempotencyKey = crypto.randomUUID();
       const res = await api.put(`/attendance/${myAttendance.id}/check-out`, formData, {
@@ -752,8 +767,15 @@ export default function Attend() {
     }
   };
 
-  const takePhoto = () => {
-    if (videoRef.current && canvasRef.current) {
+  const takePhoto = async () => {
+    if (photoProcessingRef.current) return;
+    photoProcessingRef.current = true;
+    setPhotoProcessing(true);
+    const generation = captureGenerationRef.current;
+    try {
+      if (!videoRef.current || !canvasRef.current) {
+        throw new Error('Kamera belum siap. Buka kamera lalu coba lagi.');
+      }
       const video = videoRef.current;
       const canvas = canvasRef.current;
 
@@ -761,36 +783,40 @@ export default function Attend() {
       const MAX_WIDTH = 800;
       let width = video.videoWidth;
       let height = video.videoHeight;
-
-      if (width > MAX_WIDTH) {
-        height = Math.round((height * MAX_WIDTH) / width);
-        width = MAX_WIDTH;
+      if (!width || !height) {
+        throw new Error('Kamera belum siap. Tunggu pratinjau kamera lalu ambil foto lagi.');
       }
+
+      const scale = Math.min(1, MAX_WIDTH / Math.max(width, height));
+      width = Math.max(1, Math.round(width * scale));
+      height = Math.max(1, Math.round(height * scale));
 
       canvas.width = width;
       canvas.height = height;
       const ctx = canvas.getContext('2d');
-      if (ctx) {
-        // Unmirrored capture so proof matches reality; live preview uses CSS scaleX(-1).
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      if (!ctx) throw new Error('Foto belum dapat diproses. Silakan buka ulang kamera.');
+      // Unmirrored capture so proof matches reality; live preview uses CSS scaleX(-1).
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-        const watermarkLines = [`${new Date().toLocaleString()}`];
-        if (location) {
-          watermarkLines.push(`Lat: ${location.lat.toFixed(5)}, Lng: ${location.lng.toFixed(5)}`);
-        }
-        drawCaptureWatermark(ctx, watermarkLines, { bottomY: canvas.height - 10 });
+      const watermarkLines = [`${new Date().toLocaleString()}`];
+      if (location) {
+        watermarkLines.push(`Lat: ${location.lat.toFixed(5)}, Lng: ${location.lng.toFixed(5)}`);
+      }
+      drawCaptureWatermark(ctx, watermarkLines, { bottomY: canvas.height - 10 });
 
-        canvas.toBlob(
-          (blob) => {
-            if (blob) {
-              setPhotoBlob(blob);
-              setPhotoPreview(URL.createObjectURL(blob));
-              stopCamera();
-            }
-          },
-          'image/jpeg',
-          0.7
-        ); // Compress to 70% quality
+      const blob = await encodeAttendancePhoto(canvas);
+      if (generation !== captureGenerationRef.current) return;
+      setPhotoBlob(blob);
+      setPhotoPreview(URL.createObjectURL(blob));
+      stopCamera();
+    } catch (error) {
+      if (generation === captureGenerationRef.current) {
+        toastError(error, 'Foto belum dapat diproses. Silakan ambil foto ulang.');
+      }
+    } finally {
+      photoProcessingRef.current = false;
+      if (generation === captureGenerationRef.current) {
+        setPhotoProcessing(false);
       }
     }
   };
@@ -930,6 +956,7 @@ export default function Attend() {
     setSubmitError(null);
     persistErrorIfSticky(null);
     try {
+      const uploadPhoto = await prepareAttendancePhoto(photoBlob);
       const qrToken = parsedToken;
       const deviceFingerprint = await getDeviceFingerprint();
 
@@ -949,11 +976,7 @@ export default function Attend() {
             accuracy: gpsAccuracy,
             deviceInfo: deviceFingerprint,
           });
-          if (photoBlob) {
-            await saveOfflinePhoto(offlineId, photoBlob);
-          } else {
-            throw new Error('Foto bukti tidak tersedia untuk simpan offline.');
-          }
+          await saveOfflinePhoto(offlineId, uploadPhoto);
         } catch (storageErr) {
           console.error('Offline storage failed', storageErr);
           if (offlineId !== null) {
@@ -977,7 +1000,7 @@ export default function Attend() {
       }
 
       // --- ANTI-CHEAT LAYER 2: Request server-signed one-time proof ---
-      const photoType = photoBlob.type || 'image/jpeg';
+      const photoType = uploadPhoto.type;
       const challengeRes = await api.get('/attendance/challenge', {
         params: {
           action: 'checkin',
@@ -985,7 +1008,7 @@ export default function Attend() {
           latitude: location.lat,
           longitude: location.lng,
           accuracy: gpsAccuracy,
-          photo_size: photoBlob.size,
+          photo_size: uploadPhoto.size,
           photo_type: photoType,
         },
       });
@@ -1007,12 +1030,10 @@ export default function Attend() {
       formData.append('device_fingerprint', deviceFingerprint);
       formData.append('nonce', nonce);
       formData.append('signature', signature);
-      formData.append('photo_size', photoBlob.size.toString());
+      formData.append('photo_size', uploadPhoto.size.toString());
       formData.append('photo_type', photoType);
 
-      if (photoBlob) {
-        formData.append('photo', photoBlob, 'attendance.jpg');
-      }
+      formData.append('photo', uploadPhoto, 'attendance.jpg');
 
       const idempotencyKey = crypto.randomUUID();
       const res = await api.post('/attendance/check-in', formData, {
@@ -1026,13 +1047,14 @@ export default function Attend() {
       navigate('/dashboard');
     } catch (error: unknown) {
       const axiosError = error as {
-        response?: { status?: number; data?: { error?: string; retry_after_ms?: number } };
+        response?: { status?: number; data?: { error?: unknown; retry_after_ms?: number } };
         code?: string;
         message?: string;
       };
       const statusCode = axiosError.response?.status;
-      const serverMsg = axiosError.response?.data?.error || '';
       const apiMsg = getErrorMessage(error, 'Absensi gagal dikirim');
+      const rawServerMsg = axiosError.response?.data?.error;
+      const serverMsg = typeof rawServerMsg === 'string' ? rawServerMsg : apiMsg;
       const lower = apiMsg.toLowerCase();
       const lowerServer = serverMsg.toLowerCase();
       const isBadSigQrError =
@@ -1354,8 +1376,14 @@ export default function Attend() {
                     </Button>
                   ) : null}
                   {!photoPreview && isCameraActive ? (
-                    <Button type="button" className="w-full" onClick={takePhoto}>
-                      Ambil Foto Check-out
+                    <Button
+                      type="button"
+                      className="w-full"
+                      disabled={photoProcessing}
+                      aria-busy={photoProcessing}
+                      onClick={() => void takePhoto()}
+                    >
+                      {photoProcessing ? 'Mengompres foto...' : 'Ambil Foto Check-out'}
                     </Button>
                   ) : null}
                   {photoPreview ? (
@@ -1765,6 +1793,7 @@ export default function Attend() {
                           type="button"
                           variant="secondary"
                           className="min-h-11 w-full gap-2 sm:w-auto"
+                          disabled={photoProcessing}
                           onClick={() => switchCamera()}
                         >
                           <RefreshCw size={20} aria-hidden="true" />
@@ -1773,10 +1802,16 @@ export default function Attend() {
                         <Button
                           type="button"
                           className="min-h-11 w-full gap-2 bg-emerald-600 hover:bg-emerald-700 sm:w-auto"
-                          onClick={() => takePhoto()}
+                          disabled={photoProcessing}
+                          aria-busy={photoProcessing}
+                          onClick={() => void takePhoto()}
                         >
-                          <Camera size={20} aria-hidden="true" />
-                          Ambil Foto
+                          {photoProcessing ? (
+                            <Loader2 size={20} className="animate-spin" aria-hidden="true" />
+                          ) : (
+                            <Camera size={20} aria-hidden="true" />
+                          )}
+                          {photoProcessing ? 'Mengompres foto...' : 'Ambil Foto'}
                         </Button>
                       </>
                     )}

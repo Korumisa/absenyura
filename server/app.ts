@@ -453,9 +453,59 @@ app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
     code?: unknown;
     message?: unknown;
     stack?: unknown;
+    name?: unknown;
   };
 
   const appError = err instanceof AppError ? err : null;
+  const errName =
+    typeof maybe.name === 'string' ? maybe.name : err instanceof Error ? err.name : '';
+  const errCode = typeof maybe.code === 'string' ? maybe.code : '';
+  const errMessage = typeof maybe.message === 'string' ? maybe.message : '';
+
+  const isMulterError =
+    errName === 'MulterError' ||
+    errCode.startsWith('LIMIT_') ||
+    errName.toLowerCase().includes('multer') ||
+    errMessage.toLowerCase().includes('multer') ||
+    errMessage.toLowerCase().includes('file too large') ||
+    errMessage.toLowerCase().includes('hanya file gambar') ||
+    errMessage.toLowerCase().includes('hanya file excel');
+
+  const isInputValidationError =
+    errName === 'ZodError' ||
+    errName === 'TypeError' ||
+    errName === 'RangeError' ||
+    errName === 'SyntaxError' ||
+    errName.toLowerCase() === 'validationerror' ||
+    errCode === 'VALIDATION_ERROR' ||
+    (errCode.startsWith('P200') && errCode !== 'P2024') ||
+    errCode === 'P2007' ||
+    errCode === 'P2008' ||
+    errCode === 'P2009' ||
+    errCode === 'P2010' ||
+    errCode === 'P2013' ||
+    errCode === 'P2014' ||
+    errCode === 'P2015' ||
+    errCode === 'P2016' ||
+    errCode === 'P2017' ||
+    errCode === 'P2018' ||
+    errCode === 'P2020' ||
+    errCode === 'P2021' ||
+    errCode === 'P2022' ||
+    errCode === 'P2023' ||
+    errCode === 'P2025' ||
+    errCode === 'P2026' ||
+    errCode === 'P2027' ||
+    errCode === 'P2028' ||
+    errCode === 'P2029' ||
+    errCode === 'P2030' ||
+    errCode === 'P2031' ||
+    errCode === 'P2032' ||
+    errCode === 'P2033' ||
+    errCode === 'P2034';
+
+  const inferredClientStatusCode: number | undefined =
+    isMulterError || isInputValidationError ? 400 : undefined;
 
   const rawStatus =
     typeof appError?.statusCode === 'number'
@@ -464,7 +514,7 @@ app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
         ? maybe.statusCode
         : typeof maybe.status === 'number'
           ? maybe.status
-          : undefined;
+          : inferredClientStatusCode;
 
   const statusCode =
     typeof rawStatus === 'number' && rawStatus >= 400 && rawStatus <= 499 ? rawStatus : 500;

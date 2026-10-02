@@ -375,18 +375,6 @@ export const checkIn = async (req: AuthRequest, res: Response): Promise<void> =>
       return;
     }
 
-    const syncSource = String(req.header?.('X-Sync-Source') || '').toLowerCase();
-    if (
-      syncSource === 'offline-queue' &&
-      session.require_photo_proof === true &&
-      (!req.file || !req.file.path)
-    ) {
-      res
-        .status(400)
-        .json({ success: false, error: 'Bukti foto tidak ada. Harap lakukan check-in ulang.' });
-      return;
-    }
-
     if (session.status !== 'ACTIVE') {
       res
         .status(400)
@@ -618,14 +606,61 @@ export const checkIn = async (req: AuthRequest, res: Response): Promise<void> =>
     logCheckinStep('complete', session_id, checkinStart, { status: attendance.status });
     res.status(201).json({ success: true, data: attendance, message: 'Check-in berhasil' });
   } catch (error: unknown) {
-    const isObj = error && typeof error === 'object';
+    let classifiedError: unknown = error;
+    if (
+      error &&
+      typeof error === 'object' &&
+      (error as { name?: unknown }).name === 'AggregateError' &&
+      Array.isArray((error as { errors?: unknown[] }).errors) &&
+      (error as { errors: unknown[] }).errors.length > 0
+    ) {
+      classifiedError = (error as { errors: unknown[] }).errors[0];
+    }
+
+    const errObj = classifiedError && typeof classifiedError === 'object' ? classifiedError : null;
     const errCode =
-      isObj && 'code' in error ? String((error as { code?: unknown }).code ?? '') : '';
+      errObj && 'code' in errObj ? String((errObj as { code?: unknown }).code ?? '') : '';
     const errName =
-      isObj && 'name' in error ? String((error as { name?: unknown }).name ?? '') : '';
+      errObj && 'name' in errObj
+        ? String((errObj as { name?: unknown }).name ?? '')
+        : classifiedError instanceof Error
+          ? classifiedError.name
+          : '';
     const errMessage =
-      isObj && 'message' in error ? String((error as { message?: unknown }).message ?? '') : '';
-    const errStack = isObj && 'stack' in error ? (error as { stack?: unknown }).stack : undefined;
+      errObj && 'message' in errObj
+        ? String((errObj as { message?: unknown }).message ?? '')
+        : classifiedError instanceof Error
+          ? classifiedError.message
+          : '';
+    const errStack =
+      errObj && 'stack' in errObj
+        ? (errObj as { stack?: unknown }).stack
+        : classifiedError instanceof Error
+          ? classifiedError.stack
+          : undefined;
+
+    // 0. Multer-like upload errors that escaped middleware chain
+    if (
+      errName === 'MulterError' ||
+      errCode.startsWith('LIMIT_') ||
+      errName.toLowerCase().includes('multer') ||
+      errMessage.toLowerCase().includes('hanya file gambar') ||
+      errMessage.toLowerCase().includes('file too large')
+    ) {
+      console.error(`[check-in:${traceId}] Escaped Multer upload error`, {
+        code: errCode,
+        name: errName,
+        message: errMessage.slice(0, 400),
+        user_id: req.user?.id ?? '-',
+        session_id: req.body?.session_id ?? '-',
+      });
+      res.status(400).json({
+        success: false,
+        error:
+          'Foto bukti tidak valid: ukuran terlalu besar, format tidak didukung, atau field gambar tidak sesuai. Coba ambil foto ulang (format JPG/PNG < 3MB).',
+      });
+      return;
+    }
 
     // 1. Duplicate / Unique constraint violation → sudah check-in
     if (errCode === 'P2002') {
@@ -1063,13 +1098,85 @@ export const checkOut = async (req: AuthRequest, res: Response): Promise<void> =
 
     res.status(200).json({ success: true, data: updated, message: 'Check-out berhasil' });
   } catch (err: unknown) {
+    let classifiedErr = err;
+    if (
+      err &&
+      typeof err === 'object' &&
+      (err as { name?: unknown }).name === 'AggregateError' &&
+      Array.isArray((err as { errors?: unknown[] }).errors) &&
+      (err as { errors: unknown[] }).errors.length > 0
+    ) {
+      classifiedErr = (err as { errors: unknown[] }).errors[0];
+    }
+
+    const errObj = classifiedErr && typeof classifiedErr === 'object' ? classifiedErr : null;
     const errCode =
-      err && typeof err === 'object' && 'code' in err
-        ? String((err as { code?: unknown }).code ?? '')
-        : '';
-    const errName = err instanceof Error ? err.name : 'Unknown';
-    const errMessage = err instanceof Error ? err.message : String(err ?? '');
-    const errStack = err instanceof Error ? err.stack : undefined;
+      errObj && 'code' in errObj ? String((errObj as { code?: unknown }).code ?? '') : '';
+    const errName =
+      errObj && 'name' in errObj
+        ? String((errObj as { name?: unknown }).name ?? '')
+        : classifiedErr instanceof Error
+          ? classifiedErr.name
+          : 'Unknown';
+    const errMessage =
+      errObj && 'message' in errObj
+        ? String((errObj as { message?: unknown }).message ?? '')
+        : classifiedErr instanceof Error
+          ? classifiedErr.message
+          : String(classifiedErr ?? '');
+    const errStack =
+      errObj && 'stack' in errObj
+        ? (errObj as { stack?: unknown }).stack
+        : classifiedErr instanceof Error
+          ? classifiedErr.stack
+          : undefined;
+
+    // 0. Multer-like upload errors that escaped middleware chain
+    if (
+      errName === 'MulterError' ||
+      errCode.startsWith('LIMIT_') ||
+      errName.toLowerCase().includes('multer') ||
+      errMessage.toLowerCase().includes('hanya file gambar') ||
+      errMessage.toLowerCase().includes('file too large')
+    ) {
+      console.error(`[check-out:${traceId}] Escaped Multer upload error`, {
+        code: errCode,
+        name: errName,
+        message: errMessage.slice(0, 400),
+        user_id: req.user?.id ?? '-',
+        attendance_id: req.params?.id ?? '-',
+      });
+      res.status(400).json({
+        success: false,
+        error:
+          'Foto bukti tidak valid: ukuran terlalu besar, format tidak didukung, atau field gambar tidak sesuai. Coba ambil foto ulang (format JPG/PNG < 3MB).',
+      });
+      return;
+    }
+
+    // 0b. ZodError / TypeError / RangeError / SyntaxError -> 400
+    if (
+      errName === 'ZodError' ||
+      errName === 'TypeError' ||
+      errName === 'RangeError' ||
+      errName === 'SyntaxError' ||
+      errName.toLowerCase() === 'validationerror'
+    ) {
+      console.error(`[check-out:${traceId}] Input validation / type error`, {
+        code: errCode,
+        name: errName,
+        message: errMessage.slice(0, 500),
+        stack: typeof errStack === 'string' ? errStack.slice(0, 500) : undefined,
+        user_id: req.user?.id ?? '-',
+        attendance_id: req.params?.id ?? '-',
+      });
+      res.status(400).json({
+        success: false,
+        error:
+          'Format data yang dikirim tidak dapat diproses. Muat ulang halaman dan ulangi dari awal (scan QR → foto → kirim).',
+      });
+      return;
+    }
 
     // 1. Client / validation Prisma errors -> 400
     if (errCode === 'P2002') {
@@ -1087,7 +1194,42 @@ export const checkOut = async (req: AuthRequest, res: Response): Promise<void> =
       });
       return;
     }
-    if (errCode.startsWith('P200') && errCode !== 'P2024') {
+
+    const prismaP2RestCheckout = [
+      'P2000',
+      'P2005',
+      'P2006',
+      'P2007',
+      'P2008',
+      'P2009',
+      'P2010',
+      'P2011',
+      'P2012',
+      'P2013',
+      'P2014',
+      'P2015',
+      'P2016',
+      'P2017',
+      'P2018',
+      'P2019',
+      'P2020',
+      'P2021',
+      'P2022',
+      'P2023',
+      'P2026',
+      'P2027',
+      'P2028',
+      'P2029',
+      'P2030',
+      'P2031',
+      'P2032',
+      'P2033',
+      'P2034',
+    ];
+    if (
+      (errCode.startsWith('P200') && errCode !== 'P2024') ||
+      (errCode.startsWith('P20') && prismaP2RestCheckout.includes(errCode))
+    ) {
       console.warn(`[check-out:${traceId}] Prisma query client error`, {
         code: errCode,
         message: errMessage.slice(0, 400),

@@ -1,3 +1,5 @@
+import type { Prisma } from '@prisma/client';
+
 /** Shared Prisma select shapes for session list/dashboard — reduces row payload & join cost */
 
 const locationListSelect = { id: true, name: true } as const;
@@ -92,7 +94,36 @@ export const sessionCheckInSelect = {
   check_in_close_at: true,
   late_threshold_minutes: true,
   require_checkout: true,
-  require_photo_proof: true,
   session_classes: { select: { class_id: true } },
   location: { select: locationCheckInSelect },
-} as const;
+} as const satisfies Prisma.SessionSelect;
+
+// #region debug-point B:session-select
+if (
+  process.env.DEBUG_SESSION_ID === 'attendance-submit-failure' &&
+  process.env.NODE_ENV !== 'production'
+)
+  void import('@prisma/client')
+    .then(({ Prisma }) =>
+      fetch(process.env.DEBUG_SERVER_URL || 'http://127.0.0.1:7777/event', {
+        method: 'POST',
+        body: JSON.stringify({
+          sessionId: 'attendance-submit-failure',
+          runId: process.env.DEBUG_RUN_ID || 'pre-fix',
+          hypothesisId: 'B',
+          location: 'sessionQuerySelect',
+          msg: '[DEBUG] Compare session select with generated Prisma model',
+          data: {
+            unknownFields: Object.keys(sessionCheckInSelect).filter(
+              (key) =>
+                !Prisma.dmmf.datamodel.models
+                  .find((model) => model.name === 'Session')
+                  ?.fields.some((field) => field.name === key)
+            ),
+          },
+          ts: Date.now(),
+        }),
+      })
+    )
+    .catch(() => {});
+// #endregion
