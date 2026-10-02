@@ -11,10 +11,25 @@ import {
   AttendanceCheckoutParams,
 } from '../zod-schemas/index.js';
 import { uploadImageOnly, processAndValidateImage } from '../utils/upload.js';
+import { z } from 'zod';
+import { verifyAttendanceQr } from '../controllers/attendanceQr.controller.js';
 
 const router = Router();
 
 router.use(authenticate);
+
+router.post(
+  '/verify-qr',
+  authorize(['USER']),
+  validateBody(
+    z.object({
+      session_id: z.string().uuid(),
+      qr_token: z.string().trim().min(1).max(2048),
+      action: z.enum(['checkin', 'checkout']).default('checkin'),
+    })
+  ),
+  verifyAttendanceQr
+);
 
 // Request a cryptographic challenge nonce before capturing photo
 router.get('/challenge', getChallenge);

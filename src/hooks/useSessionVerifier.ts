@@ -122,6 +122,7 @@ export function useSessionVerifier(): UseSessionVerifierReturn {
   }, [hasHydrated, isAuthenticated, user, sessionStatus, verifyNow]);
 
   useEffect(() => {
+    cancelledRef.current = false;
     return () => {
       cancelledRef.current = true;
       if (retryTimerRef.current) clearTimeout(retryTimerRef.current);

@@ -5,8 +5,7 @@ import type { PagedResponse } from '../../types/api';
 type PolyData<T> = T[] | { success: false; error?: string } | null | undefined;
 
 const safeArray = <T,>(x: { data?: PolyData<T> } | undefined | null): T[] => {
-  const data = x?.data;
-  return Array.isArray(data) ? (data as T[]) : [];
+  return safeItems<T>(x?.data);
 };
 
 describe('PublicHome Task A: Array.isArray fallback for polymorphic API responses', () => {

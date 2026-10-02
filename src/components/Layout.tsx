@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, lazy, Suspense } from 'react';
+import React, { useCallback, useEffect, useRef, useState, lazy, Suspense } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import {
@@ -31,7 +31,7 @@ import { UserDropdown } from './UserDropdown';
 import { ThemeToggle } from './ThemeToggle';
 
 const NotificationMenu = lazy(() =>
-  import('./NotificationMenu').then((m) => ({ default: m.NotificationMenu })),
+  import('./NotificationMenu').then((m) => ({ default: m.NotificationMenu }))
 );
 import { Button } from '@/components/ui/button';
 import { AdminRouteTransition } from '@/components/admin/AdminRouteTransition';
@@ -48,7 +48,7 @@ export default function Layout() {
 
   const sidebarRef = useRef<HTMLDivElement>(null);
   const hamburgerRef = useRef<HTMLButtonElement>(null);
-  const closeSidebar = () => setSidebarOpen(false);
+  const closeSidebar = useCallback(() => setSidebarOpen(false), []);
   useDialogA11y(sidebarOpen, closeSidebar, {
     containerRef: sidebarRef,
     triggerRef: hamburgerRef,
@@ -157,7 +157,7 @@ export default function Layout() {
         aria-modal={sidebarOpen ? true : undefined}
         aria-label="Sidebar navigasi"
         className={`fixed inset-y-0 left-0 z-30 w-64 transform border-r border-sidebar-border bg-card transition-transform duration-300 ease-in-out lg:translate-x-0 ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          sidebarOpen ? 'visible translate-x-0' : 'invisible -translate-x-full lg:visible'
         }`}
       >
         <div className="flex h-16 items-center justify-between border-b border-sidebar-border bg-card px-6">
@@ -269,8 +269,8 @@ export default function Layout() {
       </div>
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:ml-64">
-        <header className="flex h-16 items-center justify-between border-b border-sidebar-border bg-card px-6">
-          <div className="flex items-center">
+        <header className="z-10 flex h-16 shrink-0 items-center justify-between gap-1 border-b border-sidebar-border bg-card px-2 sm:px-6">
+          <div className="flex min-w-0 items-center">
             <Button
               variant="ghost"
               size="icon"
@@ -287,11 +287,13 @@ export default function Layout() {
                 alt="Logo HM"
                 className="size-8 rounded-lg bg-background/70 p-1 ring-1 ring-border"
               />
-              <span className="text-lg font-semibold text-brand">E-Absensi</span>
+              <span className="truncate text-base font-semibold text-brand sm:text-lg">
+                E-Absensi
+              </span>
             </div>
           </div>
 
-          <div className="ml-auto flex items-center gap-2 sm:gap-4">
+          <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-4">
             <ThemeToggle />
             <Suspense
               fallback={

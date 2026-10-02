@@ -14,7 +14,7 @@ export function DivisionRail({
   label,
   groups,
   centerWhenFits = false,
-  autoplay = true,
+  autoplay = false,
 }: {
   label?: string;
   groups: PublicStructureGroup[];
@@ -233,7 +233,7 @@ export function DivisionRail({
                         key={m.id}
                         to="/struktur-organisasi"
                         draggable={false}
-                        className="relative w-[152px] shrink-0 overflow-hidden rounded-lg bg-slate-100 sm:w-[168px]"
+                        className="relative w-[216px] shrink-0 overflow-hidden rounded-xl bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 sm:w-[256px]"
                       >
                         <div className="relative aspect-[3/4] w-full">
                           {m.photo_url ? (
@@ -241,7 +241,7 @@ export function DivisionRail({
                               url={m.photo_url}
                               alt={m.name}
                               imgClassName="object-cover pointer-events-none select-none"
-                              displayWidth={360}
+                              displayWidth={512}
                             />
                           ) : (
                             <div className="grid h-full w-full place-items-center text-3xl font-bold text-slate-400">
@@ -249,8 +249,8 @@ export function DivisionRail({
                             </div>
                           )}
                           <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent px-2.5 pb-2.5 pt-8">
-                            <div className="truncate text-sm font-semibold text-white">{m.role}</div>
-                            <div className="truncate text-xs text-white/85">{m.name}</div>
+                            <div className="text-sm font-semibold text-white">{m.role}</div>
+                            <div className="mt-1 text-sm text-white">{m.name}</div>
                           </div>
                         </div>
                       </Link>

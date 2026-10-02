@@ -321,7 +321,7 @@ export default function PublicHome() {
           */}
           <section
             aria-label="Beranda organisasi"
-            className="relative isolate min-h-[min(92vh,860px)] overflow-hidden bg-slate-950 text-white"
+            className="relative isolate overflow-hidden bg-slate-950 text-white"
           >
             <div className="absolute inset-0" aria-hidden="true">
               {isLoadingProfile ? (
@@ -337,14 +337,14 @@ export default function PublicHome() {
               ) : (
                 <div className="h-full w-full bg-[radial-gradient(ellipse_at_30%_20%,var(--public-primary)_0%,transparent_55%),linear-gradient(160deg,#0f172a,#1e293b)]" />
               )}
-              <div className="absolute inset-0 bg-gradient-to-r from-slate-950/92 via-slate-950/70 to-slate-950/35" />
+              <div className="absolute inset-0 bg-gradient-to-r from-slate-950/95 via-slate-950/80 to-slate-950/50" />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-slate-950/40" />
               <div className="pointer-events-none absolute -left-24 top-1/4 size-[28rem] rounded-full bg-[var(--public-primary)]/25 blur-3xl" />
             </div>
 
             <PublicEnter
               instant
-              className="relative mx-auto flex min-h-[min(92vh,860px)] max-w-7xl flex-col justify-end px-4 pb-16 pt-28 sm:px-6 sm:pb-20 md:justify-center md:pb-24 md:pt-24"
+              className="relative mx-auto flex min-h-[min(76svh,720px)] max-w-7xl flex-col justify-center px-5 py-16 sm:px-6 sm:py-24"
             >
               <div className="max-w-3xl">
                 <div className="flex items-center gap-4">
@@ -364,7 +364,7 @@ export default function PublicHome() {
                     Kabinet
                   </span>
                   {heroKabinetName ? (
-                    <span className="mt-1 block text-5xl font-extrabold uppercase leading-[0.95] text-[var(--public-primary)] drop-shadow-[0_12px_40px_rgba(0,0,0,0.35)] md:text-7xl lg:text-8xl">
+                    <span className="mt-2 block break-words text-4xl font-extrabold uppercase leading-[1.08] text-white sm:text-6xl lg:text-7xl">
                       {heroKabinetName}
                     </span>
                   ) : null}
@@ -397,7 +397,7 @@ export default function PublicHome() {
                 <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
                   <Link
                     to="/struktur-organisasi"
-                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[var(--public-primary)] px-6 py-3 text-sm font-semibold text-white shadow-[0_18px_40px_-12px_rgba(0,0,0,0.45)] transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-semibold text-slate-900 shadow-lg transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
                   >
                     Struktur Organisasi
                     <ArrowRight size={18} aria-hidden="true" />
@@ -479,9 +479,9 @@ export default function PublicHome() {
                       key={p.id ?? `${name}-${role}`}
                       className="flex w-full max-w-[240px] shrink-0 flex-col items-center text-center break-words sm:max-w-[280px]"
                     >
-                      <div className="relative shrink-0 overflow-hidden rounded-full border-[3px] border-[var(--public-primary)] bg-slate-100 shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] h-36 w-36 sm:h-40 sm:w-40">
+                      <div className="relative shrink-0 overflow-hidden rounded-full border-[3px] border-[var(--public-primary)] bg-slate-100 shadow-[0_18px_45px_-42px_rgba(15,23,42,0.35)] h-48 w-48 sm:h-56 sm:w-56">
                         {p.photo_url ? (
-                          <PublicCoverImage url={p.photo_url} alt={name} imgClassName="object-cover h-full w-full" displayWidth={320} />
+                          <PublicCoverImage url={p.photo_url} alt={name} imgClassName="object-cover h-full w-full" variant="avatar" displayWidth={448} />
                         ) : (
                           <div className="grid h-full w-full place-items-center bg-gradient-to-br from-slate-50 to-slate-100 ring-1 ring-slate-200">
                             <div className="grid size-20 place-items-center rounded-2xl bg-white/85 text-5xl font-extrabold text-[var(--public-primary)] ring-1 ring-black/10">
@@ -512,20 +512,19 @@ export default function PublicHome() {
           )}
 
           {showAboutVideoSection ? (
-          <section className="relative overflow-hidden bg-white">
-            <PublicReveal className="relative mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 md:grid-cols-2 md:py-20">
+          <section id="tentang-kami" aria-label="Tentang kami" className="relative overflow-hidden bg-slate-50">
+            <PublicReveal className={`relative mx-auto grid max-w-7xl items-start gap-8 px-5 py-12 sm:px-6 md:gap-12 md:py-20 ${videoSrc && aboutParagraphs.length ? 'md:grid-cols-2' : ''}`}>
               {videoSrc ? (
-              <div className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_22px_56px_-48px_rgba(15,23,42,0.45)]">
-                <div className="aspect-video w-full">
+              <div className="relative aspect-video w-full self-start overflow-hidden rounded-2xl border border-black/10 bg-slate-900 shadow-lg">
                     <iframe
-                      className="h-full w-full"
+                      className="absolute inset-0 block h-full w-full border-0"
                       src={videoSrc}
                       title="Video Profil"
+                      loading="lazy"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                       referrerPolicy="strict-origin-when-cross-origin"
                       allowFullScreen
                     />
-                </div>
               </div>
               ) : null}
 
@@ -539,7 +538,7 @@ export default function PublicHome() {
                   support={aboutTitle && aboutTitle !== 'Tentang' ? aboutTitle : undefined}
                   className="mb-6"
                 />
-                  <div className="space-y-5 text-[17px] leading-relaxed text-slate-700">
+                  <div className="max-w-prose space-y-4 text-base leading-7 text-slate-700 sm:text-lg sm:leading-8">
                     {aboutParagraphs.map((p) => (
                       <p key={p}>{p}</p>
                     ))}

@@ -5,9 +5,22 @@ import { Button } from '@/components/ui/button';
 const STORAGE_KEY = 'attend-onboarding-dismissed';
 
 export function AttendOnboardingBanner({ onGoAttend }: { onGoAttend?: () => void }) {
-  const [visible, setVisible] = useState(
-    () => typeof localStorage !== 'undefined' && localStorage.getItem(STORAGE_KEY) !== '1'
-  );
+  const [visible, setVisible] = useState(() => {
+    try {
+      return localStorage.getItem(STORAGE_KEY) !== '1';
+    } catch {
+      return true;
+    }
+  });
+
+  const dismiss = () => {
+    setVisible(false);
+    try {
+      localStorage.setItem(STORAGE_KEY, '1');
+    } catch {
+      // Dismissal still works when persistent storage is unavailable.
+    }
+  };
 
   if (!visible) return null;
 
@@ -27,12 +40,9 @@ export function AttendOnboardingBanner({ onGoAttend }: { onGoAttend?: () => void
           type="button"
           variant="ghost"
           size="icon"
-          className="size-8 shrink-0"
+          className="size-11 shrink-0"
           aria-label="Tutup panduan"
-          onClick={() => {
-            localStorage.setItem(STORAGE_KEY, '1');
-            setVisible(false);
-          }}
+          onClick={dismiss}
         >
           <X className="size-4" />
         </Button>
@@ -52,14 +62,7 @@ export function AttendOnboardingBanner({ onGoAttend }: { onGoAttend?: () => void
         </li>
       </ul>
       <div className="mt-4 flex flex-wrap gap-2">
-        <Button
-          type="button"
-          className="min-h-11"
-          onClick={() => {
-            localStorage.setItem(STORAGE_KEY, '1');
-            setVisible(false);
-          }}
-        >
+        <Button type="button" className="min-h-11" onClick={dismiss}>
           Mengerti
         </Button>
         {onGoAttend ? (

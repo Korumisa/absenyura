@@ -20,11 +20,10 @@ const _DEBUG_CAM_KEY = 'DEBUG_CAM';
 function _isDebugCamEnabled(): boolean {
   if (typeof window === 'undefined') return false;
   try {
-    // Enable juga secara implisit saat development mode agar logs ter-collect
     const explicit = window.localStorage.getItem(_DEBUG_CAM_KEY) === '1';
     const importMetaDev =
       (import.meta as ImportMeta & { env?: { DEV?: boolean } })?.env?.DEV === true;
-    return explicit || importMetaDev;
+    return importMetaDev && explicit;
   } catch {
     return false;
   }

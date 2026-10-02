@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import useSWR from 'swr';
+import useSWR, { useSWRConfig } from 'swr';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
 import { useClientPagination } from '@/hooks/useClientPagination';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
@@ -52,6 +52,7 @@ import { useFormDirtyGuard } from '@/hooks/useFormDirtyGuard';
 
 export default function Classes() {
   const navigate = useNavigate();
+  const { mutate: mutateCache } = useSWRConfig();
   const { user: currentUser } = useAuthStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [semesterFilter, setSemesterFilter] = useState<string>('ALL');
@@ -191,10 +192,19 @@ export default function Classes() {
     try {
       const result = await doSaveClass();
       if (result !== undefined) {
+        const savedClass: ClassItem = result.data.data;
+        // Update the detail cache too, so revisiting a class cannot show its old name.
+        await mutateCache(`/classes/${savedClass.id}`, savedClass, { revalidate: false });
+        await mutate(
+          (current) =>
+            editingClass
+              ? current?.map((item) => (item.id === savedClass.id ? savedClass : item))
+              : [...(current ?? []), savedClass],
+          { revalidate: false }
+        );
         setFormBaseline(JSON.stringify(formData));
         setIsSaveConfirmOpen(false);
         setIsModalOpen(false);
-        mutate();
       }
     } finally {
       setSaving(false);

@@ -20,7 +20,7 @@ import { sendValidationError } from '../utils/sendValidationError.js';
 import { queryWithSemesterFallback } from '../utils/prismaErrors.js';
 import { normalizeIp } from '../utils/ip.js';
 
-const VALID_QR_MODES = new Set(['NONE', 'STATIC', 'DYNAMIC']);
+const VALID_QR_MODES = new Set(['STATIC', 'DYNAMIC']);
 const VALID_SESSION_STATUSES = new Set(['UPCOMING', 'ACTIVE', 'CLOSED']);
 
 function isValidQrMode(value: unknown): value is string {
@@ -631,7 +631,9 @@ export const getSessionQR = async (req: AuthRequest, res: Response): Promise<voi
     }
 
     if (session.qr_mode === 'NONE') {
-      res.status(400).json({ success: false, error: 'This session does not use QR codes' });
+      res
+        .status(400)
+        .json({ success: false, error: 'Perbarui sesi dan pilih metode QR terlebih dahulu.' });
       return;
     }
 
@@ -642,7 +644,7 @@ export const getSessionQR = async (req: AuthRequest, res: Response): Promise<voi
 
     if (!session.qr_secret) {
       sendInternalServerError(res, new Error('QR Secret is not configured for this session'), {
-        customErrorMessage: 'QR Secret is not configured for this session',
+        customErrorMessage: 'QR sesi belum tersedia. Perbarui sesi lalu coba lagi.',
       });
       return;
     }

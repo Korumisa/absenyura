@@ -144,6 +144,7 @@ describe('Dashboard ADMIN performance (P2-2)', () => {
             total_sessions: 42,
             today_present: 30,
             today_late: 5,
+            users_must_change_password: 150,
           },
           recent_sessions: expect.any(Array),
           chart_data: expect.any(Array),

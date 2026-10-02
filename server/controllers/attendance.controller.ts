@@ -2,7 +2,7 @@ import { Response } from 'express';
 import type { AuthRequest } from '../types/index.js';
 import prisma from '../utils/prisma.js';
 import { sessionCheckInSelect } from '../utils/sessionQuerySelect.js';
-import { validateDynamicQrToken } from '../utils/dynamicQr.js';
+import { validateSessionQr } from '../utils/sessionQr.js';
 import { logCheckinStep } from '../utils/checkinLogger.js';
 import { triggerSessionCronLazy } from '../jobs/cron.js';
 import {
@@ -433,35 +433,10 @@ export const checkIn = async (req: AuthRequest, res: Response): Promise<void> =>
       return;
     }
 
-    // Layer 1: QR Validation (if not NONE)
-    if (session.qr_mode !== 'NONE') {
-      if (!qr_token || qr_token === 'NO_QR_REQUIRED') {
-        res.status(400).json({ success: false, error: 'Token QR Code diperlukan untuk sesi ini' });
-        return;
-      }
-
-      if (session.qr_mode === 'STATIC') {
-        if (qr_token.trim() !== session.qr_token) {
-          res.status(400).json({ success: false, error: 'Token QR statis tidak valid' });
-          return;
-        }
-      } else if (session.qr_mode === 'DYNAMIC') {
-        if (!session.qr_secret) {
-          res
-            .status(500)
-            .json({ success: false, error: 'QR Secret is not configured for this session' });
-          return;
-        }
-
-        const qrCheck = validateDynamicQrToken(session.id, session.qr_secret, qr_token, now);
-        if (qrCheck.ok === false) {
-          if (qrCheck.error.includes('kedaluwarsa')) {
-            logCheckinStep('qr_expired', session_id, checkinStart, { statusCode: qrCheck.status });
-          }
-          res.status(qrCheck.status).json({ success: false, error: qrCheck.error });
-          return;
-        }
-      }
+    const qrCheck = validateSessionQr(session, qr_token, now);
+    if (!qrCheck.ok) {
+      res.status(qrCheck.status).json({ success: false, error: qrCheck.error });
+      return;
     }
 
     logCheckinStep('qr_valid', session_id, checkinStart);
@@ -1022,29 +997,10 @@ export const checkOut = async (req: AuthRequest, res: Response): Promise<void> =
       return;
     }
 
-    if (session.qr_mode !== 'NONE') {
-      if (!qr_token || qr_token === 'NO_QR_REQUIRED') {
-        res.status(400).json({ success: false, error: 'Token QR Code diperlukan untuk sesi ini' });
-        return;
-      }
-      if (session.qr_mode === 'STATIC') {
-        if (qr_token.trim() !== session.qr_token) {
-          res.status(400).json({ success: false, error: 'Token QR statis tidak valid' });
-          return;
-        }
-      } else if (session.qr_mode === 'DYNAMIC') {
-        if (!session.qr_secret) {
-          res
-            .status(500)
-            .json({ success: false, error: 'QR Secret is not configured for this session' });
-          return;
-        }
-        const qrCheck = validateDynamicQrToken(session.id, session.qr_secret, qr_token, now);
-        if (qrCheck.ok === false) {
-          res.status(qrCheck.status).json({ success: false, error: qrCheck.error });
-          return;
-        }
-      }
+    const qrCheck = validateSessionQr(session, qr_token, now);
+    if (!qrCheck.ok) {
+      res.status(qrCheck.status).json({ success: false, error: qrCheck.error });
+      return;
     }
 
     if (session.location) {

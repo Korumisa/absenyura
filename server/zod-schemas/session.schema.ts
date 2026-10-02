@@ -10,7 +10,7 @@ export const CreateSessionBody = z.object({
     .trim()
     .uuid('Lokasi sesi wajib dipilih')
     .min(1, 'Lokasi sesi wajib dipilih'),
-  qr_mode: z.enum(['NONE', 'STATIC', 'DYNAMIC']).default('NONE'),
+  qr_mode: z.enum(['STATIC', 'DYNAMIC']).default('DYNAMIC'),
   session_start: z.coerce.date(),
   session_end: z.coerce.date(),
   check_in_open_at: z.coerce.date(),
@@ -34,7 +34,7 @@ export const UpdateSessionBody = z.object({
     .uuid('Format location_id tidak valid')
     .min(1, 'Lokasi sesi wajib dipilih')
     .optional(),
-  qr_mode: z.enum(['NONE', 'STATIC', 'DYNAMIC']).optional(),
+  qr_mode: z.enum(['STATIC', 'DYNAMIC']).optional(),
   session_start: z.coerce.date().optional(),
   session_end: z.coerce.date().optional(),
   check_in_open_at: z.coerce.date().optional(),

@@ -126,15 +126,15 @@ export default function Fungsionaris() {
   const renderAvatar = (p: any, size: 'xl' | 'lg' | 'md') => {
     const sizeClass =
       size === 'xl'
-        ? 'h-36 w-36 sm:h-44 sm:w-44'
+        ? 'h-52 w-52 sm:h-64 sm:w-64'
         : size === 'lg'
-          ? 'h-28 w-28 sm:h-32 sm:w-32'
-          : 'h-20 w-20 sm:h-24 sm:w-24';
-    const displayWidth = size === 'xl' ? 352 : size === 'lg' ? 256 : 192;
+          ? 'h-40 w-40 sm:h-52 sm:w-52'
+          : 'h-28 w-28 sm:h-40 sm:w-40';
+    const displayWidth = size === 'xl' ? 512 : size === 'lg' ? 416 : 320;
     return (
       <div
         key={p.id}
-        className="flex w-full max-w-[180px] shrink-0 flex-col items-center text-center break-words sm:max-w-[220px]"
+        className={`flex min-w-0 w-full shrink-0 flex-col items-center text-center break-words ${size === 'xl' ? 'max-w-[280px]' : size === 'lg' ? 'max-w-[240px]' : 'max-w-[190px]'}`}
       >
         <div
           className={[
@@ -295,7 +295,7 @@ export default function Fungsionaris() {
 
                     {/* ROW 4 — TAIL (remaining members) */}
                     {tail.length ? (
-                      <div className="mt-12 grid w-full grid-cols-2 items-start justify-items-center gap-8 sm:grid-cols-4 lg:grid-cols-6">
+                      <div className="mt-12 grid w-full grid-cols-2 items-start justify-items-center gap-6 sm:grid-cols-3 lg:grid-cols-4">
                         {tail.map((p) => renderAvatar(p, 'md'))}
                       </div>
                     ) : null}

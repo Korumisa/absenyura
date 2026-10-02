@@ -517,7 +517,6 @@ export default function AttendQrScanner({
             'Tidak dapat membaca kode. Pastikan QR berada di tengah layar dan cahaya cukup.';
           setQrError({ code: 'SCAN_TIMEOUT' });
           toastError(null, msg);
-          void releaseQrScanner().catch(() => undefined);
         }, 15000);
 
         requestAnimationFrame(() => {
@@ -546,7 +545,6 @@ export default function AttendQrScanner({
         camLog('qr:boot_skipped_sessionLoading');
         return;
       }
-      setQrError(null);
       qrReleasedRef.current = false;
 
       try {
@@ -793,9 +791,6 @@ export default function AttendQrScanner({
             'Tidak dapat membaca kode. Pastikan QR berada di tengah layar dan cahaya cukup.';
           setQrError({ code: 'SCAN_TIMEOUT' });
           toastError(null, msg);
-          void releaseQrScanner().catch(() => {
-            void 0;
-          });
         }, 15000);
       } catch (err) {
         qrStartInFlightRef.current = null;
@@ -854,7 +849,7 @@ export default function AttendQrScanner({
         } else {
           const msg =
             'Kamera tidak dapat dibuka. Tutup aplikasi lain yang memakai kamera, lalu coba lagi.';
-          setQrError({ code: 'PERMISSION', detail: e?.name });
+          setQrError({ code: 'PERMISSION', detail: msg });
           toastError(null, msg);
         }
         if (!qrReleasedRef.current) {
@@ -1034,27 +1029,20 @@ export default function AttendQrScanner({
             aria-live="assertive"
           >
             <p className="font-semibold">
-              {qrError.code === 'PERMISSION' && 'Kamera tidak diizinkan'}
+              {qrError.code === 'PERMISSION' && 'Kamera belum dapat digunakan'}
               {qrError.code === 'SCAN_TIMEOUT' && 'Tidak dapat membaca kode QR'}
-              {qrError.code === 'BAD_SIG' && 'Kode QR tidak valid'}
+              {qrError.code === 'BAD_SIG' && 'QR belum dapat diverifikasi'}
               {qrError.code === 'NOT_ENROLLED' && 'Tidak terdaftar di sesi ini'}
             </p>
             <p className="mt-1">
               {qrError.code === 'PERMISSION' &&
-              qrError.detail &&
-              (qrError.detail.includes('izin') || qrError.detail.includes('digunakan'))
-                ? qrError.detail
-                : qrError.code === 'PERMISSION'
-                  ? 'Kamera tidak diizinkan. Buka pengaturan browser.'
-                  : null}
-              {qrError.code === 'PERMISSION' &&
-                !qrError.detail &&
-                'Kamera tidak diizinkan. Buka pengaturan browser.'}
+                (qrError.detail || 'Izinkan akses kamera melalui pengaturan browser.')}
               {qrError.code === 'SCAN_TIMEOUT' &&
                 'Tidak dapat membaca kode. Pastikan QR berada di tengah layar dan cahaya cukup.'}
-              {qrError.code === 'BAD_SIG' && 'Kode QR tidak valid atau sudah digunakan.'}
+              {qrError.code === 'BAD_SIG' &&
+                (qrError.detail || 'Pindai QR sesi yang benar dari dosen.')}
               {qrError.code === 'NOT_ENROLLED' &&
-                `Anda tidak terdaftar di sesi ini (Kode: ${qrError.detail ?? '-'}). Pindai kode sesi aktif Anda.`}
+                'Anda belum terdaftar di kelas ini. Hubungi dosen atau admin.'}
             </p>
             <Button
               type="button"

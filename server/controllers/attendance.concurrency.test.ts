@@ -19,6 +19,7 @@ const prismaMock = vi.hoisted(() => {
       findFirst: vi.fn(),
       findUnique: vi.fn(),
       create: vi.fn(),
+      update: vi.fn().mockResolvedValue({}),
     },
   };
 });
@@ -26,6 +27,19 @@ const prismaMock = vi.hoisted(() => {
 vi.mock('../utils/prisma.js', () => ({ default: prismaMock }));
 vi.mock('../jobs/cron.js', () => ({ triggerSessionCronLazy: vi.fn() }));
 vi.mock('../utils/checkinLogger.js', () => ({ logCheckinStep: vi.fn() }));
+vi.mock('fs/promises', () => ({
+  default: {
+    rename: vi.fn().mockResolvedValue(undefined),
+    unlink: vi.fn().mockResolvedValue(undefined),
+  },
+}));
+vi.mock('cloudinary', () => ({
+  v2: {
+    uploader: {
+      upload: vi.fn().mockResolvedValue({ secure_url: 'https://example.test/photo.jpg' }),
+    },
+  },
+}));
 
 // Import checkIn after mocking
 import { checkIn } from './attendance.controller';
@@ -48,7 +62,9 @@ const createNonceExpiredError = () => {
 const createSession = (overrides: Record<string, unknown> = {}) => ({
   id: 'session-id',
   status: 'ACTIVE',
-  qr_mode: 'NONE',
+  qr_mode: 'STATIC',
+  qr_token: 'test-qr-token',
+  qr_secret: null,
   session_start: new Date(fixedNow.getTime() - 60 * 60000),
   late_threshold_minutes: 15,
   session_end: new Date(fixedNow.getTime() + 60 * 60000),
@@ -70,6 +86,7 @@ const createReq = (nonce = 'test-nonce') => {
   const body = {
     nonce,
     session_id: 'session-id',
+    qr_token: 'test-qr-token',
     latitude: '-6.2001',
     longitude: '106.8001',
     accuracy: '10',
@@ -266,13 +283,9 @@ describe('checkIn attendance window and late status', () => {
   });
 });
 
-describe('checkIn requires photo evidence for online and offline requests', () => {
-  test('returns 400 before querying the session when offline photo evidence is incomplete', async () => {
-    const req = createReq('offline-nonce-broken-photo');
-    (req as any).header = vi.fn((name: string) => {
-      if (String(name).toLowerCase() === 'x-sync-source') return 'offline-queue';
-      return undefined;
-    });
+describe('checkIn requires QR and photo evidence', () => {
+  test('returns 400 before querying the session when photo evidence is incomplete', async () => {
+    const req = createReq('broken-photo');
     (req as any).file = { size: 1234, mimetype: 'image/jpeg' };
 
     const res = createRes();
@@ -297,18 +310,21 @@ describe('checkIn requires photo evidence for online and offline requests', () =
     expect(prismaMock.attendance.create).toHaveBeenCalled();
   });
 
-  test('proceeds normally (201) with an offline request and valid photo', async () => {
-    const req = createReq('offline-nonce-no-proof-req');
-    (req as any).header = vi.fn((name: string) => {
-      if (String(name).toLowerCase() === 'x-sync-source') return 'offline-queue';
-      return undefined;
-    });
-    (req as any).file = { path: 'tmp-attendance.jpg', size: 1234, mimetype: 'image/jpeg' };
-
+  test('rejects a photo submission without QR', async () => {
+    const req = createReq('no-qr');
+    delete req.body.qr_token;
     const res = createRes();
     await checkIn(req, res);
 
-    expect(res.status).toHaveBeenCalledWith(201);
-    expect(prismaMock.attendance.create).toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(prismaMock.attendance.create).not.toHaveBeenCalled();
+  });
+
+  test('rejects legacy sessions that bypassed QR', async () => {
+    prismaMock.session.findUnique.mockResolvedValue(createSession({ qr_mode: 'NONE' }));
+    const res = createRes();
+    await checkIn(createReq('legacy'), res);
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(prismaMock.attendance.create).not.toHaveBeenCalled();
   });
 });

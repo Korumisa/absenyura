@@ -98,8 +98,8 @@ export function useFormDirtyGuard(
     if (!dirty) return undefined;
     const handler = (e: BeforeUnloadEvent) => {
       e.preventDefault();
-      e.returnValue = confirmMessage;
-      return confirmMessage;
+      e.returnValue = '';
+      return '';
     };
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);

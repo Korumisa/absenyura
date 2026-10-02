@@ -84,7 +84,7 @@ type FormFieldKey =
 type FormFieldErrors = Partial<Record<FormFieldKey, string>>;
 
 function qrModeLabel(mode: string): string {
-  if (mode === 'NONE') return 'Tanpa QR (GPS saja)';
+  if (mode === 'NONE') return 'QR perlu diperbarui';
   if (mode === 'DYNAMIC') return 'QR Dinamis';
   if (mode === 'STATIC') return 'QR Statis';
   return mode;
@@ -118,7 +118,7 @@ export default function Sessions() {
     description: '',
     location_id: '',
     class_ids: [] as string[],
-    qr_mode: 'NONE',
+    qr_mode: 'DYNAMIC',
     session_start: '',
     session_end: '',
     check_in_open_at: '',
@@ -256,7 +256,7 @@ export default function Sessions() {
         description: session.description || '',
         class_ids: classIds,
         location_id: session.location_id,
-        qr_mode: session.qr_mode,
+        qr_mode: session.qr_mode === 'NONE' ? 'DYNAMIC' : session.qr_mode,
         session_start: formatForDateTimeLocal(session.session_start),
         session_end: formatForDateTimeLocal(session.session_end),
         check_in_open_at: formatForDateTimeLocal(session.check_in_open_at),
@@ -283,7 +283,7 @@ export default function Sessions() {
         description: '',
         location_id: locations.length > 0 ? locations[0].id : '',
         class_ids: [] as string[],
-        qr_mode: 'NONE',
+        qr_mode: 'DYNAMIC',
         session_start: nowStr,
         session_end: laterStr,
         check_in_open_at: nowStr,
@@ -630,25 +630,29 @@ export default function Sessions() {
                         <p className="text-sm text-muted-foreground">
                           {sessionClassNames(session)}
                         </p>
-                        <p className="text-xs text-muted-foreground">
-                          {qrModeLabel(session.qr_mode)}
-                        </p>
+                        {(currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN') && (
+                          <p className="text-xs text-muted-foreground">
+                            {qrModeLabel(session.qr_mode)}
+                          </p>
+                        )}
                         <p className="text-xs text-muted-foreground">
                           Dibuat oleh: {session.creator?.name}
                         </p>
                       </div>
                       <div className="mt-5 flex flex-wrap gap-3">
-                        {session.qr_mode !== 'NONE' && session.status !== 'CLOSED' && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="min-h-11"
-                            onClick={() => window.open(`/sessions/${session.id}/qr`, '_blank')}
-                            aria-label={`Tampilkan QR untuk ${session.title}`}
-                          >
-                            QR
-                          </Button>
-                        )}
+                        {(currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN') &&
+                          session.qr_mode !== 'NONE' &&
+                          session.status !== 'CLOSED' && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="min-h-11"
+                              onClick={() => window.open(`/sessions/${session.id}/qr`, '_blank')}
+                              aria-label={`Tampilkan QR untuk ${session.title}`}
+                            >
+                              QR
+                            </Button>
+                          )}
                         {(currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN') && (
                           <>
                             <Button
@@ -715,7 +719,11 @@ export default function Sessions() {
                     <TableHead>Informasi Kelas/Event</TableHead>
                     <TableHead>Jadwal Sesi</TableHead>
                     <TableHead>Kelas</TableHead>
-                    <TableHead>Mode QR & Lokasi</TableHead>
+                    <TableHead>
+                      {currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN'
+                        ? 'Mode QR & Lokasi'
+                        : 'Lokasi'}
+                    </TableHead>
                     <TableHead className="text-center">Status</TableHead>
                     <TableHead className="text-right">Aksi</TableHead>
                   </TableRow>
@@ -807,10 +815,13 @@ export default function Sessions() {
                                 {session.location?.name || 'Lokasi tidak diketahui'}
                               </span>
                             </div>
-                            <div className="text-xs text-muted-foreground flex items-center gap-1.5">
-                              <QrCode size={14} className="text-slate-400" />
-                              <span className="font-medium">{qrModeLabel(session.qr_mode)}</span>
-                            </div>
+                            {(currentUser?.role === 'SUPER_ADMIN' ||
+                              currentUser?.role === 'ADMIN') && (
+                              <div className="text-xs text-muted-foreground flex items-center gap-1.5">
+                                <QrCode size={14} className="text-slate-400" />
+                                <span className="font-medium">{qrModeLabel(session.qr_mode)}</span>
+                              </div>
+                            )}
                           </div>
                         </TableCell>
                         <TableCell className="text-center">
@@ -1055,7 +1066,6 @@ export default function Sessions() {
                                 QR Dinamis (ganti tiap 15 detik)
                               </SelectItem>
                               <SelectItem value="STATIC">QR Statis</SelectItem>
-                              <SelectItem value="NONE">Tanpa QR (GPS saja)</SelectItem>
                             </SelectContent>
                           </Select>
                         )}

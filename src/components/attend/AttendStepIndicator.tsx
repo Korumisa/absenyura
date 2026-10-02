@@ -1,13 +1,12 @@
 import { cn } from '@/lib/utils/utils';
 
-const LABELS = ['Scan QR', 'Lokasi', 'Foto'] as const;
+const LABELS = ['Scan QR', 'Foto & Lokasi', 'Kirim'] as const;
 
 export function AttendStepIndicator({
   currentStep,
   className,
 }: {
-  /** 1 = QR, 2 = lokasi, 3 = foto, 4 = siap kirim */
-  currentStep: 1 | 2 | 3 | 4;
+  currentStep: 1 | 2 | 3;
   className?: string;
 }) {
   const displayStep = Math.min(currentStep, 3);
@@ -51,7 +50,6 @@ export function AttendStepIndicator({
       </ol>
       <p className="mt-2 text-xs text-muted-foreground">
         Langkah {Math.min(displayStep, 3)}/3 · estimasi ±1 menit
-        {currentStep >= 4 ? ' · siap kirim' : ''}
       </p>
     </nav>
   );

@@ -26,6 +26,7 @@ import userRoutes from './routes/users.js';
 import locationRoutes from './routes/locations.js';
 import sessionRoutes from './routes/sessions.js';
 import attendanceRoutes from './routes/attendance.js';
+import { attendanceErrors } from './middlewares/attendanceErrors.js';
 import dashboardRoutes from './routes/dashboard.js';
 import reportRoutes from './routes/reports.js';
 import settingsRoutes from './routes/settings.js';
@@ -156,6 +157,7 @@ app.use(
     optionsSuccessStatus: 204,
   })
 );
+app.use('/api/attendance', attendanceErrors);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());

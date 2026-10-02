@@ -17,6 +17,19 @@ const prismaMock = vi.hoisted(() => {
 });
 
 vi.mock('../utils/prisma.js', () => ({ default: prismaMock }));
+vi.mock('fs/promises', () => ({
+  default: {
+    rename: vi.fn().mockResolvedValue(undefined),
+    unlink: vi.fn().mockResolvedValue(undefined),
+  },
+}));
+vi.mock('cloudinary', () => ({
+  v2: {
+    uploader: {
+      upload: vi.fn().mockResolvedValue({ secure_url: 'https://example.test/photo.jpg' }),
+    },
+  },
+}));
 
 import { checkOut } from './attendance.controller';
 
@@ -42,8 +55,8 @@ describe('checkOut proof validation', () => {
       session: {
         id: 'session-1',
         status: 'ACTIVE',
-        qr_mode: 'NONE',
-        qr_token: null,
+        qr_mode: 'STATIC',
+        qr_token: 'test-qr-token',
         qr_secret: null,
         session_end: new Date(Date.now() + 60 * 60000),
         location: { latitude: -6.2, longitude: 106.8, radius: 100, wifi_bssid: null },
@@ -53,6 +66,7 @@ describe('checkOut proof validation', () => {
     const req = {
       params: { id: 'attendance-1' },
       body: {
+        qr_token: 'test-qr-token',
         latitude: '-6.2001',
         longitude: '106.8001',
         accuracy: '10',
@@ -102,8 +116,8 @@ describe('checkOut proof validation', () => {
       session: {
         id: 'session-1',
         status: 'ACTIVE',
-        qr_mode: 'NONE',
-        qr_token: null,
+        qr_mode: 'STATIC',
+        qr_token: 'test-qr-token',
         qr_secret: null,
         session_end: new Date(now.getTime() - 60_000),
         location: { latitude: -6.2, longitude: 106.8, radius: 100, wifi_bssid: null },
@@ -135,6 +149,7 @@ describe('checkOut proof validation', () => {
     const req = {
       params: { id: 'attendance-1' },
       body: {
+        qr_token: 'test-qr-token',
         latitude: String(latitude),
         longitude: String(longitude),
         accuracy: String(accuracy),

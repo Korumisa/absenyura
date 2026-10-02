@@ -28,12 +28,8 @@ import {
   OFFLINE_USER_MESSAGE,
   ONLINE_USER_MESSAGE,
 } from '@/lib/perf/networkEvents';
-import { getErrorMessage } from '@/lib/http/errorMessage';
-import {
-  saveOfflineAttendance,
-  saveOfflinePhoto,
-  deleteOfflineAttendance,
-} from '@/lib/storage/idb';
+import { attendanceError, attendanceFeedback } from '@/lib/http/attendanceError';
+import { parseAttendanceQr } from '@/lib/http/attendanceQr';
 import { AttendPrivacyBanner } from '@/components/attend/AttendPrivacyBanner';
 import { track } from '@vercel/analytics';
 import { getDeviceFingerprint } from '@/lib/storage/deviceFingerprint';
@@ -53,27 +49,11 @@ import type { StreamWatchdog, WatchdogStatus } from '@/lib/media/camera';
 import { drawCaptureWatermark } from '@/lib/media/drawCaptureWatermark';
 import { encodeAttendancePhoto, prepareAttendancePhoto } from '@/lib/media/imageUpload';
 import ActionLoadingOverlay from '@/components/ActionLoadingOverlay';
-import { useAppStatusStore } from '@/stores/appStatusStore';
 import { useAuthStore } from '@/stores/authStore';
 
 import { Button } from '@/components/ui/button';
 import { SubmitButton } from '@/components/ui/submit-button';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  CardFooter,
-} from '@/components/ui/card';
+import { AttendStepIndicator } from '@/components/attend/AttendStepIndicator';
 
 const AttendQrScanner = lazy(() => import('@/pages/attend/AttendQrScanner'));
 const AttendLocationMap = lazy(() => import('@/pages/attend/AttendLocationMap'));
@@ -160,36 +140,16 @@ export default function Attend() {
   const tokenParam = searchParams.get('token');
   const isCheckoutMode = searchParams.get('checkout') === 'true'; // [UX] A-01, D-02
   const attendanceParam = searchParams.get('attendance');
-  const NO_QR_TOKEN = 'NO_QR_REQUIRED';
-
-  const wizardStep = useAppStatusStore((s) => s.wizardStep);
-  const draftSessionId = useAppStatusStore((s) => s.draftSessionId);
-  const pendingPhotoIdbKey = useAppStatusStore((s) => s.pendingPhotoIdbKey);
-  const setWizardDraft = useAppStatusStore((s) => s.setWizardDraft);
-  const clearWizardDraft = useAppStatusStore((s) => s.clearWizardDraft);
-
-  const [showResumeCard, setShowResumeCard] = useState(false);
-
-  useEffect(() => {
-    if (isCheckoutMode) return;
-    if (wizardStep !== null || draftSessionId !== null || pendingPhotoIdbKey !== null) {
-      setShowResumeCard(true);
-    }
-  }, [wizardStep, draftSessionId, pendingPhotoIdbKey, isCheckoutMode]);
-
-  const [scanResult, setScanResult] = useState<string | null>(tokenParam);
-  const [scanning, setScanning] = useState(!tokenParam);
+  const [scanResult, setScanResult] = useState<string | null>(null);
+  const [scanning, setScanning] = useState(true);
+  const [qrValidating, setQrValidating] = useState(false);
+  const qrValidationGeneration = React.useRef(0);
   const [loading, setLoading] = useState(false);
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [ipAddress, setIpAddress] = useState<string>('');
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
-
-  const handleQrScanSuccess = useCallback((decodedText: string) => {
-    setScanResult(decodedText);
-    setScanning(false);
-  }, []);
 
   useEffect(() => {
     const handleBrowserOnline = () => setIsOffline(false);
@@ -227,31 +187,9 @@ export default function Attend() {
   const [qrResetNonce, setQrResetNonce] = useState(0);
   const isSubmittingRef = React.useRef(false);
 
-  // ── Derived session ID from parameter or scan result ────────────────────────
-  // DIPINDAH KE ATAS: sessionKey useMemo (baris berikutnya) membutuhkan
-  // derivedSessionId, jadi harus dideklarasikan SEBELUM useMemo agar TypeScript
-  // tidak mendeteksi "used before declaration".
   const extractSessionIdAndToken = (rawResult: string | null) => {
-    if (!rawResult) return { sid: sessionParam, tkn: tokenParam };
-
-    try {
-      if (rawResult.includes('http') || rawResult.includes('?session=')) {
-        const urlObj = new URL(
-          rawResult.startsWith('http') ? rawResult : `http://localhost${rawResult}`
-        );
-        const sid = urlObj.searchParams.get('session');
-        const tkn = urlObj.searchParams.get('token');
-        return { sid: sid || sessionParam, tkn: tkn || rawResult };
-      }
-    } catch {
-      /* Not a valid URL, fallback */
-    }
-
-    if (rawResult.includes(':') && rawResult.split(':').length === 3) {
-      return { sid: rawResult.split(':')[0].trim(), tkn: rawResult.trim() };
-    }
-
-    return { sid: sessionParam, tkn: rawResult.trim() };
+    const parsed = rawResult ? parseAttendanceQr(rawResult, sessionParam) : null;
+    return { sid: parsed?.sessionId ?? sessionParam, tkn: parsed?.token ?? null };
   };
 
   const { sid: derivedSessionId, tkn: parsedToken } = extractSessionIdAndToken(scanResult);
@@ -269,13 +207,64 @@ export default function Attend() {
   };
   const [submitError, setSubmitError] = useState<SubmitError | null>(null);
 
+  const handleQrScanSuccess = useCallback(
+    async (decodedText: string) => {
+      const generation = ++qrValidationGeneration.current;
+      const parsed = parseAttendanceQr(decodedText, sessionParam);
+      setScanResult(null);
+      setPhotoBlob(null);
+      setPhotoPreview(null);
+      setSubmitError(null);
+      setQrError(null);
+      setQrValidating(false);
+      if (!parsed) {
+        setScanning(true);
+        setQrResetNonce((n) => n + 1);
+        setQrError({ code: 'BAD_SIG', detail: 'Pindai QR untuk sesi yang dipilih.' });
+        return;
+      }
+      setScanning(false);
+      setQrValidating(true);
+      try {
+        await api.post('/attendance/verify-qr', {
+          session_id: parsed.sessionId,
+          qr_token: parsed.token,
+          action: isCheckoutMode ? 'checkout' : 'checkin',
+        });
+        if (generation !== qrValidationGeneration.current) return;
+        setScanResult(decodedText);
+        setScanning(false);
+        setCheckoutError(null);
+        try {
+          sessionStorage.removeItem(getStickyErrorKey(parsed.sessionId));
+        } catch {
+          // Browsing without storage remains supported.
+        }
+      } catch (error) {
+        if (generation !== qrValidationGeneration.current) return;
+        const { message } = attendanceError(error);
+        setQrError({ code: 'BAD_SIG', detail: message });
+        setScanning(true);
+        setQrResetNonce((n) => n + 1);
+        toastError(null, message);
+      } finally {
+        if (generation === qrValidationGeneration.current) setQrValidating(false);
+      }
+    },
+    [sessionParam, isCheckoutMode]
+  );
+
+  useEffect(() => {
+    if (tokenParam) void handleQrScanSuccess(tokenParam);
+    return () => {
+      qrValidationGeneration.current += 1;
+    };
+  }, [tokenParam, handleQrScanSuccess]);
+
   // ── User visibility guard untuk sticky error ─────────────────────────────────
   // HANYA ketika visibility hidden→visible (user balik dari tab/aplikasi lain),
   // kita restore submitError yang tersimpan di sessionStorage.
-  const sessionKey = useMemo(
-    () => getStickyErrorKey(draftSessionId ?? derivedSessionId ?? null),
-    [draftSessionId, derivedSessionId]
-  );
+  const sessionKey = useMemo(() => getStickyErrorKey(derivedSessionId), [derivedSessionId]);
 
   useEffect(() => {
     // Cleanup TTL checker: setiap 15 detik hapus entry in-flight yang sudah kedaluwarsa
@@ -298,7 +287,11 @@ export default function Attend() {
         if (!raw) return;
         const parsed = JSON.parse(raw) as SubmitError;
         if (parsed && typeof parsed.message === 'string') {
-          setSubmitError({ ...parsed, transient: false });
+          setSubmitError({
+            message: attendanceFeedback(parsed.statusCode, parsed.message).message,
+            statusCode: parsed.statusCode,
+            transient: false,
+          });
         }
       } catch {
         /* corrupted sessionStorage value — ignore */
@@ -336,9 +329,6 @@ export default function Attend() {
     [sessionKey]
   );
 
-  const [storageSaveFailed, setStorageSaveFailed] = useState(false);
-  const storagePermanentlyFailedRef = React.useRef(false);
-
   const photoWatchdogRef = React.useRef<StreamWatchdog | null>(null);
   const photoLockReleaseRef = React.useRef<(() => void) | null>(null);
   const photoSwitchingRef = React.useRef(false);
@@ -359,7 +349,7 @@ export default function Attend() {
   const sessionIdForLoad = isCheckoutMode ? sessionParam : derivedSessionId;
 
   const reloadSession = useCallback(async () => {
-    if (!sessionIdForLoad || sessionIdForLoad === NO_QR_TOKEN) {
+    if (!sessionIdForLoad) {
       setSessionLoading(false);
       return;
     }
@@ -375,12 +365,8 @@ export default function Attend() {
       const res = await api.get(`/sessions/${sessionIdForLoad}`);
       const s = res.data.data;
       setSessionDetails(s);
-      if (!isCheckoutMode && s.qr_mode === 'NONE') {
-        setScanning(false);
-        setScanResult(NO_QR_TOKEN);
-      }
     } catch (err) {
-      const msg = getErrorMessage(err, 'Gagal memuat data sesi absensi.');
+      const msg = attendanceError(err).message;
       setSessionLoadError(msg);
       setSessionDetails(null);
     } finally {
@@ -414,7 +400,7 @@ export default function Attend() {
         session_title: match.session_title,
       });
     } catch (err) {
-      setCheckoutError(getErrorMessage(err, 'Gagal memuat data kehadiran Anda.'));
+      setCheckoutError(attendanceError(err).message);
     } finally {
       setCheckoutLoading(false);
     }
@@ -437,7 +423,7 @@ export default function Attend() {
   }, [reloadSession, reloadCheckout, isCheckoutMode]);
 
   const handleCheckOut = async () => {
-    if (!myAttendance?.id || checkoutSubmitting || isOffline) return;
+    if (!myAttendance?.id || isSubmittingRef.current || checkoutSubmitting || isOffline) return;
     if (!location || !gpsAccuracy || gpsAccuracy <= 0) {
       toastError(null, 'Menunggu lokasi GPS yang valid…');
       return;
@@ -451,11 +437,12 @@ export default function Attend() {
       toastError(null, 'Sesi tidak ditemukan.');
       return;
     }
-    if (sessionDetails?.qr_mode && sessionDetails.qr_mode !== 'NONE' && !scanResult) {
+    if (!scanResult || qrValidating) {
       toastError(null, 'Silakan scan QR Code terlebih dahulu.');
       return;
     }
 
+    isSubmittingRef.current = true;
     setCheckoutSubmitting(true);
     setCheckoutError(null);
     try {
@@ -477,12 +464,12 @@ export default function Attend() {
       const nonce = challengeRes.data?.data?.nonce;
       const signature = challengeRes.data?.data?.signature;
       if (!nonce || !signature) {
-        throw new Error('Gagal mendapatkan security token dari server');
+        throw new Error(attendanceFeedback(503).message);
       }
 
       const deviceFingerprint = await getDeviceFingerprint();
       const formData = new FormData();
-      if (qrToken && qrToken !== NO_QR_TOKEN) {
+      if (qrToken) {
         formData.append('qr_token', qrToken);
       }
       formData.append('latitude', location.lat.toString());
@@ -496,18 +483,26 @@ export default function Attend() {
       formData.append('photo', uploadPhoto, 'checkout.jpg');
 
       const idempotencyKey = crypto.randomUUID();
-      const res = await api.put(`/attendance/${myAttendance.id}/check-out`, formData, {
+      await api.put(`/attendance/${myAttendance.id}/check-out`, formData, {
         headers: {
           'X-Idempotency-Key': idempotencyKey,
         },
       });
-      toastSuccess(res.data?.message || 'Check-out berhasil!');
+      toastSuccess('Check-out berhasil!');
       navigate('/dashboard');
     } catch (err) {
-      const msg = getErrorMessage(err, 'Check-out gagal. Coba lagi.');
+      const feedback = attendanceError(err);
+      const msg = feedback.message;
+      if (feedback.code.startsWith('QR_')) {
+        setScanResult(null);
+        setScanning(true);
+        setPhotoBlob(null);
+        setPhotoPreview(null);
+      }
       setCheckoutError(msg);
-      toastError(err, 'Check-out gagal. Coba lagi.');
+      toastError(null, msg);
     } finally {
+      isSubmittingRef.current = false;
       setCheckoutSubmitting(false);
     }
   };
@@ -520,7 +515,7 @@ export default function Attend() {
     fetch('https://api.ipify.org?format=json')
       .then((res) => res.json())
       .then((data) => setIpAddress(data.ip))
-      .catch((err) => console.error('Gagal mengambil IP', err));
+      .catch(() => setIpAddress(''));
   }, []);
 
   const isSpoofedLocation = (pos: GeolocationPosition) => {
@@ -657,6 +652,7 @@ export default function Attend() {
 
   const startCamera = useCallback(
     async (mode = facingMode) => {
+      if (!scanResult || qrValidating) return;
       if (photoSwitchingRef.current) return;
       if (
         isCameraActive &&
@@ -755,7 +751,15 @@ export default function Attend() {
         setCameraStarting(false);
       }
     },
-    [facingMode, derivedSessionId, sessionParam, tokenParam, isCameraActive]
+    [
+      facingMode,
+      derivedSessionId,
+      sessionParam,
+      tokenParam,
+      isCameraActive,
+      scanResult,
+      qrValidating,
+    ]
   );
 
   const switchCamera = () => {
@@ -809,9 +813,12 @@ export default function Attend() {
       setPhotoBlob(blob);
       setPhotoPreview(URL.createObjectURL(blob));
       stopCamera();
-    } catch (error) {
+    } catch {
       if (generation === captureGenerationRef.current) {
-        toastError(error, 'Foto belum dapat diproses. Silakan ambil foto ulang.');
+        toastError(
+          null,
+          'Foto belum dapat diproses. Tunggu pratinjau kamera lalu ambil foto ulang.'
+        );
       }
     } finally {
       photoProcessingRef.current = false;
@@ -828,70 +835,17 @@ export default function Attend() {
     void startCamera();
   };
 
-  const sessionTagForLog = derivedSessionId || sessionParam || tokenParam || 'checkout-mode';
-  if (typeof window !== 'undefined') {
-    // Guarded: no side effect during SSR
-  }
-  camLog('attend_init_after_callbacks', {
-    wizardStep,
-    draftSessionId,
-    sessionTag: sessionTagForLog,
-  });
-
-  useEffect(() => {
-    if (isCheckoutMode) return;
-    let step: 0 | 1 | 2 = 0;
-    if (!scanning && scanResult) {
-      step = photoBlob ? 2 : 1;
-    }
-    void setWizardDraft({ wizardStep: step, draftSessionId: derivedSessionId || draftSessionId });
-  }, [
-    scanning,
-    scanResult,
-    photoBlob,
-    isCheckoutMode,
-    setWizardDraft,
-    derivedSessionId,
-    draftSessionId,
-  ]);
-
-  useEffect(() => {
-    if (isCheckoutMode) return;
-    let cancelled = false;
-    const timers: number[] = [];
-    void (async () => {
-      try {
-        if (
-          (wizardStep === 1 && draftSessionId && !scanResult) ||
-          (wizardStep === 2 && draftSessionId && !photoBlob)
-        ) {
-          setScanResult(draftSessionId);
-          setScanning(false);
-          setShowResumeCard(false);
-          await awaitPendingCameraRelease();
-          const t = window.setTimeout(() => {
-            if (!cancelled) void startCamera(facingMode);
-          }, 300);
-          timers.push(t);
-        }
-      } catch (e) {
-        camLog('attend_recovery_fail', { err: e });
-      }
-    })();
-    return () => {
-      cancelled = true;
-      timers.forEach((t) => window.clearTimeout(t));
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const handleCheckIn = async () => {
     if (isSubmittingRef.current) return;
+    if (isOffline || !navigator.onLine) {
+      toastError(null, 'Sambungkan internet sebelum mengirim absensi. Data belum terkirim.');
+      return;
+    }
     if (gpsError) {
       toastError(null, `GPS bermasalah: ${gpsError}`);
       return;
     }
-    if (!scanResult) {
+    if (!scanResult || qrValidating) {
       toastError(null, 'Silakan scan QR Code terlebih dahulu.');
       return;
     }
@@ -960,45 +914,6 @@ export default function Attend() {
       const qrToken = parsedToken;
       const deviceFingerprint = await getDeviceFingerprint();
 
-      if (isOffline) {
-        if (storagePermanentlyFailedRef.current) {
-          toastError(null, 'Penyimpanan foto gagal.');
-          setStorageSaveFailed(true);
-          return;
-        }
-        let offlineId: number | null = null;
-        try {
-          offlineId = await saveOfflineAttendance({
-            session_id: sessionId,
-            token: qrToken && qrToken !== NO_QR_TOKEN ? qrToken : undefined,
-            lat: location.lat,
-            lng: location.lng,
-            accuracy: gpsAccuracy,
-            deviceInfo: deviceFingerprint,
-          });
-          await saveOfflinePhoto(offlineId, uploadPhoto);
-        } catch (storageErr) {
-          console.error('Offline storage failed', storageErr);
-          if (offlineId !== null) {
-            try {
-              await deleteOfflineAttendance(offlineId);
-            } catch (cleanupErr) {
-              console.error(
-                'Failed to rollback queued attendance after photo save failure',
-                cleanupErr
-              );
-            }
-          }
-          storagePermanentlyFailedRef.current = true;
-          setStorageSaveFailed(true);
-          toastError(null, 'Penyimpanan foto gagal.');
-          return;
-        }
-        toastSuccess('Tersimpan offline. Akan terkirim otomatis saat internet kembali.');
-        navigate('/dashboard');
-        return;
-      }
-
       // --- ANTI-CHEAT LAYER 2: Request server-signed one-time proof ---
       const photoType = uploadPhoto.type;
       const challengeRes = await api.get('/attendance/challenge', {
@@ -1015,12 +930,12 @@ export default function Attend() {
       const nonce = challengeRes.data?.data?.nonce;
       const signature = challengeRes.data?.data?.signature;
       if (!nonce || !signature) {
-        throw new Error('Gagal mendapatkan security token dari server');
+        throw new Error(attendanceFeedback(503).message);
       }
 
       const formData = new FormData();
       formData.append('session_id', sessionId);
-      if (qrToken && qrToken !== NO_QR_TOKEN) {
+      if (qrToken) {
         formData.append('qr_token', qrToken);
       }
       formData.append('latitude', location.lat.toString());
@@ -1036,13 +951,13 @@ export default function Attend() {
       formData.append('photo', uploadPhoto, 'attendance.jpg');
 
       const idempotencyKey = crypto.randomUUID();
-      const res = await api.post('/attendance/check-in', formData, {
+      await api.post('/attendance/check-in', formData, {
         headers: {
           'X-Idempotency-Key': idempotencyKey,
         },
       });
 
-      toastSuccess(res.data.message || 'Check-in berhasil!');
+      toastSuccess('Check-in berhasil!');
       track('checkin_success');
       navigate('/dashboard');
     } catch (error: unknown) {
@@ -1052,23 +967,14 @@ export default function Attend() {
         message?: string;
       };
       const statusCode = axiosError.response?.status;
-      const apiMsg = getErrorMessage(error, 'Absensi gagal dikirim');
-      const rawServerMsg = axiosError.response?.data?.error;
-      const serverMsg = typeof rawServerMsg === 'string' ? rawServerMsg : apiMsg;
+      const feedback = attendanceError(error);
+      const apiMsg = feedback.message;
+      const serverMsg = apiMsg;
       const lower = apiMsg.toLowerCase();
       const lowerServer = serverMsg.toLowerCase();
-      const isBadSigQrError =
-        lower.includes('qr') ||
-        lower.includes('token') ||
-        lower.includes('kadaluwarsa') ||
-        lower.includes('signature') ||
-        lower.includes('nonce') ||
-        lower.includes('tidak valid') ||
-        lower.includes('security proof');
-      const isNotEnrolled = lower.includes('terdaftar di kelas');
-      const photoMissing =
-        lower.includes('foto') &&
-        (lower.includes('bukti') || lower.includes('ada') || lower.includes('tersedia'));
+      const isBadSigQrError = feedback.code.startsWith('QR_');
+      const isNotEnrolled = feedback.code === 'NOT_ENROLLED';
+      const photoMissing = feedback.code === 'PHOTO_INVALID';
 
       // ── Klasifikasi error: transient (retryable) vs sticky (persisten) ──
       // Transient = coba lagi nanti, TIDAK disimpan ke sticky sessionStorage
@@ -1086,7 +992,7 @@ export default function Attend() {
 
       if (isNotEnrolled) {
         const code = derivedSessionId || '-';
-        const notEnrolledMsg = `Anda tidak terdaftar di sesi ini (Kode: ${code}). Pindai kode sesi aktif Anda.`;
+        const notEnrolledMsg = apiMsg;
         setScanResult(null);
         setScanning(true);
         setPhotoBlob(null);
@@ -1102,23 +1008,25 @@ export default function Attend() {
         setSubmitError(errObj);
         persistErrorIfSticky(errObj);
       } else if (isBadSigQrError) {
-        const badSigMsg = 'Kode QR tidak valid atau sudah digunakan.';
+        const badSigMsg = apiMsg;
         setScanResult(null);
         setScanning(true);
         setPhotoBlob(null);
         setPhotoPreview(null);
-        setQrError({ code: 'BAD_SIG' });
+        setQrError({ code: 'BAD_SIG', detail: apiMsg });
         const errObj: SubmitError = {
           message: badSigMsg,
           hint: 'Scan ulang QR Code dari layar dosen, lalu lanjutkan langkah berikutnya.',
-          transient: false,
+          transient: true,
           statusCode,
         };
         setSubmitError(errObj);
         persistErrorIfSticky(errObj);
         toastError(null, badSigMsg);
       } else if (photoMissing) {
-        const photoMsg = 'Foto bukti absensi tidak tersedia.';
+        const photoMsg = apiMsg;
+        setPhotoBlob(null);
+        setPhotoPreview(null);
         const errObj: SubmitError = {
           message: photoMsg,
           hint: 'Klik tombol "Ambil Foto Bukti" untuk menangkap foto ulang, lalu kirim lagi.',
@@ -1135,9 +1043,12 @@ export default function Attend() {
           toastWarning('Batas permintaan tercapai, tunggu sebentar.');
         } else if (statusCode === 503) {
           const retryMs = axiosError.response?.data?.retry_after_ms;
-          const retrySec = retryMs ? Math.ceil(retryMs / 1000) : 30;
-          hint = `Server sedang maintenance. Coba lagi dalam ${retrySec} detik.`;
-          toastWarning(`Server sibuk, tunggu ${retrySec} detik.`);
+          const retrySec =
+            typeof retryMs === 'number' && Number.isFinite(retryMs)
+              ? Math.max(1, Math.min(300, Math.ceil(retryMs / 1000)))
+              : 30;
+          hint = `Layanan sedang sibuk. Coba lagi dalam ${retrySec} detik.`;
+          toastWarning(`Tunggu ${retrySec} detik sebelum mencoba lagi.`);
         } else if (photoMissing) {
           hint = 'Ambil foto bukti ulang lalu kirim lagi.';
         }
@@ -1150,7 +1061,7 @@ export default function Attend() {
         setSubmitError(errObj);
         persistErrorIfSticky(errObj);
         if (statusCode !== 429 && statusCode !== 503) {
-          toastError(error, 'Absensi gagal dikirim');
+          toastError(null, apiMsg);
         }
       } else {
         // Sticky error default: 403 device mismatch, 404 session gone, 500 with traceId
@@ -1165,7 +1076,7 @@ export default function Attend() {
         let hint = 'Catat waktu kejadian dan hubungi admin jika masalah berlanjut.';
         if (isDeviceMismatch) {
           hint =
-            'Anda diwajibkan menggunakan perangkat yang sama saat pertama kali bind. Hubungi admin untuk reset device.';
+            'Gunakan perangkat yang terdaftar pada akun Anda. Hubungi admin untuk mengganti perangkat.';
         } else if (isSessionGone) {
           hint = 'Sesi kelas sudah berakhir atau dihapus oleh dosen. Scan QR Code sesi yang baru.';
         }
@@ -1177,7 +1088,7 @@ export default function Attend() {
         };
         setSubmitError(errObj);
         persistErrorIfSticky(errObj);
-        toastError(error, 'Absensi gagal dikirim');
+        toastError(null, apiMsg);
       }
     } finally {
       clearInflight();
@@ -1221,26 +1132,7 @@ export default function Attend() {
           {sessionLoadError}
         </p>
         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-          <Button
-            type="button"
-            className="min-h-11"
-            onClick={() => {
-              setSessionLoadError(null);
-              setSessionLoading(true);
-              const sid = sessionIdForLoad;
-              if (!sid) return;
-              api
-                .get(`/sessions/${sid}`)
-                .then((res) => {
-                  setSessionDetails(res.data.data);
-                  setSessionLoadError(null);
-                })
-                .catch((err) =>
-                  setSessionLoadError(getErrorMessage(err, 'Gagal memuat data sesi absensi.'))
-                )
-                .finally(() => setSessionLoading(false));
-            }}
-          >
+          <Button type="button" className="min-h-11" onClick={() => void reloadSession()}>
             Muat ulang
           </Button>
           <Button
@@ -1287,7 +1179,7 @@ export default function Attend() {
                 <div className="size-10 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600" />
                 <p className="text-sm text-muted-foreground">Memuat data…</p>
               </div>
-            ) : checkoutError || !myAttendance ? (
+            ) : !myAttendance ? (
               <div className="p-6" role="alert">
                 <p className="font-semibold text-red-800 dark:text-red-300">
                   {checkoutError || 'Data check-in tidak ditemukan.'}
@@ -1318,105 +1210,124 @@ export default function Attend() {
                     WIB
                   </p>
                 </div>
-                {sessionDetails?.qr_mode && sessionDetails.qr_mode !== 'NONE' && !scanResult ? (
-                  <p className="text-center text-sm text-amber-700 dark:text-amber-400">
-                    Scan QR sesi terlebih dahulu (sama seperti check-in).
-                  </p>
-                ) : null}
-                <div className="relative mx-auto aspect-[3/4] w-full max-w-sm overflow-hidden rounded-xl bg-muted">
-                  {photoPreview ? (
-                    <img
-                      src={photoPreview}
-                      alt="Pratinjau foto check-out"
-                      className="size-full object-cover"
-                    />
+                {!scanResult ? (
+                  qrValidating ? (
+                    <p role="status" className="text-center">
+                      Memeriksa QR sesi...
+                    </p>
                   ) : (
-                    <>
-                      <video
-                        ref={videoRef}
-                        autoPlay
-                        playsInline
-                        muted
-                        aria-hidden="true"
-                        className={`size-full object-cover ${facingMode === 'user' ? 'scale-x-[-1]' : ''}`}
+                    <Suspense fallback={<p role="status">Menyiapkan pemindai QR...</p>}>
+                      <AttendQrScanner
+                        scanning={scanning}
+                        setScanning={setScanning}
+                        externalResult={scanResult}
+                        resetNonce={qrResetNonce}
+                        qrErrorOverride={qrError}
+                        onQrErrorChange={setQrError}
+                        onScanSuccess={handleQrScanSuccess}
                       />
-                      {isCameraActive &&
-                      photoWatchdogStatus !== 'healthy' &&
-                      photoWatchdogStatus !== 'paused' ? (
-                        <div
-                          role="status"
-                          aria-live="polite"
-                          className="absolute left-3 top-3 inline-flex items-center gap-2 rounded-full bg-amber-500/95 px-3 py-1 text-xs font-semibold text-white shadow-lg ring-1 ring-amber-200 backdrop-blur dark:ring-amber-800"
+                    </Suspense>
+                  )
+                ) : (
+                  <>
+                    <div className="relative mx-auto aspect-[3/4] w-full max-w-sm overflow-hidden rounded-xl bg-muted">
+                      {photoPreview ? (
+                        <img
+                          src={photoPreview}
+                          alt="Pratinjau foto check-out"
+                          className="size-full object-cover"
+                        />
+                      ) : (
+                        <>
+                          <video
+                            ref={videoRef}
+                            autoPlay
+                            playsInline
+                            muted
+                            aria-hidden="true"
+                            className={`size-full object-cover ${facingMode === 'user' ? 'scale-x-[-1]' : ''}`}
+                          />
+                          {isCameraActive &&
+                          photoWatchdogStatus !== 'healthy' &&
+                          photoWatchdogStatus !== 'paused' ? (
+                            <div
+                              role="status"
+                              aria-live="polite"
+                              className="absolute left-3 top-3 inline-flex items-center gap-2 rounded-full bg-amber-500/95 px-3 py-1 text-xs font-semibold text-white shadow-lg ring-1 ring-amber-200 backdrop-blur dark:ring-amber-800"
+                            >
+                              <Loader2 size={14} className="animate-spin" aria-hidden="true" />
+                              <span>
+                                {photoWatchdogStatus === 'degraded'
+                                  ? 'Sinyal kamera menurun…'
+                                  : photoWatchdogStatus === 'reconnecting'
+                                    ? 'Memulihkan kamera…'
+                                    : photoWatchdogStatus === 'failed'
+                                      ? 'Kamera terputus'
+                                      : 'Memantau kamera…'}
+                              </span>
+                            </div>
+                          ) : null}
+                        </>
+                      )}
+                      <canvas ref={canvasRef} className="hidden" aria-hidden="true" />
+                    </div>
+                    <div className="flex flex-col gap-3">
+                      {!photoPreview && !isCameraActive ? (
+                        <Button
+                          type="button"
+                          className="w-full"
+                          disabled={cameraStarting}
+                          onClick={() => void startCamera()}
                         >
-                          <Loader2 size={14} className="animate-spin" aria-hidden="true" />
-                          <span>
-                            {photoWatchdogStatus === 'degraded'
-                              ? 'Sinyal kamera menurun…'
-                              : photoWatchdogStatus === 'reconnecting'
-                                ? 'Memulihkan kamera…'
-                                : photoWatchdogStatus === 'failed'
-                                  ? 'Kamera terputus'
-                                  : 'Memantau kamera…'}
-                          </span>
-                        </div>
+                          {cameraStarting ? 'Menyiapkan kamera…' : 'Buka Kamera'}
+                        </Button>
                       ) : null}
-                    </>
-                  )}
-                  <canvas ref={canvasRef} className="hidden" aria-hidden="true" />
-                </div>
-                <div className="flex flex-col gap-3">
-                  {!photoPreview && !isCameraActive ? (
-                    <Button
-                      type="button"
-                      className="w-full"
-                      disabled={cameraStarting}
-                      onClick={() => void startCamera()}
-                    >
-                      {cameraStarting ? 'Menyiapkan kamera…' : 'Buka Kamera'}
-                    </Button>
-                  ) : null}
-                  {!photoPreview && isCameraActive ? (
-                    <Button
-                      type="button"
-                      className="w-full"
-                      disabled={photoProcessing}
-                      aria-busy={photoProcessing}
-                      onClick={() => void takePhoto()}
-                    >
-                      {photoProcessing ? 'Mengompres foto...' : 'Ambil Foto Check-out'}
-                    </Button>
-                  ) : null}
-                  {photoPreview ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="w-full"
-                      onClick={retakePhoto}
-                    >
-                      Ambil Ulang Foto
-                    </Button>
-                  ) : null}
-                  <SubmitButton
-                    type="button"
-                    size="lg"
-                    className="w-full py-6 text-lg font-bold"
-                    onClick={() => void handleCheckOut()}
-                    disabled={isOffline || !photoBlob || !location || !isLocationValid()}
-                    isLoading={checkoutSubmitting}
-                    label="Kirim Check-out"
-                    loadingLabel="Memproses…"
-                    icon={<LogOut size={20} aria-hidden="true" />}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="min-h-11 w-full"
-                    disabled={checkoutSubmitting}
-                    onClick={() => navigate('/dashboard')}
-                  >
-                    Batal
-                  </Button>
-                </div>
+                      {!photoPreview && isCameraActive ? (
+                        <Button
+                          type="button"
+                          className="w-full"
+                          disabled={photoProcessing}
+                          aria-busy={photoProcessing}
+                          onClick={() => void takePhoto()}
+                        >
+                          {photoProcessing ? 'Mengompres foto...' : 'Ambil Foto Check-out'}
+                        </Button>
+                      ) : null}
+                      {photoPreview ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="w-full"
+                          onClick={retakePhoto}
+                        >
+                          Ambil Ulang Foto
+                        </Button>
+                      ) : null}
+                      <SubmitButton
+                        type="button"
+                        size="lg"
+                        className="w-full py-6 text-lg font-bold"
+                        onClick={() => void handleCheckOut()}
+                        disabled={
+                          isOffline || !scanResult || !photoBlob || !location || !isLocationValid()
+                        }
+                        isLoading={checkoutSubmitting}
+                        label="Kirim Check-out"
+                        loadingLabel="Memproses…"
+                        icon={<LogOut size={20} aria-hidden="true" />}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="min-h-11 w-full"
+                        disabled={checkoutSubmitting}
+                        onClick={() => navigate('/dashboard')}
+                      >
+                        Batal
+                      </Button>
+                    </div>
+                  </>
+                )}
                 {checkoutError ? (
                   <p className="text-center text-sm text-red-600 dark:text-red-400" role="alert">
                     {checkoutError}
@@ -1443,60 +1354,7 @@ export default function Attend() {
 
         <AttendPrivacyBanner />
 
-        {showResumeCard && (
-          <Card className="mb-6 border-blue-200 bg-blue-50/70 dark:bg-blue-950/40">
-            <CardHeader>
-              <CardTitle className="text-blue-900 dark:text-blue-200">Check-in Tersimpan</CardTitle>
-              <CardDescription>
-                Anda memiliki check-in yang belum selesai. Lanjutkan?
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                {draftSessionId && (
-                  <span>
-                    Sesi: <code className="font-mono font-semibold">{draftSessionId}</code>
-                    <br />
-                  </span>
-                )}
-                {wizardStep !== null && (
-                  <span>
-                    Langkah:{' '}
-                    {wizardStep === 0 ? 'Scan QR' : wizardStep === 1 ? 'Foto Bukti' : 'Kirim Data'}
-                  </span>
-                )}
-              </p>
-            </CardContent>
-            <CardFooter className="flex gap-3">
-              <Button
-                type="button"
-                onClick={() => {
-                  if (draftSessionId) {
-                    setScanResult(draftSessionId);
-                    setScanning(false);
-                  }
-                  setShowResumeCard(false);
-                  toastSuccess('Melanjutkan check-in...');
-                }}
-                className="flex-1"
-              >
-                Ya
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  clearWizardDraft();
-                  setShowResumeCard(false);
-                  toastInfo('Draft check-in dibatalkan.');
-                }}
-                className="flex-1"
-              >
-                Batalkan
-              </Button>
-            </CardFooter>
-          </Card>
-        )}
+        <AttendStepIndicator currentStep={!scanResult ? 1 : photoBlob ? 3 : 2} />
 
         <div className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-card">
           {isOffline && (
@@ -1548,11 +1406,6 @@ export default function Attend() {
                     >
                       {submitError.transient ? 'Sementara' : 'Tetap'}
                     </span>
-                    {submitError.statusCode ? (
-                      <span className="inline-flex h-5 items-center rounded-full bg-slate-900/10 px-2 text-[10px] font-mono font-semibold tabular-nums text-slate-700 dark:bg-slate-100/10 dark:text-slate-300">
-                        HTTP {submitError.statusCode}
-                      </span>
-                    ) : null}
                   </div>
                   {submitError.hint ? (
                     <p
@@ -1579,24 +1432,11 @@ export default function Attend() {
           )}
 
           {/* Status Indicators */}
-          <div className="grid grid-cols-2 divide-x divide-y divide-border border-b border-border bg-muted/40 md:grid-cols-4 md:divide-y-0">
-            <div className="flex flex-col items-center gap-2 p-5 text-center">
-              <QrCode
-                className={
-                  scanResult ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'
-                }
-                size={24}
-                aria-hidden="true"
-              />
-              <span className="text-xs font-medium text-muted-foreground">QR Code</span>
-              <span className="text-xs font-semibold text-foreground">
-                {sessionDetails?.qr_mode === 'NONE'
-                  ? 'Tidak Perlu'
-                  : scanResult
-                    ? 'Terscan'
-                    : 'Menunggu'}
-              </span>
-            </div>
+          <div
+            role="group"
+            aria-label="Status persyaratan absensi"
+            className="grid grid-cols-1 divide-y divide-border border-b border-border bg-muted/40 sm:grid-cols-3 sm:divide-x sm:divide-y-0"
+          >
             <div className="flex flex-col items-center gap-2 p-5 text-center">
               <MapPin
                 className={
@@ -1693,7 +1533,12 @@ export default function Attend() {
             )}
 
             <div className="flex flex-1 flex-col items-center justify-center">
-              {scanning ? (
+              {qrValidating ? (
+                <div className="flex min-h-64 items-center gap-3" role="status">
+                  <Loader2 className="size-6 animate-spin" aria-hidden="true" />
+                  Memeriksa QR sesi...
+                </div>
+              ) : scanning || !scanResult ? (
                 <Suspense
                   fallback={
                     <div className="flex w-full max-w-md flex-col items-center gap-4">
@@ -1839,7 +1684,7 @@ export default function Attend() {
                     <SubmitButton
                       size="lg"
                       onClick={handleCheckIn}
-                      disabled={!location || !!gpsError || storagePermanentlyFailedRef.current}
+                      disabled={!location || !!gpsError || isOffline || !scanResult}
                       isLoading={loading}
                       label="Kirim Data Absensi"
                       loadingLabel="Mengirim absensi…"
@@ -1862,15 +1707,10 @@ export default function Attend() {
                           stopCamera();
                           setPhotoBlob(null);
                           setPhotoPreview(null);
-                          if (sessionDetails?.qr_mode === 'NONE') {
-                            setScanResult(NO_QR_TOKEN);
-                            setScanning(false);
-                          } else {
-                            setScanResult(null);
-                            setQrError(null);
-                            setScanning(true);
-                            setQrResetNonce((n) => n + 1);
-                          }
+                          setScanResult(null);
+                          setQrError(null);
+                          setScanning(true);
+                          setQrResetNonce((n) => n + 1);
                         }}
                         disabled={loading}
                         className="w-full font-bold"
@@ -1885,31 +1725,6 @@ export default function Attend() {
           </div>
         </div>
       </div>
-      <Dialog open={storageSaveFailed}>
-        <DialogContent
-          onEscapeKeyDown={(e) => e.preventDefault()}
-          onPointerDownOutside={(e) => e.preventDefault()}
-        >
-          <DialogHeader>
-            <DialogTitle className="text-red-700 dark:text-red-400">Penyimpanan Gagal</DialogTitle>
-            <DialogDescription className="pt-2">
-              Penyimpanan foto gagal (ruang penyimpanan penuh?). Harap bersihkan cache browser atau
-              gunakan perangkat lain.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              type="button"
-              onClick={() => {
-                navigate('/dashboard');
-              }}
-              className="min-h-11"
-            >
-              Kembali ke Dashboard
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </>
   );
 }

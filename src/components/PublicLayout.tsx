@@ -38,8 +38,12 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const key = 'public-prefetch-v1';
-    if (window.sessionStorage.getItem(key) === '1') return;
-    window.sessionStorage.setItem(key, '1');
+    try {
+      if (window.sessionStorage.getItem(key) === '1') return;
+      window.sessionStorage.setItem(key, '1');
+    } catch {
+      return;
+    }
 
     const urls = ['/public-site/profile', '/public-site/categories'];
     void Promise.allSettled(urls.map((url) => mutate(url, fetcher(url), { revalidate: false })));

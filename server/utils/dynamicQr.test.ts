@@ -5,6 +5,7 @@ import {
   QR_GRACE_MS,
   QR_WINDOW_MS,
   validateDynamicQrToken,
+  signDynamicQrPayload,
 } from './dynamicQr.js';
 
 describe('dynamicQr', () => {
@@ -31,5 +32,42 @@ describe('dynamicQr', () => {
     const token = buildDynamicQrToken(sessionId, secret, scannedAt);
     const result = validateDynamicQrToken(sessionId, secret, token, new Date());
     expect(result.ok).toBe(false);
+  });
+
+  it.each([0, 15_000, 30_000, 60_000, 89_999, 90_000])(
+    'accepts an authentic token at age %i ms',
+    (age) => {
+      const bucket = getQrBucketTimestamp(1_700_000_000_123);
+      const token = buildDynamicQrToken(sessionId, secret, bucket);
+      expect(validateDynamicQrToken(sessionId, secret, token, new Date(bucket + age)).ok).toBe(
+        true
+      );
+    }
+  );
+
+  it('rejects a token immediately beyond grace and tokens from the future', () => {
+    const bucket = 1_700_000_010_000;
+    const token = buildDynamicQrToken(sessionId, secret, bucket);
+    expect(validateDynamicQrToken(sessionId, secret, token, new Date(bucket + 90_001)).ok).toBe(
+      false
+    );
+    expect(validateDynamicQrToken(sessionId, secret, token, new Date(bucket - 1)).ok).toBe(false);
+  });
+
+  it('does not accept an advanced timestamp with the old signature', () => {
+    const bucket = getQrBucketTimestamp(Date.now());
+    const signature = signDynamicQrPayload(`${sessionId}:${bucket - QR_WINDOW_MS}`, secret);
+    expect(
+      validateDynamicQrToken(sessionId, secret, `${sessionId}:${bucket}:${signature}`).ok
+    ).toBe(false);
+  });
+
+  it('rejects malformed timestamps and other sessions', () => {
+    const bucket = getQrBucketTimestamp(Date.now());
+    const token = buildDynamicQrToken(sessionId, secret, bucket);
+    expect(
+      validateDynamicQrToken(sessionId, secret, token.replace(String(bucket), `${bucket}x`)).ok
+    ).toBe(false);
+    expect(validateDynamicQrToken('other-session', secret, token).ok).toBe(false);
   });
 });

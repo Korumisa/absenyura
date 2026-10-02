@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import {
   pickPreferredCameraId,
@@ -172,10 +173,11 @@ describe('waitForCameraRelease (adaptive polling)', () => {
     }
   });
 
-  test.skip('resolves within stable streak when active track count is zero', async () => {
-    // Skipped: jsdom lacks faithful MediaStream + timer microtask scheduling;
-    // polling logic is exercised end-to-end via integration flows instead.
-    await waitForCameraRelease(50);
+  test('resolves within stable streak when active track count is zero', async () => {
+    const released = waitForCameraRelease(50);
+    await vi.runAllTimersAsync();
+    await released;
+    expect(vi.getTimerCount()).toBe(0);
   }, 1000);
 });
 
@@ -232,12 +234,12 @@ describe('watchdog: qr-scan preset defaults', () => {
     }
   });
 
-  test('TR-0.2 createStreamHealthWatchdog without preset keeps legacy threshold=1 and grace=0', () => {
+  test('TR-0.2 createStreamHealthWatchdog defaults to threshold=2 and grace=0', () => {
     const wd = createStreamHealthWatchdog(null, null, {
       reconnect: { enabled: false },
     }) as WatchdogWithTest;
     try {
-      expect(wd._test.getConsecutiveThreshold()).toBe(1);
+      expect(wd._test.getConsecutiveThreshold()).toBe(2);
       expect(wd._test.getGracePeriodMs()).toBe(0);
     } finally {
       wd.destroy();

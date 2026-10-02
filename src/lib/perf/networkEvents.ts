@@ -2,7 +2,7 @@
 export const APP_ONLINE_EVENT = 'app:network-online';
 
 export const OFFLINE_USER_MESSAGE =
-  'Anda sedang offline. Lanjutkan mengisi absensi — data akan disinkronkan otomatis saat internet kembali.';
+  'Koneksi internet terputus. Sambungkan kembali sebelum mengirim absensi. Data belum terkirim.';
 
 export const ONLINE_USER_MESSAGE = 'Koneksi kembali. Melanjutkan tanpa perlu muat ulang halaman.';
 

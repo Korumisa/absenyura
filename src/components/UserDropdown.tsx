@@ -57,9 +57,10 @@ export function UserDropdown() {
         onClick={() => setIsOpen(!isOpen)}
         type="button"
         aria-haspopup="menu"
+        aria-label="Menu akun pengguna"
         aria-expanded={isOpen}
         aria-controls={menuId}
-        className="flex items-center gap-3 rounded-lg border-l border-border py-1 pl-4 pr-2 transition-colors hover:bg-muted/50 focus:outline-none"
+        className="flex min-h-11 min-w-11 items-center gap-3 rounded-lg border-l border-border py-1 pl-3 pr-2 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       >
         <div className="size-8 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-700 text-brand font-bold">
           {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}

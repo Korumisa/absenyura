@@ -103,7 +103,7 @@ model Session {
   location               Location @relation(fields: [location_id], references: [id])
   created_by_id          String
   creator                User     @relation("CreatedSessions", fields: [created_by_id], references: [id])
-  qr_mode                String   @default("NONE") // DYNAMIC, STATIC, NONE
+  qr_mode                String   @default("DYNAMIC") // DYNAMIC, STATIC
   qr_token               String?
   qr_secret              String?
   session_start          DateTime

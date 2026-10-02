@@ -15,7 +15,6 @@ export * from './perf/motionPresets';
 export * from './perf/networkEvents';
 
 export * from './storage/deviceFingerprint';
-export * from './storage/idb';
 
 export * from './a11y/useReducedMotion';
 export { default as useHorizontalWheelScroll } from './a11y/useHorizontalWheelScroll';

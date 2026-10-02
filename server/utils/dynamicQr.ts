@@ -37,7 +37,7 @@ export function buildDynamicQrToken(
 export type DynamicQrValidationResult = { ok: true } | { ok: false; error: string; status: number };
 
 /**
- * Validasi token dinamis: HMAC + bucket saat ini/sebelumnya + batas umur.
+ * Validate the signed timestamp and enforce the upload grace period.
  */
 export function validateDynamicQrToken(
   sessionId: string,
@@ -60,8 +60,12 @@ export function validateDynamicQrToken(
     return { ok: false, status: 400, error: 'QR bukan untuk sesi ini' };
   }
 
-  const scannedTimestamp = parseInt(scannedTimestampStr, 10);
-  if (!Number.isFinite(scannedTimestamp) || scannedTimestamp < 0) {
+  const scannedTimestamp = Number(scannedTimestampStr);
+  if (
+    !/^\d+$/.test(scannedTimestampStr) ||
+    !Number.isSafeInteger(scannedTimestamp) ||
+    scannedTimestamp < 0
+  ) {
     return {
       ok: false,
       status: 400,
@@ -70,45 +74,26 @@ export function validateDynamicQrToken(
   }
 
   const payload = buildDynamicQrPayload(scannedSessionId, scannedTimestamp);
-  const prevTimestamp = scannedTimestamp - QR_WINDOW_MS;
-  const prevPayload = buildDynamicQrPayload(scannedSessionId, prevTimestamp);
-
   const expectedCurrent = signDynamicQrPayload(payload, secret);
-  const expectedPrev = signDynamicQrPayload(prevPayload, secret);
 
   const sigBuf = Buffer.from(signature, 'utf8');
   let isCurrentValid = false;
-  let isPrevValid = false;
   try {
     isCurrentValid =
       sigBuf.length === Buffer.byteLength(expectedCurrent, 'utf8') &&
       crypto.timingSafeEqual(sigBuf, Buffer.from(expectedCurrent, 'utf8'));
-    isPrevValid =
-      sigBuf.length === Buffer.byteLength(expectedPrev, 'utf8') &&
-      crypto.timingSafeEqual(sigBuf, Buffer.from(expectedPrev, 'utf8'));
   } catch {
     return { ok: false, status: 400, error: 'QR Code tidak valid / dimanipulasi' };
   }
 
-  if (!isCurrentValid && !isPrevValid) {
+  if (!isCurrentValid) {
     return { ok: false, status: 400, error: 'QR Code tidak valid / dimanipulasi' };
   }
 
   const nowMs = now.getTime();
-  const serverBucket = getQrBucketTimestamp(nowMs);
-  const serverPrevBucket = serverBucket - QR_WINDOW_MS;
-
-  // Toleransi satu window mundur: token dari bucket sebelumnya masih sah di awal window baru
   const bucketAligned = scannedTimestamp % QR_WINDOW_MS === 0;
-  const inAllowedWindow =
-    bucketAligned && (scannedTimestamp === serverBucket || scannedTimestamp === serverPrevBucket);
-
-  if (!inAllowedWindow) {
-    return { ok: false, status: 400, error: 'QR Code sudah kedaluwarsa. Silakan scan ulang' };
-  }
-
   const qrAgeMs = nowMs - scannedTimestamp;
-  if (qrAgeMs > QR_GRACE_MS) {
+  if (!bucketAligned || qrAgeMs < 0 || qrAgeMs > QR_GRACE_MS) {
     return { ok: false, status: 400, error: 'QR Code sudah kedaluwarsa. Silakan scan ulang' };
   }
 

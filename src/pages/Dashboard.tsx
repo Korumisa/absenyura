@@ -24,7 +24,6 @@ import { AttendanceChartSkeleton } from '@/components/charts/AttendanceChartSkel
 import { type ChartFilterValue } from '@/lib/utils/attendanceChartTheme';
 import { cn } from '@/lib/utils/utils';
 import { useSwrPageState } from '@/hooks/useSwrPageState';
-import { useInView } from '@/hooks/useInView';
 
 const DashboardAttendanceBarChart = lazy(
   () => import('@/components/charts/DashboardAttendanceBarChart')
@@ -246,13 +245,6 @@ export default function Dashboard() {
 
   const [dateRange, setDateRange] = useState('30');
 
-  /* [ANIM] useInView hooks — DIPASANG di top-level component body
-   * (RULES OF HOOKS: JANGAN pernah panggil hook di dalam map/loop/if/IIFE).
-   * TriggerOnce=true default → animasi reveal 1x saja saat masuk viewport,
-   * tidak recalc saat scroll bolak-balik (hemat CPU + INP score aman). */
-  const statsGridInView = useInView<HTMLDivElement>();
-  const statsGrid = statsGridInView;
-
   const fetcher = (url: string) => api.get(url).then((res) => res.data.data);
   const swr = useSWR(user?.id ? `/dashboard?range=${dateRange}` : null, fetcher, {
     revalidateOnFocus: false,
@@ -281,7 +273,11 @@ export default function Dashboard() {
 
   const activeSession = useMemo(() => {
     const sessions = data?.recent_sessions ?? [];
-    return sessions.find((s: { status?: string }) => s.status === 'ACTIVE') ?? null;
+    return (
+      sessions.find(
+        (s: DashboardRecentSession) => s.status === 'ACTIVE' && !s.attendances?.length
+      ) ?? null
+    );
   }, [data?.recent_sessions]);
 
   const chartData = data?.chart_data ?? [];
@@ -354,7 +350,7 @@ export default function Dashboard() {
         <SlowLoadingHint onRetry={() => page.retry()} />
       ) : !page.data ? null : isUser ? (
         // ================= USER DASHBOARD (Modern & Clean) =================
-        <div className="space-y-8">
+        <div className="space-y-5 sm:space-y-6">
           <AttendOnboardingBanner
             onGoAttend={
               activeSession ? () => navigate(`/attend?session=${activeSession.id}`) : undefined
@@ -412,19 +408,14 @@ export default function Dashboard() {
               excused: 0,
               percentage: 0,
             };
-            /* [ANIM] Gunakan useInView yang sudah di-init di TOP-LEVEL component
-             * body (RULES OF HOOKS COMPLIANT). triggerOnce=true. */
-            const on = statsGrid.inView ? 'reveal-scroll-visible' : '';
             return (
               <div
-                ref={statsGrid.ref}
-                className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6"
+                className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4"
                 aria-label="Ringkasan statistik kehadiran"
               >
                 <div
                   className={cn(
-                    'reveal-scroll stagger-reveal-1 card-hover-lift',
-                    on,
+                    'card-hover-lift',
                     'bg-card text-card-foreground p-4 sm:p-6 rounded-3xl border border-border shadow-sm hover:shadow-md group'
                   )}
                 >
@@ -436,8 +427,7 @@ export default function Dashboard() {
                 </div>
                 <div
                   className={cn(
-                    'reveal-scroll stagger-reveal-2 card-hover-lift',
-                    on,
+                    'card-hover-lift',
                     'bg-card text-card-foreground p-4 sm:p-6 rounded-3xl border border-border shadow-sm hover:shadow-md group'
                   )}
                 >
@@ -451,8 +441,7 @@ export default function Dashboard() {
                 </div>
                 <div
                   className={cn(
-                    'reveal-scroll stagger-reveal-3 card-hover-lift',
-                    on,
+                    'card-hover-lift',
                     'bg-card text-card-foreground p-4 sm:p-6 rounded-3xl border border-border shadow-sm hover:shadow-md group'
                   )}
                 >
@@ -469,8 +458,7 @@ export default function Dashboard() {
 
                 <div
                   className={cn(
-                    'reveal-scroll stagger-reveal-4 card-hover-lift',
-                    on,
+                    'card-hover-lift',
                     'bg-card text-card-foreground p-4 sm:p-6 rounded-3xl border border-border shadow-sm hover:shadow-md group'
                   )}
                 >
@@ -478,10 +466,10 @@ export default function Dashboard() {
                     <BarChart3 size={24} />
                   </div>
                   <p className="text-sm text-muted-foreground font-medium mb-1">Rasio Kehadiran</p>
-                  <div className="flex items-end gap-2">
+                  <div className="flex flex-wrap items-end gap-2">
                     <p className="text-3xl font-extrabold text-foreground">{stats.percentage}%</p>
                     <span
-                      className={`text-xs font-bold mb-1.5 ${stats.percentage >= 80 ? 'text-green-500' : 'text-red-500'}`}
+                      className={`text-xs font-bold mb-1.5 ${stats.percentage >= 80 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}
                     >
                       {stats.percentage >= 80 ? 'Aman' : 'Perlu perhatian'}
                     </span>

@@ -15,7 +15,10 @@ const DEFAULT_PREFIXES: StrippablePrefix = [
   '__react',
 ] as const;
 
-export function stripDomExpandos(rootId: string, prefixes: StrippablePrefix = DEFAULT_PREFIXES): void {
+export function stripDomExpandos(
+  rootId: string,
+  prefixes: StrippablePrefix = DEFAULT_PREFIXES
+): void {
   const root = document.getElementById(rootId);
   if (!root) return;
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT);
@@ -23,7 +26,7 @@ export function stripDomExpandos(rootId: string, prefixes: StrippablePrefix = DE
   while (node) {
     const el = node as HTMLElement;
     for (const key of Object.keys(el)) {
-      if (prefixes.some((p) => key.startsWith(p)) || key.startsWith('_')) {
+      if (prefixes.some((p) => key.startsWith(p))) {
         try {
           delete (el as unknown as Record<string, unknown>)[key];
         } catch {
@@ -35,7 +38,7 @@ export function stripDomExpandos(rootId: string, prefixes: StrippablePrefix = DE
       const keysToRemove = Object.keys(el.dataset).filter((k) =>
         prefixes.some((p) => k.toLowerCase().startsWith(p.toLowerCase()))
       );
-      for (const k of keysToRemove) el.removeAttribute(`data-${k}`);
+      for (const k of keysToRemove) delete el.dataset[k];
     }
     node = walker.nextNode();
   }
