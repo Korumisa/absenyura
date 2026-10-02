@@ -122,6 +122,11 @@ export default function Attend() {
   const [ipAddress, setIpAddress] = useState<string>('');
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
+  const handleQrScanSuccess = useCallback((decodedText: string) => {
+    setScanResult(decodedText);
+    setScanning(false);
+  }, []);
+
   useEffect(() => {
     const handleBrowserOnline = () => setIsOffline(false);
     const handleBrowserOffline = () => setIsOffline(true);
@@ -1353,10 +1358,7 @@ export default function Attend() {
                     resetNonce={qrResetNonce}
                     qrErrorOverride={qrError}
                     onQrErrorChange={setQrError}
-                    onScanSuccess={(decodedText) => {
-                      setScanResult(decodedText);
-                      setScanning(false);
-                    }}
+                    onScanSuccess={handleQrScanSuccess}
                   />
                 </Suspense>
               ) : !photoBlob ? (

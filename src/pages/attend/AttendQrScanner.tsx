@@ -59,10 +59,32 @@ export default function AttendQrScanner({
   const qrDecodeTimeoutRef = useRef<number | null>(null);
   const qrDecodedSuccessRef = useRef(false);
   const qrReleasedRef = useRef(false);
+  // ── Incoming upstream refs (watchdog + in-flight guard) ──────────────────
   const qrStartInFlightRef = useRef<Promise<Html5Qrcode | null> | null>(null);
   const qrSwitchingRef = useRef(false);
   const qrWatchdogRef = useRef<StreamWatchdog | null>(null);
   const qrLockReleaseRef = useRef<(() => void) | null>(null);
+  // ── Stable callback refs (event-ref pattern) ────────────────────────────
+  // onScanSuccess dan onQrErrorChange harus NEVER masuk ke dependency array
+  // effect scanner — karena identity mereka berubah di setiap parent re-render
+  // (bahkan useCallback sekalipun). Selalu sinkronkan via useRef dan panggil
+  // .current di lokasi pemakaian. Ini mencegah "camera open→close flicker".
+  const onScanSuccessRef = useRef<(decodedText: string) => void>(onScanSuccess);
+  const onQrErrorChangeRef = useRef<
+    ((err: { code: QrErrorType; detail?: string } | null) => void) | undefined
+  >(onQrErrorChange);
+
+  useEffect(() => {
+    onScanSuccessRef.current = onScanSuccess;
+  }, [onScanSuccess]);
+
+  useEffect(() => {
+    onQrErrorChangeRef.current = onQrErrorChange;
+  }, [onQrErrorChange]);
+  // ── Global noise-catcher refs ─────────────────────────────────────────────
+  // html5-qrcode's RenderedCameraImpl aborts fire from inside a postMessage
+  // scheduler (async). addEventListener('error', capture) misses them — we
+  // must also install a legacy `window.onerror` setter and `unhandledrejection`.
   const qrPrevOnErrorRef = useRef<OnErrorEventHandlerNonNull | null>(null);
   const qrUnhandledHandlerRef = useRef<((ev: PromiseRejectionEvent) => void) | null>(null);
   const qrCaptureErrorHandlerRef = useRef<((ev: ErrorEvent) => void) | null>(null);
@@ -80,15 +102,12 @@ export default function AttendQrScanner({
 
   const qrError = qrErrorOverride !== undefined ? qrErrorOverride : internalQrError;
 
-  const setQrError = useCallback(
-    (err: { code: QrErrorType; detail?: string } | null) => {
-      if (onQrErrorChange) {
-        onQrErrorChange(err);
-      }
-      setInternalQrError(err);
-    },
-    [onQrErrorChange]
-  );
+  const setQrError = useCallback((err: { code: QrErrorType; detail?: string } | null) => {
+    if (onQrErrorChangeRef.current) {
+      onQrErrorChangeRef.current(err);
+    }
+    setInternalQrError(err);
+  }, []);
 
   const loadQrCamera = useCallback(async (preferRear: boolean) => {
     try {
@@ -422,7 +441,7 @@ export default function AttendQrScanner({
                 })();
                 registerPendingCameraRelease(releaseP);
                 await releaseP;
-                onScanSuccess(decodedText);
+                onScanSuccessRef.current(decodedText);
               },
               () => {}
             );
@@ -689,7 +708,7 @@ export default function AttendQrScanner({
               })();
               registerPendingCameraRelease(releaseP);
               await releaseP;
-              onScanSuccess(decodedText);
+              onScanSuccessRef.current(decodedText);
             },
             () => {
               /* repeat scan failures are expected until a valid QR is presented */
@@ -735,12 +754,75 @@ export default function AttendQrScanner({
             void 0;
           });
         }, 15000);
-      } catch {
+      } catch (err) {
         qrStartInFlightRef.current = null;
         clearQrTimeout();
-        const msg = 'Kamera tidak diizinkan. Buka pengaturan browser.';
-        setQrError({ code: 'PERMISSION' });
-        toastError(null, msg);
+        const e = err as { name?: string; message?: string };
+        const name = (e?.name ?? '').toLowerCase();
+        const raw = (e?.message ?? '').toLowerCase();
+        const isPermission =
+          name === 'notallowederror' ||
+          name === 'permissiondeniederror' ||
+          name === 'securityerror';
+        const isTransient =
+          name === 'notreadableerror' ||
+          name === 'trackstarterror' ||
+          name === 'aborterror' ||
+          raw.includes('could not start video source') ||
+          raw.includes('failed to allocate videosource') ||
+          raw.includes('canceled') ||
+          raw.includes('aborted');
+
+        if (isTransient && bootGen === qrBootGenRef.current && !cancelled) {
+          try {
+            if (qr && !qrReleasedRef.current) {
+              try {
+                if (qr.isScanning) await qr.stop();
+                qr.clear();
+              } catch {
+                void 0;
+              }
+            }
+            stripHtml5QrDomSignatures('qr-reader');
+          } catch {
+            void 0;
+          }
+          void (async () => {
+            await waitForCameraRelease(500);
+            if (
+              bootGen === qrBootGenRef.current &&
+              !cancelled &&
+              !qrReleasedRef.current &&
+              !scannerRef.current
+            ) {
+              setQrBootNonce((n) => n + 1);
+            }
+          })();
+          void releaseQrScanner().catch(() => {
+            void 0;
+          });
+          return;
+        }
+
+        if (isPermission) {
+          const msg = 'Kamera tidak diizinkan. Buka pengaturan browser.';
+          setQrError({ code: 'PERMISSION' });
+          toastError(null, msg);
+        } else {
+          const msg =
+            'Kamera tidak dapat dibuka. Tutup aplikasi lain yang memakai kamera, lalu coba lagi.';
+          setQrError({ code: 'PERMISSION', detail: e?.name });
+          toastError(null, msg);
+        }
+        if (!qrReleasedRef.current) {
+          qrReleasedRef.current = true;
+          try {
+            qr.clear();
+          } catch {
+            void 0;
+          }
+          stripHtml5QrDomSignatures('qr-reader');
+        }
         void releaseQrScanner().catch(() => {
           void 0;
         });
@@ -770,7 +852,6 @@ export default function AttendQrScanner({
     qrBootNonce,
     resetNonce,
     releaseQrScanner,
-    onScanSuccess,
     setQrError,
     cleanupQrWatchdog,
   ]);
