@@ -3,6 +3,7 @@ import { Response } from 'express';
 import type { AuthRequest } from '../types/index.js';
 import prisma from '../utils/prisma.js';
 import { queryWithSemesterFallback } from '../utils/prismaErrors.js';
+import { sendInternalServerError } from '../utils/errorResponse.js';
 
 function parsePagination(
   query: Request['query'],
@@ -295,6 +296,6 @@ export const getReports = async (req: AuthRequest, res: Response): Promise<void>
     });
   } catch (error) {
     console.error('Error fetching reports:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };

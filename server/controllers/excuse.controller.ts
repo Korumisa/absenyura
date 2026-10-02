@@ -6,7 +6,7 @@ import fs from 'fs';
 import path from 'path';
 import { v2 as cloudinary } from 'cloudinary';
 import { assertAdminSessionScope } from '../utils/sessionAccess.js';
-import { sendForbidden } from '../utils/errorResponse.js';
+import { sendForbidden, sendInternalServerError } from '../utils/errorResponse.js';
 import { parseFiniteNumber } from '../utils/attendanceValidation.js';
 import {
   buildExcuseProofPayload,
@@ -35,7 +35,9 @@ export const getExcuseChallenge = async (req: AuthRequest, res: Response): Promi
     const secret = getExcuseProofSecret();
 
     if (!secret) {
-      res.status(500).json({ success: false, error: 'Konfigurasi security proof belum lengkap' });
+      sendInternalServerError(res, new Error('Konfigurasi security proof belum lengkap'), {
+        customErrorMessage: 'Konfigurasi security proof belum lengkap',
+      });
       return;
     }
     if (!user_id || !sessionId || photoSize === null || photoSize <= 0 || !photoType) {
@@ -87,8 +89,10 @@ export const getExcuseChallenge = async (req: AuthRequest, res: Response): Promi
     const signature = signExcuseProof(payload, secret);
 
     res.status(200).json({ success: true, data: { nonce, signature, expires_at } });
-  } catch {
-    res.status(500).json({ success: false, error: 'Gagal membuat security challenge' });
+  } catch (err) {
+    sendInternalServerError(res, err, {
+      customErrorMessage: 'Gagal membuat security challenge',
+    });
   }
 };
 
@@ -283,7 +287,7 @@ export const getExcuses = async (req: AuthRequest, res: Response): Promise<void>
     res.status(200).json({ success: true, data: excuses });
   } catch (error) {
     console.error('Error fetching excuses:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -384,7 +388,9 @@ export const createExcuse = async (req: AuthRequest, res: Response): Promise<voi
         } catch (err) {
           console.error('Cloudinary Upload Error:', err);
           await fs.promises.unlink(file.path).catch(() => {});
-          res.status(500).json({ success: false, error: 'Gagal mengunggah dokumen bukti' });
+          sendInternalServerError(res, err, {
+            customErrorMessage: 'Gagal mengunggah dokumen bukti',
+          });
           return;
         } finally {
           await fs.promises.unlink(file.path).catch(() => {});
@@ -414,7 +420,9 @@ export const createExcuse = async (req: AuthRequest, res: Response): Promise<voi
         } catch (err) {
           console.error('Local File Save Error:', err);
           await fs.promises.unlink(file.path).catch(() => {});
-          res.status(500).json({ success: false, error: 'Gagal memproses dokumen bukti' });
+          sendInternalServerError(res, err, {
+            customErrorMessage: 'Gagal memproses dokumen bukti',
+          });
           return;
         }
       }
@@ -502,7 +510,7 @@ export const createExcuse = async (req: AuthRequest, res: Response): Promise<voi
       return;
     }
     console.error('Error creating excuse:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -599,7 +607,7 @@ export const reviewExcuse = async (req: AuthRequest, res: Response): Promise<voi
     res.status(200).json({ success: true, data: updatedExcuse });
   } catch (error) {
     console.error('Error reviewing excuse:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -645,7 +653,7 @@ export const getMyExcuses = async (req: AuthRequest, res: Response): Promise<voi
     res.status(200).json({ success: true, data: excuses });
   } catch (error) {
     console.error('Error fetching my excuses:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -681,6 +689,6 @@ export const deleteExcuse = async (req: AuthRequest, res: Response): Promise<voi
     res.status(200).json({ success: true, message: 'Pengajuan dibatalkan.' });
   } catch (error) {
     console.error('Error deleting excuse:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };

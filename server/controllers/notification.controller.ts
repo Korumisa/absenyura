@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import type { AuthRequest } from '../types/index.js';
 import prisma from '../utils/prisma.js';
+import { sendInternalServerError } from '../utils/errorResponse.js';
 
 export const getNotifications = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -24,7 +25,7 @@ export const getNotifications = async (req: AuthRequest, res: Response): Promise
     });
   } catch (error) {
     console.error('Error fetching notifications:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -45,7 +46,7 @@ export const markAsRead = async (req: AuthRequest, res: Response): Promise<void>
       res.status(404).json({ success: false, error: 'Notifikasi tidak ditemukan' });
       return;
     }
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -61,6 +62,6 @@ export const markAllAsRead = async (req: AuthRequest, res: Response): Promise<vo
     res.status(200).json({ success: true, message: 'All marked as read' });
   } catch (error) {
     console.error('Error marking all as read:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };

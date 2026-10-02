@@ -5,6 +5,7 @@ import {
   runPhotoCleanupJob,
   runSemesterUpdateJob,
 } from '../jobs/cron.js';
+import { sendInternalServerError } from '../utils/errorResponse.js';
 
 const router = Router();
 
@@ -47,7 +48,9 @@ router.get('/trigger', async (req: Request, res: Response): Promise<void> => {
       durationMs,
     });
   } catch (error) {
-    res.status(500).json({ success: false, error: 'Failed to trigger cron job' });
+    sendInternalServerError(res, error, {
+      customErrorMessage: 'Failed to trigger cron job',
+    });
   }
 });
 

@@ -7,6 +7,7 @@ import ExcelJS from 'exceljs';
 import { Prisma } from '@prisma/client';
 import fs from 'fs';
 import { normalizeIp } from '../utils/ip.js';
+import { sendInternalServerError } from '../utils/errorResponse.js';
 
 const ALLOWED_ROLES = new Set(['USER', 'ADMIN', 'SUPER_ADMIN', 'CONTENT_ADMIN']);
 
@@ -162,7 +163,7 @@ export const getUsers = async (req: Request, res: Response): Promise<void> => {
     }
   } catch (error: unknown) {
     console.error('Error fetching users:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -236,7 +237,7 @@ export const getUserById = async (req: AuthRequest, res: Response): Promise<void
     res.status(403).json({ success: false, error: 'Akses ditolak' });
   } catch (error) {
     console.error('Error fetching user:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -289,7 +290,7 @@ export const getUserEnrollments = async (req: AuthRequest, res: Response): Promi
     });
   } catch (error) {
     console.error('Error fetching user enrollments:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -432,7 +433,7 @@ export const createUser = async (req: AuthRequest, res: Response): Promise<void>
       }
     }
     console.error('Error creating user:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -605,7 +606,7 @@ export const updateUser = async (req: AuthRequest, res: Response): Promise<void>
       }
     }
     console.error('Error updating user:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -630,7 +631,7 @@ export const deleteUser = async (req: AuthRequest, res: Response): Promise<void>
     res.status(200).json({ success: true, message: 'User deleted successfully' });
   } catch (error: unknown) {
     console.error('Error deleting user:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -940,9 +941,9 @@ export const importUsers = async (req: AuthRequest, res: Response): Promise<void
     });
   } catch (error: unknown) {
     console.error('Error importing users:', error);
-    res
-      .status(500)
-      .json({ success: false, error: 'Gagal mengimpor file Excel. Pastikan format benar.' });
+    sendInternalServerError(res, error, {
+      customErrorMessage: 'Gagal mengimpor file Excel. Pastikan format benar.',
+    });
   } finally {
     if (filePath) {
       await fs.promises.unlink(filePath).catch(() => {});
@@ -977,6 +978,6 @@ export const resetDeviceFingerprint = async (req: AuthRequest, res: Response): P
     res.json({ success: true, message: 'Perangkat mahasiswa berhasil di-reset' });
   } catch (error: unknown) {
     console.error('Error resetting device:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };

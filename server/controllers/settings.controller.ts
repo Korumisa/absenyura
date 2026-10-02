@@ -3,6 +3,7 @@ import type { AuthRequest } from '../types/index.js';
 import bcrypt from 'bcryptjs';
 import prisma from '../utils/prisma.js';
 import { normalizeIp } from '../utils/ip.js';
+import { sendInternalServerError } from '../utils/errorResponse.js';
 
 export const getProfile = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -26,7 +27,7 @@ export const getProfile = async (req: AuthRequest, res: Response): Promise<void>
     res.status(200).json({ success: true, data: user });
   } catch (error) {
     console.error('Error fetching profile:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -111,7 +112,7 @@ export const updateProfile = async (req: AuthRequest, res: Response): Promise<vo
       .json({ success: true, data: updatedUser, message: 'Profile updated successfully' });
   } catch (error) {
     console.error('Error updating profile:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -165,7 +166,7 @@ export const getDepartments = async (req: Request, res: Response): Promise<void>
     res.status(200).json({ success: true, data });
   } catch (error) {
     console.error('Error fetching departments:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -212,7 +213,7 @@ export const updateDepartments = async (req: AuthRequest, res: Response): Promis
       .json({ success: true, message: 'Fakultas dan Program Studi berhasil diperbarui' });
   } catch (error) {
     console.error('Error updating departments:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -227,7 +228,7 @@ export const getSubjects = async (req: Request, res: Response): Promise<void> =>
     res.status(200).json({ success: true, data });
   } catch (error) {
     console.error('Error fetching subjects:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -269,6 +270,6 @@ export const updateSubjects = async (req: AuthRequest, res: Response): Promise<v
     res.status(200).json({ success: true, message: 'Mata Kuliah berhasil diperbarui' });
   } catch (error) {
     console.error('Error updating subjects:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };

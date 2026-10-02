@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import type { AuthRequest } from '../types/index.js';
 import prisma from '../utils/prisma.js';
-import { sendForbidden } from '../utils/errorResponse.js';
+import { sendForbidden, sendInternalServerError } from '../utils/errorResponse.js';
 import { queryWithSemesterFallback } from '../utils/prismaErrors.js';
 
 const classInclude = {
@@ -128,7 +128,7 @@ export const getClasses = async (req: AuthRequest, res: Response): Promise<void>
     res.status(200).json({ success: true, data: classes });
   } catch (error) {
     console.error('Error fetching classes:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -169,7 +169,7 @@ export const createClass = async (req: AuthRequest, res: Response): Promise<void
     res.status(201).json({ success: true, data: newClass });
   } catch (error) {
     console.error('Error creating class:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -222,7 +222,7 @@ export const updateClass = async (req: AuthRequest, res: Response): Promise<void
     res.status(200).json({ success: true, data: updatedClass });
   } catch (error) {
     console.error('Error updating class:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -234,7 +234,7 @@ export const deleteClass = async (req: Request, res: Response): Promise<void> =>
     res.status(200).json({ success: true, message: 'Class deleted' });
   } catch (error) {
     console.error('Error deleting class:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -255,7 +255,7 @@ export const getClassById = async (req: AuthRequest, res: Response): Promise<voi
     res.status(200).json({ success: true, data: cls });
   } catch (error) {
     console.error('Error fetching class:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -288,7 +288,7 @@ export const getEnrollmentOptions = async (req: AuthRequest, res: Response): Pro
     res.status(200).json({ success: true, data: { students, lecturers } });
   } catch (error) {
     console.error('Error fetching enrollment options:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -313,7 +313,7 @@ export const getStudents = async (req: AuthRequest, res: Response): Promise<void
     res.status(200).json({ success: true, data: students });
   } catch (error) {
     console.error('Error fetching students:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -365,7 +365,7 @@ export const enrollStudents = async (req: AuthRequest, res: Response): Promise<v
       .json({ success: true, message: `${newStudentIds.length} Students enrolled successfully` });
   } catch (error) {
     console.error('Error enrolling students:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -384,6 +384,6 @@ export const removeStudent = async (req: AuthRequest, res: Response): Promise<vo
     res.status(200).json({ success: true, message: 'Student removed' });
   } catch (error) {
     console.error('Error removing student:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };

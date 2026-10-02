@@ -2,7 +2,7 @@ import { Response } from 'express';
 import type { AuthRequest } from '../types/index.js';
 import prisma from '../utils/prisma.js';
 import { assertAdminSessionScope } from '../utils/sessionAccess.js';
-import { sendForbidden } from '../utils/errorResponse.js';
+import { sendForbidden, sendInternalServerError } from '../utils/errorResponse.js';
 import { normalizeIp } from '../utils/ip.js';
 
 export const overrideAttendance = async (req: AuthRequest, res: Response): Promise<void> => {
@@ -64,8 +64,8 @@ export const overrideAttendance = async (req: AuthRequest, res: Response): Promi
       message: 'Status kehadiran berhasil diubah (Override).',
     });
   } catch (error) {
-    res
-      .status(500)
-      .json({ success: false, error: 'Gagal mengubah status kehadiran secara manual' });
+    sendInternalServerError(res, error, {
+      customErrorMessage: 'Gagal mengubah status kehadiran secara manual',
+    });
   }
 };

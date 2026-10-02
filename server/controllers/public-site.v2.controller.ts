@@ -14,6 +14,13 @@ import {
 import fs from 'fs';
 import { normalizeIp } from '../utils/ip.js';
 
+function safeRes(res: Response): Response {
+  if (typeof (res as any).setHeader !== 'function') {
+    (res as any).setHeader = (_name: string, _value: unknown) => res;
+  }
+  return res;
+}
+
 function toInt(value: unknown, fallback: number) {
   const n =
     typeof value === 'string' ? parseInt(value, 10) : typeof value === 'number' ? value : NaN;
@@ -141,14 +148,16 @@ export const getPublicHome = async (req: Request, res: Response): Promise<void> 
     res.status(200).json({ success: true, data });
   } catch (error) {
     console.error('[public-home] Fetch failed:', error);
-    sendInternalServerError(res, error, {
-      profile: null,
-      programs: [],
-      structure: PUBLIC_STRUCTURE_EMPTY,
-      latest: { items: [], total: 0, page: 1, pageSize: 3, totalPages: 1 },
-      lomba: { items: [], total: 0, page: 1, pageSize: 6, totalPages: 1 },
-      galleries: [],
-      recruitments: [],
+    sendInternalServerError(safeRes(res), error, {
+      fallbackData: {
+        profile: null,
+        programs: [],
+        structure: PUBLIC_STRUCTURE_EMPTY,
+        latest: { items: [], total: 0, page: 1, pageSize: 3, totalPages: 1 },
+        lomba: { items: [], total: 0, page: 1, pageSize: 6, totalPages: 1 },
+        galleries: [],
+        recruitments: [],
+      },
     });
   }
 };
@@ -260,6 +269,16 @@ export const getPublicStructure = async (req: Request, res: Response): Promise<v
       `[public-structure] Fetch failed (code=${errCode || 'n/a'} name=${errName}):`,
       error instanceof Error ? error.message : error
     );
+    const traceId = (
+      Math.random().toString(16).slice(2, 10) + Math.random().toString(16).slice(2, 6)
+    ).toUpperCase();
+    console.error('[5xx]', {
+      trace_id: traceId,
+      http_status: isPrismaConnectionError(error) ? 503 : 500,
+      err_code: errCode || null,
+      err_name: errName,
+      message: typeof e.message === 'string' ? e.message : '[public-structure] fetch failed',
+    });
 
     const expose =
       process.env.EXPOSE_ERROR_DETAILS === '1' || process.env.NODE_ENV !== 'production';
@@ -269,6 +288,7 @@ export const getPublicStructure = async (req: Request, res: Response): Promise<v
       res.status(503).json({
         success: false,
         error: 'Database unavailable',
+        trace_id: traceId,
         ...PUBLIC_STRUCTURE_EMPTY,
         retry_after_ms: 2000,
         details: { code: errCode || errName, ...(expose && reason ? { reason } : {}) },
@@ -279,6 +299,7 @@ export const getPublicStructure = async (req: Request, res: Response): Promise<v
     res.status(500).json({
       success: false,
       error: 'Internal server error',
+      trace_id: traceId,
       ...PUBLIC_STRUCTURE_EMPTY,
       details: {
         code: errCode || errName,
@@ -323,17 +344,35 @@ export const getAdminStructure = async (req: Request, res: Response): Promise<vo
       `[admin-structure] Fetch failed (code=${errCode || 'n/a'} name=${errName}):`,
       error instanceof Error ? error.message : error
     );
+    const traceId = (
+      Math.random().toString(16).slice(2, 10) + Math.random().toString(16).slice(2, 6)
+    ).toUpperCase();
+    console.error('[5xx]', {
+      trace_id: traceId,
+      http_status: isPrismaConnectionError(error) ? 503 : 500,
+      err_code: errCode || null,
+      err_name: errName,
+      message: typeof e.message === 'string' ? e.message : '[admin-structure] fetch failed',
+    });
 
     if (isPrismaConnectionError(error)) {
-      sendServiceUnavailable(res, {
+      res.status(503).json({
+        success: false,
         error: 'Database unavailable',
-        fallbackData: STRUCTURE_FALLBACK,
-        reason: typeof e.message === 'string' ? e.message : errCode || errName,
+        trace_id: traceId,
+        retry_after_ms: 2000,
+        data: STRUCTURE_FALLBACK,
+        details: { reason: typeof e.message === 'string' ? e.message : errCode || errName },
       });
       return;
     }
 
-    sendInternalServerError(res, error, STRUCTURE_FALLBACK);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+      trace_id: traceId,
+      data: STRUCTURE_FALLBACK,
+    });
   }
 };
 
@@ -437,17 +476,35 @@ export const replaceAdminStructure = async (req: AuthRequest, res: Response): Pr
         errCode || 'n/a'
       } name=${errName} msg=${errMsg}`
     );
+    const traceId = (
+      Math.random().toString(16).slice(2, 10) + Math.random().toString(16).slice(2, 6)
+    ).toUpperCase();
+    console.error('[5xx]', {
+      trace_id: traceId,
+      http_status: isPrismaConnectionError(error) ? 503 : 500,
+      err_code: errCode || null,
+      err_name: errName,
+      message: errMsg || '[admin-structure:save] failed',
+    });
 
     if (isPrismaConnectionError(error)) {
-      sendServiceUnavailable(res, {
+      res.status(503).json({
+        success: false,
         error: 'Database unavailable',
-        fallbackData: STRUCTURE_FALLBACK,
-        reason: errMsg || errCode || errName,
+        trace_id: traceId,
+        retry_after_ms: 2000,
+        data: STRUCTURE_FALLBACK,
+        details: { reason: errMsg || errCode || errName },
       });
       return;
     }
 
-    sendInternalServerError(res, error, STRUCTURE_FALLBACK);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+      trace_id: traceId,
+      data: STRUCTURE_FALLBACK,
+    });
   }
 };
 
@@ -478,14 +535,33 @@ export const setActiveCabinet = async (req: AuthRequest, res: Response): Promise
     res.status(200).json({ success: true, message: 'Kabinet aktif diubah' });
   } catch (error) {
     console.error('[admin-structure:set-active]', error);
+    const traceId = (
+      Math.random().toString(16).slice(2, 10) + Math.random().toString(16).slice(2, 6)
+    ).toUpperCase();
+    console.error('[5xx]', {
+      trace_id: traceId,
+      http_status: isPrismaConnectionError(error) ? 503 : 500,
+      err_code: typeof (error as any).code === 'string' ? (error as any).code : null,
+      err_name: typeof (error as any).name === 'string' ? (error as any).name : 'Error',
+      message: error instanceof Error ? error.message : '[admin-structure:set-active] failed',
+    });
+
     if (isPrismaConnectionError(error)) {
-      sendServiceUnavailable(res, {
+      res.status(503).json({
+        success: false,
         error: 'Database unavailable',
-        fallbackData: STRUCTURE_FALLBACK,
+        trace_id: traceId,
+        retry_after_ms: 2000,
+        data: STRUCTURE_FALLBACK,
       });
       return;
     }
-    sendInternalServerError(res, error, STRUCTURE_FALLBACK);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+      trace_id: traceId,
+      data: STRUCTURE_FALLBACK,
+    });
   }
 };
 
@@ -1282,7 +1358,9 @@ export const uploadPublicAsset = async (req: AuthRequest, res: Response): Promis
     const filePath = req.file?.path;
     try {
       if (!process.env.CLOUDINARY_URL) {
-        res.status(500).json({ success: false, error: 'Cloudinary belum dikonfigurasi' });
+        sendInternalServerError(res, new Error('Cloudinary belum dikonfigurasi'), {
+          customErrorMessage: 'Cloudinary belum dikonfigurasi',
+        });
         return;
       }
       if (!req.file || !filePath) {
@@ -1300,7 +1378,9 @@ export const uploadPublicAsset = async (req: AuthRequest, res: Response): Promis
         .json({ success: true, data: { url: result.secure_url, publicId: result.public_id } });
     } catch (error) {
       console.error('Error uploading public asset:', error);
-      res.status(500).json({ success: false, error: 'Gagal mengunggah file' });
+      sendInternalServerError(res, error, {
+        customErrorMessage: 'Gagal mengunggah file',
+      });
     } finally {
       if (filePath) {
         await fs.promises.unlink(filePath).catch(() => {});

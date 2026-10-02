@@ -15,7 +15,7 @@ import {
   adminSessionScopeWhere,
   assertAdminSessionScope,
 } from '../utils/sessionAccess.js';
-import { sendForbidden } from '../utils/errorResponse.js';
+import { sendForbidden, sendInternalServerError } from '../utils/errorResponse.js';
 import { sendValidationError } from '../utils/sendValidationError.js';
 import { queryWithSemesterFallback } from '../utils/prismaErrors.js';
 import { normalizeIp } from '../utils/ip.js';
@@ -98,7 +98,7 @@ export const getSessions = async (req: AuthRequest, res: Response): Promise<void
     res.status(200).json({ success: true, data: sessions });
   } catch (error) {
     console.error('Error fetching sessions:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -327,7 +327,7 @@ export const createSession = async (req: AuthRequest, res: Response): Promise<vo
       .json({ success: true, data: stripSessionQrSecrets(session as Record<string, unknown>) });
   } catch (error) {
     console.error('Error creating session:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -482,7 +482,7 @@ export const updateSession = async (req: AuthRequest, res: Response): Promise<vo
       .json({ success: true, data: stripSessionQrSecrets(session as Record<string, unknown>) });
   } catch (error) {
     console.error('Error updating session:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -529,7 +529,7 @@ export const deleteSession = async (req: AuthRequest, res: Response): Promise<vo
     res.status(200).json({ success: true, message: 'Session deleted successfully' });
   } catch (error) {
     console.error('Error deleting session:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -604,7 +604,7 @@ export const getSessionById = async (req: AuthRequest, res: Response): Promise<v
     };
     res.status(200).json({ success: true, data });
   } catch (error) {
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -641,9 +641,9 @@ export const getSessionQR = async (req: AuthRequest, res: Response): Promise<voi
     }
 
     if (!session.qr_secret) {
-      res
-        .status(500)
-        .json({ success: false, error: 'QR Secret is not configured for this session' });
+      sendInternalServerError(res, new Error('QR Secret is not configured for this session'), {
+        customErrorMessage: 'QR Secret is not configured for this session',
+      });
       return;
     }
 
@@ -655,7 +655,7 @@ export const getSessionQR = async (req: AuthRequest, res: Response): Promise<voi
     });
   } catch (error) {
     console.error('Error getting QR:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -685,6 +685,6 @@ export const getSessionAttendances = async (req: AuthRequest, res: Response): Pr
     res.status(200).json({ success: true, data: attendances });
   } catch (error) {
     console.error('Error fetching session attendances:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };

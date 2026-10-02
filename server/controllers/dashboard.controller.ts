@@ -7,6 +7,7 @@ import { sessionApiSelect, sessionListSelect } from '../utils/sessionQuerySelect
 import { triggerSessionCronLazy } from '../jobs/cron.js';
 import { adminSessionScopeWhere } from '../utils/sessionAccess.js';
 import { queryWithSemesterFallback } from '../utils/prismaErrors.js';
+import { sendInternalServerError } from '../utils/errorResponse.js';
 
 export const getDashboardStats = async (req: AuthRequest, res: Response): Promise<void> => {
   triggerSessionCronLazy();
@@ -222,6 +223,6 @@ export const getDashboardStats = async (req: AuthRequest, res: Response): Promis
     }
   } catch (error) {
     console.error('Error fetching dashboard stats:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };

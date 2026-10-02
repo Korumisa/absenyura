@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import type { AuthRequest } from '../types/index.js';
 import prisma from '../utils/prisma.js';
-import { sendForbidden } from '../utils/errorResponse.js';
+import { sendForbidden, sendInternalServerError } from '../utils/errorResponse.js';
 import { normalizeIp } from '../utils/ip.js';
 
 export const getLocations = async (req: Request, res: Response): Promise<void> => {
@@ -19,7 +19,7 @@ export const getLocations = async (req: Request, res: Response): Promise<void> =
     res.status(200).json({ success: true, data: formattedLocations });
   } catch (error) {
     console.error('Error fetching locations:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -68,7 +68,7 @@ export const createLocation = async (req: AuthRequest, res: Response): Promise<v
     });
   } catch (error) {
     console.error('Error creating location:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -135,7 +135,7 @@ export const updateLocation = async (req: AuthRequest, res: Response): Promise<v
     });
   } catch (error) {
     console.error('Error updating location:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
 
@@ -183,6 +183,6 @@ export const deleteLocation = async (req: AuthRequest, res: Response): Promise<v
     res.status(200).json({ success: true, message: 'Location deleted successfully' });
   } catch (error) {
     console.error('Error deleting location:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    sendInternalServerError(res, error);
   }
 };
