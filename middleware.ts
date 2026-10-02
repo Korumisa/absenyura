@@ -76,7 +76,7 @@ const NOT_FOUND_HTML = `<!doctype html>
   </head>
   <body>
     <main class="card" role="main">
-      <img class="logo" src="/logo-hmsdp.webp" alt="Logo HM SDP Undiksha" onerror="this.src='/logo-hmsdp.png'" />
+      <picture><source srcset="/logo-hmsdp.webp" type="image/webp" /><img class="logo" src="/logo-hmsdp.png" alt="Logo HM SDP Undiksha" /></picture>
       <div class="code" aria-label="Kode status 404">404</div>
       <h1>Halaman Tidak Ditemukan</h1>
       <p>Alamat yang Anda tuju tidak tersedia, sudah dipindahkan, atau mungkin salah ketik.</p>

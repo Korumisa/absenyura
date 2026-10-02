@@ -262,6 +262,7 @@ async function verifyAttendanceProof(input: {
 export const checkIn = async (req: AuthRequest, res: Response): Promise<void> => {
   triggerSessionCronLazy();
   let isUploadingInBackground = false;
+  const traceId = crypto.randomBytes(6).toString('hex');
   const checkinStart = Date.now();
   try {
     const user_id = req.user!.id;
@@ -477,18 +478,21 @@ export const checkIn = async (req: AuthRequest, res: Response): Promise<void> =>
 
     logCheckinStep('qr_valid', session_id, checkinStart);
 
-    const geo = validateGeofence(latitudeValue, longitudeValue, session.location);
-    if (!geo.ok) {
-      res.status(geo.status).json({ success: false, error: geo.error });
-      return;
-    }
+    if (session.location) {
+      const geo = validateGeofence(latitudeValue, longitudeValue, session.location);
+      if (!geo.ok) {
+        res.status(geo.status).json({ success: false, error: geo.error });
+        return;
+      }
+      logCheckinStep('geo_valid', session_id, checkinStart);
 
-    logCheckinStep('geo_valid', session_id, checkinStart);
-
-    const ipCheck = validateIpRestriction(req, session.location.wifi_bssid);
-    if (!ipCheck.ok) {
-      res.status(ipCheck.status).json({ success: false, error: ipCheck.error });
-      return;
+      const ipCheck = validateIpRestriction(req, session.location.wifi_bssid);
+      if (!ipCheck.ok) {
+        res.status(ipCheck.status).json({ success: false, error: ipCheck.error });
+        return;
+      }
+    } else {
+      logCheckinStep('geo_skipped_location_null', session_id, checkinStart);
     }
 
     // Layer 4: Anti-Spoofing (Teleportation Check)
@@ -622,7 +626,6 @@ export const checkIn = async (req: AuthRequest, res: Response): Promise<void> =>
     const errMessage =
       isObj && 'message' in error ? String((error as { message?: unknown }).message ?? '') : '';
     const errStack = isObj && 'stack' in error ? (error as { stack?: unknown }).stack : undefined;
-    const traceId = crypto.randomBytes(6).toString('hex');
 
     // 1. Duplicate / Unique constraint violation → sudah check-in
     if (errCode === 'P2002') {
@@ -666,7 +669,7 @@ export const checkIn = async (req: AuthRequest, res: Response): Promise<void> =>
     }
 
     // 4. Prisma transient DB error (connection, pool timeout) — semua retry sudah habis
-    if (isPrismaConnectionError(error)) {
+    if (isPrismaConnectionError(error) || errCode === 'P2024') {
       console.error(`[check-in:${traceId}] Prisma transient DB exhausted`, {
         code: errCode,
         name: errName,
@@ -674,8 +677,10 @@ export const checkIn = async (req: AuthRequest, res: Response): Promise<void> =>
         user_id: req.user?.id ?? '-',
         session_id: req.body?.session_id ?? '-',
       });
-      res.status(503).setHeader('Retry-After', '30').json({
+      res.setHeader('Retry-After', '30');
+      res.status(503).json({
         success: false,
+        trace_id: traceId.toUpperCase(),
         error:
           'Koneksi database sementara sibuk. Tunggu 30 detik lalu tekan "Coba kirim lagi" (tidak perlu ulang dari awal).',
         retry_after_ms: 30_000,
@@ -831,16 +836,18 @@ export const checkOut = async (req: AuthRequest, res: Response): Promise<void> =
       }
     }
 
-    const geo = validateGeofence(gps.latitude, gps.longitude, session.location);
-    if (!geo.ok) {
-      res.status(geo.status).json({ success: false, error: geo.error });
-      return;
-    }
+    if (session.location) {
+      const geo = validateGeofence(gps.latitude, gps.longitude, session.location);
+      if (!geo.ok) {
+        res.status(geo.status).json({ success: false, error: geo.error });
+        return;
+      }
 
-    const ipCheck = validateIpRestriction(req, session.location.wifi_bssid);
-    if (!ipCheck.ok) {
-      res.status(ipCheck.status).json({ success: false, error: ipCheck.error });
-      return;
+      const ipCheck = validateIpRestriction(req, session.location.wifi_bssid);
+      if (!ipCheck.ok) {
+        res.status(ipCheck.status).json({ success: false, error: ipCheck.error });
+        return;
+      }
     }
 
     const user = await withTransientDbRetry(
