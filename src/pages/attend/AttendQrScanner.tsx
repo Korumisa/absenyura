@@ -41,6 +41,7 @@ export interface AttendQrScannerProps {
   qrErrorOverride?: { code: QrErrorType; detail?: string } | null;
   onQrErrorChange?: (err: { code: QrErrorType; detail?: string } | null) => void;
   initialPreferRear?: boolean;
+  sessionLoading?: boolean;
 }
 
 export default function AttendQrScanner({
@@ -52,6 +53,7 @@ export default function AttendQrScanner({
   qrErrorOverride,
   onQrErrorChange,
   initialPreferRear = true,
+  sessionLoading = false,
 }: AttendQrScannerProps) {
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const qrCameraIdRef = useRef<string | null>(null);
@@ -89,6 +91,7 @@ export default function AttendQrScanner({
   const qrUnhandledHandlerRef = useRef<((ev: PromiseRejectionEvent) => void) | null>(null);
   const qrCaptureErrorHandlerRef = useRef<((ev: ErrorEvent) => void) | null>(null);
   const qrReconnectingRef = useRef(false);
+  const qrFullReinitPendingRef = useRef(false);
   const qrWdStatusDebounceRef = useRef<number | null>(null);
 
   const [camerasReady, setCamerasReady] = useState(false);
@@ -282,12 +285,45 @@ export default function AttendQrScanner({
           // #endregion
         });
         wd.on('reconnectSuccess', (payload: WatchdogReconnectPayload) => {
-          void handleQrAwareReconnect(payload, videoEl);
+          const newStream = (payload as { stream?: MediaStream | null })?.stream ?? null;
+          if (newStream && !qrFullReinitPendingRef.current) {
+            try {
+              const ve = document.querySelector<HTMLVideoElement>('#qr-reader video');
+              if (ve) {
+                ve.srcObject = newStream;
+                void ve.play().catch(() => undefined);
+              }
+              wd.replaceStream(newStream);
+            } catch (_streamSwapErr) {
+              camLog('qr:streamSwapFailed', { err: (_streamSwapErr as Error)?.name });
+              if (qrFullReinitPendingRef.current) return;
+              qrFullReinitPendingRef.current = true;
+              void handleQrAwareReconnect(payload, videoEl).finally(() => {
+                qrFullReinitPendingRef.current = false;
+              });
+            }
+          } else {
+            if (qrFullReinitPendingRef.current) return;
+            qrFullReinitPendingRef.current = true;
+            void handleQrAwareReconnect(payload, videoEl).finally(() => {
+              qrFullReinitPendingRef.current = false;
+            });
+          }
         });
-        wd.on('reconnectFail', () => {
-          const errMsg = humanizeCameraError({ message: 'lock' });
-          setQrError({ code: 'PERMISSION', detail: errMsg });
-          toastError(null, errMsg);
+        wd.on('reconnectFail', (payload: WatchdogReconnectPayload) => {
+          if (qrFullReinitPendingRef.current) return;
+          qrFullReinitPendingRef.current = true;
+          void handleQrAwareReconnect(payload, videoEl)
+            .then((ok) => {
+              if (!ok) {
+                const errMsg = humanizeCameraError({ message: 'lock' });
+                setQrError({ code: 'PERMISSION', detail: errMsg });
+                toastError(null, errMsg);
+              }
+            })
+            .finally(() => {
+              qrFullReinitPendingRef.current = false;
+            });
         });
         qrWatchdogRef.current = wd;
         setQrWatchdogStatus(wd.status);
@@ -299,10 +335,10 @@ export default function AttendQrScanner({
     const handleQrAwareReconnect = async (
       payload: { stream?: MediaStream | null },
       videoEl: HTMLVideoElement
-    ) => {
+    ): Promise<boolean> => {
       if (qrReconnectingRef.current) {
         camLog('qr:reconnect_reEntrant_skip');
-        return;
+        return false;
       }
       qrReconnectingRef.current = true;
       const bootGen = qrBootGenRef.current;
@@ -337,7 +373,7 @@ export default function AttendQrScanner({
         }
 
         await waitForCameraRelease(200);
-        if (bootGen !== qrBootGenRef.current) return;
+        if (bootGen !== qrBootGenRef.current) return false;
 
         const cameraConfig: string | MediaTrackConstraints = qrCameraIdRef.current
           ? qrCameraIdRef.current
@@ -467,7 +503,7 @@ export default function AttendQrScanner({
             expected: bootGen,
             actual: qrBootGenRef.current,
           });
-          return;
+          return false;
         }
         scannerRef.current = resolved;
 
@@ -490,6 +526,7 @@ export default function AttendQrScanner({
         });
 
         camLog('qr:awareReconnect_success', { generation: bootGen });
+        return true;
       } catch (err) {
         camLog('qr:awareReconnect_fail', { error: (err as Error)?.name ?? String(err) });
         qrDecodedSuccessRef.current = false;
@@ -497,12 +534,18 @@ export default function AttendQrScanner({
         const msg = humanizeCameraError({ message: 'lock' });
         setQrError({ code: 'PERMISSION', detail: msg });
         toastError(null, msg);
+        return false;
       } finally {
         qrReconnectingRef.current = false;
+        qrFullReinitPendingRef.current = false;
       }
     };
 
     const bootScanner = async () => {
+      if (sessionLoading) {
+        camLog('qr:boot_skipped_sessionLoading');
+        return;
+      }
       setQrError(null);
       qrReleasedRef.current = false;
 
@@ -854,6 +897,7 @@ export default function AttendQrScanner({
     releaseQrScanner,
     setQrError,
     cleanupQrWatchdog,
+    sessionLoading,
   ]);
 
   // Cleanup saat unmount

@@ -643,6 +643,19 @@ export default function Attend() {
   const startCamera = useCallback(
     async (mode = facingMode) => {
       if (photoSwitchingRef.current) return;
+      if (
+        isCameraActive &&
+        !photoSwitchingRef.current &&
+        pendingStreamRef.current &&
+        videoRef.current &&
+        videoRef.current.srcObject &&
+        mode === facingMode
+      ) {
+        camLog('photo_start_skip_idempotent');
+        setCameraStarting(false);
+        setPhotoWatchdogStatus('healthy');
+        return;
+      }
       photoSwitchingRef.current = true;
       setCameraStarting(true);
       setCameraPermissionError(null);
@@ -727,7 +740,7 @@ export default function Attend() {
         setCameraStarting(false);
       }
     },
-    [facingMode, derivedSessionId, sessionParam, tokenParam]
+    [facingMode, derivedSessionId, sessionParam, tokenParam, isCameraActive]
   );
 
   const switchCamera = () => {
@@ -818,26 +831,31 @@ export default function Attend() {
 
   useEffect(() => {
     if (isCheckoutMode) return;
+    let cancelled = false;
+    const timers: number[] = [];
     void (async () => {
       try {
-        if (wizardStep === 1 && draftSessionId && !scanResult) {
+        if (
+          (wizardStep === 1 && draftSessionId && !scanResult) ||
+          (wizardStep === 2 && draftSessionId && !photoBlob)
+        ) {
           setScanResult(draftSessionId);
           setScanning(false);
           setShowResumeCard(false);
           await awaitPendingCameraRelease();
-          void startCamera(facingMode);
-        } else if (wizardStep === 2 && draftSessionId && !photoBlob) {
-          setScanResult(draftSessionId);
-          setScanning(false);
-          setShowResumeCard(false);
-          await awaitPendingCameraRelease();
-          void startCamera(facingMode);
+          const t = window.setTimeout(() => {
+            if (!cancelled) void startCamera(facingMode);
+          }, 300);
+          timers.push(t);
         }
       } catch (e) {
         camLog('attend_recovery_fail', { err: e });
       }
     })();
-    return () => {};
+    return () => {
+      cancelled = true;
+      timers.forEach((t) => window.clearTimeout(t));
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -1664,6 +1682,7 @@ export default function Attend() {
                     qrErrorOverride={qrError}
                     onQrErrorChange={setQrError}
                     onScanSuccess={handleQrScanSuccess}
+                    sessionLoading={sessionLoading}
                   />
                 </Suspense>
               ) : !photoBlob ? (

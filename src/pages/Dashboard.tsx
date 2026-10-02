@@ -13,6 +13,7 @@ import {
   BarChart3,
   QrCode,
   ShieldAlert,
+  Loader2,
 } from 'lucide-react';
 import AdminPageShell from '@/components/AdminPageShell';
 import { ErrorWithRetry } from '@/components/ErrorWithRetry';
@@ -168,18 +169,73 @@ function DashboardRecentSessionsSkeleton({
   );
 }
 
-function ThinProgressBar({ active }: { active: boolean }) {
-  if (!active) return null;
+function DashboardHeroSkeleton({ mode }: { mode: 'active' | 'greeting' }) {
+  if (mode === 'active') {
+    return (
+      <section
+        aria-hidden="true"
+        className="rounded-3xl border-2 border-indigo-400/40 bg-gradient-to-r from-indigo-600/80 to-violet-600/80 p-6 sm:p-8"
+      >
+        <Skeleton className="mb-1 h-3 w-40 bg-white/30" />
+        <Skeleton className="mt-2 h-8 w-3/4 bg-white/40 sm:h-10" />
+        <Skeleton className="mt-3 h-4 w-2/3 bg-white/30" />
+        <Skeleton className="mt-7 h-12 w-48 rounded-xl bg-white/40" />
+      </section>
+    );
+  }
   return (
     <div
-      role="progressbar"
-      aria-busy="true"
-      aria-label="Memuat ulang data"
-      data-testid="thin-progress-bar"
-      className="fixed left-0 top-0 z-[100] h-[3px] w-full overflow-hidden bg-transparent"
+      aria-hidden="true"
+      className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-indigo-600/80 to-violet-600/80 p-6 sm:p-10"
     >
-      <div className="h-full w-1/3 animate-[thin-progress_1.2s_ease-in-out_infinite] bg-gradient-to-r from-transparent via-indigo-500 to-transparent" />
+      <div className="relative z-10 space-y-3">
+        <Skeleton className="h-10 w-2/3 bg-white/40 sm:h-12" />
+        <Skeleton className="h-5 w-5/6 max-w-xl bg-white/30 sm:h-6" />
+      </div>
     </div>
+  );
+}
+
+function DashboardStatsGridSkeleton() {
+  const items = [
+    'bg-indigo-50 dark:bg-indigo-900/30',
+    'bg-emerald-50 dark:bg-emerald-900/30',
+    'bg-amber-50 dark:bg-amber-900/30',
+    'bg-blue-50 dark:bg-blue-900/30',
+  ];
+  return (
+    <div
+      className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4"
+      aria-label="Memuat ringkasan statistik"
+      aria-hidden="true"
+    >
+      {items.map((tint, i) => (
+        <div
+          key={i}
+          className="rounded-3xl border border-border bg-card p-4 text-card-foreground shadow-sm sm:p-6"
+        >
+          <div className={`mb-4 flex size-12 items-center justify-center rounded-2xl ${tint}`}>
+            <Skeleton className="size-6 rounded-md bg-white/60 dark:bg-white/10" />
+          </div>
+          <Skeleton className="mb-1 h-4 w-28" />
+          <Skeleton className="h-9 w-16" />
+          {i === 3 ? <Skeleton className="mt-2 h-4 w-24" /> : null}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function InlineCircleSpinner({ active, label }: { active: boolean; label?: string }) {
+  if (!active) return null;
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground"
+      aria-live="polite"
+    >
+      <Loader2 className="size-3.5 animate-spin text-brand" aria-hidden="true" />
+      {label ? <span>{label}</span> : null}
+    </span>
   );
 }
 
@@ -247,7 +303,10 @@ export default function Dashboard() {
 
   return (
     <AdminPageShell title="Dashboard" icon={<BarChart3 className="size-5" />}>
-      <ThinProgressBar active={sessionsRefreshing || !!page.isPending} />
+      <InlineCircleSpinner
+        active={sessionsRefreshing || !!page.isPending}
+        label={page.isPending ? 'Memuat dashboard…' : 'Menyegarkan data…'}
+      />
       {user?.must_change_password ? (
         <div
           role="region"
@@ -302,7 +361,9 @@ export default function Dashboard() {
             }
           />
           {/* [UX] quick action — sesi aktif */}
-          {activeSession ? (
+          {sessionsRefreshing && !page.isPending ? (
+            <DashboardHeroSkeleton mode={activeSession ? 'active' : 'greeting'} />
+          ) : activeSession ? (
             <section
               className="rounded-3xl border-2 border-indigo-500 bg-gradient-to-r from-indigo-600 to-violet-600 p-6 text-white shadow-xl sm:p-8"
               aria-label="Sesi absensi aktif"
@@ -341,6 +402,9 @@ export default function Dashboard() {
 
           {/* Stats Grid */}
           {(() => {
+            if (sessionsRefreshing && !page.isPending) {
+              return <DashboardStatsGridSkeleton />;
+            }
             const stats = data?.stats ?? {
               total: 0,
               present: 0,
@@ -428,8 +492,11 @@ export default function Dashboard() {
           })()}
 
           <div className="overflow-hidden rounded-xl border border-border bg-card shadow-card dark:shadow-none dark:ring-1 dark:ring-white/10">
-            <div className="flex items-center justify-between border-b border-border px-6 py-5">
-              <h2 className="text-xl font-bold text-foreground">Jadwal Sesi Terdekat</h2>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-6 py-5">
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-bold text-foreground">Jadwal Sesi Terdekat</h2>
+                <InlineCircleSpinner active={sessionsRefreshing} label="menyegarkan…" />
+              </div>
               <span className="bg-indigo-50 dark:bg-indigo-900/30 text-brand py-1 px-3 rounded-full text-xs font-bold">
                 {data?.recent_sessions?.length || 0} Sesi
               </span>
@@ -447,8 +514,11 @@ export default function Dashboard() {
                 className="space-y-3 px-4 pb-4 pt-4 sm:px-5 sm:pb-5 md:hidden"
                 aria-label="Jadwal sesi terdekat"
               >
-                {sessionsEmpty && sessionsRefreshing ? (
-                  <DashboardRecentSessionsSkeleton count={3} mobile />
+                {sessionsRefreshing ? (
+                  <DashboardRecentSessionsSkeleton
+                    count={sessionsEmpty ? 3 : sessions.length || 3}
+                    mobile
+                  />
                 ) : sessionsEmpty ? (
                   <li className="py-8 text-center text-muted-foreground">
                     Belum ada sesi terdekat.
@@ -525,12 +595,6 @@ export default function Dashboard() {
                   ))
                 )}
               </ul>
-              {sessionsRefreshing && !sessionsEmpty ? (
-                <div
-                  aria-hidden="true"
-                  className="pointer-events-none absolute inset-0 z-10 animate-pulse bg-white/40 dark:bg-slate-950/40 backdrop-blur-[1px]"
-                />
-              ) : null}
             </div>
 
             <div className="hidden md:block">
@@ -550,8 +614,11 @@ export default function Dashboard() {
                       <TableHead className="text-right">Aksi</TableHead>
                     </TableRow>
                   </TableHeader>
-                  {sessionsEmpty && sessionsRefreshing ? (
-                    <DashboardRecentSessionsSkeleton count={3} mobile={false} />
+                  {sessionsRefreshing ? (
+                    <DashboardRecentSessionsSkeleton
+                      count={sessionsEmpty ? 3 : sessions.length || 3}
+                      mobile={false}
+                    />
                   ) : sessionsEmpty ? (
                     <TableBody>
                       <TableRow>
@@ -653,12 +720,6 @@ export default function Dashboard() {
                     </TableBody>
                   )}
                 </Table>
-                {sessionsRefreshing && !sessionsEmpty ? (
-                  <div
-                    aria-hidden="true"
-                    className="pointer-events-none absolute inset-0 z-10 animate-pulse bg-white/40 dark:bg-slate-950/40 backdrop-blur-[1px]"
-                  />
-                ) : null}
               </div>
             </div>
           </div>
@@ -917,12 +978,6 @@ export default function Dashboard() {
                     ))
                   )}
                 </ul>
-                {sessionsRefreshing && !sessionsEmpty ? (
-                  <div
-                    aria-hidden="true"
-                    className="pointer-events-none absolute inset-0 z-10 animate-pulse bg-white/40 dark:bg-slate-950/40 backdrop-blur-[1px]"
-                  />
-                ) : null}
               </div>
             </div>
           </div>

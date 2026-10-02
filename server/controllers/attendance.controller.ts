@@ -72,6 +72,7 @@ const uploadPhotoInBackground = async (
 };
 
 export const getChallenge = async (req: AuthRequest, res: Response): Promise<void> => {
+  const traceId = crypto.randomBytes(6).toString('hex');
   try {
     const user_id = req.user?.id;
     const sessionId = String(req.query.session_id || '').trim();
@@ -98,10 +99,14 @@ export const getChallenge = async (req: AuthRequest, res: Response): Promise<voi
         res.status(400).json({ success: false, error: 'ID absensi wajib untuk check-out' });
         return;
       }
-      const attendance = await prisma.attendance.findUnique({
-        where: { id: attendanceId },
-        select: { user_id: true, session_id: true, check_out_time: true },
-      });
+      const attendance = await withTransientDbRetry(
+        () =>
+          prisma.attendance.findUnique({
+            where: { id: attendanceId },
+            select: { user_id: true, session_id: true, check_out_time: true },
+          }),
+        { retries: 2, delayMs: 200 }
+      );
       if (!attendance || attendance.user_id !== user_id || attendance.session_id !== sessionId) {
         res.status(404).json({ success: false, error: 'Data absensi tidak ditemukan' });
         return;
@@ -115,9 +120,13 @@ export const getChallenge = async (req: AuthRequest, res: Response): Promise<voi
     const nonce = crypto.randomBytes(16).toString('hex');
     const expires_at = new Date(Date.now() + 2 * 60000);
 
-    await prisma.challengeNonce.create({
-      data: { nonce, expires_at },
-    });
+    await withTransientDbRetry(
+      () =>
+        prisma.challengeNonce.create({
+          data: { nonce, expires_at },
+        }),
+      { retries: 3, delayMs: 250 }
+    );
 
     const payload = buildAttendanceProofPayload({
       userId: user_id,
@@ -135,8 +144,36 @@ export const getChallenge = async (req: AuthRequest, res: Response): Promise<voi
     const signature = signAttendanceProof(payload, secret);
 
     res.status(200).json({ success: true, data: { nonce, signature, expires_at } });
-  } catch {
-    res.status(500).json({ success: false, error: 'Gagal membuat security challenge' });
+  } catch (err: unknown) {
+    const errCode =
+      err && typeof err === 'object' && 'code' in err
+        ? String((err as { code?: unknown }).code ?? '')
+        : '';
+    const errName = err instanceof Error ? err.name : 'Unknown';
+    const errMessage = err instanceof Error ? err.message : String(err ?? '');
+    if (isPrismaConnectionError(err) || errCode === 'P2024') {
+      res.setHeader('Retry-After', '30');
+      res.status(503).json({
+        success: false,
+        trace_id: traceId.toUpperCase(),
+        error:
+          'Koneksi database sementara sibuk. Tunggu 30 detik lalu coba lagi (tidak perlu ulang dari awal).',
+        retry_after_ms: 30_000,
+      });
+      return;
+    }
+    console.error(`[get-challenge:${traceId}] Unhandled server error`, {
+      code: errCode,
+      name: errName,
+      message: errMessage.slice(0, 500),
+      user_id: req.user?.id ?? '-',
+      session_id: String(req.query?.session_id ?? '-'),
+    });
+    res.status(500).json({
+      success: false,
+      trace_id: traceId.toUpperCase(),
+      error: `Gagal membuat security challenge. Jika berulang, hubungi admin dengan kode: ${traceId.toUpperCase()}`,
+    });
   }
 };
 
@@ -163,7 +200,10 @@ async function verifyAttendanceProof(input: {
 
   let nonceExpiresAt: Date;
   try {
-    const deletedNonce = await prisma.challengeNonce.delete({ where: { nonce: input.nonce } });
+    const deletedNonce = await withTransientDbRetry(
+      () => prisma.challengeNonce.delete({ where: { nonce: input.nonce } }),
+      { retries: 2, delayMs: 200 }
+    );
     nonceExpiresAt = deletedNonce.expires_at;
     if (deletedNonce.expires_at < new Date()) {
       return {
@@ -655,6 +695,7 @@ export const checkIn = async (req: AuthRequest, res: Response): Promise<void> =>
     });
     res.status(500).json({
       success: false,
+      trace_id: traceId.toUpperCase(),
       error: `Absensi gagal diproses. Tunggu 1 menit lalu coba lagi. Jika masih gagal, hubungi admin dengan kode: ${traceId.toUpperCase()}`,
     });
   } finally {
@@ -666,6 +707,8 @@ export const checkIn = async (req: AuthRequest, res: Response): Promise<void> =>
 
 export const checkOut = async (req: AuthRequest, res: Response): Promise<void> => {
   let isUploadingInBackground = false;
+  const traceId = crypto.randomBytes(6).toString('hex');
+  const checkoutStart = Date.now();
   try {
     const user_id = req.user!.id;
     const { id } = req.params;
@@ -709,12 +752,16 @@ export const checkOut = async (req: AuthRequest, res: Response): Promise<void> =
       return;
     }
 
-    const attendance = await prisma.attendance.findUnique({
-      where: { id },
-      include: {
-        session: { select: sessionCheckInSelect },
-      },
-    });
+    const attendance = await withTransientDbRetry(
+      () =>
+        prisma.attendance.findUnique({
+          where: { id },
+          include: {
+            session: { select: sessionCheckInSelect },
+          },
+        }),
+      { retries: 2, delayMs: 200 }
+    );
 
     if (!attendance || attendance.user_id !== user_id) {
       res.status(404).json({ success: false, error: 'Data absensi tidak ditemukan' });
@@ -796,10 +843,14 @@ export const checkOut = async (req: AuthRequest, res: Response): Promise<void> =
       return;
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: user_id },
-      select: { device_fingerprint: true },
-    });
+    const user = await withTransientDbRetry(
+      () =>
+        prisma.user.findUnique({
+          where: { id: user_id },
+          select: { device_fingerprint: true },
+        }),
+      { retries: 2, delayMs: 200 }
+    );
     if (user?.device_fingerprint && device_fingerprint) {
       const storedDevice = user.device_fingerprint.replace(' [OFFLINE_SYNC]', '');
       const incomingDevice = String(device_fingerprint).replace(' [OFFLINE_SYNC]', '');
@@ -813,10 +864,14 @@ export const checkOut = async (req: AuthRequest, res: Response): Promise<void> =
       }
     }
 
-    const updated = await prisma.attendance.update({
-      where: { id },
-      data: { check_out_time: now },
-    });
+    const updated = await withTransientDbRetry(
+      () =>
+        prisma.attendance.update({
+          where: { id },
+          data: { check_out_time: now },
+        }),
+      { retries: 3, delayMs: 300 }
+    );
 
     if (req.file?.path) {
       isUploadingInBackground = true;
@@ -824,11 +879,72 @@ export const checkOut = async (req: AuthRequest, res: Response): Promise<void> =
     }
 
     res.status(200).json({ success: true, data: updated, message: 'Check-out berhasil' });
-  } catch {
+  } catch (err: unknown) {
+    const errCode =
+      err && typeof err === 'object' && 'code' in err
+        ? String((err as { code?: unknown }).code ?? '')
+        : '';
+    const errName = err instanceof Error ? err.name : 'Unknown';
+    const errMessage = err instanceof Error ? err.message : String(err ?? '');
+    const errStack = err instanceof Error ? err.stack : undefined;
+
+    // 1. Client / validation Prisma errors -> 400
+    if (errCode === 'P2002') {
+      res.status(400).json({
+        success: false,
+        error: 'Data check-out duplikat. Absensi Anda sudah tercatat sebelumnya.',
+      });
+      return;
+    }
+    if (errCode === 'P2025') {
+      res.status(400).json({
+        success: false,
+        error:
+          'Data absensi sudah berubah di server lain. Segarkan halaman dan coba check-out ulang.',
+      });
+      return;
+    }
+    if (errCode.startsWith('P200') && errCode !== 'P2024') {
+      console.warn(`[check-out:${traceId}] Prisma query client error`, {
+        code: errCode,
+        message: errMessage.slice(0, 400),
+        user_id: req.user?.id ?? '-',
+        attendance_id: req.params?.id ?? '-',
+      });
+      res.status(400).json({
+        success: false,
+        error: 'Data check-out tidak valid. Periksa input Anda dan coba lagi.',
+      });
+      return;
+    }
+
+    // 2. Transient DB errors (pool timeout / conn) -> 503
+    if (isPrismaConnectionError(err) || errCode === 'P2024') {
+      res.setHeader('Retry-After', '30');
+      res.status(503).json({
+        success: false,
+        trace_id: traceId.toUpperCase(),
+        error:
+          'Koneksi database sementara sibuk. Tunggu 30 detik lalu tekan "Coba kirim lagi" (tidak perlu ulang dari awal).',
+        retry_after_ms: 30_000,
+      });
+      return;
+    }
+
+    // 3. Fallback 500: structured audit log + safe user message + trace_id
+    console.error(`[check-out:${traceId}] Unhandled server error`, {
+      code: errCode,
+      name: errName,
+      message: errMessage.slice(0, 500),
+      stack: typeof errStack === 'string' ? errStack.slice(0, 800) : undefined,
+      user_id: req.user?.id ?? '-',
+      attendance_id: req.params?.id ?? '-',
+      took_ms: Date.now() - checkoutStart,
+    });
     res.status(500).json({
       success: false,
-      error:
-        'Absensi gagal diproses. Coba lagi dalam 1 menit; jika berulang, hubungi admin dengan waktu kejadian.',
+      trace_id: traceId.toUpperCase(),
+      error: `Check-out gagal diproses. Tunggu 1 menit lalu coba lagi. Jika masih gagal, hubungi admin dengan kode: ${traceId.toUpperCase()}`,
     });
   } finally {
     if (req.file?.path && !isUploadingInBackground) {
