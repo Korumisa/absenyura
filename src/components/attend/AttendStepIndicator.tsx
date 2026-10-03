@@ -48,9 +48,11 @@ export function AttendStepIndicator({
           );
         })}
       </ol>
-      <p className="mt-2 text-xs text-muted-foreground">
-        Langkah {Math.min(displayStep, 3)}/3 · estimasi ±1 menit
-      </p>
+      {LABELS.length > 0 && (
+        <p className="mt-2 text-xs text-muted-foreground">
+          Langkah {Math.min(displayStep, 3)}/{LABELS.length}
+        </p>
+      )}
     </nav>
   );
 }
