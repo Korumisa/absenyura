@@ -1,6 +1,6 @@
 import bcryptjs from 'bcryptjs';
 import { describe, expect, test } from 'vitest';
-import { hashPassword, PASSWORD_HASH_COST, verifyPassword } from './password';
+import { hashPassword, needsRehash, PASSWORD_HASH_COST, verifyPassword } from './password';
 
 describe('password hashing', () => {
   test('hash baru dapat diverifikasi dan menolak password salah', async () => {
@@ -22,5 +22,15 @@ describe('password hashing', () => {
     const hash = await hashPassword('rahasia123');
 
     await expect(bcryptjs.compare('rahasia123', hash)).resolves.toBe(true);
+  });
+
+  test('needsRehash hanya untuk hash bcrypt dengan cost berbeda', async () => {
+    const current = await hashPassword('rahasia123');
+    const legacy = await bcryptjs.hash('rahasia123', 4);
+
+    expect(needsRehash(current)).toBe(false);
+    expect(needsRehash(legacy)).toBe(true);
+    expect(needsRehash('$2a$12$' + 'x'.repeat(53))).toBe(true);
+    expect(needsRehash('bukan-hash-bcrypt')).toBe(false);
   });
 });
