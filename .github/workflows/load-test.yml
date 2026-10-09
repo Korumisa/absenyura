@@ -1,0 +1,105 @@
+name: Load Test (k6)
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: Base URL to test
+        required: true
+        default: https://hmsdp.me
+      scenario:
+        description: public = /api/status + /api/public-site/home, login = POST /api/auth/login with LOADTEST-* accounts
+        required: true
+        type: choice
+        default: public
+        options: [public, login]
+      total_vus:
+        description: Total concurrent virtual users across all 4 runners (4..2000)
+        required: true
+        default: '1000'
+      duration:
+        description: How long each runner keeps its virtual users busy (k6 duration, e.g. 60s)
+        required: true
+        default: 60s
+      confirm:
+        description: Type I_HAVE_APPROVAL (turn Vercel Bot Protection off for the run, back on afterwards)
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: load-test
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    if: inputs.confirm == 'I_HAVE_APPROVAL'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      start_at: ${{ steps.plan.outputs.start_at }}
+      vus_per_shard: ${{ steps.plan.outputs.vus_per_shard }}
+    steps:
+      - id: plan
+        env:
+          TOTAL_VUS: ${{ inputs.total_vus }}
+          DURATION: ${{ inputs.duration }}
+        run: |
+          if ! [[ "$TOTAL_VUS" =~ ^[0-9]+$ ]] || [ "$TOTAL_VUS" -lt 4 ] || [ "$TOTAL_VUS" -gt 2000 ]; then
+            echo "total_vus must be an integer between 4 and 2000" >&2
+            exit 1
+          fi
+          if ! [[ "$DURATION" =~ ^[0-9]+(s|m)$ ]]; then
+            echo "duration must look like 60s or 2m" >&2
+            exit 1
+          fi
+          echo "vus_per_shard=$(( (TOTAL_VUS + 3) / 4 ))" >> "$GITHUB_OUTPUT"
+          echo "start_at=$(( $(date +%s) + 90 ))" >> "$GITHUB_OUTPUT"
+
+  k6:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: grafana/setup-k6-action@v1
+      - name: Wait for synchronized start
+        env:
+          START_AT: ${{ needs.plan.outputs.start_at }}
+        run: |
+          now=$(date +%s)
+          if [ "$START_AT" -gt "$now" ]; then sleep $(( START_AT - now )); fi
+      - name: Run k6
+        env:
+          TARGET_URL: ${{ inputs.target_url }}
+          SCENARIO: ${{ inputs.scenario }}
+          VUS: ${{ needs.plan.outputs.vus_per_shard }}
+          DURATION: ${{ inputs.duration }}
+          SHARD_INDEX: ${{ matrix.shard }}
+          LOADTEST_PASSWORD: ${{ secrets.LOADTEST_PASSWORD }}
+          SHARD: ${{ matrix.shard }}
+        run: k6 run --summary-export "summary-$SHARD.json" scripts/k6/load.js
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-summary-${{ matrix.shard }}
+          path: summary-${{ matrix.shard }}.json
+          if-no-files-found: ignore
+
+  summary:
+    needs: k6
+    if: always() && needs.k6.result != 'skipped'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: k6-summary-*
+          path: summaries
+      - run: node scripts/k6/summarize.mjs summaries
