@@ -262,6 +262,10 @@ export default function Excuses() {
     const MAX_WIDTH = 900;
     let width = video.videoWidth;
     let height = video.videoHeight;
+    if (!width || !height) {
+      toast.error('Kamera belum siap. Tunggu pratinjau kamera lalu ambil foto lagi.');
+      return;
+    }
     if (width > MAX_WIDTH) {
       height = Math.round((height * MAX_WIDTH) / width);
       width = MAX_WIDTH;
@@ -277,7 +281,10 @@ export default function Excuses() {
 
     canvas.toBlob(
       (blob) => {
-        if (!blob) return;
+        if (!blob) {
+          toast.error('Foto belum dapat diproses. Silakan ambil foto ulang.');
+          return;
+        }
         setPhotoBlobDirty(blob);
         if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
         setPhotoPreviewUrlQuiet(URL.createObjectURL(blob));

@@ -1,5 +1,9 @@
 import { describe, expect, test, vi } from 'vitest';
-import { processAndValidateImage, validateUploadedFileContent } from './upload';
+import {
+  hasCameraOriginExif,
+  processAndValidateImage,
+  validateUploadedFileContent,
+} from './upload';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -29,6 +33,30 @@ describe('validateUploadedFileContent', () => {
     } finally {
       if (fs.existsSync(testFilePath)) fs.unlinkSync(testFilePath);
     }
+  });
+});
+
+describe('hasCameraOriginExif', () => {
+  const exifOf = async (exif: Record<string, Record<string, string>>) =>
+    (
+      await sharp({
+        create: { width: 8, height: 8, channels: 3, background: { r: 0, g: 0, b: 0 } },
+      })
+        .jpeg()
+        .withExif(exif)
+        .toBuffer()
+        .then((buf) => sharp(buf).metadata())
+    ).exif;
+
+  test('detects DateTimeOriginal inside the Exif sub-IFD', async () => {
+    expect(
+      hasCameraOriginExif(await exifOf({ IFD2: { DateTimeOriginal: '2026:10:09 08:00:00' } }))
+    ).toBe(true);
+  });
+
+  test('ignores missing or encoder-only EXIF', async () => {
+    expect(hasCameraOriginExif(undefined)).toBe(false);
+    expect(hasCameraOriginExif(await exifOf({ IFD0: { Software: 'WebKit' } }))).toBe(false);
   });
 });
 
@@ -125,7 +153,34 @@ describe('processAndValidateImage middleware', () => {
     }
   });
 
-  test('rejects JPEG containing EXIF marker (gallery upload heuristic)', async () => {
+  test('accepts JPEG with minimal encoder EXIF (Safari/WebKit canvas.toBlob)', async () => {
+    const tempDir = os.tmpdir();
+    const testFilePath = path.join(tempDir, `test-webkit-exif-${Date.now()}.jpg`);
+
+    await sharp({
+      create: { width: 100, height: 100, channels: 3, background: { r: 0, g: 0, b: 255 } },
+    })
+      .jpeg()
+      .withExif({ IFD0: { XResolution: '72/1', YResolution: '72/1', ResolutionUnit: '2' } })
+      .toFile(testFilePath);
+    expect((await sharp(testFilePath).metadata()).exif).toBeDefined();
+
+    const req = {
+      file: { path: testFilePath, originalname: 'photo.jpg', mimetype: 'image/jpeg' },
+    } as any;
+    const res = { status: vi.fn().mockReturnThis(), json: vi.fn().mockReturnThis() } as any;
+    const next = vi.fn();
+
+    try {
+      await processAndValidateImage(req, res, next);
+      expect(res.status).not.toHaveBeenCalled();
+      expect(next).toHaveBeenCalled();
+    } finally {
+      if (fs.existsSync(testFilePath)) fs.unlinkSync(testFilePath);
+    }
+  });
+
+  test('rejects JPEG carrying camera EXIF (gallery upload heuristic)', async () => {
     const tempDir = os.tmpdir();
     const testFilePath = path.join(tempDir, `test-exif-${Date.now()}.jpg`);
 
@@ -138,7 +193,7 @@ describe('processAndValidateImage middleware', () => {
       },
     })
       .jpeg()
-      .withMetadata()
+      .withExif({ IFD0: { Make: 'Apple', Model: 'iPhone 15' } })
       .toFile(testFilePath);
 
     const req = {
