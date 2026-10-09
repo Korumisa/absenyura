@@ -23,6 +23,7 @@ import fs from 'fs';
 import fsPromises from 'fs/promises';
 import path from 'path';
 import { v2 as cloudinary } from 'cloudinary';
+import { waitUntil } from '@vercel/functions';
 import { withTransientDbRetry, isPrismaConnectionError } from '../utils/prismaTransient.js';
 
 const CHECK_OUT_GRACE_MS = 2 * 60 * 1000;
@@ -570,11 +571,14 @@ export const checkIn = async (req: AuthRequest, res: Response): Promise<void> =>
 
     if (req.file && req.file.path) {
       isUploadingInBackground = true;
-      await uploadPhotoInBackground(
-        attendance.id,
-        req.file.path,
-        req.file.originalname,
-        req.file.fieldname
+      // On Vercel, waitUntil keeps the function alive after the response until the upload settles.
+      waitUntil(
+        uploadPhotoInBackground(
+          attendance.id,
+          req.file.path,
+          req.file.originalname,
+          req.file.fieldname
+        )
       );
     }
 
@@ -1049,7 +1053,9 @@ export const checkOut = async (req: AuthRequest, res: Response): Promise<void> =
 
     if (req.file?.path) {
       isUploadingInBackground = true;
-      await uploadPhotoInBackground(id, req.file.path, req.file.originalname, req.file.fieldname);
+      waitUntil(
+        uploadPhotoInBackground(id, req.file.path, req.file.originalname, req.file.fieldname)
+      );
     }
 
     res.status(200).json({ success: true, data: updated, message: 'Check-out berhasil' });
