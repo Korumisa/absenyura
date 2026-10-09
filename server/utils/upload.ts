@@ -151,6 +151,37 @@ export const validateUploadedProof = async (req: Request, res: Response, next: N
   }
 };
 
+// Make, Model, GPS IFD pointer, DateTimeOriginal, MakerNote
+const CAMERA_ORIGIN_EXIF_TAGS = new Set([0x010f, 0x0110, 0x8825, 0x9003, 0x927c]);
+const EXIF_SUB_IFD_TAG = 0x8769;
+
+export function hasCameraOriginExif(exif: Buffer | undefined): boolean {
+  if (!exif) return false;
+  const tiff = exif.subarray(0, 6).toString('latin1') === 'Exif\0\0' ? exif.subarray(6) : exif;
+  if (tiff.length < 8) return false;
+  const order = tiff.toString('latin1', 0, 2);
+  if (order !== 'II' && order !== 'MM') return false;
+  const le = order === 'II';
+  const u16 = (o: number) => (le ? tiff.readUInt16LE(o) : tiff.readUInt16BE(o));
+  const u32 = (o: number) => (le ? tiff.readUInt32LE(o) : tiff.readUInt32BE(o));
+
+  const visited = new Set<number>();
+  const scanIfd = (offset: number): boolean => {
+    if (visited.has(offset) || offset + 2 > tiff.length) return false;
+    visited.add(offset);
+    const count = u16(offset);
+    for (let i = 0; i < count; i++) {
+      const entry = offset + 2 + i * 12;
+      if (entry + 12 > tiff.length) return false;
+      const tag = u16(entry);
+      if (CAMERA_ORIGIN_EXIF_TAGS.has(tag)) return true;
+      if (tag === EXIF_SUB_IFD_TAG && scanIfd(u32(entry + 8))) return true;
+    }
+    return false;
+  };
+  return scanIfd(u32(4));
+}
+
 export const processAndValidateImage = async (req: Request, res: Response, next: NextFunction) => {
   if (!req.file) {
     return next();
@@ -200,13 +231,13 @@ export const processAndValidateImage = async (req: Request, res: Response, next:
       });
     }
 
-    const headerBytes = buffer.subarray(0, Math.min(bytesRead, 2048));
-    const hasExifMarker =
-      (meta.mime === 'image/jpeg' &&
-        headerBytes.includes(Buffer.from('Exif\u0000\u0000', 'ascii'))) ||
-      (meta.mime === 'image/png' && headerBytes.includes(Buffer.from('eXIf', 'ascii'))) ||
-      (meta.mime === 'image/webp' && headerBytes.includes(Buffer.from('EXIF', 'ascii')));
-    if (hasExifMarker) {
+    // Safari/WebKit (every iOS browser) writes a minimal EXIF block on canvas.toBlob, so the
+    // mere presence of EXIF cannot prove a gallery upload; only camera-origin tags do.
+    const exif = await sharp(filePath)
+      .metadata()
+      .then((m) => m.exif)
+      .catch(() => undefined);
+    if (hasCameraOriginExif(exif)) {
       await fs.promises.unlink(filePath).catch(() => {});
       req.file = undefined;
       return res.status(400).json({
