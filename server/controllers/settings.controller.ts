@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import type { AuthRequest } from '../types/index.js';
-import bcrypt from 'bcryptjs';
 import prisma from '../utils/prisma.js';
+import { hashPassword, verifyPassword } from '../utils/password.js';
 import { normalizeIp } from '../utils/ip.js';
 import { sendInternalServerError } from '../utils/errorResponse.js';
 
@@ -63,13 +63,13 @@ export const updateProfile = async (req: AuthRequest, res: Response): Promise<vo
         return;
       }
 
-      const isPasswordValid = await bcrypt.compare(current_password, user.password);
+      const isPasswordValid = await verifyPassword(current_password, user.password);
       if (!isPasswordValid) {
         res.status(400).json({ success: false, error: 'Current password is incorrect' });
         return;
       }
 
-      updateData.password = await bcrypt.hash(new_password, 12);
+      updateData.password = await hashPassword(new_password);
       updateData.must_change_password = false;
       updateData.last_password_change = new Date();
     }

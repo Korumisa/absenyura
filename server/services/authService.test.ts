@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import crypto from 'crypto';
 
-const bcryptMock = vi.hoisted(() => ({
-  compare: vi.fn(),
+const passwordMock = vi.hoisted(() => ({
+  verifyPassword: vi.fn(),
+  hashPassword: vi.fn(),
 }));
 
 const jwtMock = vi.hoisted(() => ({
@@ -18,9 +19,7 @@ const userRepositoryMock = vi.hoisted(() => ({
   rotateRefreshTokenHash: vi.fn(),
 }));
 
-vi.mock('bcryptjs', () => ({
-  default: bcryptMock,
-}));
+vi.mock('../utils/password.js', () => passwordMock);
 vi.mock('../utils/jwt.js', () => jwtMock);
 vi.mock('../repositories/userRepository.js', () => userRepositoryMock);
 vi.mock('../utils/security.js', () => ({
@@ -52,7 +51,7 @@ describe('authService refresh token hash', () => {
       is_active: true,
       device_fingerprint: null,
     });
-    bcryptMock.compare.mockResolvedValue(true);
+    passwordMock.verifyPassword.mockResolvedValue(true);
     jwtMock.generateAccessToken.mockReturnValue('access-token');
     jwtMock.generateRefreshToken.mockReturnValue('refresh-token');
     userRepositoryMock.updateUser.mockResolvedValue({ id: 'user-1' });
@@ -74,6 +73,98 @@ describe('authService refresh token hash', () => {
       expect(result.data.accessToken).toBe('access-token');
       expect(result.data.refreshToken).toBe('refresh-token');
     }
+  });
+
+  test('login binds a new device and stores refresh hash in a single update', async () => {
+    userRepositoryMock.findByNim.mockResolvedValue({
+      id: 'user-1',
+      name: 'Student',
+      email: 'student@example.com',
+      password: 'hashed-password',
+      role: 'USER',
+      avatar_url: null,
+      department: 'Informatika',
+      is_active: true,
+      device_fingerprint: null,
+    });
+    passwordMock.verifyPassword.mockResolvedValue(true);
+    jwtMock.generateAccessToken.mockReturnValue('access-token');
+    jwtMock.generateRefreshToken.mockReturnValue('refresh-token');
+    userRepositoryMock.updateUser.mockResolvedValue({ id: 'user-1' });
+
+    const result = await login({
+      nim: 'A11.2023.12345',
+      password: 'secret123',
+      device_fingerprint: 'device-abc',
+    });
+
+    expect(result.ok).toBe(true);
+    expect(userRepositoryMock.updateUser).toHaveBeenCalledTimes(1);
+    expect(userRepositoryMock.updateUser).toHaveBeenCalledWith({
+      id: 'user-1',
+      data: {
+        refresh_token_hash: sha256('refresh-token'),
+        device_fingerprint: 'device-abc',
+      },
+      select: { id: true },
+    });
+  });
+
+  test('login keeps the bound device and only updates the refresh hash', async () => {
+    userRepositoryMock.findByNim.mockResolvedValue({
+      id: 'user-1',
+      name: 'Student',
+      email: 'student@example.com',
+      password: 'hashed-password',
+      role: 'USER',
+      avatar_url: null,
+      department: 'Informatika',
+      is_active: true,
+      device_fingerprint: 'device-abc [OFFLINE_SYNC]',
+    });
+    passwordMock.verifyPassword.mockResolvedValue(true);
+    jwtMock.generateAccessToken.mockReturnValue('access-token');
+    jwtMock.generateRefreshToken.mockReturnValue('refresh-token');
+    userRepositoryMock.updateUser.mockResolvedValue({ id: 'user-1' });
+
+    const result = await login({
+      nim: 'A11.2023.12345',
+      password: 'secret123',
+      device_fingerprint: 'device-abc',
+    });
+
+    expect(result.ok).toBe(true);
+    expect(userRepositoryMock.updateUser).toHaveBeenCalledTimes(1);
+    expect(userRepositoryMock.updateUser).toHaveBeenCalledWith({
+      id: 'user-1',
+      data: { refresh_token_hash: sha256('refresh-token') },
+      select: { id: true },
+    });
+  });
+
+  test('login rejects a student on a different device without writing', async () => {
+    userRepositoryMock.findByNim.mockResolvedValue({
+      id: 'user-1',
+      name: 'Student',
+      email: 'student@example.com',
+      password: 'hashed-password',
+      role: 'USER',
+      avatar_url: null,
+      department: 'Informatika',
+      is_active: true,
+      device_fingerprint: 'device-abc',
+    });
+    passwordMock.verifyPassword.mockResolvedValue(true);
+
+    const result = await login({
+      nim: 'A11.2023.12345',
+      password: 'secret123',
+      device_fingerprint: 'device-xyz',
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.status).toBe(403);
+    expect(userRepositoryMock.updateUser).not.toHaveBeenCalled();
   });
 
   test('login rejects missing nim', async () => {

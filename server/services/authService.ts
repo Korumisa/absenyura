@@ -1,6 +1,6 @@
-import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../utils/jwt.js';
+import { hashPassword, verifyPassword } from '../utils/password.js';
 import { safeCompare } from '../utils/security.js';
 import { isBlockedInProduction } from '../constants/internalRoutes.js';
 import * as maintenanceRepository from '../repositories/maintenanceRepository.js';
@@ -110,7 +110,7 @@ export async function login(params: {
     };
   }
 
-  const isPasswordValid = await bcrypt.compare(password, user.password);
+  const isPasswordValid = await verifyPassword(password, user.password);
   if (!isPasswordValid) {
     return {
       ok: false,
@@ -123,6 +123,7 @@ export async function login(params: {
     };
   }
 
+  let deviceFingerprintToBind: string | undefined;
   if (device_fingerprint && device_fingerprint !== 'unknown-device') {
     if (user.device_fingerprint) {
       const storedDevice = normalizeDeviceFingerprint(user.device_fingerprint);
@@ -142,18 +143,10 @@ export async function login(params: {
           };
         }
 
-        await userRepository.updateUser({
-          id: user.id,
-          data: { device_fingerprint },
-          select: { id: true },
-        });
+        deviceFingerprintToBind = device_fingerprint;
       }
     } else {
-      await userRepository.updateUser({
-        id: user.id,
-        data: { device_fingerprint },
-        select: { id: true },
-      });
+      deviceFingerprintToBind = device_fingerprint;
     }
   }
 
@@ -161,7 +154,10 @@ export async function login(params: {
   const refreshToken = generateRefreshToken(user.id, user.role);
   await userRepository.updateUser({
     id: user.id,
-    data: { refresh_token_hash: hashRefreshToken(refreshToken) },
+    data: {
+      refresh_token_hash: hashRefreshToken(refreshToken),
+      ...(deviceFingerprintToBind ? { device_fingerprint: deviceFingerprintToBind } : {}),
+    },
     select: { id: true },
   });
 
@@ -468,7 +464,7 @@ export async function seedAdmin(params: {
     return { ok: false, status: 500, body: { success: false, error: 'Seeder env belum diatur' } };
   }
 
-  const hashedPassword = await bcrypt.hash(password, 12);
+  const hashedPassword = await hashPassword(password);
   const admin = await userRepository.createUser({
     data: {
       name: params.seedName || 'Super Admin',
