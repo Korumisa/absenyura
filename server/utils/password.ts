@@ -1,6 +1,7 @@
 import bcryptjs from 'bcryptjs';
 
-export const PASSWORD_HASH_COST = 12;
+// Cost 10 is the OWASP minimum for bcrypt; higher costs cap login throughput on serverless CPUs.
+export const PASSWORD_HASH_COST = 10;
 
 type PasswordHasher = {
   hash(password: string, cost: number): Promise<string>;
@@ -37,4 +38,9 @@ export async function hashPassword(password: string): Promise<string> {
 
 export async function verifyPassword(password: string, hash: string): Promise<boolean> {
   return (await getHasher()).verify(password, hash);
+}
+
+export function needsRehash(hash: string): boolean {
+  const match = /^\$2[abxy]\$(\d{2})\$/.exec(hash);
+  return match !== null && Number(match[1]) !== PASSWORD_HASH_COST;
 }

@@ -4,6 +4,7 @@ import crypto from 'crypto';
 const passwordMock = vi.hoisted(() => ({
   verifyPassword: vi.fn(),
   hashPassword: vi.fn(),
+  needsRehash: vi.fn(),
 }));
 
 const jwtMock = vi.hoisted(() => ({
@@ -138,6 +139,42 @@ describe('authService refresh token hash', () => {
     expect(userRepositoryMock.updateUser).toHaveBeenCalledWith({
       id: 'user-1',
       data: { refresh_token_hash: sha256('refresh-token') },
+      select: { id: true },
+    });
+  });
+
+  test('login rehashes an outdated password hash in the same update', async () => {
+    userRepositoryMock.findByNim.mockResolvedValue({
+      id: 'user-1',
+      name: 'Student',
+      email: 'student@example.com',
+      password: 'old-cost-hash',
+      role: 'USER',
+      avatar_url: null,
+      department: 'Informatika',
+      is_active: true,
+      device_fingerprint: 'device-abc',
+    });
+    passwordMock.verifyPassword.mockResolvedValue(true);
+    passwordMock.needsRehash.mockReturnValue(true);
+    passwordMock.hashPassword.mockResolvedValue('new-cost-hash');
+    jwtMock.generateAccessToken.mockReturnValue('access-token');
+    jwtMock.generateRefreshToken.mockReturnValue('refresh-token');
+    userRepositoryMock.updateUser.mockResolvedValue({ id: 'user-1' });
+
+    const result = await login({
+      nim: 'A11.2023.12345',
+      password: 'secret123',
+      device_fingerprint: 'device-abc',
+    });
+
+    expect(result.ok).toBe(true);
+    expect(passwordMock.needsRehash).toHaveBeenCalledWith('old-cost-hash');
+    expect(passwordMock.hashPassword).toHaveBeenCalledWith('secret123');
+    expect(userRepositoryMock.updateUser).toHaveBeenCalledTimes(1);
+    expect(userRepositoryMock.updateUser).toHaveBeenCalledWith({
+      id: 'user-1',
+      data: { refresh_token_hash: sha256('refresh-token'), password: 'new-cost-hash' },
       select: { id: true },
     });
   });

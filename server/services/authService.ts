@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../utils/jwt.js';
-import { hashPassword, verifyPassword } from '../utils/password.js';
+import { hashPassword, needsRehash, verifyPassword } from '../utils/password.js';
 import { safeCompare } from '../utils/security.js';
 import { isBlockedInProduction } from '../constants/internalRoutes.js';
 import * as maintenanceRepository from '../repositories/maintenanceRepository.js';
@@ -150,6 +150,7 @@ export async function login(params: {
     }
   }
 
+  const rehashedPassword = needsRehash(user.password) ? await hashPassword(password) : undefined;
   const accessToken = generateAccessToken(user.id, user.role);
   const refreshToken = generateRefreshToken(user.id, user.role);
   await userRepository.updateUser({
@@ -157,6 +158,7 @@ export async function login(params: {
     data: {
       refresh_token_hash: hashRefreshToken(refreshToken),
       ...(deviceFingerprintToBind ? { device_fingerprint: deviceFingerprintToBind } : {}),
+      ...(rehashedPassword ? { password: rehashedPassword } : {}),
     },
     select: { id: true },
   });
