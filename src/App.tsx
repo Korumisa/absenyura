@@ -16,6 +16,7 @@ import { ThemeProvider } from '@/providers/theme-provider';
 import { removeLegacyAttendance } from '@/lib/storage/removeLegacyAttendance';
 import { dispatchAppOnline, ONLINE_USER_MESSAGE } from '@/lib/perf/networkEvents';
 import api from '@/services/api';
+import { boundedSWRRetry } from '@/lib/http/swrRetry';
 import { useAppStatusStore } from '@/stores/appStatusStore';
 import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 
@@ -126,10 +127,11 @@ export default function App() {
         return;
       }
 
-      const retryDelays = [0, 800, 1600, 2400];
+      const retryDelays = [0, 5000, 15000];
+      let retryHintMs = 0;
       for (let i = 0; i < retryDelays.length; i += 1) {
         if (cancelled) return;
-        if (i > 0) await sleep(retryDelays[i]);
+        if (i > 0) await sleep(Math.max(retryDelays[i], retryHintMs) + Math.random() * 1000);
         if (cancelled) return;
 
         try {
@@ -139,7 +141,14 @@ export default function App() {
             clearNetworkIssues();
             return;
           }
-        } catch {
+        } catch (error) {
+          const response = (
+            error as { response?: { status?: number; data?: { retry_after_ms?: number } } }
+          )?.response;
+          retryHintMs =
+            response?.status === 503
+              ? Math.min(900_000, Math.max(30_000, Number(response.data?.retry_after_ms) || 0))
+              : 0;
           if (cancelled) return;
           if (!navigator.onLine) {
             setOffline(true);
@@ -197,6 +206,8 @@ export default function App() {
         value={{
           dedupingInterval: 30_000,
           focusThrottleInterval: 5000,
+          errorRetryCount: 2,
+          onErrorRetry: boundedSWRRetry,
         }}
       >
         <ErrorBoundary>

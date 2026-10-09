@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authenticate, authorize } from '../middlewares/auth.middleware.js';
 import { publicSiteCache } from '../middlewares/publicSiteCache.middleware.js';
+import { invalidatePublicHome } from '../services/publicHome.js';
 import { validateBody, validateParams } from '../middlewares/validate.js';
 import {
   UpsertPublicProfileBody,
@@ -77,6 +78,14 @@ router.get('/structure', ...publicRead, getPublicStructure);
 
 router.use(authenticate);
 router.use(authorize(['SUPER_ADMIN', 'CONTENT_ADMIN']));
+router.use((req, res, next) => {
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+    res.once('finish', () => {
+      if (res.statusCode < 400) invalidatePublicHome();
+    });
+  }
+  next();
+});
 
 router.get('/admin/profile', getPublicProfile);
 router.put('/admin/profile', validateBody(UpsertPublicProfileBody), upsertAdminProfile);

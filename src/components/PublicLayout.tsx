@@ -4,6 +4,7 @@ import PublicFooter from './PublicFooter';
 import useSWR from 'swr';
 import { useSWRConfig } from 'swr';
 import api from '@/services/api';
+import { boundedSWRRetry } from '@/lib/http/swrRetry';
 import type { PublicProfile } from '@/types/publicSite';
 import { upsertScriptJsonLd } from '@/components/public/PublicPageMeta';
 import { loadCormorantDisplayFont } from '@/lib/perf/loadFonts';
@@ -21,13 +22,7 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
     errorRetryCount: 2,
     errorRetryInterval: 1200,
     revalidateOnReconnect: true,
-    onErrorRetry: (err, _key, _config, revalidate, revalidateOpts) => {
-      const status = (err as { response?: { status?: number } })?.response?.status;
-      if (status === 429) {
-        return;
-      }
-      void revalidate(revalidateOpts);
-    },
+    onErrorRetry: boundedSWRRetry,
   });
   const primary = profile?.primary_color || '#2563eb';
 

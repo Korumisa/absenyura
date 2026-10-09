@@ -1,4 +1,5 @@
 import api from '@/services/api';
+import { boundedSWRRetry } from '@/lib/http/swrRetry';
 import type {
   PublicGalleryAlbum,
   PublicProfile,
@@ -87,13 +88,7 @@ export function usePublicHomeData(opts?: { cabinetId?: string | null }) {
       keepPreviousData: true,
       revalidateOnReconnect: true,
       shouldRetryOnError: true,
-      onErrorRetry: (err, _key, _config, revalidate, revalidateOpts) => {
-        const status = (err as { response?: { status?: number } })?.response?.status;
-        if (status === 429) {
-          return;
-        }
-        void revalidate(revalidateOpts);
-      },
+      onErrorRetry: boundedSWRRetry,
     },
     mockStatic: mockHome,
   });

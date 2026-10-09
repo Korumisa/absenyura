@@ -18,6 +18,30 @@ export function getErrorMessage(err: any, fallback: string) {
   const url = String(err?.response?.config?.url || '');
   const method = String(err?.response?.config?.method || '').toUpperCase();
 
+  if (typeof status === 'number' && status >= 500) {
+    const data = err?.response?.data;
+    const rawTrace =
+      data?.trace_id ?? data?.error?.trace_id ?? err?.response?.headers?.['x-request-id'];
+    const trace =
+      typeof rawTrace === 'string' && /^[a-zA-Z0-9_-]{1,128}$/.test(rawTrace)
+        ? ` Kode referensi: ${rawTrace}.`
+        : '';
+    const retryMs = Number(data?.retry_after_ms);
+    const seconds =
+      Number.isFinite(retryMs) && retryMs > 0
+        ? Math.min(900, Math.max(1, Math.ceil(retryMs / 1000)))
+        : 30;
+    const message =
+      status === 503
+        ? `Layanan sedang sibuk atau sementara tidak tersedia. Tunggu ${seconds} detik lalu coba lagi.`
+        : 'Permintaan belum dapat dikonfirmasi. Periksa riwayat sebelum mengirim ulang; hubungi admin jika masalah berlanjut.';
+    return `${message}${trace}`;
+  }
+
+  if (status === 429 && err?.response?.headers?.['x-vercel-mitigated'] === 'challenge') {
+    return 'Akses memerlukan pemeriksaan keamanan. Buka kembali situs melalui browser; hubungi admin jika tetap terhalang.';
+  }
+
   const errorCode = err?.response?.data?.error_code;
   if (typeof errorCode === 'string') {
     if (errorCode === 'MISSING_CREDENTIALS')

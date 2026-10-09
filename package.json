@@ -23,6 +23,8 @@
     "test:unit": "vitest run --config vitest.unit.config.ts",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:coverage": "vitest run --coverage",
+    "test:load": "tsx scripts/load-test.ts",
+    "monitor:availability": "node scripts/monitor-availability.mjs",
     "seed": "npx prisma@6.4.1 generate && node prisma/seed.js",
     "server:dev": "nodemon",
     "dev": "concurrently \"npm run client:dev\" \"npm run server:dev\"",

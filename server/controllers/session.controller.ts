@@ -322,6 +322,7 @@ export const createSession = async (req: AuthRequest, res: Response): Promise<vo
       }
     }
 
+    triggerSessionCronLazy();
     res
       .status(201)
       .json({ success: true, data: stripSessionQrSecrets(session as Record<string, unknown>) });
@@ -477,6 +478,7 @@ export const updateSession = async (req: AuthRequest, res: Response): Promise<vo
       return updated;
     });
 
+    triggerSessionCronLazy();
     res
       .status(200)
       .json({ success: true, data: stripSessionQrSecrets(session as Record<string, unknown>) });

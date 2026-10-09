@@ -1,4 +1,8 @@
 import prisma from '../utils/prisma.js';
+import { createSingleFlightCache } from '../utils/singleFlightCache.js';
+
+const homeCache = createSingleFlightCache<Awaited<ReturnType<typeof fetchPublicHome>>>(15_000);
+export const invalidatePublicHome = () => homeCache.clear();
 
 export const PUBLIC_STRUCTURE_EMPTY = {
   data: [] as unknown[],
@@ -162,7 +166,12 @@ async function loadPublicGalleries() {
   }));
 }
 
-export async function loadPublicHome(cabinetId?: string) {
+export function loadPublicHome(cabinetId?: string) {
+  const key = cabinetId?.trim() || '';
+  return homeCache.get(key, () => fetchPublicHome(key || undefined));
+}
+
+async function fetchPublicHome(cabinetId?: string) {
   const [profile, programs, structure, latest, lomba, galleries, recruitments] = await Promise.all([
     prisma.publicSiteProfile.findFirst({ orderBy: { created_at: 'asc' } }),
     prisma.publicProgram.findMany({

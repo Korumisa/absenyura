@@ -10,7 +10,8 @@ const DEFAULT_MAX_RETRIES = 3;
 const DEFAULT_BASE_DELAY_MS = 400;
 
 function defaultShouldRetry(error: unknown): boolean {
-  const err = error as { response?: { status?: unknown } };
+  const err = error as { response?: { status?: unknown }; config?: { _transientRetry?: boolean } };
+  if (err?.config?._transientRetry) return false;
   const status = Number(err?.response?.status);
   return (
     Number.isFinite(status) &&
@@ -51,7 +52,7 @@ export async function retryWithBackoff<T>(
         throw err;
       }
 
-      const retryAfterHint = attempt === 0 ? getRetryAfterHint(err) : undefined;
+      const retryAfterHint = getRetryAfterHint(err);
       const exponentialDelay = baseDelayMs * 2 ** attempt;
       const delayMs =
         retryAfterHint && retryAfterHint > exponentialDelay ? retryAfterHint : exponentialDelay;

@@ -20,7 +20,7 @@ const prismaMock = vi.hoisted(() => ({
 
 vi.mock('../utils/prisma.js', () => ({ default: prismaMock }));
 
-import { getDashboardStats } from './dashboard.controller';
+import { clearDashboardStatsCache, getDashboardStats } from './dashboard.controller';
 
 const createRes = () => {
   const res: { status?: any; json?: any } = {};
@@ -32,6 +32,7 @@ const createRes = () => {
 describe('getDashboardStats', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    clearDashboardStatsCache();
   });
 
   test('USER dashboard chart does not do per-day queries', async () => {
@@ -113,9 +114,10 @@ describe('getDashboardStats', () => {
 describe('Dashboard ADMIN performance (P2-2)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    clearDashboardStatsCache();
   });
 
-  test('should run ADMIN independent counts in parallel via Promise.all pattern', async () => {
+  test('should load ADMIN independent counts without losing scoped totals', async () => {
     prismaMock.user.count.mockResolvedValue(150);
     prismaMock.session.count.mockResolvedValue(42);
     prismaMock.attendance.groupBy.mockResolvedValue([

@@ -383,6 +383,21 @@ export const runNonceCleanupJob = async () => {
   if (cleaned.count > 0) {
     console.log(`[Cron] Cleaned ${cleaned.count} expired nonces`);
   }
+  try {
+    const idempotency = await prisma.idempotencyKey.deleteMany({
+      where: { consumed_at: { lt: nonceRetentionCutoff } },
+    });
+    if (idempotency.count > 0) {
+      console.log(`[Cron] Cleaned ${idempotency.count} expired request keys`);
+    }
+  } catch (error) {
+    const code = (error as { code?: string } | null)?.code;
+    if (code === 'P2021') {
+      console.error('[Cron] IdempotencyKey table missing; apply production migrations');
+    } else {
+      throw error;
+    }
+  }
 };
 
 export const runPhotoCleanupJob = async () => {
