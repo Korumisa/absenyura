@@ -1,233 +1,105 @@
-import { Response, NextFunction } from 'express';
+import type { Response, NextFunction } from 'express';
 import type { AuthRequest } from '../types/index.js';
 import prisma from '../utils/prisma.js';
+import { sendServiceUnavailable } from '../utils/errorResponse.js';
 
-interface CachedResponse {
-  status: number;
-  body: unknown;
-  consumedAt: number;
-  endpoint: string;
-}
+const TTL_MS = 24 * 60 * 60 * 1000;
 
-interface IdempotencyDbEntry {
-  key: string;
-  consumed_at: Date;
-  user_id: string;
-  endpoint: string;
-  response_status: number | null;
-  response_body: string | null;
-}
-
-const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
-
-const idempotencyModelRaw = (prisma as unknown as { idempotencyKey?: any }).idempotencyKey;
-const idempotencyModel = idempotencyModelRaw ?? null;
-
-const responseCache = new Map<string, CachedResponse>();
-
-const setupInMemoryInterception = (
-  res: Response,
-  cacheKey: string,
-  now: number,
-  endpoint: string,
-  idempotencyKey: string
-) => {
-  const originalJson = res.json.bind(res);
-  let interceptedBody: unknown;
-  let interceptedStatus = res.statusCode;
-
-  res.json = (body: unknown) => {
-    interceptedBody = body;
-    interceptedStatus = res.statusCode;
-    return originalJson(body);
-  };
-
-  const originalSend = res.send.bind(res);
-  res.send = (body?: unknown) => {
-    interceptedStatus = res.statusCode;
-    if (typeof body === 'string') {
-      try {
-        interceptedBody = JSON.parse(body);
-      } catch {
-        interceptedBody = body;
-      }
-    } else if (body !== undefined) {
-      interceptedBody = body;
-    }
-    return originalSend(body as never);
-  };
-
-  res.on('finish', () => {
-    if (res.statusCode < 500) {
-      responseCache.set(cacheKey, {
-        status: res.statusCode,
-        body: interceptedBody,
-        consumedAt: now,
-        endpoint,
-      });
-
-      if (idempotencyModel) {
-        idempotencyModel
-          .update({
-            where: { key: idempotencyKey },
-            data: {
-              response_status: interceptedStatus ?? res.statusCode,
-              response_body:
-                typeof interceptedBody === 'string'
-                  ? interceptedBody
-                  : JSON.stringify(interceptedBody ?? null),
-            },
-          })
-          .catch(() => undefined);
-      }
-    }
+function unavailable(res: Response, error: unknown) {
+  sendServiceUnavailable(res, {
+    error: 'Permintaan belum dapat dikonfirmasi. Tunggu 30 detik, periksa riwayat, lalu coba lagi.',
+    reason: 'idempotency_unavailable',
+    err: error,
   });
+}
 
-  return { interceptedStatus, interceptedBody };
-};
-
-export const idempotency = (req: AuthRequest, res: Response, next: NextFunction): void => {
-  const idempotencyKey = req.header('X-Idempotency-Key');
+export const idempotency = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  const key = req.header('X-Idempotency-Key');
   const userId = req.user?.id;
-
-  if (!idempotencyKey || !userId) {
+  if (!key || !userId) {
     next();
     return;
   }
+  if (!/^[a-zA-Z0-9:_-]{1,128}$/.test(key)) {
+    res.status(400).json({ success: false, error: 'Kunci permintaan tidak valid.' });
+    return;
+  }
 
-  const cacheKey = `${userId}:${idempotencyKey}`;
-  const now = Date.now();
   const endpoint = `${req.method} ${req.baseUrl}${req.path}`;
-
-  const cached = responseCache.get(cacheKey);
-  if (cached) {
-    const age = now - cached.consumedAt;
-    if (age < TWENTY_FOUR_HOURS_MS) {
-      res.status(cached.status).json(cached.body);
-      return;
-    }
-    responseCache.delete(cacheKey);
-  }
-
-  if (!idempotencyModel) {
-    console.warn(
-      '[idempotency] Prisma IdempotencyKey model not available; skipping DB check (only in-memory cache works). Run prisma generate after applying migration.'
-    );
-    setupInMemoryInterception(res, cacheKey, now, endpoint, idempotencyKey);
-    next();
-    return;
-  }
-
-  idempotencyModel
-    .findUnique({ where: { key: idempotencyKey } })
-    .then((dbEntry: IdempotencyDbEntry | null) => {
-      if (dbEntry && dbEntry.user_id === userId) {
-        const age = now - dbEntry.consumed_at.getTime();
-        if (age < TWENTY_FOUR_HOURS_MS) {
-          if (dbEntry.response_status && dbEntry.response_body) {
-            const status = dbEntry.response_status;
-            let body: unknown = dbEntry.response_body;
-            try {
-              body = JSON.parse(dbEntry.response_body);
-            } catch {
-              // noop, use raw string
-            }
-            res.status(status).json(body);
-            return;
-          } else {
-            console.warn(
-              '[idempotency] Legacy idempotency hit: response_body missing; falling back to generic 409.'
-            );
-            res.status(409).json({
-              success: false,
-              error: 'Idempotent request already processed within the last 24 hours.',
-              idempotency_key: idempotencyKey,
-            });
-            return;
-          }
-        } else {
-          idempotencyModel.delete({ where: { key: idempotencyKey } }).catch(() => undefined);
+  const cutoff = new Date(Date.now() - TTL_MS);
+  try {
+    // A unique INSERT is the reservation. Never run the mutation before it succeeds.
+    try {
+      await prisma.idempotencyKey.create({
+        data: { key, user_id: userId, endpoint, consumed_at: new Date() },
+      });
+    } catch (error) {
+      if ((error as { code?: string })?.code !== 'P2002') throw error;
+      const previous = await prisma.idempotencyKey.findUnique({ where: { key } });
+      if (!previous || previous.user_id !== userId || previous.endpoint !== endpoint) {
+        res.status(409).json({ success: false, error: 'Kunci permintaan sudah digunakan.' });
+        return;
+      }
+      if (previous.consumed_at < cutoff) {
+        // Compare-and-delete prevents concurrent requests from deleting a new reservation.
+        const deleted = await prisma.idempotencyKey.deleteMany({
+          where: { key, consumed_at: { lt: cutoff } },
+        });
+        if (deleted.count !== 1) {
+          res.status(409).json({ success: false, error: 'Permintaan sedang diproses.' });
+          return;
         }
-      } else if (dbEntry && dbEntry.user_id !== userId) {
+        await prisma.idempotencyKey.create({
+          data: { key, user_id: userId, endpoint, consumed_at: new Date() },
+        });
+      } else if (previous.response_status !== null && previous.response_body !== null) {
+        if (previous.response_status === 503) res.setHeader('Retry-After', '30');
+        res.status(previous.response_status).json(JSON.parse(previous.response_body));
+        return;
+      } else {
+        res.setHeader('Retry-After', '30');
         res.status(409).json({
           success: false,
-          error: 'Idempotency key is already in use by another request.',
-          idempotency_key: idempotencyKey,
+          error:
+            'Permintaan sebelumnya masih diproses atau belum terkonfirmasi. Periksa riwayat sebelum mengirim ulang.',
+          error_code: 'REQUEST_IN_PROGRESS',
         });
         return;
       }
+    }
+  } catch (error) {
+    if ((error as { code?: string })?.code === 'P2002') {
+      res.status(409).json({ success: false, error: 'Permintaan sedang diproses.' });
+    } else {
+      unavailable(res, error);
+    }
+    return;
+  }
 
-      let interceptedStatus = res.statusCode;
-      let interceptedBody: unknown;
-
-      const originalJson = res.json.bind(res);
-      res.json = (body: unknown) => {
-        interceptedBody = body;
-        interceptedStatus = res.statusCode;
-        return originalJson(body);
-      };
-
-      const originalSend = res.send.bind(res);
-      res.send = (body?: unknown) => {
-        interceptedStatus = res.statusCode;
-        if (typeof body === 'string') {
-          try {
-            interceptedBody = JSON.parse(body);
-          } catch {
-            interceptedBody = body;
-          }
-        } else if (body !== undefined) {
-          interceptedBody = body;
-        }
-        return originalSend(body as never);
-      };
-
-      idempotencyModel
-        .create({
-          data: {
-            key: idempotencyKey,
-            user_id: userId,
-            endpoint,
-            consumed_at: new Date(now),
-            response_status: interceptedStatus ?? res.statusCode,
-            response_body:
-              typeof interceptedBody === 'string'
-                ? interceptedBody
-                : JSON.stringify(interceptedBody ?? null),
-          },
-        })
-        .catch(() => undefined);
-
-      res.on('finish', () => {
-        if (res.statusCode < 500) {
-          responseCache.set(cacheKey, {
-            status: res.statusCode,
-            body: interceptedBody,
-            consumedAt: now,
-            endpoint,
-          });
-
-          idempotencyModel
-            .update({
-              where: { key: idempotencyKey },
-              data: {
-                response_status: interceptedStatus ?? res.statusCode,
-                response_body:
-                  typeof interceptedBody === 'string'
-                    ? interceptedBody
-                    : JSON.stringify(interceptedBody ?? null),
-              },
-            })
-            .catch(() => undefined);
-        }
-      });
-
-      next();
-      return undefined;
-    })
-    .catch(() => {
-      setupInMemoryInterception(res, cacheKey, now, endpoint, idempotencyKey);
-      next();
-      return undefined;
-    });
+  const originalJson = res.json.bind(res);
+  let finalizing = false;
+  res.json = ((body: unknown) => {
+    if (finalizing) return res;
+    finalizing = true;
+    const status = res.statusCode;
+    // Persist before responding; finish-event writes can be suspended on serverless.
+    void (async () => {
+      try {
+        await prisma.idempotencyKey.update({
+          where: { key },
+          data: { response_status: status, response_body: JSON.stringify(body ?? null) },
+        });
+        if (!res.destroyed) originalJson(body);
+      } catch (error) {
+        res.json = originalJson;
+        if (!res.destroyed && !res.headersSent) unavailable(res, error);
+      }
+    })();
+    return res;
+  }) as Response['json'];
+  next();
 };

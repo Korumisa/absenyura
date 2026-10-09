@@ -224,15 +224,20 @@ api.interceptors.response.use(
       isIdempotent &&
       (isTransientHttp || isTransientNetwork) &&
       !originalRequest._transientRetry &&
+      !pathname.endsWith('/status') &&
       !originalRequest.url?.includes('/auth/refresh')
     ) {
       originalRequest._transientRetry = true;
       const retryAfterRaw = error.response?.data?.retry_after_ms;
+      const retryHeaderSeconds = Number(error.response?.headers?.['retry-after']);
       const retryAfter =
         typeof retryAfterRaw === 'number' && retryAfterRaw > 0
           ? retryAfterRaw
-          : TRANSIENT_RETRY_DEFAULT_MS;
-      await new Promise((r) => setTimeout(r, retryAfter));
+          : Number.isFinite(retryHeaderSeconds) && retryHeaderSeconds > 0
+            ? retryHeaderSeconds * 1000
+            : TRANSIENT_RETRY_DEFAULT_MS;
+      // Spread recovery traffic across browsers instead of retrying in lockstep.
+      await new Promise((r) => setTimeout(r, Math.min(retryAfter, 900_000) + Math.random() * 1000));
       return api.request(originalRequest);
     }
 

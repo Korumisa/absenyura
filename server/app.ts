@@ -13,7 +13,8 @@ import morgan from 'morgan';
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import crypto from 'crypto';
 import { csrfProtect } from './middlewares/csrf.middleware.js';
-import { requestTiming } from './middlewares/requestTiming.middleware.js';
+import { requestTiming, getRuntimeMetrics } from './middlewares/requestTiming.middleware.js';
+import { checkReadiness } from './services/readiness.js';
 import { guardHealth, guardCron } from './middlewares/guardInternal.js';
 import prisma from './utils/prisma.js';
 import { AppError } from './utils/AppError.js';
@@ -153,7 +154,10 @@ app.use(
       'X-Seed-Secret',
       'X-Internal-Token',
       'X-Cron-Secret',
+      'X-Idempotency-Key',
+      'X-Request-ID',
     ],
+    exposedHeaders: ['X-Request-ID', 'Retry-After'],
     optionsSuccessStatus: 204,
   })
 );
@@ -234,7 +238,7 @@ const apiLimiter = rateLimit({
     const p = req.path;
     if (p.startsWith('/auth/')) return true;
     if (p.startsWith('/public-site')) return true;
-    if (p === '/health') return true;
+    if (p === '/health' || p === '/health/db' || p === '/status') return true;
     if (p.startsWith('/cron')) return true;
     return false;
   },
@@ -249,7 +253,14 @@ const anonymousApiLimiter = rateLimit({
   legacyHeaders: false,
   skip: (req) => {
     const p = req.path;
-    if (p.startsWith('/auth/') || p.startsWith('/public-site') || p === '/health') return true;
+    if (
+      p.startsWith('/auth/') ||
+      p.startsWith('/public-site') ||
+      p === '/health' ||
+      p === '/health/db' ||
+      p === '/status'
+    )
+      return true;
     if (p.startsWith('/cron')) return true;
     return Boolean(req.cookies?.accessToken || req.cookies?.refreshToken);
   },
@@ -264,13 +275,17 @@ app.use('/api/', apiLimiter);
 app.use('/api/cron', guardCron);
 app.use('/api/health', guardHealth);
 
-/** Public liveness for browser — /api/health stays secret-gated (internal or cron) */
+/** Browser probes share a bounded, short-lived readiness result per instance. */
 app.get('/api/status', async (_req: Request, res: Response): Promise<void> => {
-  try {
-    await prisma.$queryRaw`SELECT 1`;
+  res.setHeader('Cache-Control', 'no-store');
+  const result = await checkReadiness();
+  if (result.ready) {
     res.status(200).json({ success: true, status: 'ok' });
-  } catch {
-    res.status(503).json({ success: false, status: 'degraded' });
+  } else {
+    sendServiceUnavailable(res, {
+      error: 'Layanan sedang sibuk atau belum tersedia. Tunggu 30 detik lalu coba lagi.',
+      reason: 'readiness_failed',
+    });
   }
 });
 
@@ -384,20 +399,22 @@ app.use('/uploads', authenticate, express.static(path.join(__dirname, '../upload
  */
 app.get('/api/health', async (_req: Request, res: Response): Promise<void> => {
   const ts = Date.now();
-  try {
-    await prisma.$queryRaw`SELECT 1`;
+  res.setHeader('Cache-Control', 'no-store');
+  const result = await checkReadiness();
+  if (result.ready) {
     res.status(200).json({
       status: 'ok',
       db: 'connected',
       ts,
       success: true,
+      checked_at: result.checked_at,
+      metrics: getRuntimeMetrics(),
     });
-  } catch {
-    res.status(503).json({
-      status: 'degraded',
-      db: 'disconnected',
-      ts,
-      success: false,
+  } else {
+    sendServiceUnavailable(res, {
+      error: 'Layanan belum siap. Hubungi pengelola dengan kode referensi.',
+      reason: 'readiness_failed',
+      fallbackData: { checked_at: result.checked_at, metrics: getRuntimeMetrics() },
     });
   }
 });
@@ -405,11 +422,12 @@ app.get('/api/health', async (_req: Request, res: Response): Promise<void> => {
 /** @deprecated use GET /api/health */
 app.get('/api/health/db', async (_req: Request, res: Response): Promise<void> => {
   const ts = Date.now();
-  try {
-    await prisma.$queryRaw`SELECT 1`;
+  res.setHeader('Cache-Control', 'no-store');
+  const result = await checkReadiness();
+  if (result.ready) {
     res.status(200).json({ status: 'ok', db: 'connected', ts, success: true });
-  } catch {
-    res.status(503).json({ status: 'degraded', db: 'disconnected', ts, success: false });
+  } else {
+    sendServiceUnavailable(res, { error: 'Layanan belum siap.', reason: 'readiness_failed' });
   }
 });
 

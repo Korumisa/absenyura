@@ -17,6 +17,7 @@ import { PublicSectionOrnament } from '@/components/public/PublicSectionOrnament
 import { CabinetPeriodSwitcher } from '@/components/public/home/CabinetPeriodSwitcher';
 import PublicLoadingOverlay from '@/components/PublicLoadingOverlay';
 import { PublicPageMeta } from '@/components/public/PublicPageMeta';
+import { boundedSWRRetry } from '@/lib/http/swrRetry';
 
 type StructureResp = { data: PublicStructureGroup[]; cabinet: any; allCabinets: any[] };
 
@@ -33,13 +34,7 @@ export default function Fungsionaris() {
       dedupingInterval: 8_000,
       keepPreviousData: true,
       revalidateOnReconnect: true,
-      onErrorRetry: (err, _key, _config, revalidate, revalidateOpts) => {
-        const status = (err as { response?: { status?: number } })?.response?.status;
-        if (status === 429) {
-          return;
-        }
-        void revalidate(revalidateOpts);
-      },
+      onErrorRetry: boundedSWRRetry,
     },
     mockStatic: mockStructure as StructureResp,
   });

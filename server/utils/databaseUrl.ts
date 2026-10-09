@@ -1,6 +1,14 @@
 /**
  * Normalizes Supabase pooler URLs for Prisma on serverless (PgBouncer transaction mode).
  */
+function capTimeoutSeconds(url: URL, param: string, maxSeconds: number): void {
+  const raw = url.searchParams.get(param);
+  const value = raw == null || raw === '' ? NaN : Number(raw);
+  if (!Number.isFinite(value) || value <= 0 || value > maxSeconds) {
+    url.searchParams.set(param, String(maxSeconds));
+  }
+}
+
 export function normalizeDatabaseUrl(raw: string): string {
   try {
     const url = new URL(raw);
@@ -17,13 +25,9 @@ export function normalizeDatabaseUrl(raw: string): string {
     if (!url.searchParams.has('statement_cache_size')) {
       url.searchParams.set('statement_cache_size', '0');
     }
-    // Fail fast so withTransientDbRetry can reconnect instead of hanging the request.
-    if (!url.searchParams.has('connect_timeout')) {
-      url.searchParams.set('connect_timeout', '10');
-    }
-    if (!url.searchParams.has('pool_timeout')) {
-      url.searchParams.set('pool_timeout', '10');
-    }
+    // Keep pool waits below the browser deadline, including operation-level retries.
+    capTimeoutSeconds(url, 'connect_timeout', 5);
+    capTimeoutSeconds(url, 'pool_timeout', 5);
 
     return url.toString();
   } catch {

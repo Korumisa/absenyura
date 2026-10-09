@@ -8,6 +8,8 @@ const messages = {
   SESSION_CLOSED:
     'Waktu absensi belum dibuka atau sudah berakhir. Periksa jadwal sesi atau hubungi dosen.',
   ALREADY_RECORDED: 'Absensi Anda sudah tercatat. Periksa dashboard untuk langkah berikutnya.',
+  REQUEST_IN_PROGRESS:
+    'Permintaan sebelumnya masih diproses atau belum terkonfirmasi. Periksa riwayat sebelum mengirim ulang.',
   NOT_ENROLLED: 'Anda belum terdaftar di kelas ini. Hubungi dosen atau admin.',
   DEVICE_MISMATCH: 'Gunakan perangkat yang terdaftar pada akun Anda atau hubungi admin.',
   NETWORK_RESTRICTED: 'Hubungkan perangkat ke jaringan yang ditentukan oleh dosen.',
@@ -33,6 +35,7 @@ export function attendanceFeedback(status?: number, raw?: unknown) {
   else {
     const known = Object.entries(messages).find(([, message]) => message.toLowerCase() === text);
     if (known) code = known[0] as AttendanceErrorCode;
+    else if (/permintaan.*(diproses|terkonfirmasi)/.test(text)) code = 'REQUEST_IN_PROGRESS';
     else if (/qr.*(kedaluwarsa|kadaluwarsa)/.test(text)) code = 'QR_EXPIRED';
     else if (/qr.*(belum tersedia|not configured)/.test(text)) code = 'QR_UNAVAILABLE';
     else if (/\bqr\b|qr_token/.test(text)) code = 'QR_INVALID';

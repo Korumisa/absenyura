@@ -122,6 +122,8 @@ model Session {
 
   @@index([class_id])
   @@index([status, session_start])
+  @@index([status, check_in_open_at])
+  @@index([status, session_end])
   @@index([session_start])
   @@index([created_at])
   @@index([created_by_id, created_at])
@@ -164,6 +166,7 @@ model Attendance {
 
   @@unique([session_id, user_id]) // Prevent double check-in
   @@index([user_id, check_in_time])
+  @@index([user_id, status])
   @@index([check_in_time])
   @@index([session_id, check_in_time])
   @@index([status])
@@ -445,4 +448,5 @@ model IdempotencyKey {
   response_body   String?  @db.Text
 
   @@index([user_id, consumed_at])
+  @@index([consumed_at])
 }

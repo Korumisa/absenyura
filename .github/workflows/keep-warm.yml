@@ -1,4 +1,4 @@
-name: Keep-warm API
+name: Availability Monitor
 
 on:
   schedule:
@@ -9,21 +9,21 @@ on:
 jobs:
   ping-health:
     runs-on: ubuntu-latest
+    timeout-minutes: 2
     steps:
-      - name: Ping /api/health (DB + function warm)
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+      - name: Check readiness and alert on degradation
         env:
           APP_URL: ${{ secrets.APP_URL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
-        run: |
-          if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
-            echo "APP_URL dan CRON_SECRET harus diset di repository secrets"
-            exit 1
-          fi
-          url="${APP_URL%/}/api/health"
-          code=$(curl -sS -o /tmp/keep-warm-body.txt -w "%{http_code}" \
-            -H "Authorization: Bearer ${CRON_SECRET}" \
-            --max-time 25 \
-            "$url")
-          echo "HTTP $code"
-          cat /tmp/keep-warm-body.txt
-          test "$code" = "200"
+          ALERT_WEBHOOK_URL: ${{ secrets.ALERT_WEBHOOK_URL }}
+        run: node scripts/monitor-availability.mjs
+      - name: Sync session statuses
+        continue-on-error: true
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: node --input-type=module -e "const url=new URL('/api/cron/trigger?job=session', process.env.APP_URL); const r=await fetch(url,{headers:{Authorization:'Bearer '+process.env.CRON_SECRET},redirect:'error',signal:AbortSignal.timeout(25000)}); console.log(JSON.stringify({type:'session_cron',status:r.status})); if(!r.ok) process.exit(1);"
