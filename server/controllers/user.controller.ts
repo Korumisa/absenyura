@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import type { AuthRequest } from '../types/index.js';
-import bcrypt from 'bcryptjs';
 import prisma from '../utils/prisma.js';
+import { hashPassword } from '../utils/password.js';
 import { enrollStudentInClasses, parseClassIds } from '../utils/enrollment.js';
 import ExcelJS from 'exceljs';
 import { Prisma } from '@prisma/client';
@@ -354,7 +354,7 @@ export const createUser = async (req: AuthRequest, res: Response): Promise<void>
       return;
     }
 
-    const hashedPassword = await bcrypt.hash(passwordValue, 12);
+    const hashedPassword = await hashPassword(passwordValue);
     const classIdsToEnroll = roleValue === 'USER' ? parseClassIds(class_ids) : [];
 
     let enrolledCount = 0;
@@ -550,7 +550,7 @@ export const updateUser = async (req: AuthRequest, res: Response): Promise<void>
     }
 
     if (password) {
-      updateData.password = await bcrypt.hash(password, 12);
+      updateData.password = await hashPassword(password);
     }
 
     const user = await prisma.user.update({
@@ -657,7 +657,7 @@ export const importUsers = async (req: AuthRequest, res: Response): Promise<void
     const seenEmails = new Set<string>();
     let duplicateRowCount = 0;
     let missingNimNipRowCount = 0;
-    const defaultPasswordHash = await bcrypt.hash('password123', 12);
+    const defaultPasswordHash = await hashPassword('password123');
     const requestedImportYearMode =
       typeof req.body?.importEnrollmentYearMode === 'string'
         ? req.body.importEnrollmentYearMode.trim().toUpperCase()
