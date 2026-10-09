@@ -13,6 +13,8 @@ if (files.length === 0) {
 
 let totalRequests = 0;
 let failedRequests = 0;
+let checksPassed = 0;
+let checksFailed = 0;
 const worstByEndpoint = new Map();
 
 for (const file of files) {
@@ -20,10 +22,12 @@ for (const file of files) {
   const count = metrics.http_reqs?.count ?? 0;
   totalRequests += count;
   failedRequests += Math.round((metrics.http_req_failed?.value ?? 0) * count);
+  checksPassed += metrics.checks?.passes ?? 0;
+  checksFailed += metrics.checks?.fails ?? 0;
 
   for (const [name, values] of Object.entries(metrics)) {
     const match = /^http_req_duration\{name:(.+)\}$/.exec(name);
-    if (!match) continue;
+    if (!match || !values.max) continue;
     const previous = worstByEndpoint.get(match[1]) ?? {};
     worstByEndpoint.set(match[1], {
       med: Math.max(previous.med ?? 0, values.med ?? 0),
@@ -40,6 +44,7 @@ const lines = [
   '## k6 load test summary',
   '',
   `Runners: ${files.length} · Requests: ${totalRequests} · Failed: ${failedRequests} (${errorRate.toFixed(2)}%)`,
+  `Checks passed: ${checksPassed} / ${checksPassed + checksFailed}`,
   '',
   '| Endpoint | median (worst runner) | p95 | p99 | max |',
   '|---|---|---|---|---|',

@@ -8,19 +8,25 @@ on:
         required: true
         default: https://hmsdp.me
       scenario:
-        description: public = /api/status + /api/public-site/home, login = POST /api/auth/login with LOADTEST-* accounts
+        description: public = /api/status + /api/public-site/home, login = POST /api/auth/login with LOADTEST-* accounts, checkin = login then QR + photo check-in on a LOADTEST session
         required: true
         type: choice
         default: public
-        options: [public, login]
+        options: [public, login, checkin]
       total_vus:
         description: Total concurrent virtual users across all 4 runners (4..2000)
         required: true
         default: '1000'
       duration:
-        description: How long each runner keeps its virtual users busy (k6 duration, e.g. 60s)
+        description: public/login = how long each runner keeps its virtual users busy; checkin = window the check-ins are spread over (0s = all at once). k6 duration, e.g. 60s
         required: true
         default: 60s
+      session_id:
+        description: checkin only - id of an ACTIVE LOADTEST session whose class enrolls the LOADTEST-* accounts
+        required: false
+      qr_token:
+        description: checkin only - static QR token of that session
+        required: false
       confirm:
         description: Type I_HAVE_APPROVAL (turn Vercel Bot Protection off for the run, back on afterwards)
         required: true
@@ -45,6 +51,9 @@ jobs:
         env:
           TOTAL_VUS: ${{ inputs.total_vus }}
           DURATION: ${{ inputs.duration }}
+          SCENARIO: ${{ inputs.scenario }}
+          SESSION_ID: ${{ inputs.session_id }}
+          QR_TOKEN: ${{ inputs.qr_token }}
         run: |
           if ! [[ "$TOTAL_VUS" =~ ^[0-9]+$ ]] || [ "$TOTAL_VUS" -lt 4 ] || [ "$TOTAL_VUS" -gt 2000 ]; then
             echo "total_vus must be an integer between 4 and 2000" >&2
@@ -52,6 +61,10 @@ jobs:
           fi
           if ! [[ "$DURATION" =~ ^[0-9]+(s|m)$ ]]; then
             echo "duration must look like 60s or 2m" >&2
+            exit 1
+          fi
+          if [ "$SCENARIO" = "checkin" ] && { [ -z "$SESSION_ID" ] || [ -z "$QR_TOKEN" ]; }; then
+            echo "checkin requires session_id and qr_token" >&2
             exit 1
           fi
           echo "vus_per_shard=$(( (TOTAL_VUS + 3) / 4 ))" >> "$GITHUB_OUTPUT"
@@ -82,6 +95,9 @@ jobs:
           DURATION: ${{ inputs.duration }}
           SHARD_INDEX: ${{ matrix.shard }}
           LOADTEST_PASSWORD: ${{ secrets.LOADTEST_PASSWORD }}
+          SESSION_ID: ${{ inputs.session_id }}
+          QR_TOKEN: ${{ inputs.qr_token }}
+          START_AT: ${{ needs.plan.outputs.start_at }}
           SHARD: ${{ matrix.shard }}
         run: k6 run --summary-export "summary-$SHARD.json" scripts/k6/load.js
       - if: always()
