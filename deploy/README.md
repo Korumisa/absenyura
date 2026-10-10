@@ -4,7 +4,7 @@ Jalur utama produksi: **aplikasi di 1 VPS**, **database tetap di Supabase**. Dom
 ini `hmsdp.me` — domain lain cukup ganti di `.env` + nginx (lihat [Ganti domain](#ganti-domain)).
 
 ```
-Browser ──HTTPS──> Nginx (VPS :443) ──> Node/Express PM2 (127.0.0.1:3001) ──> Supabase Postgres (pooler :6543)
+Browser ──HTTPS──> Nginx (VPS :443) ──> Node/Express PM2 (127.0.0.1:3001) ──> Supabase Postgres (session pooler :5432)
                                               │                                      │
                                               ├── foto/dokumen ──> Cloudinary         └── pg_dump tiap 6 jam ──> Backblaze B2
                                               └── cron in-process (sesi, auto-alfa, cleanup)
@@ -12,8 +12,8 @@ Browser ──HTTPS──> Nginx (VPS :443) ──> Node/Express PM2 (127.0.0.1:
 
 | Komponen       | Layanan                                                         | Biaya              |
 | -------------- | --------------------------------------------------------------- | ------------------ |
-| VPS            | Hostinger KVM 2, Singapura, Ubuntu 22.04                        | ± Rp155.900/bulan  |
-| Database       | Supabase Free (project yang sudah ada)                          | Rp0                |
+| VPS            | Hostinger KVM 2, Indonesia (Jakarta), Ubuntu 22.04              | ± Rp155.900/bulan  |
+| Database       | Supabase Free, Singapura (project yang sudah ada)               | Rp0                |
 | Foto & dokumen | Cloudinary Free                                                 | Rp0                |
 | Backup         | Backblaze B2 (10 GB gratis)                                     | Rp0                |
 | Domain         | `hmsdp.me` atau alternatif di [Pilihan domain](#pilihan-domain) | tergantung pilihan |
@@ -52,8 +52,22 @@ Konvensi path di VPS: repo di `/var/www/hmsdp/repo`, data persisten di `/var/www
 
 ## Langkah 1 — Order VPS
 
-Hostinger → VPS → **KVM 2** → lokasi **Singapura** → OS **Ubuntu 22.04 LTS** (plain, tanpa panel).
+Hostinger → VPS → **KVM 2** → lokasi **Indonesia** → OS **Ubuntu 22.04 LTS** (plain, tanpa panel).
 Saat setup, tempel public key SSH (`~/.ssh/id_ed25519.pub`). Catat **IP VPS**.
+
+**VPS Indonesia + Supabase Singapura — aman.** Jarak Jakarta–Singapura ±15-30 ms per query, jauh
+lebih dekat dari region lain, dan user (mahasiswa) mendapat respons halaman lebih cepat karena VPS
+di Indonesia. Agar latensi lintas negara tidak menumpuk:
+
+- Pakai **Session pooler `:5432`** (bukan transaction `:6543`) — koneksi tetap hidup, prepared
+  statement aktif, round trip per query lebih sedikit.
+- `connection_limit=10` (di bawah batas ±15 klien Supabase Free) dan PM2 tetap **1 instance**.
+- Uji beban (simulasi VPS dari jaringan rumah, latensi ±65 ms — lebih buruk dari VPS asli):
+  50 check-in serentak 100% sukses (±4 detik), 200 serentak 100% sukses (±20 detik antre).
+  Absen yang menyebar beberapa menit (kondisi nyata) jauh di bawah batas ini.
+
+Batas Supabase Free yang perlu dipantau: database 500 MB, project di-pause setelah 7 hari **tanpa
+aktivitas** (tidak terjadi bila app dipakai harian), tanpa backup otomatis (ditangani langkah 8).
 
 ## Langkah 2 — Domain, DNS & layanan pendukung
 
@@ -117,7 +131,8 @@ grep -nE '____|<password>|<project_ref>' /var/www/hmsdp/.env   # harus kosong
 Yang wajib diisi:
 
 - **Domain**: `APP_URL`, `VITE_APP_URL`, `FRONTEND_URL` = `https://hmsdp.me`; `CORS_ORIGINS` = `https://hmsdp.me,https://www.hmsdp.me`.
-- **Database**: `DATABASE_URL` (pooler 6543, `connection_limit=5`), `DIRECT_URL`, `BACKUP_DATABASE_URL` — pakai tanda kutip.
+- **Database**: `DATABASE_URL` (session pooler `:5432`, tanpa `pgbouncer=true`, `connection_limit=10`),
+  `DIRECT_URL`, `BACKUP_DATABASE_URL` — pakai tanda kutip.
 - **Secret**: salin `JWT_SECRET`, `JWT_REFRESH_SECRET`, `ATTENDANCE_PROOF_SECRET`, `INTERNAL_SECRET`, `CRON_SECRET`,
   `SEED_SECRET` **dari Vercel** (jangan generate baru saat pindah).
 - **Cloudinary**: `CLOUDINARY_URL`.
@@ -155,7 +170,8 @@ sudo certbot renew --dry-run
 ```
 
 `instances` di PM2 harus tetap 1: job sesi/auto-alfa/cleanup berjalan di dalam proses app,
-lebih dari 1 proses = job jalan dobel. Tidak perlu crontab untuk job aplikasi.
+lebih dari 1 proses = job jalan dobel. Tidak perlu crontab untuk job aplikasi. Salinan staging/uji
+yang memakai DB yang sama wajib `CRON_ENABLED=false`.
 
 ## Langkah 8 — Backup otomatis
 

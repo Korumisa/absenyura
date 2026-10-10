@@ -15,8 +15,13 @@ async function startLocalServer() {
 
   const server = createServer(app);
 
-  startCronJobs();
-  console.log('[Server] Cron jobs started');
+  // Only one process per database may run the scheduler (PM2 instance, not a staging copy).
+  if (process.env.CRON_ENABLED === 'false') {
+    console.log('[Server] Cron jobs disabled (CRON_ENABLED=false)');
+  } else {
+    startCronJobs();
+    console.log('[Server] Cron jobs started');
+  }
 
   server.listen(PORT, HOST, () => {
     console.log(`Server ready on ${HOST}:${PORT}`);

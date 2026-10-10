@@ -15,7 +15,7 @@ if (databaseUrl) {
   process.env.DATABASE_URL = databaseUrl;
 } else if (process.env.NODE_ENV === 'production') {
   console.error(
-    '[FATAL] DATABASE_URL must be set in production (Supabase pooler :6543 with pgbouncer=true).'
+    '[FATAL] DATABASE_URL must be set in production (Supabase pooler: :5432 session mode on a VPS, :6543 transaction mode on serverless).'
   );
   process.exit(1);
 }

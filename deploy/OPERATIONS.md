@@ -122,7 +122,7 @@ pm2 reload ecosystem.config.cjs --update-env
 
 ```bash
 # Data absensi ada di Supabase → VPS mati TIDAK berarti data hilang. RTO ± 1 jam.
-# 1. Order VPS Hostinger BARU KVM 2 SG (README langkah 1)
+# 1. Order VPS Hostinger BARU KVM 2 Indonesia (README langkah 1)
 # 2. Ulangi README langkah 3-8 (.env: salin dari password manager / VPS lama)
 # 3. Ubah DNS A record dari IP lama → IP BARU
 # 4. Foto lokal di ./uploads hilang jika CLOUDINARY_URL tidak diisi — alasan Cloudinary wajib.
