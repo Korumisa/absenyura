@@ -1,11 +1,11 @@
 /**
  * local server entry file, for local development
  */
+import 'dotenv/config';
 import { createServer } from 'http';
-import * as dotenv from 'dotenv';
-dotenv.config();
 
-const PORT = process.env.PORT || 3001;
+const PORT = Number(process.env.PORT || 3001);
+const HOST = process.env.HOST || '0.0.0.0';
 
 async function startLocalServer() {
   const [{ default: app }, { startCronJobs }] = await Promise.all([
@@ -18,8 +18,15 @@ async function startLocalServer() {
   startCronJobs();
   console.log('[Server] Cron jobs started');
 
-  server.listen(PORT, () => {
-    console.log(`Server ready on port ${PORT}`);
+  server.listen(PORT, HOST, () => {
+    console.log(`Server ready on ${HOST}:${PORT}`);
+    if (process.send) {
+      try {
+        process.send('ready');
+      } catch {
+        /* ignore IPC errors non-PM2 context */
+      }
+    }
   });
 
   process.on('SIGTERM', () => {

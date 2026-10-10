@@ -10,6 +10,8 @@ import { upsertScriptJsonLd } from '@/components/public/PublicPageMeta';
 import { loadCormorantDisplayFont } from '@/lib/perf/loadFonts';
 import { PublicSiteDataProvider } from '@/components/PublicSiteDataContext';
 
+const SITE_URL = (import.meta.env.VITE_APP_URL ?? 'https://hmsdp.vercel.app').replace(/\/$/, '');
+
 export default function PublicLayout({ children }: { children: ReactNode }) {
   const fetcher = useCallback((url: string) => api.get(url).then((r) => r.data.data), []);
   const { mutate } = useSWRConfig();
@@ -45,14 +47,13 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
   }, [mutate, fetcher]);
 
   const orgLabel = profile?.org_name?.trim() || 'HM SDP Undiksha';
-  const siteUrl = 'https://hmsdp.vercel.app';
 
   useEffect(() => {
     const name = orgLabel || 'HM SDP Undiksha';
     const descriptionText =
       profile?.about_content?.trim().slice(0, 200) ||
       `Portal informasi dan sistem absensi ${name}.`;
-    const logoUrl = `${siteUrl}/logo-hmsdp.png`;
+    const logoUrl = `${SITE_URL}/logo-hmsdp.png`;
     const socialUrls: string[] = [];
     if (profile?.instagram_url) socialUrls.push(profile.instagram_url);
     if (profile?.youtube_url) socialUrls.push(profile.youtube_url);
@@ -66,7 +67,7 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
       '@context': 'https://schema.org',
       '@type': 'Organization',
       name,
-      url: siteUrl,
+      url: SITE_URL,
       logo: logoUrl,
       description: descriptionText,
       ...(socialUrls.length ? { sameAs: socialUrls } : {}),

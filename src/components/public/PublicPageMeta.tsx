@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 
-const SITE_URL = 'https://hmsdp.vercel.app';
+const SITE_URL = (import.meta.env.VITE_APP_URL ?? 'https://hmsdp.vercel.app').replace(/\/$/, '');
 const DEFAULT_IMAGE = `${SITE_URL}/logo-hmsdp.png`;
 
 function toAbsoluteImage(maybeRelative: string | null | undefined): string {

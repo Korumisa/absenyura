@@ -4,7 +4,7 @@ export const config = {
   ],
 };
 
-const SITE_URL = 'https://hmsdp.vercel.app';
+const SITE_URL = (process.env.APP_URL ?? 'https://hmsdp.vercel.app').replace(/\/$/, '');
 
 const KNOWN_PUBLIC_ROUTES: readonly string[] = [
   '/',

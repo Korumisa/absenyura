@@ -1,0 +1,105 @@
+# ============================================================
+# Nginx virtual host — Hostinger VPS (Ubuntu 22.04 / Debian 12)
+# Letakkan di: /etc/nginx/sites-available/hmsdp.conf
+# Lalu:  sudo ln -sf /etc/nginx/sites-available/hmsdp.conf /etc/nginx/sites-enabled/
+#        sudo nginx -t && sudo systemctl reload nginx
+# SSL disarankan via Let's Encrypt: sudo certbot --nginx -d your-domain.com
+# ============================================================
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name your-domain.com www.your-domain.com;
+
+    # Redirect HTTP -> HTTPS (hapus jika belum punya SSL)
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name your-domain.com www.your-domain.com;
+
+    # --- SSL Certificates (diisi otomatis oleh certbot) ---
+    # ssl_certificate /etc/letsencrypt/live/your-domain.com/fullchain.pem;
+    # ssl_certificate_key /etc/letsencrypt/live/your-domain.com/privkey.pem;
+    # include /etc/letsencrypt/options-ssl-nginx.conf;
+    # ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+    # --- Hardening & size limits ---
+    client_max_body_size 20M;
+    server_tokens off;
+
+    # Gzip compression (setara dengan static build minification)
+    gzip on;
+    gzip_vary on;
+    gzip_proxied any;
+    gzip_comp_level 6;
+    gzip_types
+        text/plain
+        text/css
+        text/xml
+        text/javascript
+        application/javascript
+        application/xml
+        application/json
+        application/xml+rss
+        application/manifest+json
+        image/svg+xml;
+
+    # Maks 2 menit — absensi foto + Prisma query complex diizinkan selesai
+    proxy_read_timeout 120s;
+    proxy_connect_timeout 10s;
+    proxy_send_timeout 120s;
+
+    # Upload ukuran absensi 1MB, CMS poster 10MB — server punya Multer limits sendiri
+    client_body_timeout 60s;
+
+    # ============================================================
+    # Reverse proxy ke Node.js app (PM2 port 3001)
+    # CATATAN: Di VPS mode, Express sendiri yang serve:
+    #   - static dist/*
+    #   - API /api/*
+    #   - /uploads/*
+    #   - SPA index.html catch-all
+    # Jadi Nginx cukup proxy PASS SEMUA traffic ke upstream.
+    # ============================================================
+    location / {
+        proxy_pass http://127.0.0.1:3001;
+        proxy_http_version 1.1;
+
+        # Standard reverse proxy headers
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port $server_port;
+
+        # Express app.set('trust proxy', 1) — jadi Express baca X-Forwarded-Proto utk HTTPS cookies
+        proxy_pass_header Set-Cookie;
+
+        # WebSocket (jika suatu saat pakai Supabase Realtime / PWA push)
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+
+    # Opsional: Static cache di level Nginx untuk /assets (bypass proxy sama sekali).
+    # Hapus tanda komentar BILA folder dist/ ada di path dibawah.
+    # Lebih aman: biarkan Express serve (karena Express set cache-control per ext).
+    #
+    # location /assets/ {
+    #     alias /var/www/hmsdp/dist/assets/;
+    #     expires 1y;
+    #     add_header Cache-Control "public, max-age=31536000, immutable";
+    #     access_log off;
+    # }
+    # location ~ \.(?:png|jpe?g|gif|svg|webp|ico|woff2?|woff|ttf|eot)$ {
+    #     root /var/www/hmsdp/dist;
+    #     try_files $uri @node_proxy;
+    #     expires 30d;
+    #     add_header Cache-Control "public, max-age=2592000, immutable";
+    #     access_log off;
+    # }
+    # location @node_proxy { proxy_pass http://127.0.0.1:3001; }
+}

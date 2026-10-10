@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "target": "ES2022",
+    "noEmit": true,
+    "types": ["node", "express"],
+    "allowImportingTsExtensions": false,
+    "moduleDetection": "force",
+    "verbatimModuleSyntax": false,
+    "paths": {}
+  },
+  "include": ["server/**/*.ts"],
+  "exclude": ["server/**/*.test.ts", "server/**/__tests__/**"]
+}

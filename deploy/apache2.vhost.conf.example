@@ -1,0 +1,86 @@
+# ============================================================
+# Apache2 virtual host — Hostinger VPS (Ubuntu 22.04)
+# Pakai ini HANYA jika stack server Anda adalah Apache (bukan Nginx).
+# Sebagian besar Node.js deploy lebih stabil pakai Nginx, tapi Apache tetap OK.
+#
+# Simpan: /etc/apache2/sites-available/hmsdp.conf
+# Aktifkan:
+#   sudo a2enmod proxy proxy_http proxy_wstunnel rewrite headers ssl
+#   sudo a2ensite hmsdp
+#   sudo apache2ctl configtest && sudo systemctl reload apache2
+# SSL via Let's Encrypt: sudo certbot --apache -d your-domain.com
+# ============================================================
+
+<VirtualHost *:80>
+    ServerName  your-domain.com
+    ServerAlias www.your-domain.com
+    ServerAdmin admin@your-domain.com
+
+    # Redirect HTTP -> HTTPS (uncomment setelah certbot selesai)
+    # RewriteEngine On
+    # RewriteCond %{HTTPS} off
+    # RewriteRule ^(.*)$ https://%{HTTP_HOST}$1 [R=301,L]
+
+    LimitRequestBody 20971520
+    Timeout 120
+    ProxyTimeout 120
+
+    ProxyRequests Off
+    ProxyPreserveHost On
+    RequestHeader set X-Forwarded-Proto "http"
+    RequestHeader set X-Forwarded-Port "80"
+
+    <Proxy *>
+        Require all granted
+    </Proxy>
+
+    ProxyPass        / http://127.0.0.1:3001/ timeout=120 Keepalive=On
+    ProxyPassReverse / http://127.0.0.1:3001/
+
+    ErrorLog ${APACHE_LOG_DIR}/hmsdp-error.log
+    CustomLog ${APACHE_LOG_DIR}/hmsdp-access.log combined
+</VirtualHost>
+
+# <VirtualHost *:443>
+#     ServerName  your-domain.com
+#     ServerAlias www.your-domain.com
+#     ServerAdmin admin@your-domain.com
+#
+#     SSLEngine on
+#     SSLCertificateFile      /etc/letsencrypt/live/your-domain.com/fullchain.pem
+#     SSLCertificateKeyFile   /etc/letsencrypt/live/your-domain.com/privkey.pem
+#     Include                 /etc/letsencrypt/options-ssl-apache.conf
+#
+#     LimitRequestBody 20971520
+#     Timeout 120
+#     ProxyTimeout 120
+#
+#     # --- Hardening ---
+#     Header always set X-Content-Type-Options nosniff
+#     Header always set X-Frame-Options SAMEORIGIN
+#     Header always set Referrer-Policy "strict-origin-when-cross-origin"
+#     # HSTS — aktifkan hanya jika HTTPS permanen
+#     Header always set Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+#
+#     ProxyRequests Off
+#     ProxyPreserveHost On
+#     RequestHeader set X-Forwarded-Proto "https"
+#     RequestHeader set X-Forwarded-Port "443"
+#     RequestHeader set X-Forwarded-Host "%{HTTP_HOST}e"
+#
+#     <Proxy *>
+#         Require all granted
+#     </Proxy>
+#
+#     # WebSocket support (Realtime / PWA push)
+#     RewriteEngine On
+#     RewriteCond %{HTTP:Upgrade} websocket [NC]
+#     RewriteCond %{HTTP:Connection} upgrade [NC]
+#     RewriteRule ^/?(.*) "ws://127.0.0.1:3001/$1" [P,L]
+#
+#     ProxyPass        / http://127.0.0.1:3001/ timeout=120 Keepalive=On
+#     ProxyPassReverse / http://127.0.0.1:3001/
+#
+#     ErrorLog ${APACHE_LOG_DIR}/hmsdp-ssl-error.log
+#     CustomLog ${APACHE_LOG_DIR}/hmsdp-ssl-access.log combined
+# </VirtualHost>

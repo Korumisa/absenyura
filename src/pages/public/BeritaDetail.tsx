@@ -16,6 +16,8 @@ import { truncateText } from '@/lib/utils/utils';
 
 const SCROLL_KEY_PREFIX = 'berita-detail-scroll-y';
 
+const SITE_URL = (import.meta.env.VITE_APP_URL ?? 'https://hmsdp.vercel.app').replace(/\/$/, '');
+
 export default function BeritaDetail() {
   const { slug } = useParams();
   const scrollKey = useMemo(() => `${SCROLL_KEY_PREFIX}:${slug ?? ''}`, [slug]);
@@ -31,7 +33,6 @@ export default function BeritaDetail() {
     mockStatic: slug ? mockAllPosts.find((p) => p.slug === slug) ?? null : null,
   });
   const orgName = profile?.org_name ?? '';
-  const siteUrl = 'https://hmsdp.vercel.app';
 
   const metaTitle = post?.title ?? (isLoading ? 'Memuat berita' : 'Berita Tidak Ditemukan');
   const metaDescription = post
@@ -52,9 +53,9 @@ export default function BeritaDetail() {
       ? (/^https?:\/\//i.test(post.cover_image_url)
           ? post.cover_image_url
           : post.cover_image_url.startsWith('/')
-            ? `${siteUrl}${post.cover_image_url}`
-            : `${siteUrl}/${post.cover_image_url}`)
-        : `${siteUrl}/logo-hmsdp.png`;
+            ? `${SITE_URL}${post.cover_image_url}`
+            : `${SITE_URL}/${post.cover_image_url}`)
+        : `${SITE_URL}/logo-hmsdp.png`;
     const safeSlug = post.slug || slug || '';
     const publishedAtVal = post.published_at ?? post.created_at ?? undefined;
     const isoPublished = publishedAtVal
@@ -74,17 +75,17 @@ export default function BeritaDetail() {
       author: {
         '@type': 'Organization',
         name: fullOrg,
-        url: siteUrl,
+        url: SITE_URL,
       },
       publisher: {
         '@type': 'Organization',
         name: fullOrg,
         logo: {
           '@type': 'ImageObject',
-          url: `${siteUrl}/logo-hmsdp.png`,
+          url: `${SITE_URL}/logo-hmsdp.png`,
         },
       },
-      mainEntityOfPage: `${siteUrl}/berita/${safeSlug}`,
+      mainEntityOfPage: `${SITE_URL}/berita/${safeSlug}`,
     });
     return () => {
       upsertScriptJsonLd('blog-posting', null);

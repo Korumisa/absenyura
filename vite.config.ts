@@ -12,6 +12,8 @@ export default defineConfig(({ mode }) => {
   ) {
     throw new Error('VITE_DEV_BYPASS_AUTH must not be enabled in production builds.');
   }
+  const defaultSiteUrl = 'https://hmsdp.vercel.app';
+  const siteUrl = (env.VITE_APP_URL || defaultSiteUrl).replace(/\/$/, '');
   const apiTarget = env.VITE_API_PROXY_TARGET || 'http://localhost:3001';
   const proxyLogs =
     mode === 'development' &&
@@ -26,6 +28,10 @@ export default defineConfig(({ mode }) => {
         },
       }),
       tsconfigPaths(),
+      {
+        name: 'site-url-og-tags',
+        transformIndexHtml: (html: string) => html.split(defaultSiteUrl).join(siteUrl),
+      },
       VitePWA({
         injectRegister: 'script-defer',
         registerType: 'autoUpdate',

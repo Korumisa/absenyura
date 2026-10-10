@@ -1,0 +1,100 @@
+# ============================================================================
+# PostgreSQL 16 — Performance Tuning 8 GB RAM Shared (KVM 2 Hostinger Dual Purpose)
+# ----------------------------------------------------------------------------
+# INSTRUCTIONS:
+#   Append / override file `/etc/postgresql/16/main/postgresql.conf` dgn snippet ini.
+#   Backup file lama dulu, LALU copy yang lama, masukkan setting dibawah DI BAWAH defaults.
+#   Setting di bawah dioptimalkan untuk:
+#     - 8 GB RAM TOTAL VPS
+#     - Shared dengan Node.js 1,5 GB + Nginx 500 MB + OS 1,5 GB
+#     - Tersisa ~4,5 GB untuk PostgreSQL
+#     - Disk NVMe random access cepat
+#   JANGAN pakai tuning tool online pgtune untuk 8 GB dedicated
+#     (karena pgtune anggap 8 GB = MILIK POSTGRES SEMUA, disini SHARED).
+# ============================================================================
+
+# ------------------------ CONNECTIONS + AUTH -------------------------------
+listen_addresses = '127.0.0.1'              # HANYA loopback. JANGAN '*' atau 0.0.0.0
+port = 5432
+max_connections = 80                         # 80 user app via PgBouncer. JANGAN diatas 100.
+password_encryption = scram-sha-256          # WAJIB — bcrypt password hash DB
+unix_socket_directories = '/var/run/postgresql'
+ssl = off                                    # Tidak perlu ssl — koneksi 127.0.0.1 tidak lewat network
+# Jika suatu saat butuh remote app: ssl=on, certbot letsencrypt + pg_hba hostssl
+tcp_keepalives_idle = 60
+tcp_keepalives_interval = 10
+tcp_keepalives_count = 6
+
+# ------------------------ MEMORY (SHARED 4.5 GB for Postgres) ---------------
+shared_buffers = 2GB                         # 25% TOTAL RAM 8GB = standard
+huge_pages = try                             # Kenaikan performa ~10% jika OS hugepages enabled
+work_mem = 16MB                              # 16 MB / sort operation. Batasan 80 koneksi aktif → 16M * 80 = 1.28 GB worst case (ok masih 3,3 GB sisa buffers)
+maintenance_work_mem = 256MB                 # VACUUM, CREATE INDEX. 256M cukup untuk < 100 GB database
+autovacuum_work_mem = 128MB
+effective_cache_size = 6GB                   # Estimasi planner: shared buffer + OS page cache (~6GB)
+temp_buffers = 32MB
+
+# ------------------------ WRITE AHEAD LOG (WAL) + checkpointing -------------
+# Target: I/O merata 90% waktu — tidak burst write checkpoint besar tiap 5 menit
+wal_level = replica                          # Minimal = minimal, tapi replica = aman jika nanti upgrade backup slave
+fsync = on                                   # JANGAN MATIKAN — wal sync on disk garantikan crash-consistent
+synchronous_commit = on                      # Data absensi hukum → on. Jika butuh 2-3x write speed bisa off (risiko data 1 commit hilang saat power failure < 100ms)
+wal_sync_method = fdatasync
+full_page_writes = on
+wal_compression = on
+wal_buffers = 16MB                           # 1/128 dari shared_buffers (2GB → 16MB ok)
+checkpoint_completion_target = 0.9           # Spread I/O 90% antar interval checkpoint
+checkpoint_timeout = 10min                   # Atau 15 min — lebih lama = lebih banyak WAL, lebih smooth I/O
+max_wal_size = 4GB
+min_wal_size = 512MB
+archive_mode = off                           # OFF untuk single VPS tanpa WAL archiving slave. Jika butuh PITR: on + archive command rclone ke bucket
+archive_timeout = 0
+
+# ------------------------ QUERY PLANNER (NVMe SSD cost) --------------------
+random_page_cost = 1.1                       # NVMe = random seq = hampir sama cost. Default 4.0 SANTAI untuk SSD
+effective_io_concurrency = 200               # Parallel I/O 200 untuk NVMe. SATA = 2, SAS = 20, NVMe = 200
+seq_page_cost = 1.0
+default_statistics_target = 100              # Planner stats lebih akurat → better index pick untuk groupBy attendance
+
+# ------------------------ LOGGING + AUDIT ----------------------------------
+logging_collector = on
+log_directory = 'log'
+log_filename = 'postgresql-%Y-%m-%d.log'
+log_file_mode = 0640
+log_truncate_on_rotation = on
+log_rotation_age = 1d
+log_rotation_size = 256MB
+log_min_duration_statement = 3000            # Log query > 3 detik = tunjuk query dashboard lambat untuk dioptimalkan
+log_lock_waits = on
+log_temp_files = 0                           # Log semua temp files = indikasi work_mem TERLALU KECIL
+log_checkpoints = on
+log_connections = off                        # Kalo on: kebanyakan log saat 1000 user login. Off → less noise
+log_disconnections = off
+log_line_prefix = '%t [%p]: user=%u db=%d app=%a host=%h '
+
+# ------------------------ VACUUM (autovacuum) ------------------------------
+# Row attendance banyak di-insert, alasan perlu autovacuum aggressive
+autovacuum = on
+autovacuum_max_workers = 2
+autovacuum_naptime = 30s
+autovacuum_vacuum_scale_factor = 0.05        # 5% dead tuple → trigger vacuum (bkn default 20%)
+autovacuum_analyze_scale_factor = 0.02       # 2% perubahan → analyze stats planner
+autovacuum_vacuum_cost_delay = 2ms
+autovacuum_vacuum_cost_limit = 500
+
+# ------------------------ CLIENT / CHARSET --------------------------------
+client_encoding = utf8
+datestyle = 'iso, mdy'
+timezone = 'Asia/Makassar'                   # WITA = UTC+8 = Asia/Makassar
+lc_messages = 'en_US.UTF-8'
+lc_monetary = 'en_US.UTF-8'
+lc_numeric = 'en_US.UTF-8'
+lc_time = 'en_US.UTF-8'
+default_text_search_config = 'pg_catalog.indonesian'
+
+# ------------------------ EXTENSIONS DEFAULT -------------------------------
+shared_preload_libraries = 'pg_stat_statements'   # Wajib untuk identifikasi slow query dashboard
+pg_stat_statements.track = all
+pg_stat_statements.max = 5000
+pg_stat_statements.track_utility = on
+# Jika butuh fail2ban app: add `auto_explain` disini (opsional)

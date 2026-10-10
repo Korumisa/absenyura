@@ -1,0 +1,57 @@
+# ============================================================
+# Systemd unit — alternatif TANPA PM2 untuk menjalankan app
+# otomatis start saat boot + restart jika crash.
+#
+# Copy ke:  /etc/systemd/system/hmsdp-vps.service
+# Edit paths & user dibawah.
+# Jalankan:
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable hmsdp-vps.service
+#   sudo systemctl start  hmsdp-vps.service
+#   sudo systemctl status hmsdp-vps.service
+# Logs:
+#   sudo journalctl -u hmsdp-vps.service -f
+# ============================================================
+
+[Unit]
+Description=HM SDP E-Absensi Node.js Server (Hostinger VPS)
+Documentation=https://github.com/hmsdp/absenyura
+After=network.target postgresql.service nss-lookup.target
+
+[Service]
+Type=simple
+# ==== SESUAIKAN DENGAN USER & PATH DI VPS ANDA ====
+User=deploy
+Group=deploy
+WorkingDirectory=/var/www/hmsdp/repo
+Environment=NODE_ENV=production
+Environment=PORT=3001
+Environment=HOST=127.0.0.1
+Environment=TZ=UTC
+# Load semua env vars dari .env production (bukan hardcode di sini)
+EnvironmentFile=/var/www/hmsdp/.env
+# =====================================================
+
+# Restart policy
+Restart=always
+RestartSec=5
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+# Resource limits — sesuaikan dengan RAM VPS (Hostinger KVM 2GB = 1024MB aman)
+MemoryMax=1800M
+MemoryHigh=1600M
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=tmpfs
+ReadWritePaths=/var/www/hmsdp/uploads /var/www/hmsdp/logs /tmp
+
+ExecStart=/usr/bin/node --max-old-space-size=1536 /var/www/hmsdp/repo/dist-server/server.js
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

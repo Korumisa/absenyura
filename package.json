@@ -12,6 +12,8 @@
   "scripts": {
     "client:dev": "vite",
     "build": "npx prisma@6.4.1 generate && tsc -b && vite build",
+    "build:server": "npx prisma@6.4.1 generate && tsc -p tsconfig.server.json && esbuild server/server.ts --bundle --platform=node --format=esm --target=node22 --packages=external --sourcemap --outfile=dist-server/server.js",
+    "build:vps": "npm run build:server && vite build",
     "vercel-build": "npx prisma@6.4.1 generate && tsc -b && vite build",
     "db:migrate:deploy": "npx prisma@6.4.1 migrate deploy",
     "format": "prettier --write .",
@@ -27,6 +29,8 @@
     "monitor:availability": "node scripts/monitor-availability.mjs",
     "seed": "npx prisma@6.4.1 generate && node prisma/seed.js",
     "server:dev": "nodemon",
+    "server:start": "NODE_ENV=production node --env-file-if-exists=.env dist-server/server.js",
+    "start": "NODE_ENV=production node --env-file-if-exists=.env dist-server/server.js",
     "dev": "concurrently \"npm run client:dev\" \"npm run server:dev\"",
     "prepare": "husky"
   },
@@ -117,6 +121,7 @@
     "autoprefixer": "^10.4.21",
     "babel-plugin-react-dev-locator": "^1.0.0",
     "concurrently": "^9.2.1",
+    "esbuild": "^0.27.0",
     "eslint": "^9.25.0",
     "eslint-plugin-jsx-a11y": "^6.10.2",
     "eslint-plugin-react-hooks": "^5.2.0",

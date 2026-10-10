@@ -26,7 +26,7 @@ class ChunkLoadErrorBoundary extends Component<
   }
   componentDidCatch(error: unknown) {
     const msg = String(error instanceof Error ? error.message : (error ?? ''));
-     
+
     console.warn('[ChunkLoadErrorBoundary] suppressed non-critical chunk error:', msg);
   }
   render() {
@@ -48,10 +48,14 @@ function scheduleIdleWork(fn: () => void) {
   return () => clearTimeout(t);
 }
 
+// Script /_vercel/* hanya ada di hosting Vercel; build VPS set VITE_VERCEL_ANALYTICS=false.
+const vercelMonitoringEnabled = import.meta.env.VITE_VERCEL_ANALYTICS !== 'false';
+
 function DeferredMonitoring() {
   const [showInsights, setShowInsights] = useState(false);
 
   useEffect(() => {
+    if (!vercelMonitoringEnabled) return;
     return scheduleIdleWork(() => {
       void import('@vercel/analytics').then(({ inject }) => inject());
       setShowInsights(true);
