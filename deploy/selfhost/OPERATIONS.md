@@ -111,7 +111,7 @@ EOSQL
 # =============================================================================
 # B4. TEST RESTORE BACKUP TERBARU (PENTING — backup tanpa restore = tidak punya backup)
 # =============================================================================
-sudo -u postgres bash /var/www/hmsdp/scripts/vps-restore-test.sh
+sudo -u postgres bash /var/www/hmsdp/deploy/scripts/restore-test.sh
 tail -100 /var/log/hmsdp/restore-test.log | tail -20
 # ✅ Expected exit code 0 + final line: "✅ RESTORE TEST LULUS"
 # ❌ Jika FAIL: segera investigasi + kirim tiket. Data absensi Anda BERESIKO.
@@ -123,7 +123,7 @@ tail -100 /var/log/hmsdp/restore-test.log | tail -20
 for i in 1 2 3 4 5 6; do node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"; done
 # Edit .env, ganti JWT_SECRET, JWT_REFRESH_SECRET, ATTENDANCE_PROOF_SECRET, SEED_SECRET, INTERNAL_SECRET, CRON_SECRET
 # Restart app + re-login semua user:
-pm2 reload ecosystem.config.js --update-env
+pm2 reload ecosystem.config.cjs --update-env
 # Update crontab X-Cron-Secret line dengan value CRON_SECRET BARU.
 crontab -e
 
@@ -153,7 +153,7 @@ bash -c 'set -e; git pull origin main --ff-only; \
          NODE_ENV=development npm ci; \
          npx prisma@6.4.1 migrate deploy; \
          npm run build:vps; \
-         pm2 reload ecosystem.config.js --update-env; \
+         pm2 reload ecosystem.config.cjs --update-env; \
          sleep 3; \
          pm2 status hmsdp-absenyura; \
          curl -s -o /dev/null -w "Health HTTP %{http_code}\n" https://YOUR-DOMAIN.COM/api/status'
@@ -173,7 +173,7 @@ git reset --hard HEAD~1
 npm ci --omit=dev && npx prisma@6.4.1 migrate resolve --rolled-back 2>/dev/null || true
 # 4. Jika migration reverse susah: revert manual ke migration terakhir yang BERHASIL
 npx prisma@6.4.1 migrate deploy
-npm run build:vps && pm2 reload ecosystem.config.js
+npm run build:vps && pm2 reload ecosystem.config.cjs
 pm2 status hmsdp-absenyura | head -5
 ```
 
@@ -226,7 +226,7 @@ pm2 logs hmsdp-absenyura --err --lines 100 --nostream | tail -60
 sudo swapoff /swapfile; sudo rm /swapfile; sudo fallocate -l 6G /swapfile
 sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile && swapon --show
 # 2. Kurangi PM2 max_memory_restart jadi 1200M:
-#    ecosystem.config.js: max_memory_restart: '1200M' ; node_args --max-old-space-size=1280
+#    ecosystem.config.cjs: max_memory_restart: '1200M' ; node_args --max-old-space-size=1280
 # 3. Tambahkan cron restart app 1x per hari JAM 3 PAGI (clean leak ringan):
 crontab -e | sed '/^# CUSTOM/i 0 3 * * * cd /var/www/hmsdp && pm2 reload hmsdp-absenyura >> /var/log/hmsdp/cron-reload.log 2>&1'
 ```
@@ -282,7 +282,7 @@ sudo -u postgres pg_dump -Fc hmsdp | gzip > /tmp/hmsdp-EMERGENCY-$(date +%Y%m%d-
 #    Pastikan IP VPS BARU terkonfirmasi bisa SSH.
 
 # ============================================================================
-# LANGKAH 3 — FOLLOW PANDUAN DEPLOY_VPS_DUAL_HOSTINGER.md DARI STEP 0 SAMPAI STEP 8
+# LANGKAH 3 — FOLLOW PANDUAN deploy/selfhost/README.md DARI STEP 0 SAMPAI STEP 8
 # ============================================================================
 #    STOP di STEP 6.3 migrate deploy → JANGAN SEED. Instead:
 #    RESTORE DARI BACKUP tadi ke VPS BARU:

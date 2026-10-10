@@ -49,7 +49,7 @@ dotenv.config();
 
 if (process.env.NODE_ENV === 'production' && !process.env.CLOUDINARY_URL) {
   console.warn(
-    '[WARN] CLOUDINARY_URL tidak diatur. Foto bukti absensi, dokumen excuse, dan aset CMS akan disimpan ke folder ./uploads lokal (bukan Cloudinary). Pastikan folder ./uploads dipersistensikan di luar document root (symlink) agar tidak hilang saat redeploy. Lihat DEPLOY_VPS_HOSTINGER.md untuk panduan storage persistent.'
+    '[WARN] CLOUDINARY_URL tidak diatur. Foto bukti absensi, dokumen excuse, dan aset CMS akan disimpan ke folder ./uploads lokal (bukan Cloudinary). Pastikan folder ./uploads dipersistensikan di luar document root (symlink) agar tidak hilang saat redeploy. Lihat deploy/README.md untuk panduan storage persistent.'
   );
 }
 

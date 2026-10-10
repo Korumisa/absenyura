@@ -1,5 +1,5 @@
 -- =====================================================================
--- 02 — SUPABASE FREE TIER OPTIMASI WAJIB — 500 USER 12 BULAN AMAN
+-- SUPABASE FREE TIER — OPTIMASI & RETENSI (deploy/README.md langkah 2)
 --
 -- CARA PAKAI:
 -- 1. Buka: https://supabase.com/dashboard → project Anda

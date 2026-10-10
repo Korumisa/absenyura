@@ -3,8 +3,8 @@
 ---
 
 > **Periode Audit**: Tanggal **_/_**/2026 — Waktu: \_**\_:\_\_** WITA
-> **Operator (Nama / NIM)**: ************\_\_\_\_************ Jabatan: ********\_\_********
-> **Reviewer (PIC / Ketua HMJ)**: **********\_\_\_\_********** Jabatan: ********\_\_********
+> **Operator (Nama / NIM)**: ****\*\*\*\*****\_\_\_\_****\*\*\*\***** Jabatan: **\*\*\*\***\_\_**\*\*\*\***
+> **Reviewer (PIC / Ketua HMJ)**: ****\*\*****\_\_\_\_****\*\***** Jabatan: **\*\*\*\***\_\_**\*\*\*\***
 >
 > **Cara Pengisian**:
 > ✅ = PASS, ❌ = FAIL, ⚠️ = WARN (ada catatan).
@@ -27,7 +27,7 @@
 | 7   | Transparent Huge Pages (THP) = never.                                        | `cat /sys/kernel/mm/transparent_hugepage/enabled`               | ☐        |         |
 | 8   | `vm.swappiness=1`, shared_buffers 2 GB diset di sysctl.                      | `sysctl vm.swappiness vm.dirty_ratio vm.dirty_background_ratio` | ☐        |         |
 | 9   | User `deploy` sudoers NOPASSWD. SSH root bisa di nonaktifkan nanti.          | `cat /etc/sudoers.d/deploy`                                     | ☐        |         |
-| 10  | Script `vps-preflight.sh` di-run, output 0 FAIL.                             | Exit code = 0                                                   | ☐        |         |
+| 10  | Script `preflight.sh` di-run, output 0 FAIL.                                 | Exit code = 0                                                   | ☐        |         |
 
 ---
 
@@ -69,7 +69,7 @@
 
 | #   | Verifikasi                                                                            | Evidence / Cara Cek                                                                   | Status ☐         | Catatan  |
 | --- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- | ---------------- | -------- | --- | --- |
-| 31  | PM2 start app via ecosystem.config.js. Restarts 0, status online, uptime > 5 menit.   | `pm2 status hmsdp-absenyura`                                                          | ☐                |          |
+| 31  | PM2 start app via ecosystem.config.cjs. Restarts 0, status online, uptime > 5 menit.  | `pm2 status hmsdp-absenyura`                                                          | ☐                |          |
 | 32  | PM2 max_memory_restart = 1500M, node_args old-space 1536 MB.                          | `pm2 show hmsdp-absenyura                                                             | grep -E 'max_old | memory'` | ☐   |     |
 | 33  | `process.send('ready')` dikirim → PM2 status online bukan launching.                  | `pm2 logs --nostream --lines 100                                                      | grep ready`      | ☐        |     |
 | 34  | Health endpoint domain HTTPS `/api/status` 200 OK via curl. 127.0.0.1:3001 juga.      | Status code = 200                                                                     | ☐                |          |
@@ -87,15 +87,15 @@
 | #   | Verifikasi                                                                                                                                                                                                                 | Evidence / Cara Cek                                         | Status ☐                 | Catatan     |
 | --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- | ------------------------ | ----------- | --- | --- |
 | 41  | rclone di-install. Remote `b2remote` tersedia. Bucket dapat di-upload/dibaca.                                                                                                                                              | `rclone listremotes` + test upload dummy 1 KB file          | ☐                        |             |
-| 42  | Script `vps-backup.sh manual` di-run → exit 0. Upload file .dump.gz + sha256 ke bucket. SHA match.                                                                                                                         | Stdout script exit 0. `rclone ls ...` file hari ini ADA.    | ☐                        |             |
-| 43  | Script `vps-restore-test.sh` di-run → exit 0. Semua 6 table critical row count > 0 / tidak NaN.                                                                                                                            | Tail log final line: RESTORE TEST LULUS.                    | ☐                        |             |
+| 42  | Script `backup.sh manual` di-run → exit 0. Upload file .dump.gz + sha256 ke bucket. SHA match.                                                                                                                             | Stdout script exit 0. `rclone ls ...` file hari ini ADA.    | ☐                        |             |
+| 43  | Script `restore-test.sh` di-run → exit 0. Semua 6 table critical row count > 0 / tidak NaN.                                                                                                                                | Tail log final line: RESTORE TEST LULUS.                    | ☐                        |             |
 | 44  | Crontab C5 backup run setiap 6 jam. Folder log /var/log/hmsdp ada backup.log.                                                                                                                                              | `ls -la /var/log/hmsdp/` + last modified                    | ☐                        |             |
 | 45  | PostgreSQL `SHOW shared_buffers = 2GB`; work_mem 16MB; effective_cache 6GB.                                                                                                                                                | `psql -c "SHOW shared_buffers; SHOW effective_cache_size;"` | ☐                        |             |
 | 46  | pg_stat_statements extension enabled. Top 5 query dashboard pertama < 4 detik.                                                                                                                                             | Query di Maintenance Monthly B.3d. mean_ms < 500.           | ☐                        |             |
 | 47  | Artillery 60 detik 100 vu scan QR (health endpoint). P95 < 2000 ms, 0 5xx.                                                                                                                                                 | `artillery run` report. P95 < 2000 ms → Score ≥ 4.          | ☐                        |             |
 | 48  | OOM kill 72 jam ZERO. Journalctl kernel 0 lines Out of memory.                                                                                                                                                             | `journalctl -k                                              | grep -i "killed process" | wc -l` = 0. | ☐   |     |
 | 49  | Full cycle end-to-end: Create Class → Enroll → Session UPCOMING → cron trigger → CHECKIN_OPEN → 10 user scan QR (status HADIR) → Cron trigger → Checkin Closed + Auto ALFA user tidak scan → Export PDF/XLSX 10 row benar. | Logs app. PM2 error 0.                                      | ☐                        |             |
-| 50  | _Paper check_: Dokumen VPS_OPS_PLAYBOOK.md disimpan digital + cetak fisik 1 copy di lemari Arsip. Sandi .env + SSH key tersimpan di password manager (BUKAN catatan WhatsApp).                                             | 3-item checklist.                                           | ☐                        |             |
+| 50  | _Paper check_: Dokumen deploy/selfhost/OPERATIONS.md disimpan digital + cetak fisik 1 copy di lemari Arsip. Sandi .env + SSH key tersimpan di password manager (BUKAN catatan WhatsApp).                                   | 3-item checklist.                                           | ☐                        |             |
 
 ---
 

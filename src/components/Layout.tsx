@@ -1,30 +1,14 @@
-import React, { useCallback, useEffect, useRef, useState, lazy, Suspense } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState, lazy, Suspense } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import {
-  LayoutDashboard,
-  Users,
-  MapPin,
-  Calendar,
   Menu,
   X,
-  QrCode,
-  BarChart3,
-  ShieldAlert,
-  History,
-  BookOpen,
-  FileText,
-  Building2,
-  Globe,
-  ChevronDown,
-  User,
-  Layers,
-  Newspaper,
-  Image,
-  ClipboardList,
-  Settings as SettingsIcon,
-  ClipboardCheck,
   Bell,
+  ChevronRight,
+  ExternalLink,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 
 import { UserDropdown } from './UserDropdown';
@@ -38,10 +22,71 @@ import { AdminRouteTransition } from '@/components/admin/AdminRouteTransition';
 import PageSkeleton from '@/components/PageSkeleton';
 import { InnerRouteErrorBoundary } from '@/components/ErrorBoundary';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
+import { cn } from '@/lib/utils/utils';
+import {
+  ADMIN_NAV_FOOTER,
+  type AdminNavItem,
+  findActiveNav,
+  getNavSectionsForRole,
+  isNavItemActive,
+} from '@/components/admin/adminNav';
+
+const COLLAPSE_KEY = 'admin.sidebar.collapsed';
+
+function readCollapsed(): boolean {
+  try {
+    return window.localStorage.getItem(COLLAPSE_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function SidebarLink({
+  item,
+  active,
+  collapsed,
+  onNavigate,
+}: {
+  item: AdminNavItem;
+  active: boolean;
+  collapsed: boolean;
+  onNavigate: () => void;
+}) {
+  const Icon = item.icon;
+  return (
+    <Link
+      to={item.path}
+      aria-current={active ? 'page' : undefined}
+      aria-label={collapsed ? item.name : undefined}
+      title={collapsed ? item.name : undefined}
+      onClick={onNavigate}
+      className={cn(
+        'group relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors select-none',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        collapsed && 'lg:justify-center lg:px-0',
+        active
+          ? 'bg-brand/10 text-brand dark:bg-brand/20'
+          : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+      )}
+    >
+      {active ? (
+        <span aria-hidden className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-brand" />
+      ) : null}
+      <Icon
+        size={18}
+        className={cn(
+          'shrink-0',
+          active ? 'text-brand' : 'text-muted-foreground group-hover:text-foreground'
+        )}
+      />
+      <span className={cn('truncate', collapsed && 'lg:sr-only')}>{item.name}</span>
+    </Link>
+  );
+}
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [publicSiteOpen, setPublicSiteOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState<boolean>(readCollapsed);
   const { user, isAuthenticated, hasHydrated, sessionStatus } = useAuthStore();
   const location = useLocation();
   const shouldShowSkeleton = !hasHydrated || (isAuthenticated && sessionStatus !== 'verified');
@@ -54,81 +99,24 @@ export default function Layout() {
     triggerRef: hamburgerRef,
   });
 
-  const navItems = [
-    {
-      name: 'Dashboard',
-      path: '/dashboard',
-      icon: LayoutDashboard,
-      roles: ['SUPER_ADMIN', 'ADMIN', 'USER'],
-    },
-    {
-      name: 'Kelas Kuliah',
-      path: '/classes',
-      icon: BookOpen,
-      roles: ['SUPER_ADMIN', 'ADMIN', 'USER'],
-    },
-    {
-      name: 'Sesi Absensi',
-      path: '/sessions',
-      icon: Calendar,
-      roles: ['SUPER_ADMIN', 'ADMIN', 'USER'],
-    },
-    { name: 'Pemindai QR', path: '/attend', icon: QrCode, roles: ['USER'] },
-    {
-      name: 'Pengajuan Izin',
-      path: '/excuses',
-      icon: FileText,
-      roles: ['SUPER_ADMIN', 'ADMIN', 'USER'],
-    },
-    {
-      name: 'Izin Saya',
-      path: '/excuses/me',
-      icon: ClipboardCheck,
-      roles: ['USER'],
-    },
-    { name: 'Riwayat Saya', path: '/history', icon: History, roles: ['USER'] },
-    { name: 'Manajemen Lokasi', path: '/locations', icon: MapPin, roles: ['SUPER_ADMIN', 'ADMIN'] },
-    {
-      name: 'Rekap Kehadiran',
-      path: '/reports',
-      icon: BarChart3,
-      roles: ['SUPER_ADMIN', 'ADMIN', 'USER'],
-    },
-    {
-      name: 'Konten Website',
-      path: '/public-site',
-      icon: Globe,
-      roles: ['SUPER_ADMIN', 'CONTENT_ADMIN'],
-    },
-    { name: 'Pengguna', path: '/users', icon: Users, roles: ['SUPER_ADMIN'] },
-    { name: 'Fakultas & Prodi', path: '/master-data', icon: Building2, roles: ['SUPER_ADMIN'] },
-    { name: 'Audit Log', path: '/audit', icon: ShieldAlert, roles: ['SUPER_ADMIN'] },
-    {
-      name: 'Pengaturan Akun',
-      path: '/settings',
-      icon: SettingsIcon,
-      roles: ['SUPER_ADMIN', 'ADMIN', 'USER', 'CONTENT_ADMIN'],
-    },
-  ];
-
-  const allowedNavItems = navItems.filter((item) => user && item.roles.includes(user.role));
-  const canPublicSite = Boolean(user && ['SUPER_ADMIN', 'CONTENT_ADMIN'].includes(user.role));
-
-  useEffect(() => {
-    if (!canPublicSite) return;
-    if (location.pathname.startsWith('/public-site')) setPublicSiteOpen(true);
-  }, [canPublicSite, location.pathname]);
+  const sections = useMemo(() => getNavSectionsForRole(user?.role), [user?.role]);
+  const activeNav = useMemo(() => findActiveNav(location.pathname), [location.pathname]);
 
   useEffect(() => {
     setSidebarOpen(false);
   }, [location.pathname]);
 
-  const navLinkClass = (isActive: boolean) =>
-    isActive
-      ? 'bg-sidebar-active text-brand select-none'
-      : 'text-muted-foreground hover:bg-muted select-none';
-
-  const navIconClass = (isActive: boolean) => (isActive ? 'text-brand' : 'text-muted-foreground');
+  const toggleCollapsed = useCallback(() => {
+    setCollapsed((prev) => {
+      const next = !prev;
+      try {
+        window.localStorage.setItem(COLLAPSE_KEY, next ? '1' : '0');
+      } catch {
+        /* storage penuh / mode privat */
+      }
+      return next;
+    });
+  }, []);
 
   if (shouldShowSkeleton) {
     return <PageSkeleton />;
@@ -138,7 +126,7 @@ export default function Layout() {
     <div className="admin-theme flex h-dvh overflow-hidden bg-sidebar font-sans">
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 rounded-lg bg-brand px-4 py-2 z-50"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 rounded-lg bg-brand px-4 py-2 text-brand-foreground z-50"
       >
         Lewati ke konten utama
       </a>
@@ -151,24 +139,37 @@ export default function Layout() {
         />
       )}
 
-      <div
+      <aside
         ref={sidebarRef}
-        role="dialog"
+        role={sidebarOpen ? 'dialog' : undefined}
         aria-modal={sidebarOpen ? true : undefined}
         aria-label="Sidebar navigasi"
-        className={`fixed inset-y-0 left-0 z-30 w-64 transform border-r border-sidebar-border bg-card transition-transform duration-300 ease-in-out lg:translate-x-0 ${
+        className={cn(
+          'fixed inset-y-0 left-0 z-30 flex w-64 flex-col border-r border-sidebar-border bg-card transition-[transform,width] duration-300 ease-in-out lg:translate-x-0',
+          collapsed ? 'lg:w-[4.5rem]' : 'lg:w-64',
           sidebarOpen ? 'visible translate-x-0' : 'invisible -translate-x-full lg:visible'
-        }`}
+        )}
       >
-        <div className="flex h-16 items-center justify-between border-b border-sidebar-border bg-card px-6">
-          <div className="flex items-center gap-3">
+        <div
+          className={cn(
+            'flex h-16 shrink-0 items-center justify-between gap-2 border-b border-sidebar-border px-4',
+            collapsed && 'lg:justify-center lg:px-2'
+          )}
+        >
+          <Link
+            to="/dashboard"
+            className="flex min-w-0 items-center gap-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
             <img
               src="/logo-hmsdp.webp"
-              alt="Logo HM"
-              className="size-9 rounded-xl bg-background/70 p-1.5 ring-1 ring-border"
+              alt="Logo HMSDP"
+              className="size-9 shrink-0 rounded-lg bg-background/70 p-1.5 ring-1 ring-border"
             />
-            <span className="text-lg font-semibold text-brand">E-Absensi</span>
-          </div>
+            <span className={cn('min-w-0 leading-tight', collapsed && 'lg:hidden')}>
+              <span className="block truncate text-base font-bold text-foreground">E-Absensi</span>
+              <span className="block truncate text-xs text-muted-foreground">HMSDP Undiksha</span>
+            </span>
+          </Link>
           <Button
             variant="ghost"
             size="icon"
@@ -176,124 +177,117 @@ export default function Layout() {
             onClick={closeSidebar}
             aria-label="Tutup sidebar"
           >
-            <X size={24} />
+            <X size={22} />
           </Button>
         </div>
 
-        <div className="flex h-[calc(100dvh-4rem)] flex-col justify-between pb-6">
-          <nav className="scrollbar-hide space-y-1 overflow-y-auto p-4">
-            {allowedNavItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = location.pathname.startsWith(item.path);
+        <nav
+          aria-label="Navigasi utama"
+          className="scrollbar-hide flex-1 space-y-5 overflow-y-auto px-3 py-4"
+        >
+          {sections.map((section) => (
+            <div key={section.id} className="space-y-1">
+              <p
+                className={cn(
+                  'px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70',
+                  collapsed && 'lg:sr-only'
+                )}
+              >
+                {section.label}
+              </p>
+              {collapsed ? (
+                <div
+                  aria-hidden
+                  className="mx-auto mb-2 hidden h-px w-8 bg-sidebar-border lg:block"
+                />
+              ) : null}
+              {section.items.map((item) => (
+                <SidebarLink
+                  key={item.path}
+                  item={item}
+                  active={isNavItemActive(item, location.pathname)}
+                  collapsed={collapsed}
+                  onNavigate={closeSidebar}
+                />
+              ))}
+            </div>
+          ))}
+        </nav>
 
-              if (item.path === '/public-site') {
-                if (!canPublicSite) return null;
-                return (
-                  <div key={item.name} className="space-y-1">
-                    <button
-                      type="button"
-                      onClick={() => setPublicSiteOpen((v) => !v)}
-                      aria-expanded={publicSiteOpen}
-                      aria-controls="public-site-subnav"
-                      className={`flex w-full items-center rounded-xl px-4 py-3 transition-colors select-none ${navLinkClass(isActive)}`}
-                    >
-                      <Icon size={20} className={`mr-3 ${navIconClass(isActive)}`} />
-                      <span className="flex-1 text-left font-medium">{item.name}</span>
-                      <ChevronDown
-                        size={18}
-                        className={`transition-transform duration-200 ${publicSiteOpen ? 'rotate-0' : '-rotate-90'}`}
-                      />
-                    </button>
-
-                    <div
-                      id="public-site-subnav"
-                      className={`overflow-hidden pl-4 transition-all duration-200 ease-out ${
-                        publicSiteOpen
-                          ? 'max-h-96 translate-y-0 opacity-100'
-                          : 'max-h-0 -translate-y-1 opacity-0'
-                      }`}
-                    >
-                      <div className="space-y-1 pt-1">
-                        {[
-                          { name: 'Profil', path: '/public-site/profile', icon: User },
-                          { name: 'Struktur', path: '/public-site/structure', icon: Layers },
-                          {
-                            name: 'Program Kerja',
-                            path: '/public-site/programs',
-                            icon: ClipboardList,
-                          },
-                          { name: 'Berita & Info', path: '/public-site/posts', icon: Newspaper },
-                          { name: 'Galeri', path: '/public-site/galleries', icon: Image },
-                          {
-                            name: 'Open Recruitment',
-                            path: '/public-site/recruitments',
-                            icon: FileText,
-                          },
-                        ].map((sub) => {
-                          const subActive = location.pathname === sub.path;
-                          const SubIcon = sub.icon;
-                          return (
-                            <Link
-                              key={sub.path}
-                              to={sub.path}
-                              aria-current={subActive ? 'page' : undefined}
-                              onClick={() => setSidebarOpen(false)}
-                              className={`flex items-center rounded-xl px-4 py-2 text-sm transition-colors select-none ${navLinkClass(subActive)}`}
-                            >
-                              <SubIcon size={18} className="mr-3 opacity-80" />
-                              <span className="font-medium">{sub.name}</span>
-                            </Link>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                );
-              }
-
-              return (
-                <Link
-                  key={item.name}
-                  to={item.path}
-                  aria-current={isActive ? 'page' : undefined}
-                  onClick={() => setSidebarOpen(false)}
-                  className={`flex items-center rounded-xl px-4 py-3 transition-colors ${navLinkClass(isActive)}`}
-                >
-                  <Icon size={20} className={`mr-3 ${navIconClass(isActive)}`} />
-                  <span className="font-medium">{item.name}</span>
-                </Link>
-              );
-            })}
-          </nav>
+        <div className="shrink-0 space-y-1 border-t border-sidebar-border p-3">
+          <SidebarLink
+            item={ADMIN_NAV_FOOTER}
+            active={isNavItemActive(ADMIN_NAV_FOOTER, location.pathname)}
+            collapsed={collapsed}
+            onNavigate={closeSidebar}
+          />
+          <button
+            type="button"
+            onClick={toggleCollapsed}
+            aria-label={collapsed ? 'Lebarkan sidebar' : 'Ciutkan sidebar'}
+            title={collapsed ? 'Lebarkan sidebar' : 'Ciutkan sidebar'}
+            className={cn(
+              'hidden min-h-10 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:flex',
+              collapsed && 'lg:justify-center lg:px-0'
+            )}
+          >
+            {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+            <span className={cn(collapsed && 'sr-only')}>Ciutkan</span>
+          </button>
         </div>
-      </div>
+      </aside>
 
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:ml-64">
-        <header className="z-10 flex h-16 shrink-0 items-center justify-between gap-1 border-b border-sidebar-border bg-card px-2 sm:px-6">
-          <div className="flex min-w-0 items-center">
+      <div
+        className={cn(
+          'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden transition-[margin] duration-300 ease-in-out',
+          collapsed ? 'lg:ml-[4.5rem]' : 'lg:ml-64'
+        )}
+      >
+        <header className="z-10 flex h-16 shrink-0 items-center justify-between gap-2 border-b border-sidebar-border bg-card/95 px-2 backdrop-blur supports-[backdrop-filter]:bg-card/80 sm:px-6">
+          <div className="flex min-w-0 items-center gap-2">
             <Button
               variant="ghost"
               size="icon"
               ref={hamburgerRef}
-              className="mr-2 lg:hidden"
+              className="lg:hidden"
               onClick={() => setSidebarOpen(true)}
               aria-label="Buka sidebar"
             >
-              <Menu size={24} />
+              <Menu size={22} />
             </Button>
-            <div className="flex items-center gap-2 lg:hidden">
-              <img
-                src="/logo-hmsdp.webp"
-                alt="Logo HM"
-                className="size-8 rounded-lg bg-background/70 p-1 ring-1 ring-border"
-              />
-              <span className="truncate text-base font-semibold text-brand sm:text-lg">
-                E-Absensi
-              </span>
-            </div>
+            <nav aria-label="Lokasi halaman" className="min-w-0">
+              <ol className="flex min-w-0 items-center gap-1.5 text-sm">
+                <li className="hidden shrink-0 text-muted-foreground sm:block">
+                  {activeNav?.section.label ?? 'Panel Admin'}
+                </li>
+                {activeNav ? (
+                  <>
+                    <li aria-hidden className="hidden text-muted-foreground/50 sm:block">
+                      <ChevronRight size={14} />
+                    </li>
+                    <li className="truncate font-semibold text-foreground" aria-current="page">
+                      {activeNav.item.name}
+                    </li>
+                  </>
+                ) : (
+                  <li className="truncate font-semibold text-foreground sm:hidden">E-Absensi</li>
+                )}
+              </ol>
+            </nav>
           </div>
 
-          <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-4">
+          <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              asChild
+              className="hidden text-muted-foreground md:inline-flex"
+            >
+              <a href="/" target="_blank" rel="noopener noreferrer">
+                <ExternalLink size={16} className="mr-1.5" />
+                Lihat situs
+              </a>
+            </Button>
             <ThemeToggle />
             <Suspense
               fallback={

@@ -13,12 +13,24 @@ Aplikasi ini dibangun menggunakan **React (Vite)** untuk Frontend, **Node.js (Ex
 
 ## 🚚 Deployment (Local vs Vercel)
 
-| Environment       | Backend entry      | How it runs                                 | Shared app      |
-| ----------------- | ------------------ | ------------------------------------------- | --------------- |
-| Local dev         | `server/server.ts` | `npm run dev` (Vite + Express via nodemon)  | `server/app.ts` |
-| Vercel production | `api/index.ts`     | Serverless function routed by `vercel.json` | `server/app.ts` |
+| Environment       | Backend entry      | How it runs                                                     | Shared app      |
+| ----------------- | ------------------ | --------------------------------------------------------------- | --------------- |
+| Local dev         | `server/server.ts` | `npm run dev` (Vite + Express via nodemon)                      | `server/app.ts` |
+| Vercel production | `api/index.ts`     | Serverless function routed by `vercel.json`                     | `server/app.ts` |
+| VPS production    | `server/server.ts` | `npm run build:vps` → PM2 + Nginx ([deploy/](deploy/README.md)) | `server/app.ts` |
 
-> **Docker:** No Dockerfile is included because this project deploys to Vercel. If you need a containerised environment, a minimal Node.js Dockerfile would go here.
+### Struktur proyek
+
+```
+src/          Frontend React (pages, components, hooks, lib)
+server/       Backend Express (routes, controllers, jobs/cron, middleware)
+api/          Entry serverless Vercel
+prisma/       Schema + migrasi database
+deploy/       Panduan & config produksi VPS (nginx, env, script backup)
+docs/         Dokumentasi arsitektur, UI/UX, keamanan, audit
+scripts/      Utilitas dev (seed, load test k6, monitor)
+tests/        E2E Playwright
+```
 
 ## 🛠️ Persyaratan Sistem (Prerequisites)
 
@@ -103,35 +115,15 @@ Deploy utama memakai **Vercel** (frontend + API serverless). Foto selfie dan ase
 - HTTPS otomatis (wajib untuk kamera & GPS di browser)
 - Cron sesi: lihat bagian [Cron status sesi](#️-cron-status-sesi-vercel-hobby--gratis) di bawah
 
-### Opsi B — VPS + penyimpanan lokal (alternatif)
+### Opsi B — VPS + Supabase (domain sendiri, mis. `hmsdp.me`)
 
-Untuk VPS (DigitalOcean, AWS EC2, Niagahoster, dll.) tanpa Cloudinary, foto selfie dapat disimpan di **`/uploads/attendance`** di disk server. Pastikan Nginx mem-proxy path `/uploads/` ke backend (contoh di bawah).
+App (frontend + API + cron) berjalan di 1 VPS via PM2 + Nginx, database tetap Supabase.
+Panduan langkah demi langkah (order VPS → DNS → install → SSL → backup → cutover): **[deploy/README.md](deploy/README.md)**.
 
-### Langkah 1: Persiapkan VPS Anda
-
-1. Login ke VPS Anda via SSH.
-2. Instal Node.js, Nginx, dan PM2.
-3. Kloning atau unggah kode proyek ini ke VPS Anda (misal di folder `/var/www/absensi`).
-4. Masuk ke folder tersebut dan jalankan `npm install`.
-
-### Langkah 2: Atur Environment (`.env`)
-
-Buat/edit file `.env` di VPS:
-
-```env
-NODE_ENV="production"
-PORT=3001
-DATABASE_URL="postgresql://postgres.[ref]:[YOUR-PASSWORD]@aws-0-[region].pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1"
-DIRECT_URL="postgresql://postgres.[ref]:[YOUR-PASSWORD]@db.[ref].supabase.co:5432/postgres"
-JWT_SECRET="BUAT_STRING_ACAK_YANG_SANGAT_PANJANG_DAN_RUMIT"
-JWT_REFRESH_SECRET="BUAT_STRING_ACAK_YANG_SANGAT_PANJANG_DAN_RUMIT_LAINNYA"
-ATTENDANCE_PROOF_SECRET="BUAT_STRING_ACAK_MINIMAL_32_KARAKTER_UNTUK_ABSENSI"
-CRON_SECRET="BUAT_STRING_ACAK_UNTUK_CRON_HTTP"
-INTERNAL_SECRET="BUAT_STRING_ACAK_INTERNAL"
-FRONTEND_URL="https://absensi.namakampus.ac.id" # URL Asli Anda
+```bash
+npm run build:vps                               # dist-server/server.js + dist/
+pm2 start ecosystem.config.cjs --env production
 ```
-
-Jalankan `npx prisma generate` dan `npx prisma migrate deploy` (production). Untuk development lokal gunakan `npx prisma migrate dev`.
 
 ### Checklist production
 
@@ -155,79 +147,6 @@ Jalankan `npx prisma generate` dan `npx prisma migrate deploy` (production). Unt
    - Check-out 400 → pastikan challenge memakai `action=checkout` + `attendance_id`.
 3. Tambahkan log minimal (tanpa secrets) hanya untuk branch investigasi, lalu hapus setelah fixed.
 4. Validasi ulang: jalankan checklist cron + flow login/check-in/check-out setelah perubahan.
-
-### Langkah 3: Build Frontend
-
-Kompilasi kode React agar siap dilayani oleh Web Server:
-
-```bash
-npm run build
-```
-
-_(Ini akan menghasilkan folder `dist/`)_
-
-### Langkah 4: Jalankan Backend dengan PM2
-
-Agar backend (Node.js, WebSocket, dan Cron Jobs) tetap menyala 24/7 dan _auto-restart_ jika _crash_:
-
-```bash
-pm2 start npx --name "absensi-api" -- tsx server/server.ts
-pm2 save
-pm2 startup
-```
-
-### Langkah 5: Konfigurasi Nginx (Reverse Proxy)
-
-Buat file konfigurasi Nginx baru (misal: `/etc/nginx/sites-available/absensi`):
-
-```nginx
-server {
-    listen 80;
-    server_name absensi.namakampus.ac.id; # Ganti dengan domain Anda
-
-    # 1. Melayani Frontend (React)
-    location / {
-        root /var/www/absensi/dist; # Sesuaikan path-nya
-        index index.html;
-        try_files $uri $uri/ /index.html; # Penting untuk React Router
-    }
-
-    # 2. Melayani Backend API & WebSockets
-    location /api/ {
-        proxy_pass http://localhost:3001/api/;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    }
-
-    # 3. Melayani Foto Bukti Absensi
-    location /uploads/ {
-        proxy_pass http://localhost:3001/uploads/;
-    }
-}
-```
-
-Aktifkan konfigurasi dan restart Nginx:
-
-```bash
-sudo ln -s /etc/nginx/sites-available/absensi /etc/nginx/sites-enabled/
-sudo systemctl restart nginx
-```
-
-### Langkah 6: Instalasi SSL (HTTPS) - WAJIB!
-
-Browser **memblokir** akses Kamera dan GPS jika website Anda tidak menggunakan `https://`. Pasang SSL gratis menggunakan Certbot:
-
-```bash
-sudo apt install certbot python3-certbot-nginx
-sudo certbot --nginx -d absensi.namakampus.ac.id
-```
-
-Selamat! Sistem Absensi Anda sudah berjalan secara _Production_. 🎉
 
 ---
 

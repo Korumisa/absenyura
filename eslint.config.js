@@ -9,6 +9,7 @@ export default tseslint.config(
   {
     ignores: [
       '**/dist/**',
+      '**/dist-server/**',
       '**/build/**',
       '**/.next/**',
       '**/coverage/**',

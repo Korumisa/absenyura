@@ -1,9 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { LogOut, Settings } from 'lucide-react';
+import { ChevronDown, LogOut, Settings } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useNavigate } from 'react-router-dom';
 import api from '@/services/api';
 import { ConfirmModal } from '@/components/ConfirmModal';
+import { ROLE_LABEL, type AdminRole } from '@/components/admin/adminNav';
+
+function getInitials(name: string | undefined): string {
+  const parts = (name || 'U').trim().split(/\s+/).filter(Boolean);
+  return parts
+    .slice(0, 2)
+    .map((p) => p.charAt(0).toUpperCase())
+    .join('');
+}
 
 export function UserDropdown() {
   const [isOpen, setIsOpen] = useState(false);
@@ -14,6 +23,8 @@ export function UserDropdown() {
   const navigate = useNavigate();
   const menuId = 'user-account-menu';
   const [confirmLogoutOpen, setConfirmLogoutOpen] = useState(false);
+  const initials = getInitials(user?.name);
+  const roleLabel = ROLE_LABEL[(user?.role as AdminRole) ?? 'USER'] ?? user?.role ?? 'Pengguna';
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -60,19 +71,24 @@ export function UserDropdown() {
         aria-label="Menu akun pengguna"
         aria-expanded={isOpen}
         aria-controls={menuId}
-        className="flex min-h-11 min-w-11 items-center gap-3 rounded-lg border-l border-border py-1 pl-3 pr-2 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        className="flex min-h-11 min-w-11 items-center gap-3 rounded-lg py-1 pl-1.5 pr-2 transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:pl-2"
       >
-        <div className="size-8 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-700 text-brand font-bold">
-          {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
+        <div className="flex size-8 items-center justify-center rounded-full bg-brand/10 text-sm font-bold text-brand dark:bg-brand/20">
+          {initials}
         </div>
-        <div className="hidden sm:flex flex-col items-start text-left">
-          <span className="text-sm font-medium leading-tight text-foreground">
+        <div className="hidden max-w-[150px] flex-col items-start text-left sm:flex">
+          <span className="w-full truncate text-sm font-medium leading-tight text-foreground">
             {user?.name || 'User'}
           </span>
-          <span className="text-xs text-muted-foreground leading-tight truncate max-w-[120px]">
-            {user?.email}
+          <span className="w-full truncate text-xs leading-tight text-muted-foreground">
+            {roleLabel}
           </span>
         </div>
+        <ChevronDown
+          size={14}
+          aria-hidden
+          className={`hidden text-muted-foreground transition-transform sm:block ${isOpen ? 'rotate-180' : ''}`}
+        />
       </button>
 
       {isOpen && (
@@ -85,8 +101,8 @@ export function UserDropdown() {
           <div className="border-b border-border bg-muted/50 px-4 py-3">
             <p className="truncate text-sm font-medium text-foreground">{user?.name || 'User'}</p>
             <p className="text-xs text-muted-foreground truncate">{user?.email || ''}</p>
-            <p className="text-xs mt-1 inline-block px-2 py-0.5 bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 text-brand rounded-full font-semibold">
-              {user?.role || 'USER'}
+            <p className="mt-1.5 inline-block rounded-full bg-brand/10 px-2 py-0.5 text-xs font-semibold text-brand dark:bg-brand/20">
+              {roleLabel}
             </p>
           </div>
           <div className="py-1">
@@ -97,19 +113,19 @@ export function UserDropdown() {
                 navigate('/settings');
               }}
               role="menuitem"
-              className="w-full text-left px-4 py-2 text-sm text-muted-foreground hover:bg-muted dark:hover:bg-zinc-900 flex items-center gap-2"
+              className="flex min-h-10 w-full items-center gap-2 px-4 py-2 text-left text-sm text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:outline-none"
             >
               <Settings size={16} />
               Pengaturan Akun
             </button>
-            <div className="h-px bg-slate-200 bg-muted my-1"></div>
+            <div className="my-1 h-px bg-border" />
             <button
               onClick={() => {
                 setIsOpen(false);
                 setConfirmLogoutOpen(true);
               }}
               role="menuitem"
-              className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"
+              className="flex min-h-10 w-full items-center gap-2 px-4 py-2 text-left text-sm text-destructive hover:bg-destructive/10 focus-visible:bg-destructive/10 focus-visible:outline-none"
             >
               <LogOut size={16} />
               Keluar

@@ -207,11 +207,7 @@ export default function PublicSitePrograms() {
               description="Isi detail program kerja."
             >
               <form onSubmit={upsert} className="space-y-4">
-                <LastSavedIndicator
-                  lastSavedAt={lastSavedAt}
-                  isDirty={dirty}
-                  isSaving={false}
-                />
+                <LastSavedIndicator lastSavedAt={lastSavedAt} isDirty={dirty} isSaving={false} />
                 <div className="space-y-2">
                   <Label>Judul</Label>
                   <Input
@@ -473,7 +469,7 @@ export default function PublicSitePrograms() {
                             Edit
                           </Button>
                           <Button
-                            variant="destructive"
+                            variant="destructive-soft"
                             size="sm"
                             className="min-h-9"
                             type="button"

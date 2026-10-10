@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# 05 — INSTALL_STACK.sh — SEMI-AUTO INSTALL SOFTWARE VPS HYBRID 500 USER
+# install-stack.sh — SEMI-AUTO INSTALL SOFTWARE VPS (APP) UNTUK MODE VPS + SUPABASE
 #
-# CARA PAKAI:
-#   1. SSH VPS root.
-#   2. nano /root/install-stack.sh → paste file ini, simpan.
-#   3. chmod +x /root/install-stack.sh && bash /root/install-stack.sh
+# CARA PAKAI (root, lihat deploy/README.md langkah 3):
+#   git clone https://github.com/Korumisa/absenyura.git /root/absenyura
+#   bash /root/absenyura/deploy/scripts/install-stack.sh
 #
 # Estimasi jalan: 15-20 menit (tergantung jaringan SG).
 #
@@ -171,5 +170,5 @@ echo
 echo "  Langkah selanjutnya:"
 echo "   1. Reboot VPS → systemctl reboot"
 echo "   2. Setelah 60 detik → SSH lagi: ssh deploy@103.xxx.xxx.xxx"
-echo "   3. Lanjut baca file: 06_ENV_TEMPLATE.env → 07_DEPLOY_APP.md"
+echo "   3. Lanjut deploy/README.md langkah 4 (clone repo sebagai user deploy)"
 echo

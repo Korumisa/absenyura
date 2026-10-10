@@ -542,18 +542,20 @@ export default function Locations() {
                               variant="ghost"
                               size="icon"
                               onClick={() => handleOpenModal(loc)}
-                              className="min-h-11 min-w-11 text-muted-foreground hover:text-brand hover:bg-indigo-50 dark:text-slate-400 dark:hover:bg-indigo-900/30"
+                              className="min-h-11 min-w-11 text-muted-foreground hover:bg-brand/10 hover:text-brand"
                               title="Edit"
+                              aria-label={`Edit lokasi ${loc.name}`}
                               disabled={!canManageLocation(loc)}
                             >
                               <Edit2 className="size-4" />
                             </Button>
                             <Button
-                              variant="destructive"
+                              variant="destructive-soft"
                               size="icon"
                               onClick={() => openDeleteConfirm(loc)}
                               className="min-h-11 min-w-11"
                               title="Hapus"
+                              aria-label={`Hapus lokasi ${loc.name}`}
                               disabled={!canManageLocation(loc)}
                             >
                               <Trash2 className="size-4" />

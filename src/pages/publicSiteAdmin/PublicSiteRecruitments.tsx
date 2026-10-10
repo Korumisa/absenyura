@@ -759,7 +759,7 @@ export default function PublicSiteRecruitments() {
                           Edit
                         </Button>
                         <Button
-                          variant="destructive"
+                          variant="destructive-soft"
                           size="sm"
                           type="button"
                           onClick={() => openDelete(r.id)}

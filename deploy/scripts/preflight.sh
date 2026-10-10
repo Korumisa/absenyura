@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # =============================================================================
-# vps-preflight.sh — Pra-Deployment Hardware + OS Compatibility Checker
+# preflight.sh — Pra-Deployment Hardware + OS Compatibility Checker
 # -----------------------------------------------------------------------------
 # Dijalankan SEGERA setelah order VPS Hostinger KVM2 fresh install Ubuntu 22.04.
 # User: root (butuh akses perintah hardware / proc / kernel).
 #
 # Usage (root):
-#   bash scripts/vps-preflight.sh
-#   bash scripts/vps-preflight.sh --json      # output JSON untuk CI/CD
-#   SKIP_RAM=1 bash scripts/vps-preflight.sh  # matikan check RAM (untuk dev)
+#   bash deploy/scripts/preflight.sh
+#   bash deploy/scripts/preflight.sh --json      # output JSON untuk CI/CD
+#   SKIP_RAM=1 bash deploy/scripts/preflight.sh  # matikan check RAM (untuk dev)
 #
 # Exit codes:
 #   0  = Semua critical check PASS
@@ -194,7 +194,7 @@ else
   else
     echo -e "\n${C_GREEN}✅ Semua CRITICAL CHECK LULUS.${C_RESET}"
     if (( WARN_COUNT > 0 )); then echo -e "   Ada ${WARN_COUNT} warning — boleh lanjut tapi catat item WARN untuk ditangani nanti."; fi
-    echo -e "   Lanjut ke STEP 1 panduan DEPLOY_VPS_DUAL_HOSTINGER.md (OS Hardening)."
+    echo -e "   Lanjut ke STEP 1 panduan deploy/selfhost/README.md (OS Hardening)."
     exit 0
   fi
 fi

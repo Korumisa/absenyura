@@ -1,7 +1,7 @@
 -- ==========================================================================
 -- PRISMA SELF-HOST PRE-REQUISITES (PostgreSQL 16)
 -- Jalankan sebagai user `postgres` SUPERUSER sebelum `prisma migrate deploy` pertama kali.
---   psql -U postgres -f deploy/prisma-selfhost-prereq.sql
+--   psql -U postgres -f deploy/selfhost/prisma-prereq.sql
 --
 -- Urutan:
 --   1. Enable required extensions (pgcrypto, uuid-ossp, citext, pg_trgm)

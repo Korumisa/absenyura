@@ -1,9 +1,15 @@
+// `npm test`                  → semua project + coverage (CI gate)
+// `npm run test:unit`         → src/** saja (tanpa server)
+// `npm run test:integration`  → server/** (controller/integration)
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
     environment: 'node',
-    include: ['src/**/*.test.{ts,tsx}', 'server/**/*.test.ts'],
+    projects: [
+      { extends: true, test: { name: 'unit', include: ['src/**/*.test.{ts,tsx}'] } },
+      { extends: true, test: { name: 'integration', include: ['server/**/*.test.ts'] } },
+    ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],

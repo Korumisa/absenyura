@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==========================================================================
-# vps-backup.sh — PostgreSQL Full Backup + Rclone Upload ke Object Storage
+# backup.sh — PostgreSQL Full Backup + Rclone Upload ke Object Storage
 # ==========================================================================
 # Dua mode target database:
 #   - Supabase (VPS app + Supabase DB): set BACKUP_DATABASE_URL di .env, jalankan sebagai user deploy.
@@ -8,9 +8,9 @@
 #   - Postgres lokal (1 VPS penuh): kosongkan BACKUP_DATABASE_URL, jalankan sebagai user `postgres`.
 #
 # Usage Manual (test first):
-#   bash /var/www/hmsdp/repo/scripts/vps-backup.sh manual                 # mode Supabase
-#   sudo -u postgres bash /var/www/hmsdp/repo/scripts/vps-backup.sh manual # mode lokal
-# Usage Cron (setiap 6 jam): lihat deploy/hybrid-500user/09_CRONJOBS_SETUP.md
+#   bash /var/www/hmsdp/repo/deploy/scripts/backup.sh manual                 # mode Supabase
+#   sudo -u postgres bash /var/www/hmsdp/repo/deploy/scripts/backup.sh manual # mode lokal
+# Usage Cron (setiap 6 jam): lihat deploy/README.md langkah 8
 #
 # Env (dibaca dari .env repo; hanya key di bawah yang dibaca):
 #   BACKUP_DATABASE_URL   (mode Supabase) — Session pooler port 5432, contoh:
@@ -25,7 +25,7 @@
 set -uo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
-APP_DIR="$(cd -- "${SCRIPT_DIR}/.." &>/dev/null && pwd)"
+APP_DIR="$(cd -- "${SCRIPT_DIR}/../.." &>/dev/null && pwd)"
 ENV_FILE="${APP_DIR}/.env"
 
 MODE="${1:-cron}"

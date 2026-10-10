@@ -1,13 +1,13 @@
 // PM2 ecosystem config — jalankan dengan:
-//   pm2 start ecosystem.config.js --env production
+//   pm2 start ecosystem.config.cjs --env production
 //   pm2 save
 //   pm2 startup (ikuti instruksi untuk enable auto-start boot)
 //
-// CATATAN: Config ini dioptimalkan untuk 1 VPS DUAL PURPOSE (8 GB RAM shared dengan Postgres).
-//         JANGAN naikin instances > 1 atau max_memory_restart > 1500M — Postgres akan kehabisan RAM
-//         dan terkena OOM kill kernel (data absensi beresiko korup restart kasar WAL recovery).
+// CATATAN: File ini .cjs karena package.json "type": "module" — PM2 tidak bisa membaca .js sebagai ESM.
+//         instances WAJIB 1: cron (node-cron) berjalan in-process, >1 instance = job jalan dobel.
+//         Di mode self-host (Postgres 1 VPS) jangan naikkan max_memory_restart > 1500M (OOM Postgres).
 //
-// Lihat DEPLOY_VPS_HOSTINGER.md / DEPLOY_VPS_DUAL_HOSTINGER.md untuk panduan lengkap.
+// Lihat deploy/README.md (hybrid) / deploy/selfhost/README.md (full self-host) untuk panduan lengkap.
 module.exports = {
   apps: [
     {

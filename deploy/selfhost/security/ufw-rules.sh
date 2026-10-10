@@ -6,7 +6,7 @@
 # Di-apply SETELAH ssh port 22 VERIFIED BISA MASUK dari client Anda.
 #
 # Usage (ROOT saja):
-#   bash deploy/security/ufw-rules.sh
+#   bash deploy/selfhost/security/ufw-rules.sh
 #
 # Aplikasi di VPS:
 #   - Drop semua incoming DEFAULT (kecuali rule eksplisit)

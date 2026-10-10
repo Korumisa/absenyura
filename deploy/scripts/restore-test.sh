@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ===========================================================================
-# vps-restore-test.sh — MONTHLY VALIDATION: Test Restore dari Backup Object Storage
+# restore-test.sh — MONTHLY VALIDATION: Test Restore dari Backup Object Storage
 # ===========================================================================
 # Tujuan: Memastikan backup terakhir BENAR-BENAR bisa di-restore & data ada.
 #         Jalankan manual setiap 1 bulan (masuk monthly maintenance checklist).
@@ -14,7 +14,7 @@
 #   6. CLEANUP: DROP database test, rm tempdir
 #
 # Run as:
-#   sudo -u postgres bash scripts/vps-restore-test.sh
+#   sudo -u postgres bash deploy/scripts/restore-test.sh
 # Exit codes:
 #   0 = SUCCESS semua table valid
 #   1 = FAIL (lihat /var/log/hmsdp/restore-test.log detail)
@@ -22,7 +22,7 @@
 set -uo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
-APP_DIR="$(cd -- "${SCRIPT_DIR}/.." &>/dev/null && pwd)"
+APP_DIR="$(cd -- "${SCRIPT_DIR}/../.." &>/dev/null && pwd)"
 ENV_FILE="${APP_DIR}/.env"
 if [[ -f "${ENV_FILE}" ]]; then
   # shellcheck disable=SC1090
@@ -50,7 +50,7 @@ LATEST=$(rclone ls "${RCLONE_REMOTE}:${RCLONE_PATH}" --max-depth 1 2>/dev/null \
   | grep -E '^hmsdp-[0-9]{8}-[0-9]{6}\.dump$' \
   | sort -r | head -1)
 if [[ -z "${LATEST}" ]]; then
-  die "Tidak ada file backup hmsdp-*.dump di remote. Jalankan vps-backup.sh manual DULU."
+  die "Tidak ada file backup hmsdp-*.dump di remote. Jalankan backup.sh manual DULU."
 fi
 log "Backup candidate TERBARU = ${LATEST}"
 

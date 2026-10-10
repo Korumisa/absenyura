@@ -2,15 +2,15 @@
 # Systemd unit — alternatif TANPA PM2 untuk menjalankan app
 # otomatis start saat boot + restart jika crash.
 #
-# Copy ke:  /etc/systemd/system/hmsdp-vps.service
+# Copy ke:  /etc/systemd/system/hmsdp.service
 # Edit paths & user dibawah.
 # Jalankan:
 #   sudo systemctl daemon-reload
-#   sudo systemctl enable hmsdp-vps.service
-#   sudo systemctl start  hmsdp-vps.service
-#   sudo systemctl status hmsdp-vps.service
+#   sudo systemctl enable hmsdp.service
+#   sudo systemctl start  hmsdp.service
+#   sudo systemctl status hmsdp.service
 # Logs:
-#   sudo journalctl -u hmsdp-vps.service -f
+#   sudo journalctl -u hmsdp.service -f
 # ============================================================
 
 [Unit]

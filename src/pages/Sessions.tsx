@@ -842,7 +842,7 @@ export default function Sessions() {
                                   onClick={() =>
                                     window.open(`/sessions/${session.id}/qr`, '_blank')
                                   }
-                                  className="min-h-11 min-w-11 text-brand hover:text-indigo-700 hover:bg-indigo-50 text-brand dark:hover:bg-indigo-900/50"
+                                  className="min-h-11 min-w-11 text-brand hover:bg-brand/10 hover:text-brand"
                                   aria-label={`Tampilkan QR untuk ${session.title}`}
                                 >
                                   <QrCode className="size-4" />
@@ -852,13 +852,13 @@ export default function Sessions() {
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => handleOpenModal(session)}
-                                className="min-h-11 min-w-11 text-muted-foreground hover:text-brand hover:bg-indigo-50 dark:text-slate-400 dark:hover:bg-indigo-900/30"
+                                className="min-h-11 min-w-11 text-muted-foreground hover:bg-brand/10 hover:text-brand"
                                 aria-label={`Edit sesi ${session.title}`}
                               >
                                 <Edit2 className="size-4" />
                               </Button>
                               <Button
-                                variant="destructive"
+                                variant="destructive-soft"
                                 size="icon"
                                 onClick={() => openDeleteConfirm(session.id)}
                                 className="min-h-11 min-w-11"

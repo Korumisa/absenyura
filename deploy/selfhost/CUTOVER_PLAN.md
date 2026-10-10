@@ -16,7 +16,7 @@
 ## Pra-Syarat WAJIB SEBELUM JALANKAN CUTOVER (Checklist H-1)
 
 ```
-☑ VPS sudah melalui SEMUA step 0 s/d step 8 DEPLOY_VPS_DUAL_HOSTINGER.md
+☑ VPS sudah melalui SEMUA step 0 s/d step 8 deploy/selfhost/README.md
 ☑ PRELAUNCH 50-ITEM AUDIT CHECKLIST = PASS 48+/50 (max 2 WARN, 0 FAIL)
 ☑ `npx prisma migrate deploy` di VPS self-host sudah APPLIED SEMUA migration (hmsdp DB table structure IDENTIC dengan Supabase).
 ☑ Cloudinary, rclone, cron, PM2, Nginx SSL = SUDAH VERIFIED OK di VPS baru.
@@ -151,7 +151,7 @@ echo "Analyze + Reindex OK"
 
 Buka browser incognito, **AKSES LANGSUNG IP VPS**: `https://<IP_VPS>/` (Nginx sudah config server_name domain + IP OK jika kita pakai default_server). **JANGAN DNS SWITCH DULU.**
 
-Jalankan TICKET STEP 11 dari DEPLOY_VPS_DUAL_HOSTINGER.md (25 tiket). FOKUS khusus TIKET INI:
+Jalankan TICKET STEP 11 dari deploy/selfhost/README.md (25 tiket). FOKUS khusus TIKET INI:
 
 - `T05 Login sebagai Supabase superadmin LAMA apakah password bekerja?` (jika tidak — karena hash bcrypt @node-rs/bcrypt compatible. Jika FAIL: reset 1 password admin via prisma seed ulang)
 - `T12 Attendance COUNT TOTAL di dashboard = SAMA PERSIS dengan dashboard Supabase existing?`
@@ -163,7 +163,7 @@ Jalankan TICKET STEP 11 dari DEPLOY_VPS_DUAL_HOSTINGER.md (25 tiket). FOKUS khus
   ```
   Jalankan di keduanya. HASIL HARUS SAMA PERSIS. Toleransi 0 row.
 - `T19 User biasa buka Riwayat Absensi bulan lalu = data SAMA dengan Supabase existing?`
-- `T25 Final Test Backup & Restore VPS self-host: jalankan vps-backup.sh manual sekali. exit code 0.`
+- `T25 Final Test Backup & Restore VPS self-host: jalankan backup.sh manual sekali. exit code 0.`
 
 ✅ **Jika 25/25 PASS + row count SAMA**: LANJUT STEP 7 DNS SWITCH.
 ❌ **Jika ada row count BERBEDA atau 1 FAIL KRITIS**: ROLLBACK (lihat bagian bawah dokumen).
@@ -207,7 +207,7 @@ Jalankan setiap 10 menit. Copy hasil ke log cutover.
 6. Public health https://your-domain.com/api/status → 200 curl code.
 7. 1 user dummy TEST: scan QR hadir di session DummyTest. Row count bertambah 1.
 8. Cek cron 1x: cron lifecycle run tepat next minute.
-9. Backup DR FINAL 1x: sudo -u postgres bash scripts/vps-backup.sh (upload ke bucket)
+9. Backup DR FINAL 1x: sudo -u postgres bash deploy/scripts/backup.sh (upload ke bucket)
 ```
 
 ✅ **Semua parameter aman 1 jam**: Cutover RESMI SELESAI. Umumkan grup WA.

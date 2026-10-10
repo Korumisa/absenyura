@@ -25,7 +25,7 @@ Tandai SEMUA checklist ☐ ini sebelum menjalankan STEP 0. Jika SATU SAJA belum 
 ☑ Repository git (GitHub/GitLab) bisa di-clone dari VPS (SSH key deploy user ada di repo deploy keys).
 ☑ Secrets 6x 32 byte hex SUDAH di-generate (nanti diisi STEP 4).
 ☑ Jam operasi maintenance window = 13:00 - 16:00 WITA (bukan jam absen).
-☑ (Opsional) Jika ada data existing Supabase production: cutover plan di deploy/SELFHOST_CUTOVER_PLAN.md.
+☑ (Opsional) Jika ada data existing Supabase production: cutover plan di deploy/selfhost/CUTOVER_PLAN.md.
 ```
 
 ---
@@ -37,7 +37,7 @@ _Run sebagai `root` (atau user sudoers + prefix sudo)._
 ```bash
 # 0.1 Preflight check (auto-audit spec VPS)
 apt install -y curl
-curl -sSL <RAW_URL_REPO>/scripts/vps-preflight.sh | sudo bash
+curl -sSL <RAW_URL_REPO>/deploy/scripts/preflight.sh | sudo bash
 # Expected output: 0 FAIL. Jika ada 1 FAIL → perbaiki sebelum lanjut!
 
 # 0.2 Update package + install base utils
@@ -110,7 +110,7 @@ chown -R deploy:deploy /home/deploy/.ssh && chmod 600 /home/deploy/.ssh/authoriz
 
 # 0.8 Firewall UFW hardened via deploy script (idempoten)
 cd ~ && git clone --depth=1 <YOUR_GIT_REPO_URL> /tmp/hmsdp-install
-bash /tmp/hmsdp-install/deploy/security/ufw-rules.sh
+bash /tmp/hmsdp-install/deploy/selfhost/security/ufw-rules.sh
 # Expected: Status: active. Hanya 22 (limit), 80, 443, lo allow. Port lain DENY!
 ```
 
@@ -234,7 +234,7 @@ rclone delete b2remote:MY_BUCKET_NAME/test-rclone.txt
 ## STEP 4 — Isi .env Production
 
 ```bash
-cp deploy/.env.vps-selfhost.example .env
+cp deploy/selfhost/selfhost.env.example .env
 chmod 600 .env                # 🔴 HANYA owner deploy yang boleh baca.
 # 🔴 JANGAN PERNAH git add .env — sudah di .gitignore.
 
@@ -270,10 +270,10 @@ nano .env
 # Generate password hmsdp_app (SAMAKAN dengan DATABASE_URL di STEP 4):
 HMSDP_PASS=$(node -e "console.log(require('crypto').randomBytes(16).toString('hex'))")
 echo "Password hmsdp_app: $HMSDP_PASS"   # simpan ini di .env!
-# Edit file deploy/prisma-selfhost-prereq.sql:
-sed -i "s|<CHANGE_ME_PASSWORD_32BYTE_HEX>|$HMSDP_PASS|g" deploy/prisma-selfhost-prereq.sql
+# Edit file deploy/selfhost/prisma-prereq.sql:
+sed -i "s|<CHANGE_ME_PASSWORD_32BYTE_HEX>|$HMSDP_PASS|g" deploy/selfhost/prisma-prereq.sql
 # Jalankan sebagai postgres superuser:
-sudo -u postgres psql -f deploy/prisma-selfhost-prereq.sql
+sudo -u postgres psql -f deploy/selfhost/prisma-prereq.sql
 # ✅ Expected output AKHIR: ✓ PREREQUISITES BERHASIL. Selanjutnya: npx prisma migrate deploy
 
 # 🔴 UPDATE .env DATABASE_URL dan DIRECT_URL pakai $HMSDP_PASS yang SAMA!
@@ -287,10 +287,10 @@ sudo cp /etc/postgresql/16/main/postgresql.conf /etc/postgresql/16/main/postgres
 sudo cp /etc/postgresql/16/main/pg_hba.conf /etc/postgresql/16/main/pg_hba.conf.bak.$(date +%s)
 
 # Append tuning parameter KE file postgresql.conf (dari template snippet):
-cat deploy/security/postgresql.conf.snippet | sudo tee -a /etc/postgresql/16/main/postgresql.conf
+cat deploy/selfhost/security/postgresql.conf.snippet | sudo tee -a /etc/postgresql/16/main/postgresql.conf
 
 # Replace pg_hba.conf hardened:
-sudo cp deploy/security/pg_hba.conf /etc/postgresql/16/main/pg_hba.conf
+sudo cp deploy/selfhost/security/pg_hba.conf /etc/postgresql/16/main/pg_hba.conf
 sudo chown postgres:postgres /etc/postgresql/16/main/pg_hba.conf
 sudo chmod 640 /etc/postgresql/16/main/pg_hba.conf
 ```
@@ -299,7 +299,7 @@ sudo chmod 640 /etc/postgresql/16/main/pg_hba.conf
 
 ```bash
 sudo mkdir -p /etc/systemd/system/postgresql@16-main.service.d
-sudo cp deploy/security/postgresql-16-main-override.conf \
+sudo cp deploy/selfhost/security/postgresql-16-main-override.conf \
           /etc/systemd/system/postgresql@16-main.service.d/override.conf
 sudo systemctl daemon-reload
 ```
@@ -401,10 +401,10 @@ npm run build:vps
 
 ```bash
 # 7.1 Copy template nginx vhost
-sudo cp deploy/nginx.conf.example /etc/nginx/sites-available/hmsdp.conf
+sudo cp deploy/nginx/hmsdp.conf /etc/nginx/sites-available/hmsdp.conf
 # 7.2 Ganti placeholder domain dengan domain Anda:
 DOMAIN="your-domain.com"
-sudo sed -i "s|YOUR-DOMAIN.COM|$DOMAIN|g; s|/var/www/app|/var/www/hmsdp|g" /etc/nginx/sites-available/hmsdp.conf
+sudo sed -i "s|hmsdp\.me|$DOMAIN|g" /etc/nginx/sites-available/hmsdp.conf
 # 7.3 Enable vhost:
 sudo ln -sfn /etc/nginx/sites-available/hmsdp.conf /etc/nginx/sites-enabled/hmsdp.conf
 sudo rm -f /etc/nginx/sites-enabled/default
@@ -426,8 +426,8 @@ sudo certbot --nginx -d "$DOMAIN" -d "www.$DOMAIN" -m your-email@your-domain.com
 ```bash
 cd /var/www/hmsdp
 
-# 8.1 Jalankan via ecosystem.config.js
-pm2 start ecosystem.config.js --env production
+# 8.1 Jalankan via ecosystem.config.cjs
+pm2 start ecosystem.config.cjs --env production
 pm2 logs hmsdp-absenyura --lines 80 --nostream
 # ✅ Expected logs lines dalam 30 detik:
 #   [Server] Cron jobs started
@@ -480,7 +480,7 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 0 3 1 1,7 * curl -skS --max-time 30 -H "X-Cron-Secret: $CRON_SECRET" "https://127.0.0.1/api/cron/trigger?job=semester_start" >> /var/log/hmsdp/cron-semester.log 2>&1
 
 # C5: Disaster Recovery Backup setiap 6 jam (00:00, 06:00, 12:00, 18:00 UTC)
-0 */6 * * *  sudo -u postgres bash /var/www/hmsdp/scripts/vps-backup.sh cron >> /var/log/hmsdp/backup-cron.log 2>&1
+0 */6 * * *  sudo -u postgres bash /var/www/hmsdp/deploy/scripts/backup.sh cron >> /var/log/hmsdp/backup-cron.log 2>&1
 # =========================================================================
 
 # Verifikasi crontab tersimpan:
@@ -517,39 +517,39 @@ artillery report hmsdp-loadreport.json
 
 Buka browser incognito mode. Untuk tiap tiket, isi status `✅ PASS` atau `❌ FAIL + catatan error`. **JIKA ADA 1 PUN FAIL, JANGAN LAUNCH.** Perbaiki FAIL dulu, baru deploy full user.
 
-| ID  | Test Case                                                      | Expected Result                                                                                                        | Status |
-| --- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ------ |
-| T01 | Buka `https://your-domain.com/` → Public site home             | Loading ≤ 2s, brand HM SDP tampil, favicon load                                                                        | ☐      |
-| T02 | `/sitemap.xml` → canonical URL = your-domain.com               | Tidak ada link ke vercel.app                                                                                           | ☐      |
-| T03 | Not found random page: `/random-xyz-123456` → branded 404 page | BUKAN default Vercel 404, tampil logo + back to home                                                                   | ☐      |
-| T04 | `/login` page load → render form email/password                | Tidak ada error JS console (F12)                                                                                       | ☐      |
-| T05 | Login sebagai SuperAdmin via creds .env                        | Berhasil redirect /dashboard, JWT cookie httpOnly set                                                                  | ☐      |
-| T06 | Dashboard charts loading skeleton → render data                | Grafik BUKAN terdistorsi (proporsional 16:9, CLS=0)                                                                    | ☐      |
-| T07 | Dashboard jumlah mahasiswa x kelas                             | Tidak ada NaN / undefined                                                                                              | ☐      |
-| T08 | Menu Users → list users load                                   | 1 SuperAdmin, 1 Admin, 1 ContentAdmin muncul                                                                           | ☐      |
-| T09 | Buat 1 kelas DummyTest (semester aktif)                        | CREATE sukses, redirect detail kelas                                                                                   | ☐      |
-| T10 | Enroll 10 user DUMMY ke kelas DummyTest                        | 10 user masuk enrollment list                                                                                          | ☐      |
-| T11 | Buat session check-in 1 jam DummyTest                          | Session status = UPCOMING, QR code generate                                                                            | ☐      |
-| T12 | Scan QR session DummyTest via 10 user                          | 10/10 status = HADIR, location + photo upload success ≤ 2 detik per user                                               | ☐      |
-| T13 | Export laporan attendance DummyTest XLSX                       | Download file, open di Excel row count = 10                                                                            | ☐      |
-| T14 | Export laporan attendance PDF                                  | PDF render, tidak ada layout broken                                                                                    | ☐      |
-| T15 | Cron session lifecycle trigger manual                          | curl dengan header X-Cron-Secret → status code 200, session state changes dari UPCOMING → CHECKIN_OPEN                 | ☐      |
-| T16 | Cron nonce cleanup trigger manual                              | Status 200, log cleanup count row                                                                                      | ☐      |
-| T17 | Cron storage cleanup trigger manual                            | Status 200                                                                                                             | ☐      |
-| T18 | Logout SuperAdmin → cookie dihapus                             | Redirect /login, tidak bisa akses /dashboard sebelum login                                                             | ☐      |
-| T19 | Login 1 user biasa, scan QR DummyTest                          | Attendance count naik 1                                                                                                | ☐      |
-| T20 | Upload bukti excuse DummyTest 1 user (izin sakit)              | ExcuseRequest status PENDING muncul di reviewer Admin                                                                  | ☐      |
-| T21 | Approve excuse request Admin                                   | Status APPROVED, attendance berubah dari ALFA → IJIN                                                                   | ☐      |
-| T22 | Public site `/berita` (jika pakai CMS seed)                    | Post list tampil, gambar lazy load                                                                                     | ☐      |
-| T23 | Public site `/about` / visimisi / struktur                     | Tidak ada broken link gambar                                                                                           | ☐      |
-| T24 | Check UFW external dari IP rumah (nmap -Pn IP -p1-65535)       | Hanya port 22 / 80 / 443 open (5432 / 6432 / 3001 DROPPED)                                                             | ☐      |
-| T25 | DR Manual test backup + restore (jalankan sebagai postgres)    | `sudo -u postgres bash scripts/vps-backup.sh && sudo -u postgres bash scripts/vps-restore-test.sh` → kedua exit code 0 | ☐      |
+| ID  | Test Case                                                      | Expected Result                                                                                                              | Status |
+| --- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ------ |
+| T01 | Buka `https://your-domain.com/` → Public site home             | Loading ≤ 2s, brand HM SDP tampil, favicon load                                                                              | ☐      |
+| T02 | `/sitemap.xml` → canonical URL = your-domain.com               | Tidak ada link ke vercel.app                                                                                                 | ☐      |
+| T03 | Not found random page: `/random-xyz-123456` → branded 404 page | BUKAN default Vercel 404, tampil logo + back to home                                                                         | ☐      |
+| T04 | `/login` page load → render form email/password                | Tidak ada error JS console (F12)                                                                                             | ☐      |
+| T05 | Login sebagai SuperAdmin via creds .env                        | Berhasil redirect /dashboard, JWT cookie httpOnly set                                                                        | ☐      |
+| T06 | Dashboard charts loading skeleton → render data                | Grafik BUKAN terdistorsi (proporsional 16:9, CLS=0)                                                                          | ☐      |
+| T07 | Dashboard jumlah mahasiswa x kelas                             | Tidak ada NaN / undefined                                                                                                    | ☐      |
+| T08 | Menu Users → list users load                                   | 1 SuperAdmin, 1 Admin, 1 ContentAdmin muncul                                                                                 | ☐      |
+| T09 | Buat 1 kelas DummyTest (semester aktif)                        | CREATE sukses, redirect detail kelas                                                                                         | ☐      |
+| T10 | Enroll 10 user DUMMY ke kelas DummyTest                        | 10 user masuk enrollment list                                                                                                | ☐      |
+| T11 | Buat session check-in 1 jam DummyTest                          | Session status = UPCOMING, QR code generate                                                                                  | ☐      |
+| T12 | Scan QR session DummyTest via 10 user                          | 10/10 status = HADIR, location + photo upload success ≤ 2 detik per user                                                     | ☐      |
+| T13 | Export laporan attendance DummyTest XLSX                       | Download file, open di Excel row count = 10                                                                                  | ☐      |
+| T14 | Export laporan attendance PDF                                  | PDF render, tidak ada layout broken                                                                                          | ☐      |
+| T15 | Cron session lifecycle trigger manual                          | curl dengan header X-Cron-Secret → status code 200, session state changes dari UPCOMING → CHECKIN_OPEN                       | ☐      |
+| T16 | Cron nonce cleanup trigger manual                              | Status 200, log cleanup count row                                                                                            | ☐      |
+| T17 | Cron storage cleanup trigger manual                            | Status 200                                                                                                                   | ☐      |
+| T18 | Logout SuperAdmin → cookie dihapus                             | Redirect /login, tidak bisa akses /dashboard sebelum login                                                                   | ☐      |
+| T19 | Login 1 user biasa, scan QR DummyTest                          | Attendance count naik 1                                                                                                      | ☐      |
+| T20 | Upload bukti excuse DummyTest 1 user (izin sakit)              | ExcuseRequest status PENDING muncul di reviewer Admin                                                                        | ☐      |
+| T21 | Approve excuse request Admin                                   | Status APPROVED, attendance berubah dari ALFA → IJIN                                                                         | ☐      |
+| T22 | Public site `/berita` (jika pakai CMS seed)                    | Post list tampil, gambar lazy load                                                                                           | ☐      |
+| T23 | Public site `/about` / visimisi / struktur                     | Tidak ada broken link gambar                                                                                                 | ☐      |
+| T24 | Check UFW external dari IP rumah (nmap -Pn IP -p1-65535)       | Hanya port 22 / 80 / 443 open (5432 / 6432 / 3001 DROPPED)                                                                   | ☐      |
+| T25 | DR Manual test backup + restore (jalankan sebagai postgres)    | `sudo -u postgres bash deploy/scripts/backup.sh && sudo -u postgres bash deploy/scripts/restore-test.sh` → kedua exit code 0 | ☐      |
 
 ---
 
 ## STEP 12 — (Jika Perlu) Data Migration dari Supabase Existing ke Self-Host
 
-Baca dokumen terpisah: [SELFHOST_CUTOVER_PLAN.md](file:///c:/Users/shink/Pictures/absenyura/deploy/SELFHOST_CUTOVER_PLAN.md)
+Baca dokumen terpisah: [CUTOVER_PLAN.md](CUTOVER_PLAN.md)
 Window cutover = 2 jam, maintenance mode.
 
 ---
@@ -609,6 +609,6 @@ sudo systemctl restart pgbouncer
 
 ## 📅 Tindak Lanjut Setelah Deploy
 
-1. Sign-off checklist prelaunch → simpan document `deploy/VPS_PRELAUNCH_AUDIT_CHECKLIST.md`
-2. Baca Playbook Operasional: [VPS_OPS_PLAYBOOK.md](file:///c:/Users/shink/Pictures/absenyura/docs/VPS_OPS_PLAYBOOK.md)
+1. Sign-off checklist prelaunch → simpan document `deploy/selfhost/CHECKLIST.md`
+2. Baca Playbook Operasional: [OPERATIONS.md](OPERATIONS.md)
 3. Setup monitoring opsional: NewRelic / UptimeRobot (gratis) untuk uptime domain

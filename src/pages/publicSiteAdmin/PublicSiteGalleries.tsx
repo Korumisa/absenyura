@@ -1,7 +1,12 @@
 import React, { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import api from '@/services/api';
-import { toastError, toastSuccess, toastSuccessMessage, toastWarning } from '@/lib/utils/toastMessage';
+import {
+  toastError,
+  toastSuccess,
+  toastSuccessMessage,
+  toastWarning,
+} from '@/lib/utils/toastMessage';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -107,7 +112,11 @@ export default function PublicSiteGalleries() {
           ...p,
           items: [
             ...(p.items ?? []),
-            ...successUrls.map((url) => ({ imageUrl: url, caption: '', _uuid: crypto.randomUUID() })),
+            ...successUrls.map((url) => ({
+              imageUrl: url,
+              caption: '',
+              _uuid: crypto.randomUUID(),
+            })),
           ],
         }));
       }
@@ -567,7 +576,7 @@ export default function PublicSiteGalleries() {
                           Edit
                         </Button>
                         <Button
-                          variant="destructive"
+                          variant="destructive-soft"
                           size="sm"
                           type="button"
                           onClick={() => openDelete(g.id)}
